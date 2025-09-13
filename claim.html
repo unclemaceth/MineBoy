@@ -1,0 +1,14 @@
+<!doctype html><meta charset="utf-8" />
+<script>
+  const u = new URL(location.href);
+  const hash = u.searchParams.get("hash") || "";
+  // pretend success instantly
+  const back = new URL("apebit://claim");
+  back.searchParams.set("status","ok");
+  back.searchParams.set("tx","0xDEMO");
+  back.searchParams.set("hash",hash);
+  location.replace(back.toString());
+</script>
+<body style="background:#0b2f18;color:#9de2a3;font-family:monospace;display:flex;align-items:center;justify-content:center;height:100vh;">
+  <div>pretend claiming…</div>
+</body>
