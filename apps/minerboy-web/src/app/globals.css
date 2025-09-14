@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* reset */
+html, body, #__next { height: 100%; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: #0b0b0b; }
+
+/* stage sizing variables - iPhone 13 CSS pixels */
+:root {
+  --W: 390;
+  --H: 844;
+  /* crisp scale: never > 1, handles all viewport units */
+  --s: clamp(0, min(calc(100vw / var(--W)), calc(100svh / var(--H))), 1);
+}
+
+.stage {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: #0b0b0b;
+  min-height: 100svh;
+}
+
+/* the device "canvas" */
+.stage__device {
+  position: relative;
+  width: calc(var(--W) * 1px);
+  height: calc(var(--H) * 1px);
+  
+  /* scale from center, no translate needed (grid handles centering) */
+  transform-origin: center;
+  transform: scale(var(--s));
+  will-change: transform;
+
+  border-radius: 28px;
+  box-shadow: 0 20px 80px rgba(0,0,0,.5);
+  background: transparent;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+/* Remove conflicting body styles - handled by .stage class */
