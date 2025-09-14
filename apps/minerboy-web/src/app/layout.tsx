@@ -16,6 +16,9 @@ export const metadata: Metadata = {
   title: "MinerBoy",
   description: "NFT-gated crypto mining PWA",
   manifest: "/manifest.json",
+  icons: {
+    apple: "/icon-192x192.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

@@ -1,18 +1,153 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Stage from "@/components/Stage";
 import ActionButton from "@/components/ui/ActionButton";
 import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
 import EnhancedShell from "@/components/art/EnhancedShell";
+import ClaimOverlay from "@/components/ClaimOverlay";
+import Visualizer3x3 from "@/components/Visualizer3x3";
+import { useMinerStore } from "@/state/miner";
+import { useMinerLoop } from "@/hooks/useMinerLoop";
+import { useTypewriter } from "@/hooks/useTypewriter";
 
 const W = 390; // iPhone 13 CSS pixels
 const H = 844; // iPhone 13 CSS pixels
 const px = (p: number, total: number) => Math.round(total * p / 100);
 
 export default function Home() {
-  const mining = false; // wire later
   const [connectPressed, setConnectPressed] = useState(false);
+  
+  // Miner state
+  const { 
+    connected, 
+    mining, 
+    attempts, 
+    hashRate, 
+    currentHash, 
+    foundHash,
+    terminal,
+    mode,
+    booting,
+    bootLines,
+    connect,
+    disconnect,
+    toggleMining,
+    pushLine,
+    setMode,
+    setBooting
+  } = useMinerStore();
+  
+  // Start the miner loop
+  useMinerLoop();
+  
+  // Typewriter for boot sequence
+  const { displayLines: bootDisplayLines } = useTypewriter(
+    booting ? bootLines : [],
+    18,
+    180,
+    () => setBooting(false)
+  );
+  
+  // Haptic feedback helper
+  const hapticFeedback = () => {
+    try {
+      navigator.vibrate?.(15);
+    } catch {
+      // Ignore vibration errors
+    }
+  };
+  
+  // Button handlers
+  const handleConnect = () => {
+    hapticFeedback();
+    if (connected) {
+      disconnect();
+    } else {
+      connect();
+    }
+  };
+  
+  const handleA = () => {
+    hapticFeedback();
+    if (!connected) {
+      pushLine("Connect first!");
+      return;
+    }
+    toggleMining();
+  };
+  
+  const handleB = () => {
+    hapticFeedback();
+    if (foundHash) {
+      // Claim overlay will handle this
+      return;
+    }
+    pushLine("Menu - Not implemented yet");
+  };
+  
+  const handleDpad = (direction: string) => {
+    hapticFeedback();
+    
+    // Handle mode switching with left/right
+    if (direction === 'left') {
+      setMode('terminal');
+      pushLine('Switched to terminal view');
+    } else if (direction === 'right') {
+      setMode('visual');
+      pushLine('Switched to visualizer view');
+    } else {
+      pushLine(`D-Pad: ${direction}`);
+    }
+  };
+  
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          handleDpad('up');
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          handleDpad('down');
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          handleDpad('left');
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          handleDpad('right');
+          break;
+        case 'z':
+        case 'Z':
+          e.preventDefault();
+          handleA();
+          break;
+        case 'x':
+        case 'X':
+          e.preventDefault();
+          handleB();
+          break;
+        case 'Enter':
+          e.preventDefault();
+          handleConnect();
+          break;
+        case 'Escape':
+          e.preventDefault();
+          if (mining) {
+            toggleMining();
+            hapticFeedback();
+          }
+          break;
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [connected, mining, foundHash, toggleMining, pushLine, connect, disconnect]);
   // Format hash for display: 0x000000000000000000000000...000000 (first 24 + last 6)
   const formatHashForDisplay = (hash: string | null, suffix: string | null = null) => {
     if (!hash || hash === "idle") {
@@ -29,13 +164,10 @@ export default function Home() {
     return `0x${prefix}...${suffixToShow}`;
   };
   
-  // Example usage:
-  // formatHashForDisplay(null) -> "0x000000000000000000000000...000000" (idle)
-  // formatHashForDisplay("0x1234567890abcdef1234567890abcdef12345678", "abc123") -> "0x1234567890abcdef12345678...abc123"
-  // formatHashForDisplay("0x1234567890abcdef1234567890abcdef12345678") -> "0x1234567890abcdef12345678...345678"
-  const hashLcdText = formatHashForDisplay("0x1a2b3c4d5e6f7890abcdef1234567890abcdef1234567890abcdef1234567890");
-  const statusLcdText = "IDLE";
-  const hashRateLcdText = "0 H/s";
+  // LCD display data from state
+  const hashLcdText = formatHashForDisplay(currentHash);
+  const statusLcdText = connected ? (mining ? `A: ${attempts.toLocaleString()}` : "IDLE") : "DISC";
+  const hashRateLcdText = `${hashRate.toLocaleString()} H/s`;
 
   return (
     <Stage>
@@ -72,13 +204,58 @@ export default function Home() {
         <div style={{
           color: "#64ff8a",
           fontFamily: "Menlo, monospace",
-          fontSize: 16,
-          textAlign: "center",
+          fontSize: 12,
+          textAlign: "left",
+          width: "100%",
+          height: "100%",
+          padding: 8,
+          overflow: "hidden",
+          position: "relative",
         }}>
-          <div>MinerBoy Terminal</div>
-          <div style={{ marginTop: 20, fontSize: 12, opacity: 0.7 }}>
-            Ready for mining...
-          </div>
+          {/* Boot sequence or normal display */}
+          {booting ? (
+            // Show typewriter boot sequence
+            <div>
+              {bootDisplayLines.map((line, index) => (
+                <div key={index} style={{ marginBottom: 2 }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          ) : mode === 'terminal' ? (
+            // Terminal mode - show last 8 lines
+            <div>
+              {terminal.slice(-8).map((line, index) => (
+                <div key={index} style={{ 
+                  marginBottom: 2,
+                  opacity: index < 2 ? 0.6 : 1, // Fade older lines
+                }}>
+                  {line}
+                </div>
+              ))}
+            </div>
+          ) : (
+            // Visual mode - show 3x3 visualizer
+            <Visualizer3x3 />
+          )}
+          
+          {/* Live telemetry when mining (only show in terminal mode) */}
+          {mining && !booting && mode === 'terminal' && (
+            <div style={{ 
+              position: "absolute",
+              top: 8,
+              right: 8,
+              fontSize: 10,
+              opacity: 0.8,
+              textAlign: "right",
+              backgroundColor: "rgba(0, 0, 0, 0.5)",
+              padding: "2px 4px",
+              borderRadius: 4,
+            }}>
+              <div>HR: {hashRate.toLocaleString()}</div>
+              <div>A: {attempts.toLocaleString()}</div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -166,7 +343,7 @@ export default function Home() {
       {/* CONNECT pill: 46px from bottom, left 37px */}
       <div style={{ position: "absolute", left: 37, bottom: 775 }}>
         <button
-          onClick={() => {/* onSelect */}}
+          onClick={handleConnect}
           onPointerDown={() => setConnectPressed(true)}
           onPointerUp={() => setConnectPressed(false)}
           onPointerLeave={() => setConnectPressed(false)}
@@ -192,38 +369,38 @@ export default function Home() {
             transition: "transform 120ms, border-color 120ms",
           }}
         >
-          CONNECT
+{connected ? "DISCONNECT" : "CONNECT"}
         </button>
       </div>
 
       {/* D-pad Up: moved 25px right, 50px down */}
       <div style={{ position: "absolute", left: 92, bottom: 253.5 }}>
-        <DpadButton direction="up" size={38} onPress={() => {/* onDpad('up') */}} />
+        <DpadButton direction="up" size={38} onPress={() => handleDpad('up')} />
       </div>
       
       {/* D-pad Down: moved 25px right, 50px down */}
       <div style={{ position: "absolute", left: 92, bottom: 159.5 }}>
-        <DpadButton direction="down" size={38} onPress={() => {/* onDpad('down') */}} />
+        <DpadButton direction="down" size={38} onPress={() => handleDpad('down')} />
       </div>
       
       {/* D-pad Left: moved 25px right, 50px down */}
       <div style={{ position: "absolute", left: 45, bottom: 206.5 }}>
-        <DpadButton direction="left" size={38} onPress={() => {/* onDpad('left') */}} />
+        <DpadButton direction="left" size={38} onPress={() => handleDpad('left')} />
       </div>
       
       {/* D-pad Right: moved 25px right, 50px down */}
       <div style={{ position: "absolute", left: 139, bottom: 206.5 }}>
-        <DpadButton direction="right" size={38} onPress={() => {/* onDpad('right') */}} />
+        <DpadButton direction="right" size={38} onPress={() => handleDpad('right')} />
       </div>
 
       {/* A button: moved up 7.5px, left 2.5px */}
       <div style={{ position: "absolute", right: 37.5, bottom: 197.5 }}>
-        <ActionButton label="A" onPress={() => {/* onPressA */}} size={80} variant="primary" />
+        <ActionButton label="A" onPress={handleA} size={80} variant="primary" />
       </div>
 
       {/* B button: moved up 7.5px, left 2.5px */}
       <div style={{ position: "absolute", right: 127.5, bottom: 138.5 }}>
-        <ActionButton label="B" onPress={() => {/* onPressB */}} size={60} variant="secondary" />
+        <ActionButton label="B" onPress={handleB} size={60} variant="secondary" />
       </div>
 
       {/* Fan: right 60px, bottom 60px */}
@@ -258,6 +435,9 @@ export default function Home() {
           </div>
         ))}
       </div>
+      
+      {/* Claim Overlay */}
+      <ClaimOverlay />
     </Stage>
   );
 }
