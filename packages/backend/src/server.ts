@@ -4,11 +4,25 @@ import crypto from "crypto";
 
 const app = express();
 
-// CORS configuration - lock to claim web origin
-app.use(cors({
-  origin: ["http://localhost:3000", "https://claim.yourdomain.com"],
-  credentials: true
-}));
+// CORS configuration - allow web app origins
+const ALLOWED_ORIGINS = new Set([
+  "https://apebitminer-jgaijnh3j-macs-projects-20ae48e1.vercel.app", // current
+  "https://apebitminer-a63mmemk1-macs-projects-20ae48e1.vercel.app", // previous
+  "https://apebitminer-mxtliair3-macs-projects-20ae48e1.vercel.app", // previous
+  "http://localhost:3000"
+]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin as string | undefined;
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+    res.header("Vary", "Origin");
+  }
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Authorization,Content-Type");
+  if (req.method === "OPTIONS") return res.sendStatus(204);
+  next();
+});
 
 app.use(express.json());
 

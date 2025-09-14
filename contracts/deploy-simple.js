@@ -155,18 +155,18 @@ async function main() {
     await deployTx.deployed();
     
     console.log(`✅ ApeBitClaim deployed to: ${deployTx.address}`);
-    console.log(`🔗 Chain ID: 33139 (Curtis testnet)`);
+    console.log(`🔗 Chain ID: 33111 (Curtis testnet)`);
 
     // Verify deployment
     const [value, mask] = await deployTx.getDifficulty();
-    console.log(`🔍 Verified - Suffix Value: 0x${value.toString(16).toUpperCase()}`);
-    console.log(`🔍 Verified - Suffix Mask:  0x${mask.toString(16).toUpperCase()}`);
+    console.log(`🔍 Verified - Suffix Value: 0x${value.toHexString().slice(2).toUpperCase()}`);
+    console.log(`🔍 Verified - Suffix Mask:  0x${mask.toHexString().slice(2).toUpperCase()}`);
 
     // Save ABI and address
     const deploymentInfo = {
         address: deployTx.address,
         abi: abi,
-        chainId: 33139,
+        chainId: 33111,
         suffixValue: DEV_SUFFIX_VALUE,
         suffixMask: DEV_SUFFIX_MASK,
         deployedAt: new Date().toISOString()
@@ -178,7 +178,7 @@ async function main() {
     console.log("\\n📝 Next steps:");
     console.log(`1. Update your web app's contract address to: ${deployTx.address}`);
     console.log(`2. Update your iOS app's CONTRACT_ADDR to: ${deployTx.address}`);
-    console.log(`3. Ensure both apps use chainId: 33139`);
+    console.log(`3. Ensure both apps use chainId: 33111`);
 }
 
 main()
