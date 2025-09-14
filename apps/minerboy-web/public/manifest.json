@@ -2,7 +2,7 @@
   "name": "MinerBoy",
   "short_name": "MinerBoy",
   "description": "NFT-gated crypto mining PWA",
-  "start_url": "/",
+  "start_url": "/?pwa=1",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

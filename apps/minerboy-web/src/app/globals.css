@@ -1,16 +1,30 @@
 @import "tailwindcss";
 
 /* reset */
-html, body, #__next { height: 100%; }
+html, body, #__next { 
+  height: 100svh; 
+  overflow: hidden; 
+  background: #0b0b0b; 
+}
 *, *::before, *::after { box-sizing: border-box; }
-body { margin: 0; background: #0b0b0b; }
+body { 
+  margin: 0; 
+  background: #0b0b0b; 
+  overflow: hidden; 
+  touch-action: manipulation; 
+}
 
 /* stage sizing variables - iPhone 13 CSS pixels */
 :root {
   --W: 390;
   --H: 844;
-  /* crisp scale: never > 1, handles all viewport units */
-  --s: clamp(0, min(calc(100vw / var(--W)), calc(100svh / var(--H))), 1);
+  /* Safe area calculations */
+  --safeX: calc(env(safe-area-inset-left) + env(safe-area-inset-right));
+  --safeY: calc(env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  --vw: calc(100vw - var(--safeX));
+  --vh: calc(100svh - var(--safeY));
+  /* crisp scale: never > 1, handles safe areas */
+  --s: min(calc(var(--vw) / var(--W)), calc(var(--vh) / var(--H)), 1);
 }
 
 .stage {
@@ -20,7 +34,19 @@ body { margin: 0; background: #0b0b0b; }
   display: grid;
   place-items: center;
   background: #0b0b0b;
-  min-height: 100svh;
+  /* Safe area support for iOS */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  /* Viewport height with fallbacks */
+  height: 100svh;
+  height: 100dvh;
+  height: 100vh;
+}
+
+/* Remove padding when in standalone PWA mode */
+@media (display-mode: standalone) {
+  .stage {
+    padding: 0;
+  }
 }
 
 /* the device "canvas" */
