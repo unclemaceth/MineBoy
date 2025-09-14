@@ -3,82 +3,8 @@ const solc = require("solc");
 const fs = require("fs");
 require("dotenv").config();
 
-// Contract source code
-const contractSource = `
-// SPDX-License-Identifier: MIT
-pragma solidity ^0.8.24;
-
-contract ApeBitClaim {
-    bytes4 constant MAGIC = 0x41424954;
-    mapping(bytes32 => bool) public claimed;
-    uint256 public immutable suffixValue;
-    uint256 public immutable suffixMask;
-    bytes32 public lastHash;
-
-    event Claimed(address indexed miner, bytes32 hash, bytes preimage, uint64 attempts);
-
-    constructor(uint256 _suffixValue, uint256 _suffixMask) {
-        require(_suffixMask == 0xFFFF || _suffixMask == 0xFFFFFF, "Invalid mask");
-        require((_suffixValue & _suffixMask) == _suffixValue, "Value exceeds mask");
-        suffixValue = _suffixValue;
-        suffixMask = _suffixMask;
-    }
-
-    function claim(bytes calldata preimage) external {
-        require(preimage.length == 92, "Invalid preimage length");
-
-        bytes4 magic;
-        assembly {
-            magic := shr(224, calldataload(preimage.offset))
-        }
-        require(magic == MAGIC, "Invalid magic header");
-
-        address minedMiner;
-        assembly {
-            minedMiner := shr(96, calldataload(add(preimage.offset, 32)))
-        }
-        require(minedMiner == msg.sender, "Miner mismatch");
-
-        address preimageContract;
-        assembly {
-            preimageContract := shr(96, calldataload(add(preimage.offset, 12)))
-        }
-        require(preimageContract == address(this), "Contract mismatch");
-
-        uint64 preimageChainId;
-        assembly {
-            let data := calldataload(add(preimage.offset, 4))
-            preimageChainId := shr(192, data)
-        }
-        require(preimageChainId == block.chainid, "ChainId mismatch");
-
-        bytes32 prevHash;
-        assembly {
-            prevHash := calldataload(add(preimage.offset, 52))
-        }
-        require(prevHash == lastHash, "Previous hash mismatch");
-
-        uint64 attempts;
-        assembly {
-            let data := calldataload(add(preimage.offset, 84))
-            attempts := shr(192, data)
-        }
-
-        bytes32 h = sha256(preimage);
-        require(!claimed[h], "Already claimed");
-        require((uint256(h) & suffixMask) == suffixValue, "Invalid suffix");
-
-        claimed[h] = true;
-        lastHash = h;
-
-        emit Claimed(minedMiner, h, preimage, attempts);
-    }
-
-    function getDifficulty() external view returns (uint256 value, uint256 mask) {
-        return (suffixValue, suffixMask);
-    }
-}
-`;
+// Read contract source from file
+const contractSource = fs.readFileSync("./contracts/ApeBitClaim.sol", "utf8");
 
 async function main() {
     // Configuration

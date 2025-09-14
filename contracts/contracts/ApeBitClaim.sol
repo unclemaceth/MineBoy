@@ -37,56 +37,56 @@ contract ApeBitClaim {
         suffixMask = _suffixMask;
     }
 
+    /// @notice Parse preimage into components using memory copy for safety
+    function _parse(bytes calldata preimage)
+        internal
+        pure
+        returns (
+            bytes4 magic,
+            uint64 chainId,
+            address contractAddr,
+            address miner,
+            bytes32 prevHash,
+            uint64 attempts
+        )
+    {
+        require(preimage.length == 92, "bad preimage len");
+
+        // Copy the 92 bytes into memory so mload works at exact byte offsets
+        bytes memory tmp = new bytes(92);
+        assembly {
+            // tmp points at length; data starts at add(tmp, 32)
+            calldatacopy(add(tmp, 32), preimage.offset, 92)
+
+            magic        := mload(add(tmp, 32))         // top 4 bytes taken when cast to bytes4
+            chainId      := shr(192, mload(add(tmp, 36))) // 8 bytes at offset 4
+            contractAddr := shr(96,  mload(add(tmp, 44))) // 20 bytes at offset 12
+            miner        := shr(96,  mload(add(tmp, 64))) // 20 bytes at offset 32
+            prevHash     := mload(add(tmp, 84))           // 32 bytes at offset 52
+            attempts     := shr(192, mload(add(tmp, 116)))// 8 bytes at offset 84
+        }
+
+        // Solidity casts: keep only the intended widths
+        magic        = bytes4(magic);
+        chainId      = uint64(chainId);
+        contractAddr = address(uint160(uint256(uint160(contractAddr))));
+        miner        = address(uint160(uint256(uint160(miner))));
+        // prevHash already bytes32
+        attempts     = uint64(attempts);
+
+        // Sanity check
+        require(magic == MAGIC, "Invalid magic header");
+    }
+
     /// @notice Claim with the raw 92-byte preimage
     /// @param preimage The 92-byte preimage containing all mining parameters
     function claim(bytes calldata preimage) external {
-        require(preimage.length == 92, "Invalid preimage length");
+        (bytes4 magic, uint64 chainId, address contractAddr, address miner, bytes32 prevHash, uint64 attempts) = _parse(preimage);
 
-        // Verify magic header "ABIT"
-        bytes4 magic;
-        assembly {
-            // Load first 4 bytes from calldata
-            magic := shr(224, calldataload(preimage.offset))
-        }
-        require(magic == MAGIC, "Invalid magic header");
-
-        // Extract miner address from bytes [32..51] (20 bytes)
-        address minedMiner;
-        assembly {
-            // Load 32 bytes starting at offset 32, then shift right to get address
-            minedMiner := shr(96, calldataload(add(preimage.offset, 32)))
-        }
-        require(minedMiner == msg.sender, "Miner mismatch");
-
-        // Extract contract address from bytes [12..31] (20 bytes)
-        address preimageContract;
-        assembly {
-            preimageContract := shr(96, calldataload(add(preimage.offset, 12)))
-        }
-        require(preimageContract == address(this), "Contract mismatch");
-
-        // Extract chainId from bytes [4..11] (8 bytes, big-endian)
-        uint64 preimageChainId;
-        assembly {
-            let data := calldataload(add(preimage.offset, 4))
-            preimageChainId := shr(192, data)
-        }
-        require(preimageChainId == block.chainid, "ChainId mismatch");
-
-        // Extract prevHash from bytes [52..83] (32 bytes)
-        bytes32 prevHash;
-        assembly {
-            prevHash := calldataload(add(preimage.offset, 52))
-        }
+        require(miner == msg.sender, "Miner mismatch");
+        require(contractAddr == address(this), "Contract mismatch");
+        require(chainId == block.chainid, "ChainId mismatch");
         require(prevHash == lastHash, "Previous hash mismatch");
-
-        // Extract attempts from bytes [84..91] (8 bytes, big-endian)
-        uint64 attempts;
-        assembly {
-            // Load 32 bytes starting at offset 84, then extract the 8-byte big-endian value
-            let data := calldataload(add(preimage.offset, 84))
-            attempts := shr(192, data) // Shift right 24 bytes (192 bits) to get the first 8 bytes
-        }
 
         // Recompute hash and verify it hasn't been claimed
         bytes32 h = sha256(preimage);
@@ -99,7 +99,7 @@ contract ApeBitClaim {
         claimed[h] = true;
         lastHash = h;
 
-        emit Claimed(minedMiner, h, preimage, attempts);
+        emit Claimed(miner, h, preimage, attempts);
     }
 
     /// @notice Get the current difficulty configuration
@@ -107,5 +107,25 @@ contract ApeBitClaim {
     /// @return mask The suffix mask (e.g., 0xFFFF)
     function getDifficulty() external view returns (uint256 value, uint256 mask) {
         return (suffixValue, suffixMask);
+    }
+
+    /// @notice Debug function to peek at preimage parsing
+    /// @param preimage The 92-byte preimage to parse
+    /// @return magic The magic header bytes
+    /// @return chainId The extracted chain ID
+    /// @return contractAddr The extracted contract address
+    /// @return miner The extracted miner address
+    /// @return prevHash The extracted previous hash
+    /// @return attempts The extracted attempts count
+    function peek(bytes calldata preimage) external pure returns (
+        bytes4 magic,
+        uint64 chainId,
+        address contractAddr,
+        address miner,
+        bytes32 prevHash,
+        uint64 attempts
+    ) {
+        // Use the same parser as claim() for consistency
+        return _parse(preimage);
     }
 }
