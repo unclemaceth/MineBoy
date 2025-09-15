@@ -1,4 +1,4 @@
-import { useMinerStore } from '@/state/miner';
+import { useSession } from '@/state/useSession';
 import { useEffect, useState } from 'react';
 
 interface Visualizer3x3Props {
@@ -12,7 +12,8 @@ export default function Visualizer3x3({
   hideHud = true, 
   hideHashLine = true 
 }: Visualizer3x3Props) {
-  const { currentHash, mining, foundHash } = useMinerStore();
+  const { mining, lastFound, job } = useSession();
+  const [currentHash, setCurrentHash] = useState('0x0000000000000000000000000000000000000000000000000000000000000000');
   const [containerSize, setContainerSize] = useState({ width: 300, height: 300 });
   
   // Extract last 9 hex characters for the 3x3 grid
@@ -29,6 +30,43 @@ export default function Visualizer3x3({
   };
 
   const gridData = getGridData(currentHash);
+  
+  // Generate new hashes when mining
+  useEffect(() => {
+    if (!mining || !job) {
+      setCurrentHash('0x0000000000000000000000000000000000000000000000000000000000000000');
+      return;
+    }
+
+    let interval: NodeJS.Timeout;
+    let counter = 0;
+    
+    const generateHash = () => {
+      // Generate a realistic-looking hash based on job nonce + counter
+      const nonce = job.nonce.slice(2); // Remove 0x
+      const counterHex = counter.toString(16).padStart(8, '0');
+      const combined = nonce + counterHex;
+      
+      // Simple hash simulation - just rotate and modify
+      let hash = '0x';
+      for (let i = 0; i < 64; i += 2) {
+        const idx = (i + counter) % combined.length;
+        const char1 = combined[idx] || '0';
+        const char2 = combined[(idx + 1) % combined.length] || '0';
+        hash += char1 + char2;
+      }
+      
+      setCurrentHash(hash);
+      counter++;
+    };
+
+    // Start generating hashes every 100ms when mining
+    interval = setInterval(generateHash, 100);
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [mining, job]);
   
   // Calculate tile size based on container
   const minDimension = Math.min(containerSize.width, containerSize.height);
@@ -94,8 +132,11 @@ export default function Visualizer3x3({
               fontFamily: 'Menlo, monospace',
               color: cell.brightness > 0.6 ? '#000' : '#64ff8a',
               fontWeight: 'bold',
-              animation: mining ? 'pulse 2s ease-in-out infinite' : 'none',
-              animationDelay: `${index * 0.1}s`,
+              animationName: mining ? 'pulse' : 'none',
+              animationDuration: mining ? '2s' : 'none',
+              animationTimingFunction: mining ? 'ease-in-out' : 'none',
+              animationIterationCount: mining ? 'infinite' : 'none',
+              animationDelay: mining ? `${index * 0.1}s` : 'none',
               width: tileSize,
               height: tileSize,
             }}
@@ -122,7 +163,7 @@ export default function Visualizer3x3({
       )}
 
       {/* Claim badge when hash found */}
-      {foundHash && (
+      {lastFound && (
         <div style={{
           position: 'absolute',
           top: '50%',

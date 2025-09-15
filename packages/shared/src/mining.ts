@@ -1,105 +1,108 @@
-export type MiningAlgo = 'sha256-suffix';
+// packages/shared/src/mining.ts
 
-export type ClaimType = 'erc20' | 'erc721' | 'erc1155';
+// ---------- Types ----------
+export type MiningRule = 'suffix';
 
-export type CartridgeStandard = 'erc721';
-
-export interface CartridgeConfig {
-  slug: string;
-  name: string;
-  chainId: number;
-  standard: CartridgeStandard;
-  contract: `0x${string}`;
-  image?: string;
-  mining: {
-    algo: MiningAlgo;
-    suffix: string;     // e.g. "ab17"
-    charset: 'hex';
-    difficulty?: number;
-  };
-  claim: {
-    type: ClaimType;
-    chainId: number;
-    token: `0x${string}`;
-    router?: `0x${string}` | null;
-    id?: string | number; // for 1155 if needed
-  };
+export interface EpochDifficulty {
+  rule: 'suffix';
+  suffix: string;     // required suffix (e.g., "00", "000", "0000")
+  ttlMs: number;      // job TTL
 }
 
 export interface Job {
   jobId: string;
-  algo: MiningAlgo;
-  suffix: string;
+  algo: 'sha256-suffix';
   charset: 'hex';
-  nonce: `0x${string}`;
-  expiresAt: number; // epoch ms
-  sig: `0x${string}`; // server signature over job payload
-  consumed?: boolean; // true if job has been claimed
-  height?: number; // job sequence number (0, 1, 2, ...)
+  nonce: string;        // 0x...
+  expiresAt: number;    // epoch ms
+  // difficulty
+  rule: 'suffix';
+  suffix: string;       // required suffix (e.g., "00", "000", "0000")
+  epoch: number;
+  ttlMs: number;
 }
 
+// Optional (used by frontend/backend)
+export interface CartridgeConfig {
+  chainId: number;
+  name: string;
+  contract: string;
+  image?: string;
+}
+
+// API request/response types
 export interface OpenSessionReq {
-  wallet: `0x${string}`;
-  cartridge: { chainId: number; contract: `0x${string}`; tokenId: string };
-  clientInfo?: Record<string, unknown>;
+  wallet: string;
+  cartridge: { chainId: number; contract: string; tokenId: string };
+  clientInfo?: any;
+  minerId: string;
 }
 
 export interface OpenSessionRes {
   sessionId: string;
   job: Job;
   policy: { heartbeatSec: number; cooldownSec: number };
-  claim: CartridgeConfig['claim'];
+  claim: any;
 }
 
 export interface ClaimReq {
   sessionId: string;
   jobId: string;
-  preimage: string;       // exact input hashed by the worker
-  hash: `0x${string}`;    // 32-byte hex
-  steps: number;          // attempts during this job
-  hr: number;             // hashes per second
+  preimage: string;
+  hash: string;
+  steps: number;
+  hr: number;
+  minerId: string;
 }
 
 export interface ClaimRes {
-  ok: true;
-  txHash?: `0x${string}`; // present if backend mints/sends
-  to?: `0x${string}`;     // present if client should send prepared tx
-  data?: `0x${string}`;
-  nextJob?: Job;          // new job issued after successful claim
+  success: boolean;
+  nextJob?: Job;
+  reward?: string;
 }
 
-// EIP-712 Domain
-export const EIP712_DOMAIN = {
-  name: 'MinerBoyClaim',
-  version: '1',
-  chainId: 33111, // Curtis testnet
-  verifyingContract: '' as `0x${string}` // Will be set to router address
-};
-
-// EIP-712 Types
-export const EIP712_TYPES = {
-  Claim: [
-    { name: 'wallet', type: 'address' },
-    { name: 'cartridge', type: 'address' },
-    { name: 'tokenId', type: 'uint256' },
-    { name: 'rewardToken', type: 'address' },
-    { name: 'rewardAmount', type: 'uint256' },
-    { name: 'workHash', type: 'bytes32' },
-    { name: 'attempts', type: 'uint64' },
-    { name: 'nonce', type: 'bytes32' },
-    { name: 'expiry', type: 'uint64' }
-  ]
-};
-
-// Claim struct matching Solidity
 export interface ClaimStruct {
-  wallet: `0x${string}`;
-  cartridge: `0x${string}`;
+  wallet: string;
+  cartridge: string;
   tokenId: string;
-  rewardToken: `0x${string}`;
+  rewardToken: string;
   rewardAmount: string;
-  workHash: `0x${string}`;
+  workHash: string;
   attempts: string;
-  nonce: `0x${string}`;
+  nonce: string;
   expiry: string;
 }
+
+// ---------- Difficulty Table ----------
+export const DIFFICULTY_TABLE: Record<number, EpochDifficulty> = {
+  0: { rule: 'suffix', suffix: '000000', ttlMs: 30 * 60_000 },    // ~1 min desktop, ~10+ min phones
+  1: { rule: 'suffix', suffix: '0000000', ttlMs: 4 * 60 * 60_000 }, // ~18 min desktop, ~1-3h phones  
+  2: { rule: 'suffix', suffix: '00000000', ttlMs: 24 * 60 * 60_000 }, // ~4.8h desktop, ~1-2 days phones
+  3: { rule: 'suffix', suffix: '00000000', ttlMs: 24 * 60 * 60_000 }, // Keep at 8 zeros for stability
+};
+
+// get base difficulty by epoch, then apply optional override
+export function getDifficultyForEpoch(
+  epoch: number,
+  override?: Partial<EpochDifficulty>
+): EpochDifficulty {
+  const base = DIFFICULTY_TABLE[epoch] ?? DIFFICULTY_TABLE[0];
+  return {
+    rule: 'suffix',
+    suffix: override?.suffix ?? base.suffix,
+    ttlMs: override?.ttlMs ?? base.ttlMs,
+  };
+}
+
+// simple back-compat helper if some code still wants suffix
+export function getSuffixForEpoch(epoch: number): string {
+  const d = getDifficultyForEpoch(epoch);
+  return d.suffix;
+}
+
+// Default export for ESM/CJS interop safety
+export default {
+  DIFFICULTY_TABLE,
+  getDifficultyForEpoch,
+  getSuffixForEpoch,
+};

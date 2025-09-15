@@ -7,10 +7,13 @@ import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 type InStart = {
   type: 'START';
   job: {
-    algo: 'sha256-suffix';
-    suffix: string;      // lowercase expected
+    algo: 'sha256-suffix';   // keep existing
     charset: 'hex';
-    nonce: string;       // 0x...
+    nonce: string;           // 0x...
+    // NEW:
+    rule?: 'suffix' | 'bits';
+    suffix?: string;
+    difficultyBits?: number;
   };
 };
 
@@ -28,7 +31,7 @@ type OutFound = {
 type OutError = { type: 'ERROR'; message: string };
 type OutMsg = OutTick | OutFound | OutError;
 
-const ctx: DedicatedWorkerGlobalScope = self as any;
+const ctx = self as any;
 
 let running = false;
 let attempts = 0;
@@ -50,37 +53,51 @@ function hrNow(): number {
   return Math.floor(attempts / dur);
 }
 
-function mineSuffix(nonce: string, suffix: string) {
-  console.log('mineSuffix called with:', { nonce, suffix });
-  const lowerSuffix = toLowerHex(suffix);
-  console.log('Looking for suffix:', lowerSuffix);
-  
-  // Quick SHA-256 sanity check
-  const testHash = sha256HexAscii('test');
-  console.log('SHA-256 test: sha256("test") =', testHash);
-  console.log('Expected: 0x9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08');
-  
+function hasTrailingZeroBitsHex(hash: string, nBits: number): boolean {
+  const hex = (hash.startsWith('0x') ? hash.slice(2) : hash).toLowerCase();
+  const tzNibble = [4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0];
+
+  let remaining = nBits;
+  for (let i = hex.length - 1; i >= 0 && remaining > 0; i--) {
+    const v = parseInt(hex[i], 16);
+    if (Number.isNaN(v)) return false;
+    if (v === 0) { remaining -= 4; continue; }
+    remaining -= tzNibble[v];
+    break;
+  }
+  return remaining <= 0;
+}
+
+function mine({ nonce, rule, suffix, difficultyBits }: {
+  nonce: string;
+  rule?: 'suffix' | 'bits';
+  suffix?: string;
+  difficultyBits?: number;
+}) {
+  const mode: 'suffix' | 'bits' = rule ?? (typeof difficultyBits === 'number' ? 'bits' : 'suffix');
+  const lowerSuffix = (suffix ?? '').toLowerCase();
+
   startTs = performance.now();
   lastTickTs = startTs;
   attempts = 0;
   running = true;
 
-  // very simple stream: preimage = `${nonce}:${counterHex}`
   let counter = 0;
-  console.log('Starting mining loop...');
 
   while (running) {
-    const preimage = `${nonce}:${counter}`;        // nonce as-is; counter decimal
-    const hash = sha256HexAscii(preimage);         // sha256(utf8(preimage)) -> 0x + hex
+    const preimage = `${nonce}:${counter}`;
+    const hash = sha256HexAscii(preimage);
     attempts++;
-    counter++; // Move counter increment right after attempts
+    counter++;
 
-    // Debug first few attempts and every 1000 after
-    if (attempts <= 10 || attempts % 1000 === 0) {
-      console.log(`Attempt ${attempts}: preimage="${preimage}" -> hash="${hash}" (ends with "${hash.slice(-2)}")`);
+    let ok = false;
+    if (mode === 'suffix') {
+      ok = hash.toLowerCase().slice(2).endsWith(lowerSuffix);
+    } else {
+      ok = hasTrailingZeroBitsHex(hash, difficultyBits ?? 0);
     }
 
-    if (hash.toLowerCase().endsWith(lowerSuffix)) {
+    if (ok) {
       running = false;
       const hr = Math.round((attempts / ((performance.now() - startTs) / 1000)) * 10) / 10;
       const out: OutFound = {
@@ -118,21 +135,12 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
   }
   if (msg.type === 'START') {
     if (running) running = false;
-    const { algo, suffix, nonce } = msg.job;
-    console.log('Worker starting with:', { algo, suffix, nonce });
-    
-    if (algo !== 'sha256-suffix') {
-      const out: OutError = { type: 'ERROR', message: `Unsupported algo: ${algo}` };
-      ctx.postMessage(out);
-      return;
-    }
-    // fire and forget
-    console.log('Worker calling mineSuffix...');
+    const { nonce, rule, suffix, difficultyBits } = msg.job;
+
     try {
-      mineSuffix(nonce, suffix);
+      mine({ nonce, rule, suffix, difficultyBits });
     } catch (err) {
-      console.log('Worker error:', err);
-      const out: OutError = { type: 'ERROR', message: String(err?.message || err) };
+      const out: OutError = { type: 'ERROR', message: String((err as any)?.message || err) };
       ctx.postMessage(out);
     }
   }

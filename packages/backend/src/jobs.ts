@@ -1,5 +1,7 @@
 import { ethers } from 'ethers';
-import { Job } from '../../shared/src/mining.ts';
+import mining from '../../shared/src/mining';
+import { getDifficultyOverride } from './difficulty';
+import type { Job } from '../../shared/src/mining';
 import { config } from './config.js';
 import { cartridgeRegistry } from './registry.js';
 import { sessionManager } from './sessions.js';
@@ -12,9 +14,59 @@ import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 export class JobManager {
   private signer: ethers.Wallet;
   private jobNonces: Map<string, Job> = new Map(); // sessionId -> Job
+  private provider: ethers.JsonRpcProvider;
   
   constructor() {
     this.signer = new ethers.Wallet(config.SIGNER_PRIVATE_KEY);
+    this.provider = new ethers.JsonRpcProvider(config.RPC_URL);
+  }
+  
+  /**
+   * Get current epoch from the MiningClaimRouter contract
+   */
+  async getCurrentEpoch(): Promise<number> {
+    // Use environment override if set, otherwise default to 0 for now
+    const epochOverride = process.env.EPOCH_OVERRIDE;
+    if (epochOverride !== undefined && epochOverride !== '') {
+      console.log(`[EPOCH] Using override: ${epochOverride}`);
+      return Number(epochOverride);
+    }
+    
+    try {
+      // Simple ABI for reading currentEpoch
+      const routerAbi = [
+        "function currentEpoch() view returns (uint256)"
+      ];
+      
+      const contract = new ethers.Contract(config.ROUTER_ADDRESS, routerAbi, this.provider);
+      const epoch = await contract.currentEpoch();
+      return Number(epoch);
+    } catch (error) {
+      console.warn('Failed to get current epoch from contract, defaulting to 0:', error);
+      return 0; // Default to epoch 0 if contract call fails
+    }
+  }
+
+  /**
+   * Issue a job with current difficulty settings
+   */
+  async issueJob(nonce: string): Promise<Job> {
+    const epoch = await this.getCurrentEpoch();
+    const diff = mining.getDifficultyForEpoch(epoch, getDifficultyOverride() ?? undefined);
+    const now = Date.now();
+    const job: Job = {
+      jobId: `job_${now}_${Math.random().toString(36).slice(2)}`,
+      algo: 'sha256-suffix',
+      charset: 'hex',
+      nonce,
+      expiresAt: now + diff.ttlMs,
+      rule: diff.rule,
+      suffix: diff.suffix,
+      bits: diff.bits,
+      epoch,
+      ttlMs: diff.ttlMs,
+    };
+    return job;
   }
   
   /**
@@ -27,31 +79,26 @@ export class JobManager {
     const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
     if (!cartridge) return null;
     
-    // Generate job data
-    const jobId = this.generateJobId();
+    // Generate nonce and create job with difficulty
     const nonce = ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`;
-    const expiresAt = Date.now() + config.JOB_TTL_MS;
+    const job = await this.issueJob(nonce);
     
-    const job: Omit<Job, 'sig'> = {
-      jobId,
-      algo: cartridge.mining.algo,
-      suffix: cartridge.mining.suffix,
-      charset: cartridge.mining.charset,
-      nonce,
-      expiresAt,
+    // Add session-specific fields
+    const jobWithSession: Omit<Job, 'sig'> = {
+      ...job,
       consumed: false,
-      height: 0
+      height: 0,
     };
     
     // Sign the job
-    const signature = await this.signJob(job, session);
-    const signedJob: Job = { ...job, sig: signature };
+    const signature = await this.signJob(jobWithSession, session);
+    const signedJob: Job = { ...jobWithSession, sig: signature };
     
     // Store job
     this.jobNonces.set(sessionId, signedJob);
     sessionManager.setJob(sessionId, signedJob);
     
-    console.log(`Created job ${jobId} for session ${sessionId}`);
+    console.log(`Created job ${job.jobId} for session ${sessionId} (epoch ${job.epoch}, rule ${job.rule}, ${job.rule === 'suffix' ? `suffix "${job.suffix}"` : `${job.bits} bits`})`);
     return signedJob;
   }
   
@@ -106,31 +153,25 @@ export class JobManager {
     const nextNonceBytes = sha256(utf8ToBytes(saltedInput));
     const nextNonce = `0x${bytesToHex(nextNonceBytes)}` as `0x${string}`;
     
-    // Generate job data
-    const jobId = this.generateJobId();
-    const expiresAt = Date.now() + config.JOB_TTL_MS;
-    const height = (previousJob.height || 0) + 1;
+    // Create job with current difficulty
+    const job = await this.issueJob(nextNonce);
     
-    const job: Omit<Job, 'sig'> = {
-      jobId,
-      algo: cartridge.mining.algo,
-      suffix: cartridge.mining.suffix,
-      charset: cartridge.mining.charset,
-      nonce: nextNonce,
-      expiresAt,
+    // Add session-specific fields
+    const jobWithSession: Omit<Job, 'sig'> = {
+      ...job,
       consumed: false,
-      height
+      height: (previousJob.height || 0) + 1,
     };
     
     // Sign the job
-    const signature = await this.signJob(job, session);
-    const signedJob: Job = { ...job, sig: signature };
+    const signature = await this.signJob(jobWithSession, session);
+    const signedJob: Job = { ...jobWithSession, sig: signature };
     
     // Store job
     this.jobNonces.set(sessionId, signedJob);
     sessionManager.setJob(sessionId, signedJob);
     
-    console.log(`Created next job ${jobId} (height ${height}) for session ${sessionId}`);
+    console.log(`Created next job ${job.jobId} (height ${jobWithSession.height}) for session ${sessionId} (epoch ${job.epoch}, rule ${job.rule}, ${job.rule === 'suffix' ? `suffix "${job.suffix}"` : `${job.bits} bits`})`);
     return signedJob;
   }
 

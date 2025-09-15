@@ -2,6 +2,19 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { CartridgeConfig, Job, OpenSessionRes } from '@minerboy/shared/mining';
 
+// Generate or retrieve stable minerId
+export function getOrCreateMinerId(): string {
+  const key = 'minerId';
+  let id = localStorage.getItem(key);
+  if (!id) {
+    const buf = new Uint8Array(16);
+    crypto.getRandomValues(buf);
+    id = 'mb_' + Array.from(buf).map(b => b.toString(16).padStart(2,'0')).join('');
+    localStorage.setItem(key, id);
+  }
+  return id;
+}
+
 type FoundPayload = { hash: `0x${string}`; preimage: string; attempts: number; hr: number };
 
 type SessionState = {

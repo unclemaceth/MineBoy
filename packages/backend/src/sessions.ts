@@ -4,7 +4,9 @@ import { config } from './config.js';
 export interface SessionData {
   sessionId: string;
   wallet: `0x${string}`;
+  minerId: string;
   cartridge: {
+    chainId: number;
     contract: `0x${string}`;
     tokenId: string;
   };
@@ -41,7 +43,9 @@ export class SessionManager {
     const session: SessionData = {
       sessionId,
       wallet: req.wallet,
+      minerId: (req as any).minerId,
       cartridge: {
+        chainId: req.cartridge.chainId,
         contract: req.cartridge.contract,
         tokenId: req.cartridge.tokenId
       },
@@ -82,6 +86,17 @@ export class SessionManager {
     if (!session) return false;
     
     session.currentJob = job;
+    return true;
+  }
+  
+  /**
+   * Update heartbeat timestamp
+   */
+  updateHeartbeat(sessionId: string): boolean {
+    const session = this.sessions.get(sessionId);
+    if (!session) return false;
+    
+    session.lastHeartbeat = Date.now();
     return true;
   }
   

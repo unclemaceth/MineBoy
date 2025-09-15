@@ -40,6 +40,10 @@ export function useMinerWorker(events: Events = {}) {
           suffix: job.suffix.toLowerCase(),
           charset: job.charset,
           nonce: job.nonce,
+          // New difficulty fields
+          rule: job.rule,
+          difficultyBits: job.difficultyBits,
+          targetBits: job.targetBits,
         },
       });
     },

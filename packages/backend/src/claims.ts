@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { ClaimReq, ClaimRes, ClaimStruct } from '../../shared/src/mining.ts';
+import { ClaimReq, ClaimRes, ClaimStruct, validateHashDifficulty } from '../../shared/src/mining';
 import { config } from './config.js';
 import { sessionManager } from './sessions.js';
 import { jobManager } from './jobs.js';
@@ -83,9 +83,9 @@ export class ClaimProcessor {
       throw new Error('Preimage nonce mismatch');
     }
     
-    // Validate hash suffix
-    if (!this.validateHashSuffix(claimReq.hash, job.suffix)) {
-      throw new Error('Hash does not end with required suffix');
+    // Validate hash difficulty (suffix OR bits)
+    if (!this.validateDifficulty(claimReq.hash, job)) {
+      throw new Error('Hash does not meet difficulty');
     }
     
     // Validate hash matches preimage (using SHA-256, not keccak256)
@@ -112,7 +112,7 @@ export class ClaimProcessor {
       workHash: claimReq.hash,
       attempts: claimReq.steps.toString(),
       nonce: ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`,
-      expiry: (Date.now() + 300000).toString() // 5 minutes from now
+      expiry: (Date.now() + 300000).toString(), // 5 minutes from now
     };
     
     // Check nonce uniqueness
@@ -172,6 +172,51 @@ export class ClaimProcessor {
     const h = hash.toLowerCase().replace(/^0x/, '');
     const s = suffix.toLowerCase().replace(/^0x/, '');
     return h.endsWith(s);
+  }
+  
+  /**
+   * Check if hash has trailing zero bits (LSB zeros)
+   */
+  private hasTrailingZeroBitsHex(hash: string, nBits: number): boolean {
+    // check LSB trailing zeros (at the END of the hex string)
+    const hex = (hash.startsWith('0x') ? hash.slice(2) : hash).toLowerCase();
+    // quick lookup # of LSB zero bits in a nibble
+    const tzNibble = [4,0,1,0,2,0,1,0,3,0,1,0,2,0,1,0]; // index by value 0..15
+
+    let remaining = nBits;
+    for (let i = hex.length - 1; i >= 0 && remaining > 0; i--) {
+      const v = parseInt(hex[i], 16);
+      if (Number.isNaN(v)) return false;
+
+      if (v === 0) {
+        remaining -= 4; // full nibble zero
+        continue;
+      }
+      // partial (last) nibble: add its trailing zeros and stop
+      remaining -= tzNibble[v];
+      break;
+    }
+    return remaining <= 0;
+  }
+
+  /**
+   * Validate difficulty (suffix OR bits)
+   */
+  private validateDifficulty(hash: string, job: any): boolean {
+    const hex = (hash.startsWith('0x') ? hash.slice(2) : hash).toLowerCase();
+
+    if (job.rule === 'suffix') {
+      if (!job.suffix) return false;
+      return hex.endsWith(job.suffix.toLowerCase());
+    }
+
+    if (job.rule === 'bits') {
+      if (typeof job.difficultyBits !== 'number' || job.difficultyBits < 0) return false;
+      return this.hasTrailingZeroBitsHex(hash, job.difficultyBits);
+    }
+
+    // unknown rule
+    return false;
   }
   
   /**

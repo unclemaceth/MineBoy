@@ -30,9 +30,13 @@ export const config = createConfig({
   chains: [curtis],
   connectors: [
     injected(),
-    walletConnect({
-      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id',
-    }),
+    // Only add walletConnect if we have a real project ID
+    ...(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID !== 'demo-project-id' 
+      ? [walletConnect({
+          projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
+        })]
+      : []
+    ),
   ],
   transports: {
     [curtis.id]: http(),
@@ -64,10 +68,46 @@ export const MINING_CLAIM_ROUTER_ABI = [
 ] as const;
 
 export const APEBIT_CARTRIDGE_ABI = [
-  'function ownerOf(uint256 tokenId) view returns (address)',
-  'function balanceOf(address owner) view returns (uint256)',
-  'function tokenOfOwnerByIndex(address owner, uint256 index) view returns (uint256)',
-  'function totalSupply() view returns (uint256)',
-  'function mint(address to) payable',
-  'function mintPrice() view returns (uint256)',
+  {
+    "inputs": [{"name": "tokenId", "type": "uint256"}],
+    "name": "ownerOf",
+    "outputs": [{"name": "", "type": "address"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "owner", "type": "address"}],
+    "name": "balanceOf",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "owner", "type": "address"}, {"name": "index", "type": "uint256"}],
+    "name": "tokenOfOwnerByIndex",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"name": "to", "type": "address"}],
+    "name": "mint",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "mintPrice",
+    "outputs": [{"name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
 ] as const;
