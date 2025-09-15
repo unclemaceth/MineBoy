@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -11,8 +12,17 @@ export const config = {
   ROUTER_ADDRESS: process.env.ROUTER_ADDRESS as `0x${string}`,
   REWARD_TOKEN_ADDRESS: process.env.REWARD_TOKEN_ADDRESS as `0x${string}`,
   
-  // Backend signer
-  SIGNER_PRIVATE_KEY: process.env.SIGNER_PRIVATE_KEY as `0x${string}`,
+  // Backend signer - try secret file first, then env var
+  SIGNER_PRIVATE_KEY: (() => {
+    // Try to read from secret file (Render)
+    try {
+      const secretKey = fs.readFileSync('/etc/secrets/private-key.txt', 'utf8').trim();
+      return secretKey as `0x${string}`;
+    } catch {
+      // Fallback to environment variable (local development)
+      return process.env.SIGNER_PRIVATE_KEY as `0x${string}`;
+    }
+  })(),
   SERVER_SALT: process.env.SERVER_SALT || 'minerboy_default_salt_2024',
   
   // Mining config
