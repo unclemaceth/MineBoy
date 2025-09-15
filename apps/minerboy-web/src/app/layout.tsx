@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MinerBoy",
+  title: "MineBoy",
   description: "NFT-gated crypto mining PWA",
   manifest: "/manifest.json",
   icons: {
@@ -23,7 +23,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MinerBoy",
+    title: "MineBoy",
   },
   formatDetection: {
     telephone: false,

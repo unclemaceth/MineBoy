@@ -7,10 +7,13 @@ import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
+import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
+import WalletConnectionModal from "@/components/WalletConnectionModal";
 import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { useSession, getOrCreateMinerId } from "@/state/useSession";
+import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { api } from "@/lib/api";
@@ -19,6 +22,24 @@ import type { CartridgeConfig } from '../../../../packages/shared/src/mining';
 const W = 390; // iPhone 13 CSS pixels
 const H = 844; // iPhone 13 CSS pixels
 const px = (p: number, total: number) => Math.round(total * p / 100);
+
+// Terminal typewriter component for individual messages
+function TerminalTypewriter({ lines }: { lines: string[] }) {
+  const { displayLines } = useTypewriter(lines, 15, 50); // Faster typing for terminal
+  
+  return (
+    <div>
+      {displayLines.map((line, index) => (
+        <div key={index} style={{ 
+          marginBottom: 2,
+          opacity: index < 2 ? 0.6 : 1, // Fade older lines
+        }}>
+          {line}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 type FoundResult = {
   hash: string;
@@ -33,9 +54,10 @@ function Home() {
   const [showCartridgeSelect, setShowCartridgeSelect] = useState(false);
   const [showJobExpired, setShowJobExpired] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
-  const [booting, setBooting] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
+  const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
+  const [booting, setBooting] = useState(true);
   const [mineBlink, setMineBlink] = useState(false);
-  const [bootLines] = useState(['MINERBOY v2.0 INITIALIZING...', 'LOADING CARTRIDGE...', 'READY TO MINE']);
   const [status, setStatus] = useState<'idle'|'mining'|'found'|'claiming'|'claimed'|'error'>('idle');
   const [foundResult, setFoundResult] = useState<FoundResult | null>(null);
   
@@ -43,7 +65,7 @@ function Home() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const { writeContract, isPending: isWritePending } = useWriteContract();
+  const { writeContract, data: hash, isPending: isWritePending } = useWriteContract();
   
   // Session state
   const { 
@@ -67,6 +89,9 @@ function Home() {
     loadOpenSession,
     clear
   } = useSession();
+  
+  // Miner store for boot sequence
+  const { bootLines, booting: minerBooting } = useMinerStore();
   
   // Miner worker
   const miner = useMinerWorker({
@@ -106,15 +131,26 @@ function Home() {
     () => setBooting(false)
   );
   
+  // Auto-start boot sequence on page load
+  useEffect(() => {
+    if (booting) {
+      const timer = setTimeout(() => setBooting(false), 8000); // Longer duration to see all lines
+      return () => clearTimeout(timer);
+    }
+  }, [booting]);
+  
   // Update wallet when account changes
   useEffect(() => {
     if (isConnected && address) {
       setWallet(address);
+      pushLine('Connected to Curtis Network');
+      pushLine(`Wallet Address: ${address.slice(0, 8)}...${address.slice(-8)}`);
+      pushLine('Waiting for Cartridge Load...');
     } else {
       setWallet(undefined);
       clear();
     }
-  }, [isConnected, address, setWallet, clear]);
+  }, [isConnected, address, setWallet, clear, pushLine]);
   
   // Load cartridges on mount
   useEffect(() => {
@@ -185,6 +221,22 @@ function Home() {
     const interval = setInterval(heartbeat, 10000); // Every 10 seconds
     return () => clearInterval(interval);
   }, [mining, sessionId]);
+
+  // Watch for transaction hash and report to backend
+  useEffect(() => {
+    if (hash && pendingClaimId) {
+      // Report transaction hash to backend for tracking
+      api.claimTx({ claimId: pendingClaimId, txHash: hash })
+        .then(() => {
+          pushLine('Transaction tracked by backend');
+          setPendingClaimId(null); // Clear after successful report
+        })
+        .catch((error) => {
+          console.warn('Failed to report tx hash to backend:', error);
+          // Don't fail the claim if this fails
+        });
+    }
+  }, [hash, pendingClaimId, pushLine]);
   
   // Haptic feedback helper
   const hapticFeedback = () => {
@@ -201,17 +253,12 @@ function Home() {
     setConnectPressed(true);
     setTimeout(() => setConnectPressed(false), 150);
 
-    try {
-      if (!isConnected) {
-        await connect({ connector: injected() });
-        pushLine('Wallet connected');
-      } else {
-        disconnect();
-        clear();
-        pushLine('Disconnected');
-      }
-    } catch (error: any) {
-      pushLine(`Connection failed: ${error?.message ?? String(error)}`);
+    if (!isConnected) {
+      setShowWalletModal(true);
+    } else {
+      disconnect();
+      clear();
+      pushLine('Disconnected');
     }
   };
   
@@ -363,6 +410,11 @@ function Home() {
       console.log('[CLAIM_OK]', claimResponse);
       pushLine('Claim verified by backend');
       
+      // Store claimId for later use
+      if (claimResponse.claimId) {
+        setPendingClaimId(claimResponse.claimId);
+      }
+      
       // Update job if next job is provided
       if (claimResponse.nextJob) {
         setJob(claimResponse.nextJob);
@@ -382,7 +434,7 @@ function Home() {
           // Use the proper MiningClaimRouter contract
           const routerAddress = '0x34a227cf6c6a2f5f4f7c7710e8416555334e01bf';
           
-          const txHash = await writeContract({
+          writeContract({
             address: routerAddress as `0x${string}`,
             abi: [
               {
@@ -410,7 +462,7 @@ function Home() {
             args: [claimResponse.claim, claimResponse.signature],
           });
           
-          pushLine(`Transaction submitted: ${txHash}`);
+          pushLine('Transaction submitted - waiting for hash...');
           pushLine('Waiting for confirmation...');
           
           // Note: Transaction confirmation would be handled by wagmi hooks
@@ -698,7 +750,7 @@ function Home() {
       <div style={{
         position: 'absolute',
         top: 809,
-        right: 296,
+        right: 280,
         zIndex: 100,
         display: 'flex',
         gap: '8px'
@@ -760,6 +812,35 @@ function Home() {
               }}
             >
               I
+            </a>
+            <a 
+              href="/leaderboard" 
+              style={{
+                width: '28px',
+                height: '28px',
+                borderRadius: '50%',
+                background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                color: '#c8ffc8',
+                textDecoration: 'none',
+                fontSize: '14px',
+                fontWeight: 'bold',
+                border: '2px solid #8a8a8a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+                transition: 'all 0.1s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(145deg, #1a3d24, #4a7d5f)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #1a3d24)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              L
             </a>
       </div>
 
@@ -855,16 +936,23 @@ function Home() {
               ))}
             </div>
           ) : mode === 'terminal' ? (
-            // Terminal mode - show last 8 lines
+            // Terminal mode - show last 8 lines or instructions with typewriter
             <div>
-              {terminal.slice(-8).map((line, index) => (
-                <div key={index} style={{ 
-                  marginBottom: 2,
-                  opacity: index < 2 ? 0.6 : 1, // Fade older lines
-                }}>
-                  {line}
-                </div>
-              ))}
+              {terminal.length === 0 ? (
+                // Show instructions when terminal is empty (with typewriter)
+                <TerminalTypewriter lines={[
+                  "Click Connect to Connect a Wallet",
+                  "Click 'M' for Cartridge Mints", 
+                  "Click 'I' for Info",
+                  "Click 'L' for Leaderboard"
+                ]} />
+              ) : (
+                // Show terminal lines with typewriter effect
+                <TerminalTypewriter lines={[
+                  ...terminal.slice(-7), // Show last 7 terminal lines
+                  ...(mining ? ['Press > to return to Visualisation'] : []) // Add instruction if mining
+                ]} />
+              )}
             </div>
           ) : (
             // Visual mode - show 3x3 visualizer
@@ -875,11 +963,11 @@ function Home() {
           {mining && !booting && mode === 'terminal' && (
             <div style={{ 
               position: "absolute",
-              top: 8,
-              right: 8,
+              bottom: 8,
+              left: 8,
               fontSize: 10,
               opacity: 0.8,
-              textAlign: "right",
+              textAlign: "left",
               backgroundColor: "rgba(0, 0, 0, 0.5)",
               padding: "2px 4px",
               borderRadius: 4,
@@ -1657,6 +1745,91 @@ function Home() {
           </div>
         </div>
       )}
+
+        {/* MineBoy Branding */}
+        <div style={{
+          position: 'absolute',
+          bottom: '67.5px',
+          left: '42.2%',
+          transform: 'translateX(-50%) translateX(5px) skewX(10deg)',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: '#2c396f',
+          textShadow: `
+            2px 2px 0px #1a2447,
+            4px 4px 0px #0f1a3a,
+            6px 6px 0px #0a1229,
+            inset 0px 1px 0px rgba(255,255,255,0.4),
+            inset 0px -1px 0px rgba(0,0,0,0.6)
+          `,
+          letterSpacing: '3px',
+          fontFamily: 'monospace',
+          textTransform: 'uppercase',
+          pointerEvents: 'none',
+          zIndex: 10
+        }}>
+          <span style={{ fontSize: '26px' }}>M</span>INE<span style={{ fontSize: '26px' }}>B</span>OY
+        </div>
+
+      {/* MineBoy Branding - White Clone */}
+      <div style={{
+        position: 'absolute',
+        bottom: '67px',
+        left: '42.45%',
+        transform: 'translateX(-50%) translateX(5px) skewX(10deg)',
+        fontSize: '24px',
+        fontWeight: 'bold',
+        color: 'rgba(255,255,255,0.2)',
+        letterSpacing: '3px',
+        fontFamily: 'monospace',
+        textTransform: 'uppercase',
+        pointerEvents: 'none',
+        zIndex: 9
+      }}>
+        <span style={{ fontSize: '26px' }}>M</span>INE<span style={{ fontSize: '26px' }}>B</span>OY
+      </div>
+
+      {/* NPC Simple Art */}
+      <div style={{
+        position: 'absolute',
+        bottom: '47.5px',
+        right: '300px',
+        width: '54px',
+        height: '54px',
+        zIndex: 10,
+        pointerEvents: 'none'
+      }}>
+        <NPCSimple 
+          fill="#3f4c80"
+          style={{ 
+            transform: 'scaleX(-1) skewX(-7.5deg)'
+          }}
+        />
+      </div>
+
+      {/* NPC Simple Art - White Clone */}
+      <div style={{
+        position: 'absolute',
+        bottom: '46.9px',
+        right: '299px',
+        width: '54px',
+        height: '54px',
+        zIndex: 9,
+        pointerEvents: 'none'
+      }}>
+        <NPCSimple 
+          fill="rgba(255, 255, 255, 0.1)"
+          style={{ 
+            transform: 'scaleX(-1) skewX(-7.5deg)'
+          }}
+        />
+      </div>
+
+      {/* Wallet Connection Modal */}
+      <WalletConnectionModal 
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+      />
     </Stage>
   );
 }

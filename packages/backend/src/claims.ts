@@ -6,6 +6,8 @@ import { jobManager } from './jobs.js';
 import { cartridgeRegistry } from './registry.js';
 import { sha256 } from '@noble/hashes/sha256';
 import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
+import { insertPendingClaim } from './db.js';
+import { randomUUID } from 'crypto';
 
 const EIP712_TYPES = {
   Claim: [
@@ -133,6 +135,21 @@ export class ClaimProcessor {
     // Create next job from the solution hash
     const nextJob = await jobManager.createNextJob(claimReq.sessionId, claimReq.hash, job);
     
+    // Generate claimId and insert pending claim
+    const claimId = `clm_${randomUUID()}`;
+    insertPendingClaim({
+      id: claimId,
+      wallet: session.wallet,
+      cartridge_id: parseInt(session.cartridge.tokenId),
+      hash: claimReq.hash,
+      amount_wei: rewardAmount.toString(),
+      tx_hash: null,
+      status: 'pending',
+      created_at: Date.now(),
+      pending_expires_at: Date.now() + 15 * 60_000, // 15 min to broadcast
+      confirmed_at: null
+    });
+    
     console.log(`Processed claim for ${session.wallet}: ${ethers.formatEther(rewardAmount)} ABIT`);
     if (nextJob) {
       console.log(`Issued next job (height ${nextJob.height}) with nonce ${nextJob.nonce.slice(0, 10)}...`);
@@ -141,10 +158,11 @@ export class ClaimProcessor {
     // Return claim data for client to submit
     return {
       ok: true,
+      claimId,
       claim: claimStruct,
       signature,
       nextJob
-    } as ClaimRes & { claim: ClaimStruct; signature: string };
+    } as ClaimRes & { claimId: string; claim: ClaimStruct; signature: string };
   }
   
   /**

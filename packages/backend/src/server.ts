@@ -1,7 +1,7 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
-import { OpenSessionReq, ClaimReq } from '../../shared/src/mining.ts';
+import { OpenSessionReq, ClaimReq } from '../../shared/src/mining.js';
 import { config, ADMIN_TOKEN } from './config.js';
 import { cartridgeRegistry } from './registry.js';
 import { ownershipVerifier } from './ownership.js';
@@ -10,17 +10,31 @@ import { jobManager } from './jobs.js';
 import { claimProcessor } from './claims.js';
 import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
 import { locks } from './locks.js';
+import { initDb } from './db.js';
+import { startReceiptPoller } from './chain/receiptPoller.js';
+import { registerClaimTxRoute } from './routes/claimTx.js';
+import { registerLeaderboardRoute } from './routes/leaderboard.js';
 
 const fastify = Fastify({ 
   logger: true,
   disableRequestLogging: false
 });
 
+// Initialize database
+initDb(process.env.DATABASE_URL);
+
+// Start receipt poller
+const stopPoller = startReceiptPoller(process.env.RPC_URL!);
+
 // Register CORS
 await fastify.register(cors, {
   origin: true, // Allow all origins for development
   credentials: true
 });
+
+// Register new routes
+await registerClaimTxRoute(fastify);
+await registerLeaderboardRoute(fastify);
 
 // Health check
 fastify.get('/health', async () => {
@@ -73,7 +87,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     }
     
     // Create session
-    const session = sessionManager.createSession(request.body);
+    const session = sessionManager.createSession(request.body as OpenSessionReq);
     
     // Create initial job
     const job = await jobManager.createJob(session.sessionId);
@@ -93,8 +107,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       policy: {
         heartbeatSec: 20,
         cooldownSec: 2
-      },
-      claim: cartridgeConfig.claim
+      }
     };
     
   } catch (error: any) {
@@ -152,7 +165,7 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     
     return result;
     
-  } catch (error) {
+  } catch (error: any) {
     fastify.log.error('Error processing claim:', error);
     return reply.code(400).send({ error: error instanceof Error ? error.message : 'Claim processing failed' });
   }
@@ -202,7 +215,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     sessionManager.updateHeartbeat(sessionId);
     return { ok: true };
     
-  } catch (error) {
+  } catch (error: any) {
     fastify.log.error('Error processing heartbeat:', error);
     return reply.code(400).send({ error: 'Heartbeat failed' });
   }
@@ -239,7 +252,7 @@ const start = async () => {
       host: config.HOST 
     });
     
-    console.log(`🚀 MinerBoy Backend v2 running on ${config.HOST}:${config.PORT}`);
+    console.log(`🚀 MineBoy Backend v2 running on ${config.HOST}:${config.PORT}`);
     console.log(`📡 Connected to Curtis testnet (${config.CHAIN_ID})`);
     console.log(`🎮 ${config.ALLOWED_CARTRIDGES.length} cartridges configured`);
     console.log(`💰 Initial reward: ${config.INITIAL_REWARD_WEI} wei (${config.INITIAL_REWARD_WEI.slice(0, 3)} ABIT)`);
@@ -249,5 +262,13 @@ const start = async () => {
     process.exit(1);
   }
 };
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  stopPoller();
+  await fastify.close();
+  process.exit(0);
+});
 
 start();

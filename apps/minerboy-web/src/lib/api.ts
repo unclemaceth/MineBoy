@@ -56,5 +56,21 @@ export const api = {
   
   getStats(): Promise<any> {
     return fetch(`${API_BASE}/admin/stats`, { cache: 'no-store' }).then(j);
+  },
+
+  claimTx(body: { claimId: string; txHash: string }): Promise<{ ok: true }> {
+    return fetch(`${API_BASE}/v2/claim/tx`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(j);
+  },
+
+  getLeaderboard(params: { period?: 'all'|'24h'|'7d'; limit?: number; wallet?: string } = {}): Promise<any> {
+    const usp = new URLSearchParams();
+    if (params.period) usp.set('period', params.period);
+    if (params.limit) usp.set('limit', String(params.limit));
+    if (params.wallet) usp.set('wallet', params.wallet);
+    return fetch(`${API_BASE}/v2/leaderboard?${usp.toString()}`, { method: 'GET' }).then(j);
   }
 };

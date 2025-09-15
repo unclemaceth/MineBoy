@@ -1,6 +1,6 @@
 {
-  "name": "MinerBoy",
-  "short_name": "MinerBoy",
+  "name": "MineBoy",
+  "short_name": "MineBoy",
   "description": "NFT-gated crypto mining PWA",
   "start_url": "/?pwa=1",
   "display": "standalone",
