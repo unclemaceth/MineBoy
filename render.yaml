@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: mineboy-backend
+    env: node
+    plan: free
+    buildCommand: cd packages/backend && npm install
+    startCommand: cd packages/backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: RPC_URL
+        sync: false
+      - key: DATABASE_URL
+        value: postgres://user:password@host:port/database
+      - key: RECEIPT_POLL_INTERVAL_MS
+        value: 3600000
+      - key: RECEIPT_POLL_BATCH_LIMIT
+        value: 500
+      - key: RUN_RECEIPT_POLLER
+        value: true

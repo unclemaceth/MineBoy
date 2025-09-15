@@ -1,0 +1,22 @@
+{
+  "transactions": [
+    {
+      "rpc": "https://curtis.rpc.caldera.xyz/http"
+    },
+    {
+      "rpc": "https://curtis.rpc.caldera.xyz/http"
+    },
+    {
+      "rpc": "https://curtis.rpc.caldera.xyz/http"
+    },
+    {
+      "rpc": "https://curtis.rpc.caldera.xyz/http"
+    },
+    {
+      "rpc": "https://curtis.rpc.caldera.xyz/http"
+    },
+    {
+      "rpc": "https://curtis.rpc.caldera.xyz/http"
+    }
+  ]
+}
