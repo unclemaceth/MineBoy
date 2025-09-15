@@ -1,0 +1,44 @@
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+export const config = {
+  // Network
+  RPC_URL: process.env.RPC_URL || 'https://curtis.rpc.caldera.xyz/http',
+  CHAIN_ID: parseInt(process.env.CHAIN_ID || '33111'),
+  
+  // Contracts
+  ROUTER_ADDRESS: process.env.ROUTER_ADDRESS as `0x${string}`,
+  REWARD_TOKEN_ADDRESS: process.env.REWARD_TOKEN_ADDRESS as `0x${string}`,
+  
+  // Backend signer
+  SIGNER_PRIVATE_KEY: process.env.SIGNER_PRIVATE_KEY as `0x${string}`,
+  
+  // Mining config
+  INITIAL_REWARD_WEI: process.env.INITIAL_REWARD_WEI || '512000000000000000000', // 512e18
+  CLAIMS_PER_EPOCH: parseInt(process.env.CLAIMS_PER_EPOCH || '20507'),
+  JOB_TTL_MS: parseInt(process.env.JOB_TTL_MS || '60000'), // 1 minute
+  
+  // Cartridge config
+  ALLOWED_CARTRIDGES: process.env.ALLOWED_CARTRIDGES 
+    ? JSON.parse(process.env.ALLOWED_CARTRIDGES) as `0x${string}`[]
+    : [] as `0x${string}`[],
+  SUFFIX_ABIT: process.env.SUFFIX_ABIT || 'ab17',
+  
+  // Server
+  PORT: parseInt(process.env.PORT || '8787'),
+  HOST: process.env.HOST || '0.0.0.0'
+};
+
+// Validate required config
+const required = [
+  'ROUTER_ADDRESS',
+  'REWARD_TOKEN_ADDRESS', 
+  'SIGNER_PRIVATE_KEY'
+];
+
+for (const key of required) {
+  if (!config[key as keyof typeof config]) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+}
