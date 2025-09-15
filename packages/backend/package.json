@@ -1,26 +1,34 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "main": "index.js",
+  "name": "@minerboy/backend",
+  "version": "2.0.0",
+  "type": "module",
+  "main": "src/server.js",
   "scripts": {
-    "dev": "ts-node src/server.ts",
-    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "mining",
+    "blockchain",
+    "eip712",
+    "curtis"
+  ],
+  "author": "MinerBoy Team",
+  "license": "MIT",
+  "description": "MinerBoy v2 Backend - Cartridge-gated mining with EIP-712 claims",
   "dependencies": {
-    "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "@fastify/cors": "^11.1.0",
+    "@noble/hashes": "^1.8.0",
+    "ethers": "^6.15.0",
+    "fastify": "^5.6.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
-    "@types/node": "^24.3.3",
+    "@types/node": "^24.4.0",
+    "dotenv": "^17.2.2",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.2"
   }
 }

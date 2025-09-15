@@ -1,0 +1,16 @@
+{
+  "name": "@minerboy/shared",
+  "version": "1.0.0",
+  "description": "Shared types and utilities for MinerBoy",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "exports": {
+    "./mining": "./src/mining.ts"
+  }
+}

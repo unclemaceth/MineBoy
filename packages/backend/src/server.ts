@@ -1,188 +1,181 @@
-import express from "express";
-import cors from "cors";
-import crypto from "crypto";
+import 'dotenv/config';
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import { OpenSessionReq, ClaimReq } from '../../shared/src/mining.ts';
+import { config } from './config.js';
+import { cartridgeRegistry } from './registry.js';
+import { ownershipVerifier } from './ownership.js';
+import { sessionManager } from './sessions.js';
+import { jobManager } from './jobs.js';
+import { claimProcessor } from './claims.js';
 
-const app = express();
-
-// CORS configuration - allow web app origins
-const ALLOWED_ORIGINS = new Set([
-  "https://apebitminer-jgaijnh3j-macs-projects-20ae48e1.vercel.app", // current
-  "https://apebitminer-a63mmemk1-macs-projects-20ae48e1.vercel.app", // previous
-  "https://apebitminer-mxtliair3-macs-projects-20ae48e1.vercel.app", // previous
-  "http://localhost:3000"
-]);
-
-app.use((req, res, next) => {
-  const origin = req.headers.origin as string | undefined;
-  if (origin && ALLOWED_ORIGINS.has(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Vary", "Origin");
-  }
-  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Authorization,Content-Type");
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
+const fastify = Fastify({ 
+  logger: true,
+  disableRequestLogging: false
 });
 
-app.use(express.json());
-
-type Device = {
-  activeMiner: `0x${string}` | null;
-  lastSwitchAt: number;
-  dailyClaims: { day: string; count: number };
-};
-const devices = new Map<string, Device>(); // installId -> device state
-
-type Sess = { exp: number; installId: string; miner: `0x${string}`; skip: boolean };
-const sessions = new Map<string, Sess>();
-
-const DAY = () => new Date().toISOString().slice(0,10);
-const SWITCH_COOLDOWN_MS = 24 * 60 * 60 * 1000; // 24 hours
-const DAILY_FREE_CLAIMS = 3;
-
-// Clean up expired sessions periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, sess] of sessions.entries()) {
-    if (sess.exp < now) {
-      sessions.delete(token);
-    }
-  }
-}, 60_000); // cleanup every minute
-
-// Create a new session with device-wallet binding
-app.post("/session", (req, res) => {
-  const { installId, miner } = req.body as { installId?: string; miner?: string };
-  
-  if (!installId || !miner) {
-    return res.status(400).json({ 
-      error: "installId and miner required" 
-    });
-  }
-
-  let d = devices.get(installId);
-  const now = Date.now();
-  
-  if (!d) {
-    // New device
-    d = { 
-      activeMiner: miner as `0x${string}`, 
-      lastSwitchAt: now, 
-      dailyClaims: { day: DAY(), count: 0 } 
-    };
-    devices.set(installId, d);
-    console.log(`📱 New device ${installId.slice(0, 8)}... bound to ${miner.slice(0, 8)}...`);
-  } else if (!d.activeMiner) {
-    // Device exists but no miner set
-    d.activeMiner = miner as `0x${string}`;
-    d.lastSwitchAt = now;
-    console.log(`🔗 Device ${installId.slice(0, 8)}... bound to ${miner.slice(0, 8)}...`);
-  } else if (d.activeMiner.toLowerCase() !== miner.toLowerCase()) {
-    // Trying to switch wallet
-    if (now - d.lastSwitchAt < SWITCH_COOLDOWN_MS) {
-      const remainingHours = Math.ceil((SWITCH_COOLDOWN_MS - (now - d.lastSwitchAt)) / (60 * 60 * 1000));
-      console.log(`⏰ Device ${installId.slice(0, 8)}... switch blocked, ${remainingHours}h remaining`);
-      return res.status(429).json({ 
-        error: "switch-cooldown",
-        message: `Can switch wallet in ${remainingHours} hours`,
-        remainingMs: SWITCH_COOLDOWN_MS - (now - d.lastSwitchAt)
-      });
-    }
-    d.activeMiner = miner as `0x${string}`;
-    d.lastSwitchAt = now;
-    console.log(`🔄 Device ${installId.slice(0, 8)}... switched to ${miner.slice(0, 8)}...`);
-  }
-
-  // Create session token
-  const token = crypto.randomBytes(24).toString("base64url");
-  const exp = now + 90_000; // 90 seconds
-  
-  sessions.set(token, { 
-    exp, 
-    installId, 
-    miner: miner as `0x${string}`, 
-    skip: false 
-  });
-  
-  console.log(`🎫 Session ${token.slice(0, 8)}... created for device ${installId.slice(0, 8)}...`);
-  
-  res.json({ 
-    session: token, 
-    ttl: 90,
-    expires: exp,
-    miner: d.activeMiner
-  });
-});
-
-// Check if session is valid
-app.get("/session/check", (req, res) => {
-  const auth = req.get("authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  
-  if (!token) {
-    return res.status(401).json({ 
-      ok: false, 
-      error: "No bearer token provided" 
-    });
-  }
-  
-  const sess = sessions.get(token);
-  const now = Date.now();
-  
-  if (!sess) {
-    console.log(`❌ Session ${token.slice(0, 8)}... not found`);
-    return res.status(401).json({ 
-      ok: false, 
-      error: "Session not found" 
-    });
-  }
-  
-  if (sess.exp < now) {
-    console.log(`⏰ Session ${token.slice(0, 8)}... expired`);
-    sessions.delete(token);
-    return res.status(401).json({ 
-      ok: false, 
-      error: "Session expired" 
-    });
-  }
-
-  // Verify device binding still matches
-  const device = devices.get(sess.installId);
-  if (!device || !device.activeMiner || device.activeMiner.toLowerCase() !== sess.miner.toLowerCase()) {
-    console.log(`🚫 Session ${token.slice(0, 8)}... device binding mismatch`);
-    sessions.delete(token);
-    return res.status(403).json({ 
-      ok: false, 
-      error: "Device binding changed" 
-    });
-  }
-  
-  console.log(`✅ Session ${token.slice(0, 8)}... valid (${Math.round((sess.exp - now) / 1000)}s remaining)`);
-  
-  res.json({ 
-    ok: true, 
-    miner: sess.miner,
-    installId: sess.installId,
-    skip: sess.skip, 
-    exp: sess.exp,
-    remaining: Math.round((sess.exp - now) / 1000)
-  });
+// Register CORS
+await fastify.register(cors, {
+  origin: true, // Allow all origins for development
+  credentials: true
 });
 
 // Health check
-app.get("/health", (_req, res) => {
-  res.json({ 
-    status: "ok", 
-    timestamp: Date.now(),
-    activeSessions: sessions.size
-  });
+fastify.get('/health', async () => {
+  return { 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    config: {
+      chainId: config.CHAIN_ID,
+      allowedCartridges: config.ALLOWED_CARTRIDGES.length
+    }
+  };
 });
 
-const PORT = process.env.PORT || 3001;
-
-app.listen(PORT, () => {
-  console.log(`🚀 ApeBit backend running on port ${PORT}`);
-  console.log(`📊 Health check: http://localhost:${PORT}/health`);
-  console.log(`🔐 Session endpoint: POST http://localhost:${PORT}/session`);
-  console.log(`✅ Session check: GET http://localhost:${PORT}/session/check`);
+// Get available cartridges
+fastify.get('/v2/cartridges', async () => {
+  return cartridgeRegistry.getAllCartridges();
 });
+
+// Open a mining session
+fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
+  const { wallet, cartridge, clientInfo } = request.body;
+  
+  try {
+    // Validate cartridge is allowed
+    if (!cartridgeRegistry.isAllowed(cartridge.contract)) {
+      return reply.code(400).send({ error: 'Cartridge not allowed' });
+    }
+    
+    // Verify ownership
+    const ownsToken = await ownershipVerifier.ownsCartridge(
+      wallet, 
+      cartridge.contract, 
+      cartridge.tokenId
+    );
+    
+    if (!ownsToken) {
+      return reply.code(403).send({ error: 'Wallet does not own this cartridge token' });
+    }
+    
+    // Create session
+    const session = sessionManager.createSession(request.body);
+    
+    // Create initial job
+    const job = await jobManager.createJob(session.sessionId);
+    if (!job) {
+      return reply.code(500).send({ error: 'Failed to create job' });
+    }
+    
+    // Get cartridge config for claim info
+    const cartridgeConfig = cartridgeRegistry.getCartridge(cartridge.contract);
+    if (!cartridgeConfig) {
+      return reply.code(500).send({ error: 'Cartridge config not found' });
+    }
+    
+    return {
+      sessionId: session.sessionId,
+      job,
+      policy: {
+        heartbeatSec: 20,
+        cooldownSec: 2
+      },
+      claim: cartridgeConfig.claim
+    };
+    
+  } catch (error) {
+    fastify.log.error('Error opening session:', error);
+    return reply.code(500).send({ error: 'Internal server error' });
+  }
+});
+
+// Session heartbeat
+fastify.post<{ Body: { sessionId: string } }>('/v2/session/heartbeat', async (request, reply) => {
+  const { sessionId } = request.body;
+  
+  if (!sessionManager.isValidSession(sessionId)) {
+    return reply.code(404).send({ error: 'Session not found or expired' });
+  }
+  
+  const success = sessionManager.heartbeat(sessionId);
+  if (!success) {
+    return reply.code(404).send({ error: 'Session not found' });
+  }
+  
+  return { ok: true };
+});
+
+// Get next job for session
+fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (request, reply) => {
+  const { sessionId } = request.query;
+  
+  if (!sessionManager.isValidSession(sessionId)) {
+    return reply.code(404).send({ error: 'Session not found or expired' });
+  }
+  
+  const job = await jobManager.createJob(sessionId);
+  if (!job) {
+    return reply.code(500).send({ error: 'Failed to create job' });
+  }
+  
+  return job;
+});
+
+// Process claim
+fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
+  try {
+    const result = await claimProcessor.processClaim(request.body);
+    if (!result) {
+      return reply.code(400).send({ error: 'Failed to process claim' });
+    }
+    
+    return result;
+    
+  } catch (error) {
+    fastify.log.error('Error processing claim:', error);
+    return reply.code(400).send({ error: error instanceof Error ? error.message : 'Claim processing failed' });
+  }
+});
+
+// Close session
+fastify.post<{ Body: { sessionId: string } }>('/v2/session/close', async (request, reply) => {
+  const { sessionId } = request.body;
+  
+  const success = sessionManager.closeSession(sessionId);
+  return { ok: success };
+});
+
+// Admin endpoints (basic stats)
+fastify.get('/admin/stats', async () => {
+  return {
+    sessions: sessionManager.getStats(),
+    claims: claimProcessor.getStats(),
+    cartridges: cartridgeRegistry.getAllCartridges().length
+  };
+});
+
+// Cleanup expired jobs periodically
+setInterval(() => {
+  jobManager.cleanupExpiredJobs();
+}, 60000); // Every minute
+
+// Start server
+const start = async () => {
+  try {
+    await fastify.listen({ 
+      port: config.PORT, 
+      host: config.HOST 
+    });
+    
+    console.log(`🚀 MinerBoy Backend v2 running on ${config.HOST}:${config.PORT}`);
+    console.log(`📡 Connected to Curtis testnet (${config.CHAIN_ID})`);
+    console.log(`🎮 ${config.ALLOWED_CARTRIDGES.length} cartridges configured`);
+    console.log(`💰 Initial reward: ${config.INITIAL_REWARD_WEI} wei (${config.INITIAL_REWARD_WEI.slice(0, 3)} ABIT)`);
+    
+  } catch (err) {
+    fastify.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();

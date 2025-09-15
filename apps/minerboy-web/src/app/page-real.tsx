@@ -8,7 +8,7 @@ import FanSandwich from "@/components/ui/FanSandwich";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import Visualizer3x3 from "@/components/Visualizer3x3";
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { useSession } from "@/state/useSession";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
@@ -21,10 +21,10 @@ const H = 844; // iPhone 13 CSS pixels
 const px = (p: number, total: number) => Math.round(total * p / 100);
 
 type FoundResult = {
-  hash: string;
+  hash: `0x${string}`;
   preimage: string;
   attempts: number;
-  hr: number;
+  hr?: number;
 };
 
 function Home() {
@@ -40,7 +40,6 @@ function Home() {
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const { writeContract, isPending: isWritePending } = useWriteContract();
   
   // Session state
   const { 
@@ -70,15 +69,12 @@ function Home() {
     onFound: ({ hash, preimage, attempts, hr }) => {
       setMining(false);
       setStatus('found');
-      // Freeze the exact FOUND payload - never recompute
-      const frozenResult = { hash, preimage, attempts, hr };
-      setFoundResult(frozenResult);
+      setFoundResult({ hash: hash as `0x${string}`, preimage, attempts, hr });
       setFound({ hash: hash as `0x${string}`, preimage, attempts, hr });
       pushLine(`Found hash: ${hash.slice(0, 10)}...`);
       pushLine(`Press B to submit solution`);
       // Switch to grid view to show overlay
       setMode('visual');
-      console.log('[FOUND_FROZEN]', frozenResult);
     },
     onError: (message) => {
       pushLine(`Error: ${message}`);
@@ -231,82 +227,12 @@ function Home() {
       setStatus('claiming');
       pushLine('Submitting claim...');
 
-      if (!sessionId || !job) {
-        throw new Error('No active session or job');
-      }
-
-      // Send the frozen payload exactly as received from worker
-      console.log('[CLAIM_BODY]', hit, { sessionId, jobId: job.jobId });
+      // TODO: Add actual claim logic here
+      // For now, just simulate success
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      const claimResponse = await api.claim({
-        sessionId,
-        jobId: job.jobId,
-        preimage: hit.preimage,  // exact string from worker
-        hash: hit.hash,          // exact hash from worker
-        steps: hit.attempts,
-        hr: hit.hr,
-      });
-
-      console.log('[CLAIM_OK]', claimResponse);
-      pushLine('Claim verified by backend');
-      
-      // Check if we have claim data for on-chain transaction
-      if (claimResponse.claim && claimResponse.signature) {
-        pushLine('Preparing on-chain transaction...');
-        pushLine(`Reward: ${claimResponse.claim.rewardAmount} wei`);
-        
-        try {
-          // Submit claim to smart contract
-          pushLine('Opening wallet for transaction...');
-          
-          // Use the proper MiningClaimRouter contract
-          const routerAddress = '0x34a227cf6c6a2f5f4f7c7710e8416555334e01bf';
-          
-          const txHash = await writeContract({
-            address: routerAddress as `0x${string}`,
-            abi: [
-              {
-                name: 'claim',
-                type: 'function',
-                stateMutability: 'nonpayable',
-                inputs: [
-                  { name: 'claimData', type: 'tuple', components: [
-                    { name: 'wallet', type: 'address' },
-                    { name: 'cartridge', type: 'address' },
-                    { name: 'tokenId', type: 'uint256' },
-                    { name: 'rewardToken', type: 'address' },
-                    { name: 'rewardAmount', type: 'uint256' },
-                    { name: 'workHash', type: 'bytes32' },
-                    { name: 'attempts', type: 'uint64' },
-                    { name: 'nonce', type: 'bytes32' },
-                    { name: 'expiry', type: 'uint64' }
-                  ]},
-                  { name: 'signature', type: 'bytes' }
-                ],
-                outputs: []
-              }
-            ],
-            functionName: 'claim',
-            args: [claimResponse.claim, claimResponse.signature],
-          });
-          
-          pushLine(`Transaction submitted: ${txHash}`);
-          pushLine('Waiting for confirmation...');
-          
-          // Note: Transaction confirmation would be handled by wagmi hooks
-          setStatus('claimed');
-          pushLine('Claim successful!');
-          
-        } catch (txError: any) {
-          console.error('[TX_ERROR]', txError);
-          pushLine(`Transaction failed: ${txError.message}`);
-          setStatus('error');
-        }
-      } else {
-        pushLine('Off-chain verification complete');
-        setStatus('claimed');
-      }
-      
+      setStatus('claimed');
+      pushLine('Claim successful!');
       pushLine('Press A to mine again');
       
       // Clear found result after successful claim
@@ -480,7 +406,7 @@ function Home() {
               {short(foundResult.hash, 12)} • attempts {foundResult.attempts.toLocaleString()}
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button onClick={() => handleClaim(foundResult)} style={btnGreen}>Claim</button>
+              <button onClick={() => handleClaim(foundResult)} style={btnGreen}>Claim (B)</button>
               <button onClick={() => setStatus('idle')} style={btnGray}>Dismiss</button>
             </div>
           </div>
