@@ -7,12 +7,30 @@ import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/wagmi';
 export default function ClaimOverlayV2() {
   const { sessionId, job, lastFound, setFound, pushLine } = useSession();
   const [claiming, setClaiming] = useState(false);
-  const [claimData, setClaimData] = useState<any>(null);
+  const [claimData, setClaimData] = useState<unknown>(null);
   
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
+
+  // Handle transaction success
+  React.useEffect(() => {
+    if (isSuccess) {
+      pushLine('Claim successful! Tokens minted.');
+      setFound(undefined);
+      setClaiming(false);
+      setClaimData(null);
+    }
+  }, [isSuccess, pushLine, setFound]);
+
+  // Handle transaction error
+  React.useEffect(() => {
+    if (error) {
+      pushLine(`Transaction failed: ${error.message}`);
+      setClaiming(false);
+    }
+  }, [error, pushLine]);
 
   if (!lastFound) return null;
 
@@ -47,8 +65,8 @@ export default function ClaimOverlayV2() {
         abi: MINING_CLAIM_ROUTER_ABI,
         functionName: 'claim',
         args: [
-          (result as any).claim, // ClaimStruct
-          (result as any).signature, // bytes signature
+          (result as { claim: unknown }).claim, // ClaimStruct
+          (result as { signature: unknown }).signature, // bytes signature
         ],
       });
       
@@ -62,24 +80,6 @@ export default function ClaimOverlayV2() {
     setFound(undefined);
     pushLine('Claim dismissed');
   };
-
-  // Handle transaction success
-  React.useEffect(() => {
-    if (isSuccess) {
-      pushLine('Claim successful! Tokens minted.');
-      setFound(undefined);
-      setClaiming(false);
-      setClaimData(null);
-    }
-  }, [isSuccess, pushLine, setFound]);
-
-  // Handle transaction error
-  React.useEffect(() => {
-    if (error) {
-      pushLine(`Transaction failed: ${error.message}`);
-      setClaiming(false);
-    }
-  }, [error, pushLine]);
 
   const isProcessing = claiming || isPending || isConfirming;
 

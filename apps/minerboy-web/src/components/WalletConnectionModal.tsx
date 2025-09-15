@@ -13,8 +13,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
   const [selectedOption, setSelectedOption] = useState<'glyph' | 'walletconnect' | null>(null);
   const [glyphStep, setGlyphStep] = useState<'connect' | 'login'>('connect');
   const { connect } = useConnect();
-  const { isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
+  useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
 
   const handleGlyphConnect = async () => {
