@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { formatEther } from 'viem';
 import Link from 'next/link';
@@ -111,9 +111,9 @@ export default function MintPage() {
       });
       
       console.log('writeContract called - wallet popup should appear');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Mint error:', err);
-      setError(err?.message ?? String(err));
+      setError(err instanceof Error ? err.message : String(err));
     }
   };
 
