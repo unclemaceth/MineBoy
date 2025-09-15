@@ -10,7 +10,7 @@ import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import WalletConnectionModal from "@/components/WalletConnectionModal";
-import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
+import { useAccount, useDisconnect, useWriteContract } from 'wagmi';
 import { useSession, getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
@@ -89,7 +89,7 @@ function Home() {
   } = useSession();
   
   // Miner store for boot sequence
-  const { bootLines, booting: minerBooting } = useMinerStore();
+  const { bootLines } = useMinerStore();
   
   // Miner worker
   const miner = useMinerWorker({
@@ -341,7 +341,7 @@ function Home() {
           setMode('visual');
           miner.start(newJob);
           pushLine('Mining started...');
-        } catch (error) {
+        } catch {
           pushLine('Failed to get new job - re-insert cartridge');
         }
         return;
@@ -518,7 +518,7 @@ function Home() {
       const newJob = await api.getNextJob(sessionId);
       setJob(newJob);
       pushLine('New job received - Press A to mine');
-    } catch (error) {
+    } catch {
       pushLine('Failed to get new job - re-insert cartridge');
     }
   };
@@ -1209,7 +1209,7 @@ function Home() {
             { label: 'MINE', on: mining && mineBlink },
           ];
           
-          return leds.map(({ label, on }, i) => (
+          return leds.map(({ label, on }) => (
             <div key={label} style={{ textAlign: "center" }}>
               <div style={{
                 width: 10, 

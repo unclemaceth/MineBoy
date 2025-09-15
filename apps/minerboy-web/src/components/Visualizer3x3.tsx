@@ -38,7 +38,6 @@ export default function Visualizer3x3({
       return;
     }
 
-    let interval: NodeJS.Timeout;
     let counter = 0;
     
     const generateHash = () => {
@@ -61,7 +60,7 @@ export default function Visualizer3x3({
     };
 
     // Start generating hashes every 100ms when mining
-    interval = setInterval(generateHash, 100);
+    const interval = setInterval(generateHash, 100);
     
     return () => {
       if (interval) clearInterval(interval);
