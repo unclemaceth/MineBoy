@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
+import Link from 'next/link';
 import Stage from '@/components/Stage';
 
 type Entry = {
@@ -49,7 +50,7 @@ export default function LeaderboardPage() {
         setLoading(true);
         const resp = await api.getLeaderboard({ period, limit: 25, wallet: address });
         if (!cancelled) setData(resp);
-      } catch (e) {
+      } catch {
         // noop for now
       } finally {
         if (!cancelled) setLoading(false);
@@ -84,7 +85,7 @@ export default function LeaderboardPage() {
           maxWidth: '400px',
           marginBottom: '20px'
         }}>
-          <a 
+          <Link 
             href="/" 
             style={{
               background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
@@ -108,7 +109,7 @@ export default function LeaderboardPage() {
             }}
           >
             ← BACK
-          </a>
+          </Link>
           
           <div style={{ textAlign: 'center' }}>
             <h1 style={{

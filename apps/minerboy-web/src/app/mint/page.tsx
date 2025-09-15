@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
-import { formatEther, parseEther } from 'viem';
+import { formatEther } from 'viem';
+import Link from 'next/link';
 import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE } from "../../lib/contracts";
 import { APEBIT_CARTRIDGE_ABI } from "../../lib/wagmi";
 import Stage from "@/components/Stage";
@@ -11,7 +12,6 @@ import Stage from "@/components/Stage";
 export default function MintPage() {
   const { address, isConnected, chainId } = useAccount();
   const { connect } = useConnect();
-  const { disconnect } = useDisconnect();
   const { writeContract, isPending: isMinting, data: hash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
@@ -145,7 +145,7 @@ export default function MintPage() {
         maxWidth: '400px',
         marginBottom: '20px'
       }}>
-        <a 
+        <Link 
           href="/" 
           style={{
             padding: '8px 12px',
@@ -160,7 +160,7 @@ export default function MintPage() {
           }}
         >
           ← BACK
-        </a>
+        </Link>
         <h1 style={{
           fontSize: '24px',
           fontWeight: 'bold',
@@ -397,7 +397,7 @@ export default function MintPage() {
         textAlign: 'center',
         maxWidth: '400px'
       }}>
-        TIP: Check your wallet's explorer for ERC-721 transfers to find token IDs
+        TIP: Check your wallet&apos;s explorer for ERC-721 transfers to find token IDs
       </div>
       </div>
     </Stage>

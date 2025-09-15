@@ -22,7 +22,9 @@ export const config = {
   
   // Cartridge config
   ALLOWED_CARTRIDGES: process.env.ALLOWED_CARTRIDGES 
-    ? JSON.parse(process.env.ALLOWED_CARTRIDGES) as `0x${string}`[]
+    ? (process.env.ALLOWED_CARTRIDGES.startsWith('[') 
+        ? JSON.parse(process.env.ALLOWED_CARTRIDGES) as `0x${string}`[]
+        : [process.env.ALLOWED_CARTRIDGES as `0x${string}`])
     : [] as `0x${string}`[],
   SUFFIX_ABIT: process.env.SUFFIX_ABIT || 'ab17',
   
