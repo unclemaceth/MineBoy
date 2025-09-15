@@ -84,10 +84,10 @@ export const useSession = create<SessionState>()(
           mode: 'terminal' // Start in terminal mode
         });
         
-        // Add connection message to terminal
-        get().pushLine(`Connected to ${cartridge.info.name}`);
-        get().pushLine(`Session: ${res.sessionId.slice(0, 8)}...`);
-        get().pushLine('Press A to start mining');
+        // Add cartridge loading messages
+        get().pushLine(`${cartridge.info.name} Loaded`);
+        get().pushLine('Enabling Mining Protocol...');
+        get().pushLine('Press A to Mine...');
       },
       
       clear: () => set({

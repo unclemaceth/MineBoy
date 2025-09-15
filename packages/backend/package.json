@@ -15,12 +15,13 @@
     "eip712",
     "curtis"
   ],
-  "author": "MinerBoy Team",
+  "author": "MineBoy Team",
   "license": "MIT",
-  "description": "MinerBoy v2 Backend - Cartridge-gated mining with EIP-712 claims",
+  "description": "MineBoy v2 Backend - Cartridge-gated mining with EIP-712 claims",
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "@noble/hashes": "^1.8.0",
+    "better-sqlite3": "^11.10.0",
     "ethers": "^6.15.0",
     "fastify": "^5.6.0"
   },

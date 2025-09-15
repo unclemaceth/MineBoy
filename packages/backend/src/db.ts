@@ -1,0 +1,243 @@
+// packages/backend/src/db.ts
+import Database from 'better-sqlite3';
+
+export type ClaimRow = {
+  id: string;                 // e.g. `${sessionId}:${jobId}` or ULID
+  wallet: string;             // checksummed 0x...
+  cartridge_id: number;       // ERC721 tokenId (integer)
+  hash: string;               // mined hash (0x...)
+  amount_wei: string;         // as decimal string (exact)
+  tx_hash?: string | null;    // set when wallet broadcasts
+  status: 'pending' | 'confirmed' | 'failed' | 'expired';
+  created_at: number;         // epoch ms
+  confirmed_at?: number | null;
+  pending_expires_at?: number | null;
+};
+
+let db: Database.Database | null = null;
+
+export function initDb(dbUrl?: string) {
+  const file = dbUrl?.startsWith('file:') ? dbUrl.replace('file:', '') : (dbUrl || 'minerboy.db');
+  db = new Database(file);
+  db.pragma('journal_mode = WAL');
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS claims (
+      id TEXT PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      cartridge_id INTEGER NOT NULL,
+      hash TEXT NOT NULL,
+      amount_wei TEXT NOT NULL,
+      tx_hash TEXT,
+      status TEXT NOT NULL CHECK(status IN ('pending','confirmed','failed','expired')),
+      created_at INTEGER NOT NULL,
+      confirmed_at INTEGER,
+      pending_expires_at INTEGER
+    );
+  `);
+  db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
+  db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+}
+
+function getDB() {
+  if (!db) throw new Error('DB not initialized. Call initDb() in server boot.');
+  return db;
+}
+
+export function insertPendingClaim(row: ClaimRow) {
+  const d = getDB();
+  const stmt = d.prepare(`
+    INSERT OR IGNORE INTO claims
+      (id, wallet, cartridge_id, hash, amount_wei, tx_hash, status, created_at, confirmed_at, pending_expires_at)
+    VALUES
+      (@id, @wallet, @cartridge_id, @hash, @amount_wei, @tx_hash, @status, @created_at, @confirmed_at, @pending_expires_at)
+  `);
+  stmt.run(row);
+}
+
+export function setClaimTxHash(claimId: string, txHash: string) {
+  const d = getDB();
+  const stmt = d.prepare(`UPDATE claims SET tx_hash=@txHash WHERE id=@claimId AND status='pending'`);
+  stmt.run({ claimId, txHash });
+}
+
+export function confirmClaimById(claimId: string, txHash: string, confirmedAt: number) {
+  const d = getDB();
+  const stmt = d.prepare(`
+    UPDATE claims
+       SET status='confirmed', tx_hash=COALESCE(tx_hash, @txHash), confirmed_at=@confirmedAt
+     WHERE id=@claimId AND status='pending'
+  `);
+  stmt.run({ claimId, txHash, confirmedAt });
+}
+
+export function failClaim(claimId: string) {
+  const d = getDB();
+  const stmt = d.prepare(`UPDATE claims SET status='failed' WHERE id=@claimId AND status='pending'`);
+  stmt.run({ claimId });
+}
+
+export function expireStalePending(now: number) {
+  const d = getDB();
+  const stmt = d.prepare(`
+    UPDATE claims SET status='expired'
+     WHERE status='pending' AND pending_expires_at IS NOT NULL AND pending_expires_at < @now
+  `);
+  stmt.run({ now });
+}
+
+export function listPendingWithTx() {
+  const d = getDB();
+  const stmt = d.prepare(`SELECT * FROM claims WHERE status='pending' AND tx_hash IS NOT NULL`);
+  return stmt.all() as ClaimRow[];
+}
+
+// ---- Aggregation for leaderboard ----
+
+export type Period = 'all' | '24h' | '7d';
+
+function sinceForPeriod(period: Period): number {
+  const now = Date.now();
+  if (period === '24h') return now - 24 * 3600_000;
+  if (period === '7d') return now - 7 * 24 * 3600_000;
+  return 0; // all-time
+}
+
+export type LeaderboardEntry = {
+  wallet: string;
+  total_wei: string;        // as string
+  claims: number;
+  cartridges: number;
+  last_confirmed_at: number | null;
+};
+
+export function getLeaderboardTop(period: Period, limit = 25): LeaderboardEntry[] {
+  const d = getDB();
+  const since = sinceForPeriod(period);
+  
+  // Get all confirmed claims for the period
+  const claimsStmt = d.prepare(`
+    SELECT wallet, amount_wei, confirmed_at, cartridge_id
+    FROM claims
+    WHERE status='confirmed' AND (@since=0 OR confirmed_at >= @since)
+  `);
+  const claims = claimsStmt.all({ since }) as Array<{
+    wallet: string;
+    amount_wei: string;
+    confirmed_at: number;
+    cartridge_id: number;
+  }>;
+  
+  // Group by wallet and sum manually to avoid SQLite integer overflow
+  const walletTotals = new Map<string, {
+    total_wei: bigint;
+    claims: number;
+    cartridges: Set<number>;
+    last_confirmed_at: number;
+  }>();
+  
+  for (const claim of claims) {
+    const existing = walletTotals.get(claim.wallet) || {
+      total_wei: 0n,
+      claims: 0,
+      cartridges: new Set<number>(),
+      last_confirmed_at: 0
+    };
+    
+    existing.total_wei += BigInt(claim.amount_wei);
+    existing.claims += 1;
+    existing.cartridges.add(claim.cartridge_id);
+    existing.last_confirmed_at = Math.max(existing.last_confirmed_at, claim.confirmed_at);
+    
+    walletTotals.set(claim.wallet, existing);
+  }
+  
+  // Convert to array and sort
+  const results = Array.from(walletTotals.entries()).map(([wallet, data]) => ({
+    wallet,
+    total_wei: data.total_wei.toString(),
+    claims: data.claims,
+    cartridges: data.cartridges.size,
+    last_confirmed_at: data.last_confirmed_at
+  }));
+  
+  // Sort by total_wei descending, then by last_confirmed_at ascending
+  results.sort((a, b) => {
+    const aWei = BigInt(a.total_wei);
+    const bWei = BigInt(b.total_wei);
+    if (aWei > bWei) return -1;
+    if (aWei < bWei) return 1;
+    return a.last_confirmed_at - b.last_confirmed_at;
+  });
+  
+  return results.slice(0, limit);
+}
+
+export function getAggregateForWallet(period: Period, wallet: string): LeaderboardEntry | null {
+  const d = getDB();
+  const since = sinceForPeriod(period);
+  const stmt = d.prepare(`
+    SELECT amount_wei, confirmed_at, cartridge_id
+    FROM claims
+    WHERE status='confirmed' AND lower(wallet)=lower(@wallet) AND (@since=0 OR confirmed_at >= @since)
+  `);
+  const claims = stmt.all({ since, wallet }) as Array<{
+    amount_wei: string;
+    confirmed_at: number;
+    cartridge_id: number;
+  }>;
+  
+  if (claims.length === 0) return null;
+  
+  let total_wei = 0n;
+  const cartridges = new Set<number>();
+  let last_confirmed_at = 0;
+  
+  for (const claim of claims) {
+    total_wei += BigInt(claim.amount_wei);
+    cartridges.add(claim.cartridge_id);
+    last_confirmed_at = Math.max(last_confirmed_at, claim.confirmed_at);
+  }
+  
+  return {
+    wallet,
+    total_wei: total_wei.toString(),
+    claims: claims.length,
+    cartridges: cartridges.size,
+    last_confirmed_at
+  };
+}
+
+export function countWalletsAbove(period: Period, totalWei: string): number {
+  const d = getDB();
+  const since = sinceForPeriod(period);
+  
+  // Get all wallet totals using the same logic as getLeaderboardTop
+  const claimsStmt = d.prepare(`
+    SELECT wallet, amount_wei
+    FROM claims
+    WHERE status='confirmed' AND (@since=0 OR confirmed_at >= @since)
+  `);
+  const claims = claimsStmt.all({ since }) as Array<{
+    wallet: string;
+    amount_wei: string;
+  }>;
+  
+  // Group by wallet and sum manually
+  const walletTotals = new Map<string, bigint>();
+  for (const claim of claims) {
+    const existing = walletTotals.get(claim.wallet) || 0n;
+    walletTotals.set(claim.wallet, existing + BigInt(claim.amount_wei));
+  }
+  
+  // Count wallets with higher totals
+  const meWei = BigInt(totalWei);
+  let count = 0;
+  for (const [_, wei] of walletTotals) {
+    if (wei > meWei) count++;
+  }
+  
+  return count;
+}

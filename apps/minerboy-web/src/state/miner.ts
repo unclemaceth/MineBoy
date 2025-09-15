@@ -53,14 +53,16 @@ export const useMinerStore = create<MinerState>()(
       mode: 'terminal',
       booting: true,
       bootLines: [
-        'booting MinerBoy v1.0.0…',
-        'initializing CRT… OK',
-        'loading SHA-256… OK', 
-        'checking fans… SPINNING',
-        'ready. Press A to MINE'
+        'MineBoy V 1.69.420 -',
+        'MilkMan Operating System V 1.37',
+        'Loading Sha Algo...',
+        'Searching for Connection...',
+        'Initializing CRT... OK',
+        'Checking fans... SPINNING',
+        'Ready for cartridge load...'
       ],
       idleLines: [
-        'MinerBoy Terminal v1.0',
+        'MineBoy Terminal v1.0',
         'Ready for mining...',
         'Press CONNECT to begin',
         'Use D-pad ← → to switch views'
@@ -70,7 +72,9 @@ export const useMinerStore = create<MinerState>()(
       // Actions
       connect: () => {
         set({ connected: true });
-        get().pushLine('Connected. Press A to mine.');
+        get().pushLine('Connected to Curtis Network');
+        get().pushLine('Wallet Address: 0x...164');
+        get().pushLine('Waiting for Cartridge Load...');
       },
       
       disconnect: () => {
@@ -80,6 +84,12 @@ export const useMinerStore = create<MinerState>()(
         }
         set({ connected: false });
         get().pushLine('Disconnected.');
+      },
+      
+      loadCartridge: (cartridgeType: string = 'ApeBit') => {
+        get().pushLine(`${cartridgeType} Loaded`);
+        get().pushLine('Enabling Mining Protocol...');
+        get().pushLine('Press A to Mine...');
       },
       
       pushLine: (line: string) => {
