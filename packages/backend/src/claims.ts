@@ -127,16 +127,23 @@ export class ClaimProcessor {
     this.usedNonces.add(claimStruct.nonce);
     this.totalSuccessfulClaims++;
     
-    // Clear the job
-    jobManager.clearJob(claimReq.sessionId);
+    // Consume the current job to prevent reuse
+    jobManager.consumeJob(claimReq.sessionId, claimReq.jobId);
+    
+    // Create next job from the solution hash
+    const nextJob = await jobManager.createNextJob(claimReq.sessionId, claimReq.hash, job);
     
     console.log(`Processed claim for ${session.wallet}: ${ethers.formatEther(rewardAmount)} ABIT`);
+    if (nextJob) {
+      console.log(`Issued next job (height ${nextJob.height}) with nonce ${nextJob.nonce.slice(0, 10)}...`);
+    }
     
     // Return claim data for client to submit
     return {
       ok: true,
       claim: claimStruct,
-      signature
+      signature,
+      nextJob
     } as ClaimRes & { claim: ClaimStruct; signature: string };
   }
   

@@ -3,6 +3,8 @@ import { Job } from '../../shared/src/mining.ts';
 import { config } from './config.js';
 import { cartridgeRegistry } from './registry.js';
 import { sessionManager } from './sessions.js';
+import { sha256 } from '@noble/hashes/sha256';
+import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 
 /**
  * Job management - creates and validates mining jobs
@@ -36,7 +38,9 @@ export class JobManager {
       suffix: cartridge.mining.suffix,
       charset: cartridge.mining.charset,
       nonce,
-      expiresAt
+      expiresAt,
+      consumed: false,
+      height: 0
     };
     
     // Sign the job
@@ -68,10 +72,68 @@ export class JobManager {
     if (job.jobId !== jobId) return null;
     if (job.nonce !== nonce) return null;
     if (Date.now() > job.expiresAt) return null;
+    if (job.consumed) return null; // Job already claimed
     
     return job;
   }
   
+  /**
+   * Mark job as consumed to prevent reuse
+   */
+  consumeJob(sessionId: string, jobId: string): boolean {
+    const job = this.jobNonces.get(sessionId);
+    if (!job || job.jobId !== jobId || job.consumed) {
+      return false;
+    }
+    
+    job.consumed = true;
+    console.log(`Consumed job ${jobId} for session ${sessionId}`);
+    return true;
+  }
+
+  /**
+   * Create next job from previous hash (deterministic chain)
+   */
+  async createNextJob(sessionId: string, previousHash: string, previousJob: Job): Promise<Job | null> {
+    const session = sessionManager.getSession(sessionId);
+    if (!session) return null;
+    
+    const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
+    if (!cartridge) return null;
+    
+    // Derive next nonce from previous hash + session salt
+    const saltedInput = `${previousHash}:${sessionId}:${config.SERVER_SALT || 'default_salt'}`;
+    const nextNonceBytes = sha256(utf8ToBytes(saltedInput));
+    const nextNonce = `0x${bytesToHex(nextNonceBytes)}` as `0x${string}`;
+    
+    // Generate job data
+    const jobId = this.generateJobId();
+    const expiresAt = Date.now() + config.JOB_TTL_MS;
+    const height = (previousJob.height || 0) + 1;
+    
+    const job: Omit<Job, 'sig'> = {
+      jobId,
+      algo: cartridge.mining.algo,
+      suffix: cartridge.mining.suffix,
+      charset: cartridge.mining.charset,
+      nonce: nextNonce,
+      expiresAt,
+      consumed: false,
+      height
+    };
+    
+    // Sign the job
+    const signature = await this.signJob(job, session);
+    const signedJob: Job = { ...job, sig: signature };
+    
+    // Store job
+    this.jobNonces.set(sessionId, signedJob);
+    sessionManager.setJob(sessionId, signedJob);
+    
+    console.log(`Created next job ${jobId} (height ${height}) for session ${sessionId}`);
+    return signedJob;
+  }
+
   /**
    * Clear job after use
    */
