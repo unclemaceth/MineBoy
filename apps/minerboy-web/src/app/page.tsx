@@ -10,8 +10,7 @@ import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import WalletConnectionModal from "@/components/WalletConnectionModal";
-import { useAccount, useConnect, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { useAccount, useConnect, useDisconnect, useWriteContract } from 'wagmi';
 import { useSession, getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
@@ -63,9 +62,8 @@ function Home() {
   
   // Wagmi hooks
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
   const { disconnect } = useDisconnect();
-  const { writeContract, data: hash, isPending: isWritePending } = useWriteContract();
+  const { writeContract, data: hash } = useWriteContract();
   
   // Session state
   const { 
@@ -200,11 +198,11 @@ function Home() {
     const heartbeat = async () => {
       try {
         await api.heartbeat(sessionId, getOrCreateMinerId());
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.warn('Heartbeat failed:', error);
         
         // If session not found (404), clear session and stop mining
-        if (error?.message?.includes('404') || error?.message?.includes('Session not found')) {
+        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found'))) {
           console.log('Session expired - clearing state and stopping mining');
           pushLine('Session expired - please reconnect');
           
@@ -387,8 +385,8 @@ function Home() {
       try {
         await api.heartbeat(sessionId, getOrCreateMinerId());
         pushLine('Session verified - proceeding with claim...');
-      } catch (error: any) {
-        if (error?.message?.includes('404') || error?.message?.includes('Session not found')) {
+      } catch (error: unknown) {
+        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found'))) {
           throw new Error('Session expired - please reconnect and try again');
         }
         throw error; // Re-throw other errors
@@ -470,9 +468,9 @@ function Home() {
           pushLine('Claim successful!');
           
           
-        } catch (txError: any) {
+        } catch (txError: unknown) {
           console.error('[TX_ERROR]', txError);
-          pushLine(`Transaction failed: ${txError.message}`);
+          pushLine(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`);
           setStatus('error');
         }
       } else {
@@ -491,11 +489,11 @@ function Home() {
         setStatus('idle');
       }, 3000);
       
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[CLAIM] failed', err);
       
       // Handle session expiration specifically
-      if (err?.message?.includes('Session expired') || err?.message?.includes('404') || err?.message?.includes('Session not found')) {
+      if ((err instanceof Error && err.message?.includes('Session expired')) || (err instanceof Error && err.message?.includes('404')) || (err instanceof Error && err.message?.includes('Session not found'))) {
         pushLine('Session expired - please reconnect');
         
         // Clear session state
@@ -645,7 +643,6 @@ function Home() {
       return;
     }
 
-    let interval: NodeJS.Timeout;
     let counter = 0;
     
     const updateHash = () => {
@@ -668,7 +665,7 @@ function Home() {
     };
 
     // Update hash every 200ms when mining
-    interval = setInterval(updateHash, 200);
+    const interval = setInterval(updateHash, 200);
     
     return () => {
       if (interval) clearInterval(interval);
