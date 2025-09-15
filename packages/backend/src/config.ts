@@ -13,6 +13,7 @@ export const config = {
   
   // Backend signer
   SIGNER_PRIVATE_KEY: process.env.SIGNER_PRIVATE_KEY as `0x${string}`,
+  SERVER_SALT: process.env.SERVER_SALT || 'minerboy_default_salt_2024',
   
   // Mining config
   INITIAL_REWARD_WEI: process.env.INITIAL_REWARD_WEI || '512000000000000000000', // 512e18

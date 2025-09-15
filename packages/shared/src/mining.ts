@@ -34,6 +34,8 @@ export interface Job {
   nonce: `0x${string}`;
   expiresAt: number; // epoch ms
   sig: `0x${string}`; // server signature over job payload
+  consumed?: boolean; // true if job has been claimed
+  height?: number; // job sequence number (0, 1, 2, ...)
 }
 
 export interface OpenSessionReq {
@@ -63,6 +65,7 @@ export interface ClaimRes {
   txHash?: `0x${string}`; // present if backend mints/sends
   to?: `0x${string}`;     // present if client should send prepared tx
   data?: `0x${string}`;
+  nextJob?: Job;          // new job issued after successful claim
 }
 
 // EIP-712 Domain

@@ -28,6 +28,7 @@ type SessionState = {
   setFound(p: FoundPayload | undefined): void;
   pushLine(line: string): void;
   setMode(mode: 'terminal' | 'visual'): void;
+  setJob(job: Job): void;
   
   loadOpenSession(res: OpenSessionRes, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string }): void;
   clear(): void;
@@ -48,6 +49,7 @@ export const useSession = create<SessionState>()(
       setMining: (mining) => set({ mining }),
       setTelemetry: (attempts, hr) => set({ attempts, hr }),
       setFound: (p) => set({ lastFound: p }),
+      setJob: (job) => set({ job }),
       
       pushLine: (line: string) => {
         set((state) => ({

@@ -60,6 +60,7 @@ function Home() {
     setFound,
     pushLine,
     setMode,
+    setJob,
     loadOpenSession,
     clear
   } = useSession();
@@ -249,6 +250,13 @@ function Home() {
 
       console.log('[CLAIM_OK]', claimResponse);
       pushLine('Claim verified by backend');
+      
+      // Update job if next job is provided
+      if (claimResponse.nextJob) {
+        setJob(claimResponse.nextJob);
+        pushLine(`New job issued (height ${claimResponse.nextJob.height || 0})`);
+        console.log('[NEXT_JOB]', claimResponse.nextJob);
+      }
       
       // Check if we have claim data for on-chain transaction
       if (claimResponse.claim && claimResponse.signature) {
@@ -689,34 +697,6 @@ function Home() {
         </button>
       </div>
 
-      {/* INSERT CARTRIDGE button: next to connect button */}
-      {isConnected && !sessionId && (
-        <div style={{ position: "absolute", left: 140, bottom: 775 }}>
-          <button
-            onClick={handleInsertCartridge}
-            style={{
-              width: 120,
-              height: 27,
-              borderRadius: 18, 
-              border: "2px solid",
-              borderTopColor: "#8a8a8a",
-              borderLeftColor: "#8a8a8a",
-              borderRightColor: "#2a2a2a",
-              borderBottomColor: "#2a2a2a",
-              cursor: "pointer",
-              background: "linear-gradient(145deg, #4a7d5f, #1a3d24)",
-              boxShadow: "0 2px 2px rgba(0,0,0,0.5)",
-              fontWeight: 900, 
-              fontSize: 9,
-              letterSpacing: 0.5, 
-              color: "#ffffff",
-              transition: "transform 120ms, border-color 120ms",
-            }}
-          >
-            INSERT CARTRIDGE
-          </button>
-        </div>
-      )}
 
       {/* D-pad Up: moved 25px right, 50px down */}
       <div style={{ position: "absolute", left: 92, bottom: 253.5 }}>
@@ -761,24 +741,34 @@ function Home() {
         display: "flex", 
         gap: 12 
       }}>
-        {["PWR", "NET", "HASH", "MINE"].map((label, i) => (
-          <div key={i} style={{ textAlign: "center" }}>
-            <div style={{
-              width: 10, 
-              height: 10, 
-              borderRadius: 10,
-              background: i === 0 || (i === 3 && mining) ? "#51ff7a" : "#0b3d21",
-              boxShadow: "0 0 6px rgba(81,255,122,0.6)"
-            }} />
-            <div style={{
-              color: "#6ccf85", 
-              fontSize: 9, 
-              marginTop: 2
-            }}>
-              {label}
+        {["PWR", "NET", "HASH", "MINE", "CART"].map((label, i) => {
+          let isActive = false;
+          if (i === 0) isActive = true; // PWR always on
+          if (i === 1) isActive = isConnected; // NET when connected
+          if (i === 2) isActive = !!foundResult; // HASH when found
+          if (i === 3) isActive = mining; // MINE when mining
+          if (i === 4) isActive = !!sessionId; // CART when cartridge inserted
+          
+          return (
+            <div key={i} style={{ textAlign: "center" }}>
+              <div style={{
+                width: 10, 
+                height: 10, 
+                borderRadius: 10,
+                background: isActive ? "#51ff7a" : "#0b3d21",
+                boxShadow: isActive ? "0 0 6px rgba(81,255,122,0.6)" : "none",
+                transition: "all 0.3s ease"
+              }} />
+              <div style={{
+                color: "#6ccf85", 
+                fontSize: 8, 
+                marginTop: 2
+              }}>
+                {label}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       
       {/* Cartridge Selection Modal */}
@@ -864,6 +854,125 @@ function Home() {
             >
               Cancel
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Cartridge Slot at bottom of shell */}
+      <div style={{
+        position: "absolute",
+        bottom: 57.5,
+        left: "46.5%",
+        transform: "translateX(-50%)",
+        width: 106,
+        height: 12,
+        background: "linear-gradient(180deg, #1a1a1a, #0a0a0a)",
+        borderRadius: "6px 6px 2px 2px",
+        border: "1px solid #333",
+        boxShadow: "inset 0 2px 4px rgba(0,0,0,0.8)",
+        zIndex: 0,
+      }}>
+        {/* Cartridge slot opening */}
+        <div style={{
+          position: "absolute",
+          top: 2,
+          left: 2,
+          right: 2,
+          bottom: 2,
+          background: "#000",
+          borderRadius: "4px 4px 1px 1px",
+        }} />
+      </div>
+
+      {/* Cartridge - shows when connected but no session */}
+      {isConnected && !sessionId && (
+        <div 
+          onClick={handleInsertCartridge}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateX(-50%) translateY(-2px)";
+            e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateX(-50%) translateY(0px)";
+            e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)";
+          }}
+          onMouseDown={(e) => {
+            e.currentTarget.style.transform = "translateX(-50%) translateY(1px)";
+          }}
+          onMouseUp={(e) => {
+            e.currentTarget.style.transform = "translateX(-50%) translateY(-2px)";
+          }}
+          style={{
+            position: "absolute",
+            bottom: 16,
+            left: "46.5%",
+            transform: "translateX(-50%)",
+            width: 96,
+            height: 38,
+            background: "linear-gradient(145deg, #4a7d5f, #1a3d24)",
+            borderRadius: "4px 4px 8px 8px",
+            border: "2px solid #2a5a3a",
+            cursor: "pointer",
+            zIndex: 2,
+            transition: "all 0.2s ease",
+            boxShadow: "0 4px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          {/* Cartridge label */}
+          <div style={{
+            color: "#fff",
+            fontSize: 10,
+            fontWeight: 900,
+            letterSpacing: 0.5,
+            textShadow: "0 1px 2px rgba(0,0,0,0.8)",
+          }}>
+            CARTRIDGE
+          </div>
+          
+          {/* Cartridge connector lines */}
+          <div style={{
+            position: "absolute",
+            bottom: 36,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 86,
+            height: 4,
+            background: "repeating-linear-gradient(90deg, #666 0px, #666 2px, #333 2px, #333 4px)",
+            borderRadius: 1,
+          }} />
+        </div>
+      )}
+
+      {/* Cartridge inserted state - only shows a small portion */}
+      {isConnected && sessionId && (
+        <div style={{
+          position: "absolute",
+          bottom: 48,
+          left: "46.5%",
+          transform: "translateX(-50%)",
+          width: 96,
+          height: 16,
+          background: "linear-gradient(145deg, #4a7d5f, #1a3d24)",
+          borderRadius: "0 0 4px 4px",
+          border: "2px solid #2a5a3a",
+          borderBottom: "4px 4px 0 0",
+          zIndex: 0,
+          boxShadow: "inset 0 -2px 4px rgba(0,0,0,0.4)",
+        }}>
+          {/* Small visible label */}
+          <div style={{
+            color: "#fff",
+            fontSize: 0,
+            fontWeight: 900,
+            letterSpacing: 0.3,
+            textAlign: "center",
+            marginTop: 1,
+            textShadow: "0 1px 1px rgba(0,0,0,0.8)",
+          }}>
+            CART
           </div>
         </div>
       )}
