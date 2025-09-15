@@ -28,7 +28,11 @@ export const config = {
   
   // Server
   PORT: parseInt(process.env.PORT || '8787'),
-  HOST: process.env.HOST || '0.0.0.0'
+  HOST: process.env.HOST || '0.0.0.0',
+  
+  // Admin
+  ADMIN_TOKEN: process.env.ADMIN_TOKEN || '',
+  EPOCH_OVERRIDE: process.env.EPOCH_OVERRIDE
 };
 
 // Validate required config
@@ -43,3 +47,7 @@ for (const key of required) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
 }
+
+// Export admin configs for easy access
+export const ADMIN_TOKEN = config.ADMIN_TOKEN;
+export const EPOCH_OVERRIDE = config.EPOCH_OVERRIDE;

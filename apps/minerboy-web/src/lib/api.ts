@@ -24,11 +24,11 @@ export const api = {
     }).then(j);
   },
   
-  heartbeat(sessionId: string): Promise<{ ok: true }> {
+  heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
     return fetch(`${API_BASE}/v2/session/heartbeat`, {
       method: 'POST', 
       headers: { 'content-type': 'application/json' }, 
-      body: JSON.stringify({ sessionId })
+      body: JSON.stringify({ sessionId, minerId })
     }).then(j);
   },
   

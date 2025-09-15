@@ -2,12 +2,14 @@ import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import { OpenSessionReq, ClaimReq } from '../../shared/src/mining.ts';
-import { config } from './config.js';
+import { config, ADMIN_TOKEN } from './config.js';
 import { cartridgeRegistry } from './registry.js';
 import { ownershipVerifier } from './ownership.js';
 import { sessionManager } from './sessions.js';
 import { jobManager } from './jobs.js';
 import { claimProcessor } from './claims.js';
+import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
+import { locks } from './locks.js';
 
 const fastify = Fastify({ 
   logger: true,
@@ -39,9 +41,14 @@ fastify.get('/v2/cartridges', async () => {
 
 // Open a mining session
 fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
-  const { wallet, cartridge, clientInfo } = request.body;
+  const { wallet, cartridge, clientInfo, minerId } = request.body as any;
   
   try {
+    // Validate minerId
+    if (!minerId || typeof minerId !== 'string') {
+      return reply.code(400).send({ error: 'minerId required' });
+    }
+    
     // Validate cartridge is allowed
     if (!cartridgeRegistry.isAllowed(cartridge.contract)) {
       return reply.code(400).send({ error: 'Cartridge not allowed' });
@@ -56,6 +63,13 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     
     if (!ownsToken) {
       return reply.code(403).send({ error: 'Wallet does not own this cartridge token' });
+    }
+    
+    // Acquire lock for this cartridge
+    const { chainId, contract, tokenId } = cartridge;
+    const lockResult = locks.acquire(chainId, contract, tokenId, minerId);
+    if (!lockResult.ok) {
+      return reply.code(409).send({ error: lockResult.reason });
     }
     
     // Create session
@@ -83,27 +97,12 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       claim: cartridgeConfig.claim
     };
     
-  } catch (error) {
-    fastify.log.error('Error opening session:', error);
-    return reply.code(500).send({ error: 'Internal server error' });
+  } catch (error: any) {
+    fastify.log.error({ err: error, body: request.body }, '[OPEN_SESSION] failed');
+    return reply.code(400).send({ error: error?.message ?? 'Open session failed' });
   }
 });
 
-// Session heartbeat
-fastify.post<{ Body: { sessionId: string } }>('/v2/session/heartbeat', async (request, reply) => {
-  const { sessionId } = request.body;
-  
-  if (!sessionManager.isValidSession(sessionId)) {
-    return reply.code(404).send({ error: 'Session not found or expired' });
-  }
-  
-  const success = sessionManager.heartbeat(sessionId);
-  if (!success) {
-    return reply.code(404).send({ error: 'Session not found' });
-  }
-  
-  return { ok: true };
-});
 
 // Get next job for session
 fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (request, reply) => {
@@ -124,6 +123,28 @@ fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (reque
 // Process claim
 fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
   try {
+    const { sessionId, minerId } = request.body as any;
+    
+    // Validate minerId
+    if (!minerId) {
+      return reply.code(400).send({ error: 'minerId required' });
+    }
+    
+    // Check session and refresh lock
+    const session = sessionManager.getSession(sessionId);
+    if (!session) {
+      return reply.code(404).send({ error: 'Session not found' });
+    }
+    
+    const { chainId, contract, tokenId } = session.cartridge;
+    console.log(`[CLAIM_DEBUG] Session minerId: ${session.minerId}, Claim minerId: ${minerId}, Lock key: ${chainId}:${contract}:${tokenId}`);
+    
+    const lockOk = locks.refresh(chainId, contract, tokenId, minerId);
+    if (!lockOk) {
+      console.log(`[CLAIM_DEBUG] Lock refresh failed for ${chainId}:${contract}:${tokenId} with minerId ${minerId}`);
+      return reply.code(409).send({ error: 'Cartridge lock lost or held by another miner' });
+    }
+    
     const result = await claimProcessor.processClaim(request.body);
     if (!result) {
       return reply.code(400).send({ error: 'Failed to process claim' });
@@ -152,6 +173,57 @@ fastify.get('/admin/stats', async () => {
     claims: claimProcessor.getStats(),
     cartridges: cartridgeRegistry.getAllCartridges().length
   };
+});
+
+// Heartbeat route to refresh lock
+fastify.post('/v2/session/heartbeat', async (request, reply) => {
+  try {
+    const { sessionId, minerId } = request.body as any;
+    
+    if (!sessionId || !minerId) {
+      return reply.code(400).send({ error: 'sessionId and minerId required' });
+    }
+    
+    const session = sessionManager.getSession(sessionId);
+    if (!session) {
+      return reply.code(404).send({ error: 'Session not found' });
+    }
+    
+    if (session.minerId !== minerId) {
+      return reply.code(409).send({ error: 'MinerId mismatch' });
+    }
+    
+    const { chainId, contract, tokenId } = session.cartridge;
+    const lockOk = locks.refresh(chainId, contract, tokenId, minerId);
+    if (!lockOk) {
+      return reply.code(409).send({ error: 'Cartridge lock lost' });
+    }
+    
+    sessionManager.updateHeartbeat(sessionId);
+    return { ok: true };
+    
+  } catch (error) {
+    fastify.log.error('Error processing heartbeat:', error);
+    return reply.code(400).send({ error: 'Heartbeat failed' });
+  }
+});
+
+// Admin route to change difficulty at runtime
+fastify.post('/v2/admin/difficulty', async (request, reply) => {
+  const auth = request.headers.authorization || '';
+  if (!ADMIN_TOKEN || auth !== `Bearer ${ADMIN_TOKEN}`) {
+    return reply.code(401).send({ error: 'Unauthorized' });
+  }
+  const body = request.body as any;
+  if (body && Object.keys(body).length) {
+    const allowed = ['rule','suffix','bits','ttlMs'];
+    const o: any = {};
+    for (const k of allowed) if (k in body) o[k] = body[k];
+    setDifficultyOverride(o);
+  } else {
+    setDifficultyOverride(null);
+  }
+  return { ok: true, override: getDifficultyOverride() };
 });
 
 // Cleanup expired jobs periodically
