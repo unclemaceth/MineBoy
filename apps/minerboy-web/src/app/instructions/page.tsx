@@ -1,4 +1,5 @@
 import Stage from "@/components/Stage";
+import Link from "next/link";
 
 export default function InstructionsPage() {
     return (
@@ -16,7 +17,7 @@ export default function InstructionsPage() {
             gap: '16px',
             marginBottom: '30px'
           }}>
-            <a 
+            <Link 
               href="/" 
               style={{
                 padding: '8px 12px',
@@ -31,7 +32,7 @@ export default function InstructionsPage() {
               }}
             >
               ← BACK
-            </a>
+            </Link>
             <h1 style={{
               fontSize: '20px',
               fontWeight: 'bold',
