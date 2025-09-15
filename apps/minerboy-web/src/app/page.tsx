@@ -430,6 +430,9 @@ function Home() {
       
       pushLine('Press A to mine again');
       
+      // Clear found result immediately after successful claim
+      setFound(undefined); // Clear lastFound from session store
+      
       // Clear found result after successful claim
       setTimeout(() => {
         setFoundResult(null);
@@ -484,8 +487,10 @@ function Home() {
     if (status === 'found' && foundResult) {
       handleClaim(foundResult);
     } else if (lastFound) {
-      // Show claim modal (handled by ClaimOverlay component)
-      pushLine('Press Claim to submit solution');
+      // Reopen claim modal for found hash
+      setFoundResult(lastFound);
+      setStatus('found');
+      pushLine('Claim modal reopened - press Claim to submit or B to dismiss');
     } else {
       // Toggle view
       setMode(mode === 'visual' ? 'terminal' : 'visual');
