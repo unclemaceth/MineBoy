@@ -1,0 +1,4 @@
+# dev-only routes/files – ignore them for now
+src/app/page-broken.tsx
+src/app/page-mock.tsx
+src/app/page-real.tsx

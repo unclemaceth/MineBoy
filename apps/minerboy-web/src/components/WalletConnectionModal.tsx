@@ -255,7 +255,6 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                   marginBottom: '16px'
                 }}>
                   <LoginButton 
-                    onSuccess={handleGlyphLoginComplete}
                     style={{
                       backgroundColor: '#4a5568',
                       border: '2px solid #64ff8a',
