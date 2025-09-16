@@ -4,6 +4,7 @@ import { useSession } from '@/state/useSession';
 import { api } from '@/lib/api';
 import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/wagmi';
 import { to0x } from '@/lib/hex';
+import { getJobId, assertString } from '@/utils/job';
 
 export default function ClaimOverlayV2() {
   const { sessionId, job, lastFound, setFound, pushLine } = useSession();
@@ -37,7 +38,13 @@ export default function ClaimOverlayV2() {
   if (!lastFound) return null;
 
   const handleClaim = async () => {
-    if (!sessionId || !job || !lastFound) return;
+    if (!sessionId || !job || !lastFound || !address) return;
+    
+    const jobId = getJobId(job);
+    if (!jobId) {
+      pushLine('Invalid job - missing job ID');
+      return;
+    }
     
     setClaiming(true);
     pushLine('Submitting solution to backend...');
@@ -46,12 +53,12 @@ export default function ClaimOverlayV2() {
       // Submit claim to backend
       const result = await api.claim({
         sessionId,
-        jobId: job.jobId,
+        jobId,
         preimage: lastFound.preimage,
         hash: to0x(lastFound.hash),
         steps: lastFound.attempts,
         hr: lastFound.hr,
-        minerId: to0x(address || '0x0'),
+        minerId: to0x(address),
       });
       
       if (result.status !== 'accepted') {
