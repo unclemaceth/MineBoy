@@ -25,10 +25,18 @@ import { startReceiptPoller } from './chain/receiptPoller.js';
 import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
 import { SessionStore } from './sessionStore.js';
+import { safeStringify } from './jsonSafe.js';
 
 const fastify = Fastify({ 
   logger: true,
   disableRequestLogging: false
+});
+
+// Global error handler to catch BigInt serialization errors
+fastify.setErrorHandler((err, req, reply) => {
+  console.error('[GLOBAL_ERROR]', err);
+  fastify.log.error({ err, url: req.url, body: req.body }, '[GLOBAL_ERROR]');
+  reply.code(500).send({ error: 'internal-error', message: err.message });
 });
 
 // Initialize database
@@ -142,14 +150,26 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     
     console.log(`Created session ${sessionId} for wallet ${wallet} with token ${contract}:${tokenId}`);
     
-    return {
+    // Build JSON-safe response
+    const response = {
       sessionId,
-      job,
+      job: {
+        id: job.jobId,
+        data: job.nonce,
+        target: job.suffix,
+        height: job.height ? Number(job.height) : undefined,
+        difficulty: job.difficultyBits ? Number(job.difficultyBits) : undefined
+      },
       policy: {
         heartbeatSec: 20,
         cooldownSec: 2
       }
     };
+    
+    // Use safe JSON serialization
+    reply.header('content-type', 'application/json; charset=utf-8');
+    reply.raw.end(safeStringify(response));
+    return;
     
   } catch (error: any) {
     console.error('[OPEN_SESSION] failed:', error);
