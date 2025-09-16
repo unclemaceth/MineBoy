@@ -784,7 +784,7 @@ function Home() {
         else if (suffix.length >= 4) difficultyLevel = 'EASY';
         else difficultyLevel = 'EASY';
       } else {
-        const bitCount = typeof bits === 'number' ? bits : parseInt(bits.toString());
+        const bitCount = bits;
         if (bitCount >= 32) difficultyLevel = 'HARD';
         else if (bitCount >= 28) difficultyLevel = 'MED';
         else if (bitCount >= 24) difficultyLevel = 'EASY';
