@@ -331,6 +331,9 @@ function Home() {
     pushLine(`Opening session with ${cartridgeInfo.name}...`);
     
     try {
+      const minerId = to0x(getOrCreateMinerId());
+      console.log('[SESSION_OPEN] Using minerId:', minerId);
+      
       const res = await api.openSession({
         wallet: address,
         cartridge: {
@@ -339,7 +342,7 @@ function Home() {
           tokenId
         },
         clientInfo: { ua: navigator.userAgent },
-        minerId: to0x(getOrCreateMinerId())
+        minerId
       });
       
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
@@ -447,8 +450,11 @@ function Home() {
       heartbeat.pauseForClaim();
       pushLine('Stopped heartbeats for claim...');
 
+      // Get consistent minerId (same as used in session open)
+      const minerId = to0x(getOrCreateMinerId());
+      
       // Send the frozen payload exactly as received from worker
-      console.log('[CLAIM_BODY]', hit, { sessionId, jobId: job.jobId || job.id });
+      console.log('[CLAIM_BODY]', hit, { sessionId, jobId: job.jobId || job.id, minerId });
       
       const claimResponse = await api.claim({
         sessionId,
@@ -457,7 +463,7 @@ function Home() {
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
         hr: hit.hr,
-        minerId: to0x(getOrCreateMinerId())
+        minerId
       });
 
       console.log('[CLAIM_OK]', claimResponse);
