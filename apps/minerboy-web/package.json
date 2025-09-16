@@ -2,11 +2,14 @@
   "name": "minerboy-web",
   "version": "0.1.0",
   "private": true,
+  "engines": { "node": ">=18.18 <23" },
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev",
     "build": "next build --turbopack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prebuild": "npm run typecheck"
   },
   "dependencies": {
     "@noble/hashes": "^1.8.0",
@@ -17,11 +20,15 @@
     "@wagmi/core": "^2.20.3",
     "next": "15.5.3",
     "next-pwa": "^5.6.0",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "viem": "^2.37.5",
     "wagmi": "^2.16.9",
     "zustand": "^5.0.8"
+  },
+  "overrides": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

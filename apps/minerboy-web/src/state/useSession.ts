@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { CartridgeConfig, Job, OpenSessionRes } from '@minerboy/shared/mining';
+import type { Job } from '@/types/mining';
+import type { CartridgeConfig, OpenSessionRes } from '@/lib/api';
 
 // Generate or retrieve stable minerId
 export function getOrCreateMinerId(): string {

@@ -1,5 +1,8 @@
-import type { Job } from '@/types/mining';
-import { API_BASE } from './wagmi';
+import { normalizeClaimResponse, normalizeJob } from "@/types/api";
+import type { ClaimRes } from "@/types/api";
+import type { Job } from "@/types/mining";
+
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
 
 // Local type definitions (replacing shared imports)
 export interface CartridgeConfig {
@@ -33,53 +36,59 @@ export interface ClaimReq {
   minerId: string;
 }
 
-export interface ClaimRes {
-  ok: boolean;
-  claimId: string;
-  claim: any; // ClaimStruct from backend
-  signature: string;
-  nextJob?: Job;
-}
-
 async function j<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`API Error ${res.status}: ${errorText}`);
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
   }
-  return res.json();
+  return (await res.json()) as T;
+}
+
+export async function getNextJob(sessionId: string): Promise<Job> {
+  const res = await fetch(`${BASE}/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, { cache: "no-store" });
+  const raw = await j<unknown>(res);
+  const job = normalizeJob(raw);
+  if (!job) throw new Error("Malformed job payload");
+  return job;
+}
+
+export async function submitClaim(body: ClaimReq): Promise<ClaimRes> {
+  const res = await fetch(`${BASE}/v2/claim`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  const raw = await j<unknown>(res);
+  return normalizeClaimResponse(raw);
 }
 
 export const api = {
   cartridges(): Promise<CartridgeConfig[]> {
-    return fetch(`${API_BASE}/v2/cartridges`, { cache: 'no-store' }).then(j);
+    return fetch(`${BASE}/v2/cartridges`, { cache: 'no-store' }).then(j);
   },
   
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
-    return fetch(`${API_BASE}/v2/session/open`, {
-      method: 'POST', 
-      headers: { 'content-type': 'application/json' }, 
+    return fetch(`${BASE}/v2/session/open`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body)
     }).then(j);
   },
   
   heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
-    return fetch(`${API_BASE}/v2/session/heartbeat`, {
-      method: 'POST', 
+    return fetch(`${BASE}/v2/session/heartbeat`, {
+      method: 'POST',
       headers: { 'content-type': 'application/json' }, 
       body: JSON.stringify({ sessionId, minerId })
     }).then(j);
   },
   
   claim(body: ClaimReq): Promise<ClaimRes> {
-    return fetch(`${API_BASE}/v2/claim`, {
-      method: 'POST', 
-      headers: { 'content-type': 'application/json' }, 
-      body: JSON.stringify(body)
-    }).then(j<ClaimRes>);
+    return submitClaim(body);
   },
   
   close(sessionId: string): Promise<{ ok: true }> {
-    return fetch(`${API_BASE}/v2/session/close`, {
+    return fetch(`${BASE}/v2/session/close`, {
       method: 'POST', 
       headers: { 'content-type': 'application/json' }, 
       body: JSON.stringify({ sessionId })
@@ -87,17 +96,15 @@ export const api = {
   },
   
   getNextJob(sessionId: string): Promise<Job> {
-    return fetch(`${API_BASE}/v2/job/next?sessionId=${sessionId}`, {
-      cache: 'no-store'
-    }).then(j<Job>);
+    return getNextJob(sessionId);
   },
   
   getStats(): Promise<unknown> {
-    return fetch(`${API_BASE}/admin/stats`, { cache: 'no-store' }).then(j);
+    return fetch(`${BASE}/admin/stats`, { cache: 'no-store' }).then(j);
   },
 
   claimTx(body: { claimId: string; txHash: string }): Promise<{ ok: true }> {
-    return fetch(`${API_BASE}/v2/claim/tx`, {
+    return fetch(`${BASE}/v2/claim/tx`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
@@ -109,6 +116,6 @@ export const api = {
     if (params.period) usp.set('period', params.period);
     if (params.limit) usp.set('limit', String(params.limit));
     if (params.wallet) usp.set('wallet', params.wallet);
-    return fetch(`${API_BASE}/v2/leaderboard?${usp.toString()}`, { method: 'GET' }).then(j);
+    return fetch(`${BASE}/v2/leaderboard?${usp.toString()}`, { method: 'GET' }).then(j);
   }
 };
