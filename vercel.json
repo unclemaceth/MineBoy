@@ -3,10 +3,13 @@
   "builds": [
     {
       "src": "apps/minerboy-web/package.json",
-      "use": "@vercel/next",
-      "config": {
-        "distDir": ".next"
-      }
+      "use": "@vercel/next"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "apps/minerboy-web/$1"
     }
   ],
   "env": {
