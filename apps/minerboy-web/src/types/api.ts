@@ -31,7 +31,7 @@ export type SessionOpenApiResp = {
 };
 
 export type ClaimReq = {
-  minerId: `0x${string}`;
+  minerId: string;   // <- change from `0x${string}` to plain string
   sessionId: string;
   jobId: string;
   preimage: string;

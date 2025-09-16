@@ -488,15 +488,31 @@ function Home() {
       
       console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId });
       
-      const claimResponse = await api.claim({
+      // 2) Try claim with retry on 409
+      const doClaim = () => api.claim({
         sessionId,
         jobId,
         preimage: hit.preimage,  // exact string from worker
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
         hr: hit.hr,
-        minerId: minerId as `0x${string}`
+        minerId, // plain string, no cast
       });
+      
+      let claimResponse: any;
+      try {
+        claimResponse = await doClaim();
+      } catch (e: any) {
+        if (e.status === 409) {
+          // tiny backoff and one more refresh
+          pushLine('Retrying claim after lock refresh...');
+          await new Promise(r => setTimeout(r, 250));
+          await api.heartbeat(sessionId, minerId);
+          claimResponse = await doClaim(); // second try
+        } else {
+          throw e;
+        }
+      }
 
       console.log('[CLAIM_OK]', claimResponse);
       pushLine('Claim verified by backend');
@@ -829,7 +845,7 @@ function Home() {
     const interval = setInterval(updateDifficulty, 1000);
     
     return () => clearInterval(interval);
-  }, [job]);
+  }, [job, ttlSec]);
 
   // Helper function for short hash display
   const short = (h?: string, n = 10) =>
