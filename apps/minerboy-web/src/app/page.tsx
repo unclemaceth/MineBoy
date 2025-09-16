@@ -802,7 +802,10 @@ function Home() {
         else difficultyLevel = 'EASY';
       }
       
-      setDifficultyText(`D: ${difficultyLevel} | T: ${suffix?.length ?? 0} zeros`);
+      // Calculate TTL in seconds
+      const ttlSec = job.ttlSec ?? (job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : undefined);
+      const ttlLabel = ttlSec != null ? `${ttlSec}s` : '--';
+      setDifficultyText(`D: ${difficultyLevel} | T: ${ttlLabel}`);
     };
 
     // Update immediately and then every second
