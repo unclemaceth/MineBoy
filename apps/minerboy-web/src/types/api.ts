@@ -1,31 +1,33 @@
-import type { Hex } from "./mining";
-
 export type Address = `0x${string}`;
 
 export type ClaimStatus = "accepted" | "rejected" | "pending" | "error";
 
-// Shape coming *from* the backend
+// Shape coming FROM the backend
 export type ApiJob = {
-  jobId: string;                    // <-- source of truth for id
-  data: `0x${string}`;              // seed / preimage base
-  target?: string;                  // "000000" suffix (preferred)
-  suffix?: string;                  // older field name; fallback
+  jobId?: string;               // backend may send jobId
+  id?: string;                  // or id (fallback)
+  data: `0x${string}`;
+  target?: string;              // preferred
+  suffix?: string;              // legacy
   height?: number;
 
-  // difficulty metadata (optional)
   difficulty?: {
     rule: 'suffix';
-    bits: number;                   // e.g. 24 for "000000"
+    bits: number;
     targetBits?: number;
   };
 
-  // DO NOT treat nonce as a number; if it exists it must be a string.
   nonce?: `0x${string}` | string;
+
+  // expiry / ttl variants (any may be present)
+  expiresAt?: number;           // epoch ms
+  ttlMs?: number;
+  ttlSec?: number;
 };
 
 export type SessionOpenApiResp = {
   sessionId: string;
-  job?: ApiJob;                     // job may be absent
+  job?: ApiJob;
 };
 
 export type ClaimReq = {
