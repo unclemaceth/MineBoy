@@ -1,5 +1,5 @@
 import { normalizeJob, normalizeClaimRes } from "@/types/api";
-import type { ClaimRes, Job, Address } from "@/types/api";
+import type { ClaimRes, Job, Address, ClaimReq } from "@/types/api";
 
 export interface CartridgeConfig {
   chainId: number;
@@ -26,15 +26,7 @@ export interface OpenSessionRes {
   claim: any;
 }
 
-export interface ClaimReq {
-  sessionId: string;
-  jobId: string;
-  preimage: string;
-  hash: string;
-  steps: number;
-  hr: number;
-  minerId: string;
-}
+// ClaimReq is now imported from @/types/api
 
 async function jfetch<T>(path: string, init?: RequestInit, map?: (x: any) => T): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) }});
