@@ -13,7 +13,7 @@ import { getDifficultyOverride } from './difficulty';
 import type { Job } from '../../shared/src/mining.js';
 import { config } from './config.js';
 import { cartridgeRegistry } from './registry.js';
-import { sessionManager } from './sessions.js';
+import { SessionStore } from './sessionStore.js';
 import { sha256 } from '@noble/hashes/sha256';
 import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 
@@ -86,7 +86,7 @@ export class JobManager {
    * Create a new job for a session
    */
   async createJob(sessionId: string): Promise<Job | null> {
-    const session = sessionManager.getSession(sessionId);
+    const session = await SessionStore.getSession(sessionId);
     if (!session) return null;
     
     const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
