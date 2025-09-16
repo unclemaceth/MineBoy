@@ -18,6 +18,7 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
 import { getMinerIdCached } from "@/utils/minerId";
+import { getJobId, assertString } from "@/utils/job";
 import { to0x, hexFrom } from "@/lib/hex";
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
@@ -462,11 +463,18 @@ function Home() {
 
       // Send the frozen payload exactly as received from worker
       const minerId = getMinerIdCached();
-      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId: job.jobId });
+      const jobId = getJobId(job);
+      
+      // Assert all required values are present
+      assertString(sessionId, 'sessionId');
+      assertString(jobId, 'jobId');
+      assertString(address, 'address');
+      
+      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId });
       
       const claimResponse = await api.claim({
         sessionId,
-        jobId: job.jobId,
+        jobId,
         preimage: hit.preimage,  // exact string from worker
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
