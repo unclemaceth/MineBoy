@@ -213,8 +213,8 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         id: job.jobId,
         data: job.nonce,
         target: job.suffix,
-        height: job.height ? Number(job.height) : undefined,
-        difficulty: job.difficultyBits ? Number(job.difficultyBits) : undefined
+        height: job.height ? Number(job.height) : 0, // Never undefined
+        difficulty: job.difficultyBits ? Number(job.difficultyBits) : 6
       },
       policy: {
         heartbeatSec: 20,
@@ -340,12 +340,12 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     const session = await SessionStore.getSession(sessionId);
     if (!session) {
       console.warn('[HB] 404 no session:', { sessionId });
-      return reply.code(404).send({ error: 'Session not found' });
+      return reply.code(409).send({ error: 'session-missing', sessionId });
     }
     
     if (session.minerId !== minerId) {
       console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
-      return reply.code(409).send({ error: 'MinerId mismatch' });
+      return reply.code(409).send({ error: 'miner-mismatch', have: session.minerId, got: minerId });
     }
     
     // Refresh session TTL
@@ -356,7 +356,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     const lockRefreshed = await SessionStore.refreshLock(contract, tokenId, minerId);
     if (!lockRefreshed) {
       console.warn('[HB] 409 lock refresh failed:', { sessionId, minerId, contract, tokenId });
-      return reply.code(409).send({ error: 'Cartridge lock lost' });
+      return reply.code(409).send({ error: 'lock-missing', sessionId, contract, tokenId });
     }
     
     console.log('[HB] 200 success:', { sessionId, minerId });
