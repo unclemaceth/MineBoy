@@ -1,4 +1,5 @@
 import { getRedis } from "./redis";
+import { encode, decode } from "./redisJson";
 
 const PREFIX = process.env.REDIS_PREFIX ?? "mineboy:v2:";
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 45_000);
@@ -28,13 +29,13 @@ export const SessionStore = r
 
       async createSession(s: Session) {
         const key = sKey(s.sessionId);
-        await r!.set(key, JSON.stringify(s), "PX", SESSION_TTL_MS);
+        await r!.set(key, encode(s), "PX", SESSION_TTL_MS);
         return s;
       },
 
       async getSession(sessionId: string): Promise<Session | null> {
         const raw = await r!.get(sKey(sessionId));
-        return raw ? (JSON.parse(raw) as Session) : null;
+        return raw ? decode<Session>(raw) : null;
       },
 
       async refreshSession(sessionId: string) {
@@ -45,10 +46,10 @@ export const SessionStore = r
         const key = sKey(sessionId);
         const raw = await r!.get(key);
         if (!raw) return false;
-        const s = JSON.parse(raw) as Session;
+        const s = decode<Session>(raw);
         s.job = job ?? undefined;
         const ttl = await r!.pttl(key);
-        await r!.set(key, JSON.stringify(s), "PX", Math.max(ttl, 1));
+        await r!.set(key, encode(s), "PX", Math.max(ttl, 1));
         return true;
       },
 

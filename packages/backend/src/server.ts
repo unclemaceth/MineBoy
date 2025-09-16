@@ -152,8 +152,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     };
     
   } catch (error: any) {
+    console.error('[OPEN_SESSION] failed:', error);
     fastify.log.error({ err: error, body: request.body }, '[OPEN_SESSION] failed');
-    return reply.code(400).send({ error: error?.message ?? 'Open session failed' });
+    return reply.code(500).send({ error: 'Internal server error', details: error?.message });
   }
 });
 
