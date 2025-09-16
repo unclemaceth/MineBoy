@@ -39,6 +39,26 @@ fastify.setErrorHandler((err, req, reply) => {
   reply.code(500).send({ error: 'internal-error', message: err.message });
 });
 
+// Global onSend hook to safely serialize ALL responses
+fastify.addHook('onSend', (req, reply, payload, done) => {
+  try {
+    // If a string/buffer is already being sent, leave it
+    if (typeof payload === 'string' || Buffer.isBuffer(payload)) return done();
+    
+    // If it's an object, stringify with our safe replacer
+    if (payload && typeof payload === 'object') {
+      reply.header('content-type', 'application/json; charset=utf-8');
+      return done(null, safeStringify(payload));
+    }
+    
+    return done();
+  } catch (err) {
+    console.error('[onSend] serialization failed:', err);
+    req.log.error({ err, url: req.url }, '[onSend] serialization failed');
+    return done(err as any);
+  }
+});
+
 // Initialize database
 initDb(process.env.DATABASE_URL);
 
@@ -57,13 +77,23 @@ await registerLeaderboardRoute(fastify);
 
 // Health check
 fastify.get('/health', async () => {
-  return { 
-    status: 'ok', 
+  return {
+    status: 'ok',
     timestamp: new Date().toISOString(),
     config: {
       chainId: config.CHAIN_ID,
       allowedCartridges: config.ALLOWED_CARTRIDGES.length
     }
+  };
+});
+
+// Test endpoint to verify BigInt serialization works
+fastify.get('/test-bigint', async () => {
+  return {
+    test: 'bigint serialization',
+    bigint: BigInt(123456789),
+    number: 42,
+    string: 'hello'
   };
 });
 
@@ -167,9 +197,8 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       }
     };
     
-    // Use Fastify's serializer with our safe JSON replacer
+    // Send response - global onSend hook will handle safe serialization
     console.log('[OPEN_SESSION] Sending response...');
-    reply.serializer((payload) => safeStringify(payload));
     return reply.send(response);
     
   } catch (error: any) {
