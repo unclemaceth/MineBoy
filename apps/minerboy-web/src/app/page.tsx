@@ -438,8 +438,8 @@ function Home() {
           // Build the claim data tuple
           const claimData = {
             wallet: to0x(address || '0x0'),
-            cartridge: to0x(cartridgeInfo.contract),
-            tokenId: BigInt(tokenId),
+            cartridge: to0x(cartridge?.info?.contract || '0x0000000000000000000000000000000000000000'),
+            tokenId: BigInt(cartridge?.tokenId || 0),
             rewardToken: to0x('0x0000000000000000000000000000000000000000'), // Placeholder
             rewardAmount: BigInt(0), // Placeholder
             workHash: to0x(hit.hash),
