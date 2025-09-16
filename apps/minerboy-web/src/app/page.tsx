@@ -209,9 +209,9 @@ function Home() {
     return () => clearInterval(interval);
   }, [job, mining, pushLine, sessionId]);
 
-  // Heartbeat to refresh lock while mining
+  // Heartbeat to refresh lock for entire session
   useEffect(() => {
-    if (!mining || !sessionId) return;
+    if (!sessionId) return;
     
     const heartbeatFn = async () => {
       try {
@@ -242,7 +242,7 @@ function Home() {
     return () => {
       heartbeat.stop();
     };
-  }, [mining, sessionId]);
+  }, [sessionId]);
 
   // Watch for transaction hash and report to backend
   useEffect(() => {
@@ -267,20 +267,8 @@ function Home() {
     };
 
     const handleVisibilityChange = () => {
-      if (document.hidden) {
-        heartbeat.stop();
-      } else if (mining && sessionId) {
-        // Restart heartbeat if we're still mining
-        const heartbeatFn = async () => {
-          try {
-            const minerId = getMinerIdCached();
-            await api.heartbeat(sessionId, minerId);
-          } catch (error) {
-            console.warn('Heartbeat failed on visibility change:', error);
-          }
-        };
-        heartbeat.start(heartbeatFn, 5000);
-      }
+      // Heartbeats are now session-based, not mining-based
+      // No need to stop/start on visibility change
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -458,9 +446,7 @@ function Home() {
         throw new Error('Job expired - cannot claim');
       }
 
-      // Stop heartbeats during claim to avoid race conditions
-      heartbeat.pauseForClaim();
-      pushLine('Stopped heartbeats for claim...');
+      // Keep heartbeats running during claim to maintain lock
 
       // Send the frozen payload exactly as received from worker
       const minerId = getMinerIdCached();
@@ -630,10 +616,9 @@ function Home() {
         pushLine(`Claim failed: ${err.status} ${err.info?.error || err.message || 'Unknown error'}`);
         setStatus('error');
       }
-    } finally {
-      // Re-enable heartbeats after claim attempt
-      heartbeat.resumeAfterClaim();
-    }
+        } finally {
+          // Heartbeats continue running throughout the session
+        }
   };
 
   const handleGetNewJob = async () => {
@@ -840,11 +825,8 @@ function Home() {
       setDifficultyText(`D: ${difficultyLevel} | T: ${ttlLabel}`);
     };
 
-    // Update immediately and then every second
+    // Update immediately (TTL hook handles live updates)
     updateDifficulty();
-    const interval = setInterval(updateDifficulty, 1000);
-    
-    return () => clearInterval(interval);
   }, [job, ttlSec]);
 
   // Helper function for short hash display

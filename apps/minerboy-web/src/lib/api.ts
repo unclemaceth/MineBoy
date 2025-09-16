@@ -73,7 +73,13 @@ export const api = {
     return jfetch("/v2/claim", { 
       method: "POST", 
       body: JSON.stringify(body) 
-    }, normalizeClaimRes);
+    }, (raw) => {
+      const res = normalizeClaimRes(raw);
+      if (res.nextJob) {
+        res.nextJob = normalizeJob(res.nextJob as ApiJob);
+      }
+      return res;
+    });
   },
   
   close(sessionId: string): Promise<{ ok: true }> {
