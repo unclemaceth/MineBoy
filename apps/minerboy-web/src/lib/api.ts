@@ -1,15 +1,16 @@
 import { normalizeJob, normalizeClaimRes } from "@/types/api";
-import type { CartridgeConfig, ClaimRes, Job, Address } from "@/types/api";
+import type { ClaimRes, Job, Address } from "@/types/api";
 
-const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
-
-// Local type definitions (replacing shared imports)
 export interface CartridgeConfig {
   chainId: number;
   name: string;
   contract: string;
   image?: string;
 }
+
+const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+
+// Local type definitions (replacing shared imports)
 
 export interface OpenSessionReq {
   wallet: string;

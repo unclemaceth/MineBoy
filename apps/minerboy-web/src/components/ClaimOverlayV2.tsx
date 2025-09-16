@@ -44,14 +44,14 @@ export default function ClaimOverlayV2() {
       // Submit claim to backend
       const result = await api.claim({
         sessionId,
-        jobId: job.jobId,
+        jobId: job.jobId || job.id,
         preimage: lastFound.preimage,
         hash: lastFound.hash,
         steps: lastFound.attempts,
         hr: lastFound.hr,
       });
       
-      if (!result.ok) {
+      if (result.status !== 'accepted') {
         throw new Error('Backend rejected claim');
       }
       
@@ -65,8 +65,8 @@ export default function ClaimOverlayV2() {
         abi: MINING_CLAIM_ROUTER_ABI,
         functionName: 'claim',
         args: [
-          (result as { claim: unknown }).claim, // ClaimStruct
-          (result as { signature: unknown }).signature, // bytes signature
+          result.claimId, // Claim ID
+          result.txHash || '0x', // Transaction hash
         ],
       });
       

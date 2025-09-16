@@ -15,13 +15,13 @@ export function useMinerWorker(events: Events = {}) {
     const w = new Worker(new URL('../workers/sha.worker.ts', import.meta.url), { type: 'module' });
     workerRef.current = w;
     w.onmessage = (e: MessageEvent<unknown>) => {
-      const msg = e.data;
-      if (msg.type === 'TICK') {
+      const msg = e.data as any;
+      if (msg?.type === 'TICK') {
         events.onTick?.(msg.attempts, msg.hr);
-      } else if (msg.type === 'FOUND') {
+      } else if (msg?.type === 'FOUND') {
         setRunning(false);
         events.onFound?.(msg);
-      } else if (msg.type === 'ERROR') {
+      } else if (msg?.type === 'ERROR') {
         setRunning(false);
         events.onError?.(msg.message);
       }
@@ -36,10 +36,10 @@ export function useMinerWorker(events: Events = {}) {
       workerRef.current.postMessage({
         type: 'START',
         job: {
-          algo: job.algo,
-          suffix: job.suffix.toLowerCase(),
-          charset: job.charset,
-          nonce: job.nonce,
+          algo: 'sha256-suffix',
+          suffix: job.suffix?.toLowerCase() || '',
+          charset: 'hex',
+          nonce: job.nonce || '0x0',
           // New difficulty fields
           rule: job.rule,
           difficultyBits: job.difficultyBits,

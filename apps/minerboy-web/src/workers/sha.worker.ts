@@ -1,8 +1,10 @@
-// @ts-expect-error - tell TS it's a worker module
+/// <reference lib="webworker" />
 export {};
 
 import { sha256 } from '@noble/hashes/sha256';
 import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
+
+declare const self: DedicatedWorkerGlobalScope;
 
 type InStart = {
   type: 'START';
@@ -31,7 +33,7 @@ type OutFound = {
 type OutError = { type: 'ERROR'; message: string };
 type OutMsg = OutTick | OutFound | OutError;
 
-const ctx = self as WorkerGlobalScope;
+const ctx = self;
 
 let running = false;
 let attempts = 0;

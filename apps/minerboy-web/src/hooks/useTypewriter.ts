@@ -37,6 +37,7 @@ export function useTypewriter(
       if (cancelled) return;
       const { li, ci } = posRef.current;
       const line = lines[li];
+      if (!line) return;
 
       if (ci < line.length) {
         // type next char
