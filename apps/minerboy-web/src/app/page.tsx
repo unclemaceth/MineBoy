@@ -208,29 +208,56 @@ function Home() {
   useEffect(() => {
     if (!mining || !sessionId) return;
     
-    const heartbeat = async () => {
-      try {
-        await api.heartbeat(sessionId, getOrCreateMinerId());
-      } catch (error: unknown) {
-        console.warn('Heartbeat failed:', error);
-        
-        // If session not found (404) or lock lost (409), clear session and stop mining
-        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
-          console.log('Session expired or lock lost - clearing state and stopping mining');
-          pushLine('Session expired - please reconnect');
-          
-          // Stop mining immediately
-          miner.stop();
-          
-          // Clear session state
-          clear();
-          setStatus('idle');
-        }
+    let heartbeatTimer: number | null = null;
+    let inClaim = false;
+    
+    const stopHeartbeat = () => {
+      if (heartbeatTimer !== null) {
+        clearInterval(heartbeatTimer);
+        heartbeatTimer = null;
       }
     };
     
-    const interval = setInterval(heartbeat, 10000); // Every 10 seconds
-    return () => clearInterval(interval);
+    const startHeartbeat = () => {
+      stopHeartbeat();
+      const heartbeat = async () => {
+        if (inClaim) return; // Don't heartbeat while claiming
+        try {
+          await api.heartbeat(sessionId, getOrCreateMinerId());
+        } catch (error: unknown) {
+          if (inClaim) return; // Ignore errors while claiming
+          console.warn('Heartbeat failed:', error);
+          
+          // If session not found (404) or lock lost (409), clear session and stop mining
+          if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
+            console.log('Session expired or lock lost - clearing state and stopping mining');
+            pushLine('Session expired - please reconnect');
+            
+            // Stop mining immediately
+            miner.stop();
+            
+            // Clear session state
+            clear();
+            setStatus('idle');
+          }
+        }
+      };
+      
+      // Send one immediately, then every 5 seconds
+      heartbeat();
+      heartbeatTimer = window.setInterval(heartbeat, 5000);
+    };
+    
+    startHeartbeat();
+    
+    // Store the claim flag and stop function for use in handleClaim
+    (window as any).inClaim = () => inClaim;
+    (window as any).setInClaim = (value: boolean) => { inClaim = value; };
+    (window as any).stopHeartbeat = stopHeartbeat;
+    
+    return () => {
+      stopHeartbeat();
+    };
   }, [mining, sessionId]);
 
   // Watch for transaction hash and report to backend
@@ -407,18 +434,17 @@ function Home() {
         throw new Error('Job expired - cannot claim');
       }
 
-      // Pre-claim heartbeat check to ensure session is still alive
-      try {
-        await api.heartbeat(sessionId, getOrCreateMinerId());
-        pushLine('Session verified - proceeding with claim...');
-      } catch (error: unknown) {
-        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
-          throw new Error('Session expired or lock lost - please reconnect and try again');
-        }
-        if ((error instanceof Error && error.message?.includes('409')) || (error instanceof Error && error.message?.includes('Cartridge lock lost'))) {
-          throw new Error('Cartridge lock lost - please reconnect and try again');
-        }
-        throw error; // Re-throw other errors
+      // Stop heartbeats during claim to avoid race conditions
+      const stopHeartbeat = (window as any).stopHeartbeat;
+      const setInClaim = (window as any).setInClaim;
+      
+      if (stopHeartbeat) {
+        stopHeartbeat();
+        pushLine('Stopped heartbeats for claim...');
+      }
+      
+      if (setInClaim) {
+        setInClaim(true);
       }
 
       // Send the frozen payload exactly as received from worker
@@ -549,6 +575,12 @@ function Home() {
       } else {
         pushLine(`Claim failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setStatus('error');
+      }
+    } finally {
+      // Re-enable heartbeats after claim attempt
+      const setInClaim = (window as any).setInClaim;
+      if (setInClaim) {
+        setInClaim(false);
       }
     }
   };
