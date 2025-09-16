@@ -95,9 +95,15 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     
     // Acquire lock for this cartridge using Redis
     const { chainId, contract, tokenId } = cartridge;
-    const lockAcquired = await SessionStore.acquireLock(contract, tokenId, minerId);
-    if (!lockAcquired) {
-      return reply.code(409).send({ error: 'Cartridge is locked by another miner' });
+    
+    try {
+      const lockAcquired = await SessionStore.acquireLock(contract, tokenId, minerId);
+      if (!lockAcquired) {
+        return reply.code(409).send({ error: 'Cartridge is locked by another miner' });
+      }
+    } catch (error) {
+      console.error('[OPEN] Lock acquisition failed:', error);
+      return reply.code(500).send({ error: 'Failed to acquire cartridge lock' });
     }
     
     // Create session in Redis
@@ -110,7 +116,13 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       createdAt: Date.now()
     };
     
-    await SessionStore.createSession(session);
+    try {
+      await SessionStore.createSession(session);
+    } catch (error) {
+      console.error('[OPEN] Session creation failed:', error);
+      await SessionStore.releaseLock(contract, tokenId, minerId);
+      return reply.code(500).send({ error: 'Failed to create session' });
+    }
     
     // Create initial job
     const job = await jobManager.createJob(sessionId);
@@ -315,6 +327,17 @@ const start = async () => {
     console.log(`🎮 ${config.ALLOWED_CARTRIDGES.length} cartridges configured`);
     console.log(`💰 Initial reward: ${config.INITIAL_REWARD_WEI} wei (${config.INITIAL_REWARD_WEI.slice(0, 3)} ABIT)`);
     console.log(`[SessionStore] using ${SessionStore.kind}`);
+    
+    // Test Redis connection
+    if (SessionStore.kind === 'redis') {
+      try {
+        const testKey = 'test:connection';
+        await SessionStore.acquireLock('test', 'test', 'test');
+        console.log('[Redis] Connection test successful');
+      } catch (error) {
+        console.error('[Redis] Connection test failed:', error);
+      }
+    }
     
   } catch (err) {
     fastify.log.error(err);
