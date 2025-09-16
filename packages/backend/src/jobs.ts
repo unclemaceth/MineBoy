@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import mining from '../../shared/src/mining';
+import { getDifficultyForEpoch } from '../../shared/src/mining';
 import { getDifficultyOverride } from './difficulty';
 import type { Job } from '../../shared/src/mining';
 import { config } from './config.js';
@@ -52,7 +52,7 @@ export class JobManager {
    */
   async issueJob(nonce: string): Promise<Job> {
     const epoch = await this.getCurrentEpoch();
-    const diff = mining.getDifficultyForEpoch(epoch, getDifficultyOverride() ?? undefined);
+    const diff = getDifficultyForEpoch(epoch, getDifficultyOverride() ?? undefined);
     const now = Date.now();
     const job: Job = {
       jobId: `job_${now}_${Math.random().toString(36).slice(2)}`,
