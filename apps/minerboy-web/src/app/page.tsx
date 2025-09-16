@@ -354,9 +354,13 @@ function Home() {
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
       pushLine('Session opened successfully!');
       
-    } catch (error) {
-      pushLine(`Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+        } catch (error: any) {
+          if (String(error.message).includes('HTTP 409')) {
+            pushLine('Cartridge is in use. If you just reloaded, wait a few seconds and try again.');
+            return;
+          }
+          pushLine(`Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
   };
   
   const handleA = async () => {
@@ -771,29 +775,26 @@ function Home() {
     }
 
     const updateDifficulty = () => {
-      const rule = job.rule;
       const suffix = job.target;
-      const bits = job.difficultyBits;
+      const bits = job.bits ?? (suffix?.length ?? 0) * 4;
       
       // Determine difficulty level
       let difficultyLevel = 'EASY';
-      if (rule === 'suffix') {
+      if (suffix) {
         if (suffix.length >= 8) difficultyLevel = 'HARD';
         else if (suffix.length >= 7) difficultyLevel = 'MED';
         else if (suffix.length >= 6) difficultyLevel = 'EASY';
         else if (suffix.length >= 4) difficultyLevel = 'EASY';
         else difficultyLevel = 'EASY';
       } else {
-        const bitCount = bits;
-        if (bitCount >= 32) difficultyLevel = 'HARD';
-        else if (bitCount >= 28) difficultyLevel = 'MED';
-        else if (bitCount >= 24) difficultyLevel = 'EASY';
-        else if (bitCount >= 16) difficultyLevel = 'EASY';
+        if (bits >= 32) difficultyLevel = 'HARD';
+        else if (bits >= 28) difficultyLevel = 'MED';
+        else if (bits >= 24) difficultyLevel = 'EASY';
+        else if (bits >= 16) difficultyLevel = 'EASY';
         else difficultyLevel = 'EASY';
       }
       
-      const expiresIn = job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : 0;
-      setDifficultyText(`D: ${difficultyLevel} | T: ${expiresIn}s`);
+      setDifficultyText(`D: ${difficultyLevel} | T: ${suffix?.length ?? 0} zeros`);
     };
 
     // Update immediately and then every second
@@ -1730,11 +1731,11 @@ function Home() {
                 <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                   {job ? (
                     <>
-                      <div><strong>Job ID:</strong> {job.id.slice(0, 8)}...{job.id.slice(-6)}</div>
-                      <div><strong>Nonce:</strong> {job.nonce}</div>
-                      <div><strong>Difficulty:</strong> {job.difficultyZeros} zeros ({job.target})</div>
-                      <div><strong>Expires:</strong> {job.expiresAt ? new Date(job.expiresAt).toLocaleTimeString() : 'N/A'}</div>
-                      <div><strong>TTL:</strong> {job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : 0}s</div>
+                      <div><strong>Job ID:</strong> {job?.id ? `${job.id.slice(0, 8)}...${job.id.slice(-6)}` : 'N/A'}</div>
+                      <div><strong>Nonce:</strong> {job.nonce || 'N/A'}</div>
+                      <div><strong>Difficulty:</strong> {job.bits ? `${job.bits} bits` : `${(job.target?.length ?? 0) * 4} bits (from suffix)`}</div>
+                      <div><strong>Target:</strong> {job.target || 'N/A'}</div>
+                      <div><strong>Height:</strong> {job.height ?? 'N/A'}</div>
                     </>
                   ) : (
                     <div>No active job</div>

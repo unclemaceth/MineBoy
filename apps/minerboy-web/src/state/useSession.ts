@@ -44,7 +44,7 @@ type SessionState = {
   setMode(mode: 'terminal' | 'visual'): void;
   setJob(job: Job): void;
   
-  loadOpenSession(res: { sessionId: string; job: Job }, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string }): void;
+  loadOpenSession(res: { sessionId: string; job?: Job }, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string }): void;
   clear(): void;
 };
 
@@ -73,23 +73,27 @@ export const useSession = create<SessionState>()(
       
       setMode: (mode) => set({ mode }),
       
-      loadOpenSession: (res, wallet, cartridge) => {
-        set({ 
-          wallet, 
-          cartridge, 
-          sessionId: res.sessionId, 
-          job: res.job, 
-          attempts: 0, 
-          hr: 0, 
-          lastFound: undefined,
-          mode: 'terminal' // Start in terminal mode
-        });
-        
-        // Add cartridge loading messages
-        get().pushLine(`${cartridge.info.name} Loaded`);
-        get().pushLine('Enabling Mining Protocol...');
-        get().pushLine('Press A to Mine...');
-      },
+              loadOpenSession: (res, wallet, cartridge) => {
+                set({ 
+                  wallet, 
+                  cartridge, 
+                  sessionId: res.sessionId, 
+                  job: res.job, 
+                  attempts: 0, 
+                  hr: 0, 
+                  lastFound: undefined,
+                  mode: 'terminal' // Start in terminal mode
+                });
+                
+                // Add cartridge loading messages
+                get().pushLine(`${cartridge.info.name} Loaded`);
+                get().pushLine('Enabling Mining Protocol...');
+                if (res.job) {
+                  get().pushLine('Press A to Mine...');
+                } else {
+                  get().pushLine('No job available - try again');
+                }
+              },
       
       clear: () => set({
         wallet: undefined, 
