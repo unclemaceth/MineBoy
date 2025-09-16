@@ -15,6 +15,7 @@ import { useSession, getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
+import { useJobTtl } from "@/hooks/useJobTtl";
 import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
 import { getMinerIdCached } from "@/utils/minerId";
@@ -470,6 +471,21 @@ function Home() {
       assertString(jobId, 'jobId');
       assertString(address, 'address');
       
+      // 1) Refresh lock right before claim to prevent TTL race
+      try {
+        console.log('[CLAIM] pre-heartbeat', { sessionId, minerId });
+        await api.heartbeat(sessionId, minerId);
+        pushLine('Lock refreshed for claim...');
+      } catch (e: any) {
+        if (e.status === 409) {
+          pushLine('Session expired or cartridge lock lost. Please reconnect and try again.');
+          clear();
+          setStatus('idle');
+          return;
+        }
+        throw e;
+      }
+      
       console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId });
       
       const claimResponse = await api.claim({
@@ -775,6 +791,7 @@ function Home() {
   
   // Difficulty info with live TTL countdown
   const [difficultyText, setDifficultyText] = useState('No job');
+  const ttlSec = useJobTtl(job);
   
   useEffect(() => {
     if (!job) {
@@ -802,8 +819,7 @@ function Home() {
         else difficultyLevel = 'EASY';
       }
       
-      // Calculate TTL in seconds
-      const ttlSec = job.ttlSec ?? (job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : undefined);
+      // Use TTL from hook (updates every second)
       const ttlLabel = ttlSec != null ? `${ttlSec}s` : '--';
       setDifficultyText(`D: ${difficultyLevel} | T: ${ttlLabel}`);
     };
