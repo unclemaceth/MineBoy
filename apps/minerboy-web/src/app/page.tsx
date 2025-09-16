@@ -17,7 +17,7 @@ import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
-import { MINER_ID } from "@/utils/minerId";
+import { getMinerIdCached } from "@/utils/minerId";
 import { to0x, hexFrom } from "@/lib/hex";
 import type { CartridgeConfig } from "@/lib/api";
 
@@ -212,8 +212,9 @@ function Home() {
     
     const heartbeatFn = async () => {
       try {
-        console.log('[HB_PAYLOAD]', { sessionId, minerId: MINER_ID });
-        await api.heartbeat(sessionId, MINER_ID);
+        const minerId = getMinerIdCached();
+        console.log('[HB_PAYLOAD]', { sessionId, minerId });
+        await api.heartbeat(sessionId, minerId);
       } catch (error: any) {
         console.warn('Heartbeat failed:', error.status, error.info);
         
@@ -269,7 +270,8 @@ function Home() {
         // Restart heartbeat if we're still mining
         const heartbeatFn = async () => {
           try {
-            await api.heartbeat(sessionId, MINER_ID);
+            const minerId = getMinerIdCached();
+            await api.heartbeat(sessionId, minerId);
           } catch (error) {
             console.warn('Heartbeat failed on visibility change:', error);
           }
@@ -333,7 +335,8 @@ function Home() {
     pushLine(`Opening session with ${cartridgeInfo.name}...`);
     
     try {
-      console.log('[SESSION_OPEN] Using minerId:', MINER_ID);
+      const minerId = getMinerIdCached();
+      console.log('[SESSION_OPEN] Using minerId:', minerId);
       
       const res = await api.openSession({
         wallet: address,
@@ -343,7 +346,7 @@ function Home() {
           tokenId
         },
         clientInfo: { ua: navigator.userAgent },
-        minerId: MINER_ID
+        minerId
       });
       
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
@@ -452,7 +455,8 @@ function Home() {
       pushLine('Stopped heartbeats for claim...');
 
       // Send the frozen payload exactly as received from worker
-      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId: MINER_ID, jobId: job.jobId || job.id });
+      const minerId = getMinerIdCached();
+      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId: job.jobId || job.id });
       
       const claimResponse = await api.claim({
         sessionId,
@@ -461,7 +465,7 @@ function Home() {
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
         hr: hit.hr,
-        minerId: MINER_ID as `0x${string}`
+        minerId: minerId as `0x${string}`
       });
 
       console.log('[CLAIM_OK]', claimResponse);
