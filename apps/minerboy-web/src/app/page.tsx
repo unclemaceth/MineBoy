@@ -287,7 +287,7 @@ function Home() {
           tokenId
         },
         clientInfo: { ua: navigator.userAgent },
-        minerId: getOrCreateMinerId()
+        minerId: to0x(getOrCreateMinerId())
       });
       
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
@@ -400,10 +400,10 @@ function Home() {
         sessionId,
         jobId: job.jobId || job.id,
         preimage: hit.preimage,  // exact string from worker
-        hash: hit.hash,          // exact hash from worker
+        hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
         hr: hit.hr,
-        minerId: getOrCreateMinerId()
+        minerId: to0x(getOrCreateMinerId())
       });
 
       console.log('[CLAIM_OK]', claimResponse);
@@ -435,6 +435,19 @@ function Home() {
           // Use the proper MiningClaimRouter contract
           const routerAddress = '0x34a227cf6c6a2f5f4f7c7710e8416555334e01bf';
           
+          // Build the claim data tuple
+          const claimData = {
+            wallet: to0x(address || '0x0'),
+            cartridge: to0x(cartridgeInfo.contract),
+            tokenId: BigInt(tokenId),
+            rewardToken: to0x('0x0000000000000000000000000000000000000000'), // Placeholder
+            rewardAmount: BigInt(0), // Placeholder
+            workHash: to0x(hit.hash),
+            attempts: BigInt(hit.attempts),
+            nonce: to0x(hit.preimage),
+            expiry: BigInt(job?.expiresAt || Date.now() + 60000)
+          };
+
           writeContract({
             address: routerAddress as `0x${string}`,
             abi: [
@@ -460,7 +473,7 @@ function Home() {
               }
             ],
             functionName: 'claim',
-            args: [to0x(claimResponse.claimId), to0x(claimResponse.txHash || '0x')],
+            args: [claimData, to0x(claimResponse.txHash || '0x')],
           });
           
           pushLine('Transaction submitted - waiting for hash...');
