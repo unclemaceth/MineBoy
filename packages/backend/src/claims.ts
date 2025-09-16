@@ -1,5 +1,16 @@
 import { ethers } from 'ethers';
-import { ClaimReq, ClaimRes, ClaimStruct, hashMeetsDifficulty } from '../../shared/src/mining';
+// Robust interop-safe import
+import * as Mining from '../../shared/src/mining';
+
+const hashMeetsDifficulty =
+  (Mining as any).hashMeetsDifficulty ??
+  (Mining as any).default?.hashMeetsDifficulty;
+
+if (typeof hashMeetsDifficulty !== 'function') {
+  throw new Error('shared/mining is missing hashMeetsDifficulty');
+}
+
+import { ClaimReq, ClaimRes, ClaimStruct } from '../../shared/src/mining';
 import { config } from './config.js';
 import { sessionManager } from './sessions.js';
 import { jobManager } from './jobs.js';
