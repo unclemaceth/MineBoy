@@ -1,6 +1,6 @@
 import { normalizeClaimRes } from "@/types/api";
 import { normalizeJob } from "@/lib/normalizeJob";
-import type { ClaimRes, ApiJob, Address, ClaimReq, ApiOpenSessionResp } from "@/types/api";
+import type { ClaimRes, ApiJob, Address, ClaimReq, SessionOpenApiResp } from "@/types/api";
 import type { MiningJob } from "@/types/mining";
 
 export interface CartridgeConfig {
@@ -23,7 +23,7 @@ export interface OpenSessionReq {
 
 export interface OpenSessionRes {
   sessionId: string;
-  job: MiningJob;
+  job?: MiningJob;
   policy: { heartbeatSec: number; cooldownSec: number };
   claim: any;
 }
@@ -51,10 +51,11 @@ export const api = {
   
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
     return jfetch("/v2/session/open", { method: "POST", body: JSON.stringify(body) }, (j) => {
-      const apiResp = j as ApiOpenSessionResp;
+      const apiResp = j as SessionOpenApiResp;
+      const job = apiResp.job ? normalizeJob(apiResp.job) : undefined;
       return { 
         sessionId: apiResp.sessionId,
-        job: normalizeJob(apiResp.job),
+        job,
         policy: j.policy || { heartbeatSec: 20, cooldownSec: 2 },
         claim: j.claim
       };

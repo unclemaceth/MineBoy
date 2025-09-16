@@ -4,29 +4,28 @@ export type Address = `0x${string}`;
 
 export type ClaimStatus = "accepted" | "rejected" | "pending" | "error";
 
-// Wire format from backend
+// Shape coming *from* the backend
 export type ApiJob = {
-  jobId: string;
-  data: `0x${string}`;
+  jobId: string;                    // <-- source of truth for id
+  data: `0x${string}`;              // seed / preimage base
+  target?: string;                  // "000000" suffix (preferred)
+  suffix?: string;                  // older field name; fallback
+  height?: number;
 
-  // optional/legacy fields from backend responses
-  nonce?: number | `0x${string}`;
-  suffix?: string;         // preferred (e.g. "000000")
-  target?: string;         // legacy alias for suffix
-  height?: number | string;
-  ttlMs?: number | string;
-  expiresAt?: number | string;
+  // difficulty metadata (optional)
+  difficulty?: {
+    rule: 'suffix';
+    bits: number;                   // e.g. 24 for "000000"
+    targetBits?: number;
+  };
 
-  // if backend ever sends these, accept them
-  rule?: string;           // e.g. "suffix"
-  targetBits?: number | string;
-  difficultyBits?: number | string;
-  bits?: number | string;
+  // DO NOT treat nonce as a number; if it exists it must be a string.
+  nonce?: `0x${string}` | string;
 };
 
-export type ApiOpenSessionResp = {
+export type SessionOpenApiResp = {
   sessionId: string;
-  job: ApiJob;
+  job?: ApiJob;                     // job may be absent
 };
 
 export type ClaimReq = {

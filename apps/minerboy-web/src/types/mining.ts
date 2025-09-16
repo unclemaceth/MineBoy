@@ -1,25 +1,15 @@
 export type Hex = `0x${string}`;
 
-export type Rule = 'suffix';
+// Shape the miner/worker & UI expect
+export type MiningJob = {
+  id: string;                       // required
+  data: `0x${string}`;              // required
+  target: string;                   // required; e.g. "000000"
+  rule?: 'suffix';
+  bits?: number;
+  targetBits?: number;
+  height?: number;
 
-export interface MiningJob {
-  // required by UI/worker
-  id: string;              // same as jobId
-  jobId: string;
-  data: `0x${string}`;
-  nonce: number;           // numeric start (0 if absent)
-
-  // difficulty/target
-  target: string;          // "000000" (hash must end with this suffix)
-  targetBits: number;      // target.length * 4
-  difficultyZeros: number; // target.length
-  difficultyBits: number;  // same as targetBits
-  bits: number;            // alias for older code
-
-  rule: Rule;              // "suffix"
-
-  // misc
-  height: number;          // 0 if N/A
-  ttlMs: number;           // ms
-  expiresAt: number;       // epoch ms
-}
+  // Keep as string if you ever display it; the worker doesn't need it.
+  nonce?: `0x${string}`;
+};

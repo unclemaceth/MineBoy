@@ -36,12 +36,11 @@ export function useMinerWorker(events: Events = {}) {
       workerRef.current.postMessage({
         type: 'START',
         job: {
-          algo: 'sha256-suffix',
-          suffix: job.target.toLowerCase(),
-          charset: 'hex',
-          nonce: job.data,
-          rule: job.rule,
-          difficultyBits: job.difficultyBits,
+          id: job.id,
+          data: job.data,
+          target: job.target,
+          bits: job.bits,
+          height: job.height,
         },
       });
     },
