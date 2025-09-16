@@ -503,7 +503,7 @@ function Home() {
         // Stop any running worker
         miner.stop();
       } else {
-        pushLine(`Claim failed: ${err?.message ?? 'Unknown error'}`);
+        pushLine(`Claim failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
         setStatus('error');
       }
     }
