@@ -49,10 +49,10 @@ export const api = {
     }));
   },
   
-  heartbeat(sessionId: string, minerId: string, jobId?: string): Promise<{ ok: true }> {
+  heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
     return jfetch(`/v2/session/heartbeat`, { 
       method: "POST", 
-      body: JSON.stringify({ sessionId, minerId, jobId }) 
+      body: JSON.stringify({ sessionId, minerId }) 
     }, () => ({ ok: true }));
   },
   
