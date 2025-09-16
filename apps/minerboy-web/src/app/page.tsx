@@ -210,13 +210,13 @@ function Home() {
     
     const heartbeat = async () => {
       try {
-        await api.heartbeat(sessionId, getOrCreateMinerId());
+        await api.heartbeat(sessionId, getOrCreateMinerId(), job?.id);
       } catch (error: unknown) {
         console.warn('Heartbeat failed:', error);
         
-        // If session not found (404), clear session and stop mining
-        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found'))) {
-          console.log('Session expired - clearing state and stopping mining');
+        // If session not found (404) or lock lost (409), clear session and stop mining
+        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
+          console.log('Session expired or lock lost - clearing state and stopping mining');
           pushLine('Session expired - please reconnect');
           
           // Stop mining immediately
@@ -409,11 +409,11 @@ function Home() {
 
       // Pre-claim heartbeat check to ensure session is still alive
       try {
-        await api.heartbeat(sessionId, getOrCreateMinerId());
+        await api.heartbeat(sessionId, getOrCreateMinerId(), job?.id);
         pushLine('Session verified - proceeding with claim...');
       } catch (error: unknown) {
-        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found'))) {
-          throw new Error('Session expired - please reconnect and try again');
+        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
+          throw new Error('Session expired or lock lost - please reconnect and try again');
         }
         if ((error instanceof Error && error.message?.includes('409')) || (error instanceof Error && error.message?.includes('Cartridge lock lost'))) {
           throw new Error('Cartridge lock lost - please reconnect and try again');
