@@ -73,25 +73,32 @@ export interface ClaimStruct {
   expiry: string;
 }
 
-// ---------- Difficulty Table ----------
-export const DIFFICULTY_TABLE: Record<number, EpochDifficulty> = {
-  0: { rule: 'suffix', suffix: '000000', ttlMs: 30 * 60_000 },    // ~1 min desktop, ~10+ min phones
-  1: { rule: 'suffix', suffix: '0000000', ttlMs: 4 * 60 * 60_000 }, // ~18 min desktop, ~1-3h phones  
-  2: { rule: 'suffix', suffix: '00000000', ttlMs: 24 * 60 * 60_000 }, // ~4.8h desktop, ~1-2 days phones
-  3: { rule: 'suffix', suffix: '00000000', ttlMs: 24 * 60 * 60_000 }, // Keep at 8 zeros for stability
+// ---------- Difficulty System ----------
+export type Difficulty = {
+  zeros: number;        // how many trailing zeros required
+  suffix: string;       // the literal "000000..." string
+  ttlMs: number;        // job TTL in milliseconds
 };
 
-// get base difficulty by epoch, then apply optional override
-export function getDifficultyForEpoch(
-  epoch: number,
-  override?: Partial<EpochDifficulty>
-): EpochDifficulty {
-  const base = DIFFICULTY_TABLE[epoch] ?? DIFFICULTY_TABLE[0];
-  return {
-    rule: 'suffix',
-    suffix: override?.suffix ?? base.suffix,
-    ttlMs: override?.ttlMs ?? base.ttlMs,
+/**
+ * Our epoch → difficulty policy:
+ *   epoch 0 → 6 zeros (000000)
+ *   epoch 1 → 7 zeros (0000000) 
+ *   epoch 2+ → 8 zeros (00000000) - cap
+ */
+export function getDifficultyForEpoch(epoch: number | bigint): Difficulty {
+  const e = Number(epoch ?? 0);
+  const zeros = Math.min(6 + Math.max(e, 0), 8);
+  const ttlMs = e === 0 ? 30 * 60_000 : e === 1 ? 4 * 60 * 60_000 : 24 * 60 * 60_000;
+  return { 
+    zeros, 
+    suffix: '0'.repeat(zeros),
+    ttlMs
   };
+}
+
+export function hashMeetsDifficulty(hash: `0x${string}`, suffix: string): boolean {
+  return hash.toLowerCase().endsWith(suffix);
 }
 
 // simple back-compat helper if some code still wants suffix
@@ -101,8 +108,5 @@ export function getSuffixForEpoch(epoch: number): string {
 }
 
 // Default export for ESM/CJS interop safety
-export default {
-  DIFFICULTY_TABLE,
-  getDifficultyForEpoch,
-  getSuffixForEpoch,
-};
+const Mining = { getDifficultyForEpoch, hashMeetsDifficulty, getSuffixForEpoch };
+export default Mining;

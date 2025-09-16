@@ -192,7 +192,7 @@ fastify.get('/admin/stats', async () => {
 // Get current difficulty info
 fastify.get('/v2/difficulty', async () => {
   const epoch = await jobManager.getCurrentEpoch();
-  const diff = getDifficultyForEpoch(epoch, getDifficultyOverride() ?? undefined);
+  const diff = getDifficultyForEpoch(epoch);
   return {
     epoch,
     difficulty: diff,

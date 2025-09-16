@@ -1,5 +1,5 @@
 import { ethers } from 'ethers';
-import { ClaimReq, ClaimRes, ClaimStruct, validateHashDifficulty } from '../../shared/src/mining';
+import { ClaimReq, ClaimRes, ClaimStruct, hashMeetsDifficulty } from '../../shared/src/mining';
 import { config } from './config.js';
 import { sessionManager } from './sessions.js';
 import { jobManager } from './jobs.js';
@@ -85,8 +85,8 @@ export class ClaimProcessor {
       throw new Error('Preimage nonce mismatch');
     }
     
-    // Validate hash difficulty (suffix OR bits)
-    if (!this.validateDifficulty(claimReq.hash, job)) {
+    // Validate hash difficulty using the new system
+    if (!hashMeetsDifficulty(claimReq.hash, job.suffix || '')) {
       throw new Error('Hash does not meet difficulty');
     }
     

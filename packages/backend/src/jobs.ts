@@ -52,7 +52,7 @@ export class JobManager {
    */
   async issueJob(nonce: string): Promise<Job> {
     const epoch = await this.getCurrentEpoch();
-    const diff = getDifficultyForEpoch(epoch, getDifficultyOverride() ?? undefined);
+    const diff = getDifficultyForEpoch(epoch);
     const now = Date.now();
     const job: Job = {
       jobId: `job_${now}_${Math.random().toString(36).slice(2)}`,
@@ -60,9 +60,9 @@ export class JobManager {
       charset: 'hex',
       nonce,
       expiresAt: now + diff.ttlMs,
-      rule: diff.rule,
+      rule: 'suffix',
       suffix: diff.suffix,
-      bits: diff.bits,
+      difficultyBits: diff.zeros,
       epoch,
       ttlMs: diff.ttlMs,
     };
