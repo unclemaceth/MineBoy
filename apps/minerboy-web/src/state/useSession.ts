@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Job } from '@/types/mining';
-import type { CartridgeConfig, OpenSessionRes } from '@/lib/api';
+import type { CartridgeConfig } from '@/lib/api';
 
 // Generate or retrieve stable minerId
 export function getOrCreateMinerId(): string {
@@ -44,7 +44,7 @@ type SessionState = {
   setMode(mode: 'terminal' | 'visual'): void;
   setJob(job: Job): void;
   
-  loadOpenSession(res: OpenSessionRes, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string }): void;
+  loadOpenSession(res: { sessionId: string; job: Job }, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string }): void;
   clear(): void;
 };
 

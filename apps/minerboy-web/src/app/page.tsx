@@ -20,6 +20,7 @@ import { heartbeat } from "@/utils/HeartbeatController";
 import { getMinerIdCached } from "@/utils/minerId";
 import { to0x, hexFrom } from "@/lib/hex";
 import type { CartridgeConfig } from "@/lib/api";
+import type { Job } from "@/types/mining";
 
 const W = 390; // iPhone 13 CSS pixels
 const H = 844; // iPhone 13 CSS pixels
