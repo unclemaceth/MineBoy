@@ -20,7 +20,7 @@ import { heartbeat } from "@/utils/HeartbeatController";
 import { getMinerIdCached } from "@/utils/minerId";
 import { to0x, hexFrom } from "@/lib/hex";
 import type { CartridgeConfig } from "@/lib/api";
-import type { Job } from "@/types/mining";
+import type { MiningJob as Job } from "@/types/mining";
 
 const W = 390; // iPhone 13 CSS pixels
 const H = 844; // iPhone 13 CSS pixels
@@ -350,6 +350,7 @@ function Home() {
         minerId
       });
       
+      console.log('[JOB]', res.job);
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
       pushLine('Session opened successfully!');
       
@@ -457,11 +458,11 @@ function Home() {
 
       // Send the frozen payload exactly as received from worker
       const minerId = getMinerIdCached();
-      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId: job.jobId || job.id });
+      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId: job.jobId });
       
       const claimResponse = await api.claim({
         sessionId,
-        jobId: job.jobId || job.id,
+        jobId: job.jobId,
         preimage: hit.preimage,  // exact string from worker
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
@@ -770,9 +771,9 @@ function Home() {
     }
 
     const updateDifficulty = () => {
-      const rule = job.rule || 'suffix';
-      const suffix = job.suffix || '??';
-      const bits = job.bits || job.difficultyBits || '??';
+      const rule = job.rule;
+      const suffix = job.target;
+      const bits = job.difficultyBits;
       
       // Determine difficulty level
       let difficultyLevel = 'EASY';
@@ -1729,9 +1730,9 @@ function Home() {
                 <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                   {job ? (
                     <>
-                      <div><strong>Job ID:</strong> {(job.jobId || job.id).slice(0, 8)}...{(job.jobId || job.id).slice(-6)}</div>
-                      <div><strong>Nonce:</strong> {job.nonce ? `${hexFrom(job.nonce).slice(0, 8)}...${hexFrom(job.nonce).slice(-6)}` : 'N/A'}</div>
-                      <div><strong>Difficulty:</strong> {job.difficultyBits ? `${job.difficultyBits} zeros (${job.suffix})` : job.suffix}</div>
+                      <div><strong>Job ID:</strong> {job.id.slice(0, 8)}...{job.id.slice(-6)}</div>
+                      <div><strong>Nonce:</strong> {job.nonce}</div>
+                      <div><strong>Difficulty:</strong> {job.difficultyZeros} zeros ({job.target})</div>
                       <div><strong>Expires:</strong> {job.expiresAt ? new Date(job.expiresAt).toLocaleTimeString() : 'N/A'}</div>
                       <div><strong>TTL:</strong> {job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : 0}s</div>
                     </>

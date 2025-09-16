@@ -4,24 +4,29 @@ export type Address = `0x${string}`;
 
 export type ClaimStatus = "accepted" | "rejected" | "pending" | "error";
 
-// Wire format from the backend
+// Wire format from backend
 export type ApiJob = {
   jobId: string;
   data: `0x${string}`;
 
-  // difficulty (backend may send either)
-  suffix?: string;            // preferred
-  target?: string;            // legacy/back-compat
-
-  // counters / timing (wire can be loose)
-  nonce?: number | string;    // some code made this a string — allow it
-  nonceStart?: number;        // optional start offset from backend
+  // optional/legacy fields from backend responses
+  nonce?: number | `0x${string}`;
+  suffix?: string;         // preferred (e.g. "000000")
+  target?: string;         // legacy alias for suffix
   height?: number | string;
-  ttlMs?: number;
-  expiresAt?: number;
-  difficultyBits?: number;
-  rule?: "suffix" | "bits";
-  targetBits?: number;
+  ttlMs?: number | string;
+  expiresAt?: number | string;
+
+  // if backend ever sends these, accept them
+  rule?: string;           // e.g. "suffix"
+  targetBits?: number | string;
+  difficultyBits?: number | string;
+  bits?: number | string;
+};
+
+export type ApiOpenSessionResp = {
+  sessionId: string;
+  job: ApiJob;
 };
 
 export type ClaimReq = {

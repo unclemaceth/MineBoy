@@ -1,7 +1,7 @@
 import { normalizeClaimRes } from "@/types/api";
-import { normalizeJob } from "@/utils/normalizeJob";
-import type { ClaimRes, ApiJob, Address, ClaimReq } from "@/types/api";
-import type { Job } from "@/types/mining";
+import { normalizeJob } from "@/lib/normalizeJob";
+import type { ClaimRes, ApiJob, Address, ClaimReq, ApiOpenSessionResp } from "@/types/api";
+import type { MiningJob } from "@/types/mining";
 
 export interface CartridgeConfig {
   chainId: number;
@@ -23,7 +23,7 @@ export interface OpenSessionReq {
 
 export interface OpenSessionRes {
   sessionId: string;
-  job: Job;
+  job: MiningJob;
   policy: { heartbeatSec: number; cooldownSec: number };
   claim: any;
 }
@@ -50,12 +50,15 @@ export const api = {
   },
   
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
-    return jfetch("/v2/session/open", { method: "POST", body: JSON.stringify(body) }, (j) => ({ 
-      sessionId: String(j.sessionId ?? j.session_id),
-      job: normalizeJob(j.job as ApiJob),
-      policy: j.policy || { heartbeatSec: 20, cooldownSec: 2 },
-      claim: j.claim
-    }));
+    return jfetch("/v2/session/open", { method: "POST", body: JSON.stringify(body) }, (j) => {
+      const apiResp = j as ApiOpenSessionResp;
+      return { 
+        sessionId: apiResp.sessionId,
+        job: normalizeJob(apiResp.job),
+        policy: j.policy || { heartbeatSec: 20, cooldownSec: 2 },
+        claim: j.claim
+      };
+    });
   },
   
   heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
@@ -79,7 +82,7 @@ export const api = {
     }, () => ({ ok: true }));
   },
   
-  getNextJob(sessionId: string): Promise<Job> {
+  getNextJob(sessionId: string): Promise<MiningJob> {
     return jfetch(`/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => {
       return normalizeJob(j as ApiJob);
     });

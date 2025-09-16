@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Job } from '@/types/mining';
+import type { MiningJob as Job } from '@/types/mining';
 
 type Events = {
   onTick?: (attempts: number, hr: number) => void;
@@ -37,13 +37,11 @@ export function useMinerWorker(events: Events = {}) {
         type: 'START',
         job: {
           algo: 'sha256-suffix',
-          suffix: (job.suffix || job.target || '').toLowerCase(),
+          suffix: job.target.toLowerCase(),
           charset: 'hex',
-          nonce: job.nonce || job.data || '0x0',
-          // New difficulty fields
-          rule: job.rule || 'suffix',
+          nonce: job.data,
+          rule: job.rule,
           difficultyBits: job.difficultyBits,
-          targetBits: job.targetBits,
         },
       });
     },
