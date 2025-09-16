@@ -1,6 +1,5 @@
-import { normalizeClaimResponse, normalizeJob } from "@/types/api";
-import type { ClaimRes } from "@/types/api";
-import type { Job } from "@/types/mining";
+import { normalizeJob, normalizeClaimRes } from "@/types/api";
+import type { CartridgeConfig, ClaimRes, Job, Address } from "@/types/api";
 
 const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
 
@@ -36,86 +35,72 @@ export interface ClaimReq {
   minerId: string;
 }
 
-async function j<T>(res: Response): Promise<T> {
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
-  }
-  return (await res.json()) as T;
-}
-
-export async function getNextJob(sessionId: string): Promise<Job> {
-  const res = await fetch(`${BASE}/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, { cache: "no-store" });
-  const raw = await j<unknown>(res);
-  const job = normalizeJob(raw);
-  if (!job) throw new Error("Malformed job payload");
-  return job;
-}
-
-export async function submitClaim(body: ClaimReq): Promise<ClaimRes> {
-  const res = await fetch(`${BASE}/v2/claim`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  const raw = await j<unknown>(res);
-  return normalizeClaimResponse(raw);
+async function jfetch<T>(path: string, init?: RequestInit, map?: (x: any) => T): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) }});
+  if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+  const json = await res.json();
+  return map ? map(json) : (json as T);
 }
 
 export const api = {
   cartridges(): Promise<CartridgeConfig[]> {
-    return fetch(`${BASE}/v2/cartridges`, { cache: 'no-store' }).then(j);
+    return jfetch("/v2/cartridges", undefined, (j) => j as CartridgeConfig[]);
   },
   
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
-    return fetch(`${BASE}/v2/session/open`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body)
-    }).then(j);
+    return jfetch("/v2/session/open", { method: "POST", body: JSON.stringify(body) }, (j) => ({ 
+      sessionId: String(j.sessionId ?? j.session_id),
+      job: normalizeJob(j.job) || { id: "", data: "", target: "" },
+      policy: j.policy || { heartbeatSec: 20, cooldownSec: 2 },
+      claim: j.claim
+    }));
   },
   
   heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
-    return fetch(`${BASE}/v2/session/heartbeat`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' }, 
-      body: JSON.stringify({ sessionId, minerId })
-    }).then(j);
+    return jfetch(`/v2/session/heartbeat`, { 
+      method: "POST", 
+      body: JSON.stringify({ sessionId, minerId }) 
+    }, () => ({ ok: true }));
   },
   
   claim(body: ClaimReq): Promise<ClaimRes> {
-    return submitClaim(body);
+    return jfetch("/v2/claim", { 
+      method: "POST", 
+      body: JSON.stringify(body) 
+    }, normalizeClaimRes);
   },
   
   close(sessionId: string): Promise<{ ok: true }> {
-    return fetch(`${BASE}/v2/session/close`, {
-      method: 'POST', 
-      headers: { 'content-type': 'application/json' }, 
-      body: JSON.stringify({ sessionId })
-    }).then(j);
+    return jfetch(`/v2/session/close`, { 
+      method: "POST", 
+      body: JSON.stringify({ sessionId }) 
+    }, () => ({ ok: true }));
   },
   
   getNextJob(sessionId: string): Promise<Job> {
-    return getNextJob(sessionId);
+    return jfetch(`/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => {
+      const job = normalizeJob(j);
+      if (!job) throw new Error("bad job payload");
+      return job;
+    });
   },
   
   getStats(): Promise<unknown> {
-    return fetch(`${BASE}/admin/stats`, { cache: 'no-store' }).then(j);
+    return jfetch("/admin/stats", undefined, (j) => j);
   },
 
   claimTx(body: { claimId: string; txHash: string }): Promise<{ ok: true }> {
-    return fetch(`${BASE}/v2/claim/tx`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    }).then(j);
+    return jfetch("/v2/claim/tx", { 
+      method: "POST", 
+      body: JSON.stringify(body) 
+    }, () => ({ ok: true }));
   },
 
-  getLeaderboard(params: { period?: 'all'|'24h'|'7d'; limit?: number; wallet?: string } = {}): Promise<unknown> {
+  getLeaderboard(params: { period?: 'all'|'24h'|'7d'; limit?: number; wallet?: Address } = {}): Promise<unknown> {
     const usp = new URLSearchParams();
     if (params.period) usp.set('period', params.period);
     if (params.limit) usp.set('limit', String(params.limit));
     if (params.wallet) usp.set('wallet', params.wallet);
-    return fetch(`${BASE}/v2/leaderboard?${usp.toString()}`, { method: 'GET' }).then(j);
+    return jfetch(`/v2/leaderboard?${usp.toString()}`, undefined, (j) => j);
   }
 };
