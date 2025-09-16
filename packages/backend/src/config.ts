@@ -36,7 +36,7 @@ export const config = {
         ? JSON.parse(process.env.ALLOWED_CARTRIDGES) as `0x${string}`[]
         : [process.env.ALLOWED_CARTRIDGES as `0x${string}`])
     : [] as `0x${string}`[],
-  SUFFIX_ABIT: process.env.SUFFIX_ABIT || 'ab17',
+  SUFFIX_ABIT: process.env.SUFFIX_ABIT || '000000',
   
   // Server
   PORT: parseInt(process.env.PORT || '8787'),

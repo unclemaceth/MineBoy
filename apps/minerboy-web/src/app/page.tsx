@@ -137,6 +137,18 @@ function Home() {
       return () => clearTimeout(timer);
     }
   }, [booting]);
+
+  // Cleanup session on page unload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionId) {
+        api.close(sessionId).catch(console.error);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [sessionId]);
   
   // Update wallet when account changes
   useEffect(() => {
@@ -255,6 +267,10 @@ function Home() {
     if (!isConnected) {
       setShowWalletModal(true);
     } else {
+      // Close any active session before disconnecting
+      if (sessionId) {
+        api.close(sessionId).catch(console.error);
+      }
       disconnect();
       clear();
       pushLine('Disconnected');
@@ -389,6 +405,9 @@ function Home() {
       } catch (error: unknown) {
         if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found'))) {
           throw new Error('Session expired - please reconnect and try again');
+        }
+        if ((error instanceof Error && error.message?.includes('409')) || (error instanceof Error && error.message?.includes('Cartridge lock lost'))) {
+          throw new Error('Cartridge lock lost - please reconnect and try again');
         }
         throw error; // Re-throw other errors
       }
