@@ -109,7 +109,7 @@ export class JobManager {
     
     // Store job
     this.jobNonces.set(sessionId, signedJob);
-    sessionManager.setJob(sessionId, signedJob);
+    await SessionStore.setJob(sessionId, signedJob);
     
     console.log(`Created job ${job.jobId} for session ${sessionId} (epoch ${job.epoch}, rule ${job.rule}, ${job.rule === 'suffix' ? `suffix "${job.suffix}"` : `${job.bits} bits`})`);
     return signedJob;
@@ -155,7 +155,7 @@ export class JobManager {
    * Create next job from previous hash (deterministic chain)
    */
   async createNextJob(sessionId: string, previousHash: string, previousJob: Job): Promise<Job | null> {
-    const session = sessionManager.getSession(sessionId);
+    const session = await SessionStore.getSession(sessionId);
     if (!session) return null;
     
     const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
@@ -182,7 +182,7 @@ export class JobManager {
     
     // Store job
     this.jobNonces.set(sessionId, signedJob);
-    sessionManager.setJob(sessionId, signedJob);
+    await SessionStore.setJob(sessionId, signedJob);
     
     console.log(`Created next job ${job.jobId} (height ${jobWithSession.height}) for session ${sessionId} (epoch ${job.epoch}, rule ${job.rule}, ${job.rule === 'suffix' ? `suffix "${job.suffix}"` : `${job.bits} bits`})`);
     return signedJob;

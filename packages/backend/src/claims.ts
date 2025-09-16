@@ -12,7 +12,7 @@ if (typeof hashMeetsDifficulty !== 'function') {
 
 import { ClaimReq, ClaimRes, ClaimStruct } from '../../shared/src/mining';
 import { config } from './config.js';
-import { sessionManager } from './sessions.js';
+import { SessionStore } from './sessionStore.js';
 import { jobManager } from './jobs.js';
 import { cartridgeRegistry } from './registry.js';
 import { sha256 } from '@noble/hashes/sha256';
@@ -73,7 +73,7 @@ export class ClaimProcessor {
     });
     
     // Validate session
-    const session = sessionManager.getSession(claimReq.sessionId);
+    const session = await SessionStore.getSession(claimReq.sessionId);
     if (!session) {
       throw new Error('Invalid session');
     }
