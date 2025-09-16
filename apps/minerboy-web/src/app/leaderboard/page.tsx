@@ -49,7 +49,7 @@ export default function LeaderboardPage() {
       try {
         setLoading(true);
         const resp = await api.getLeaderboard({ period, limit: 25, wallet: address });
-        if (!cancelled) setData(resp);
+        if (!cancelled) setData(resp as ApiResp);
       } catch {
         // noop for now
       } finally {
