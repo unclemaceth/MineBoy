@@ -26,6 +26,7 @@ import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
+import { getRedis } from './redis.js';
 
 const fastify = Fastify({ 
   logger: true,
@@ -95,6 +96,30 @@ fastify.get('/test-bigint', async () => {
     number: 42,
     string: 'hello'
   };
+});
+
+// Admin endpoint to clear all locks (for testing)
+fastify.post('/admin/clear-locks', async (request, reply) => {
+  const auth = request.headers.authorization || '';
+  if (!ADMIN_TOKEN || auth !== `Bearer ${ADMIN_TOKEN}`) {
+    return reply.code(401).send({ error: 'Unauthorized' });
+  }
+  
+  try {
+    // Clear all lock keys from Redis
+    const redis = getRedis();
+    if (redis) {
+      const keys = await redis.keys('mineboy:v2:lock:*');
+      if (keys.length > 0) {
+        await redis.del(...keys);
+        console.log(`Cleared ${keys.length} lock keys`);
+      }
+    }
+    return { ok: true, message: 'All locks cleared' };
+  } catch (error) {
+    console.error('Error clearing locks:', error);
+    return reply.code(500).send({ error: 'Failed to clear locks' });
+  }
 });
 
 // Get available cartridges
