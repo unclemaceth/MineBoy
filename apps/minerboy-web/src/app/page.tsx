@@ -461,7 +461,7 @@ function Home() {
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
         hr: hit.hr,
-        minerId: MINER_ID
+        minerId: MINER_ID as `0x${string}`
       });
 
       console.log('[CLAIM_OK]', claimResponse);
@@ -563,7 +563,7 @@ function Home() {
         setStatus('idle');
       }, 3000);
       
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error('[CLAIM] failed', err.status, err.info);
       
       // Handle session expiration specifically
