@@ -53,11 +53,29 @@ const idFrom = (x: any) => String(x?.id ?? x?.jobId ?? x?.job_id ?? crypto.rando
 
 export function normalizeJob(raw: unknown): Job | undefined {
   const j: any = raw;
-  if (!j || typeof j !== "object") return;
+  if (!j || typeof j !== "object") {
+    console.error('[normalizeJob] missing or invalid job:', raw);
+    return;
+  }
 
-  const data = j.data ?? j.header ?? j.blockHeader;
-  const target = j.target ?? j.threshold;
-  if (!data || !target) return;
+  // Handle both frontend and backend job shapes
+  const dataRaw = j.data ?? j.nonce ?? j.header ?? j.blockHeader;
+  const target = j.target ?? j.suffix ?? j.threshold ?? (typeof j.zeros === 'number' ? '0'.repeat(j.zeros) : '');
+  
+  // Ensure data is properly formatted as hex
+  const to0x = (v: any): `0x${string}` => {
+    if (typeof v === 'number') return (`0x${v.toString(16)}` as const);
+    if (typeof v === 'bigint') return (`0x${v.toString(16)}` as const);
+    if (typeof v === 'string') return ((v.startsWith('0x') ? v : `0x${v}`) as const);
+    return ('' as const);
+  };
+  
+  const data = to0x(dataRaw);
+  
+  if (!data || !target) {
+    console.error('[normalizeJob] missing data or target:', { data, target, raw: j });
+    return;
+  }
 
   const id = idFrom(j);
   const height = toNum(j.height ?? j.blockHeight ?? j.h);

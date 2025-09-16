@@ -366,6 +366,15 @@ function Home() {
       
       // Start mining
       console.log('Starting mining with job:', job);
+      console.log('Job details:', { id: job?.id, data: job?.data, target: job?.target });
+      
+      // Safety check - refuse to start if job is empty
+      if (!job?.id || !job?.data || !job?.target) {
+        console.warn('No valid job yet, not starting miner');
+        pushLine('No valid job - re-insert cartridge');
+        return;
+      }
+      
       setFoundResult(null);
       setFound(undefined); // Clear lastFound from session
       setStatus('mining');
