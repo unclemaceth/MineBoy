@@ -2,6 +2,12 @@
 const KEY = 'mb/minerId';
 
 export function getMinerId(): string {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    // Return a placeholder for SSR - will be replaced on client
+    return 'mb_ssr_placeholder';
+  }
+  
   let id = localStorage.getItem(KEY);
   if (!id) {
     id = `mb_${crypto.randomUUID().replace(/-/g, '').slice(0, 32)}`;
@@ -15,6 +21,13 @@ export function getMinerId(): string {
   return id; // NOTE: NO to0x() here - this is NOT a hex address
 }
 
-// Freeze the minerId for the entire page lifecycle
-export const MINER_ID = getMinerId();
-console.log('[MINER_ID]', MINER_ID);
+// Lazy-loaded minerId to avoid SSR issues
+let _minerId: string | null = null;
+
+export function getMinerIdCached(): string {
+  if (!_minerId) {
+    _minerId = getMinerId();
+    console.log('[MINER_ID]', _minerId);
+  }
+  return _minerId;
+}
