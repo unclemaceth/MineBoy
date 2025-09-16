@@ -254,20 +254,21 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                   padding: '16px',
                   marginBottom: '16px'
                 }}>
-                  <LoginButton 
-                    style={{
-                      backgroundColor: '#4a5568',
-                      border: '2px solid #64ff8a',
-                      borderRadius: '6px',
-                      padding: '16px',
-                      color: '#64ff8a',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      width: '100%',
-                      transition: 'all 0.2s'
-                    }}
-                  />
+                  <div style={{
+                    backgroundColor: '#4a5568',
+                    border: '2px solid #64ff8a',
+                    borderRadius: '6px',
+                    padding: '16px',
+                    color: '#64ff8a',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    width: '100%',
+                    transition: 'all 0.2s',
+                    textAlign: 'center'
+                  }}>
+                    <LoginButton />
+                  </div>
                 </div>
               </>
             )}
