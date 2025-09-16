@@ -23,7 +23,6 @@ export class CartridgeRegistry {
         image: 'ipfs://QmYourApeBitCartridgeImage', // TODO: Replace with real IPFS hash
         mining: {
           algo: 'sha256-suffix',
-          suffix: config.SUFFIX_ABIT,
           charset: 'hex',
           difficulty: 0
         },
