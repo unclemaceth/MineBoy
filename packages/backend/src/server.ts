@@ -217,16 +217,21 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
   try {
     const { sessionId, minerId } = request.body as any;
     
+    console.log('[HB] Request:', { sessionId, minerId });
+    
     if (!sessionId || !minerId) {
+      console.warn('[HB] 400 missing fields:', { sessionId: !!sessionId, minerId: !!minerId });
       return reply.code(400).send({ error: 'sessionId and minerId required' });
     }
     
     const session = sessionManager.getSession(sessionId);
     if (!session) {
+      console.warn('[HB] 404 no session:', { sessionId });
       return reply.code(404).send({ error: 'Session not found' });
     }
     
     if (session.minerId !== minerId) {
+      console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
       return reply.code(409).send({ error: 'MinerId mismatch' });
     }
     
@@ -237,6 +242,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     }
     
     sessionManager.updateHeartbeat(sessionId);
+    console.log('[HB] 200 success:', { sessionId, minerId });
     return { ok: true };
     
   } catch (error: any) {

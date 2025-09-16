@@ -210,7 +210,7 @@ function Home() {
     
     const heartbeat = async () => {
       try {
-        await api.heartbeat(sessionId, getOrCreateMinerId(), job?.id);
+        await api.heartbeat(sessionId, getOrCreateMinerId());
       } catch (error: unknown) {
         console.warn('Heartbeat failed:', error);
         
@@ -409,7 +409,7 @@ function Home() {
 
       // Pre-claim heartbeat check to ensure session is still alive
       try {
-        await api.heartbeat(sessionId, getOrCreateMinerId(), job?.id);
+        await api.heartbeat(sessionId, getOrCreateMinerId());
         pushLine('Session verified - proceeding with claim...');
       } catch (error: unknown) {
         if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
