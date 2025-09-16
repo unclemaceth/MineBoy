@@ -8,9 +8,12 @@ export function normalizeJob(api: ApiJob): MiningJob {
   // prefer "target", fall back to legacy "suffix"
   const target = api.target ?? api.suffix ?? '000000';
 
-  // compute a concrete expiry timestamp if only ttl was sent
-  const ttlMs = api.ttlMs ?? (api.ttlSec != null ? api.ttlSec * 1000 : undefined);
-  const expiresAt = api.expiresAt ?? (ttlMs != null ? Date.now() + ttlMs : undefined);
+  // Prefer server-provided expiresAt; otherwise derive it once at normalization time
+  const expiresAt =
+    typeof api.expiresAt === 'number' ? api.expiresAt :
+    typeof api.ttlMs === 'number'   ? Date.now() + api.ttlMs :
+    typeof api.ttlSec === 'number'  ? Date.now() + api.ttlSec * 1000 :
+    undefined;
 
   // never coerce nonce to number
   const nonce =
@@ -29,7 +32,10 @@ export function normalizeJob(api: ApiJob): MiningJob {
     height: api.height ?? 0,
     nonce,
     expiresAt,
-    ttlMs,
-    ttlSec: api.ttlSec ?? (expiresAt ? Math.max(0, Math.floor((expiresAt - Date.now()) / 1000)) : undefined),
+    ttlSec:
+      typeof api.ttlSec === 'number' ? api.ttlSec :
+      typeof api.ttlMs === 'number'  ? Math.round(api.ttlMs / 1000) :
+      expiresAt ? Math.max(0, Math.round((expiresAt - Date.now()) / 1000)) :
+      undefined,
   };
 }
