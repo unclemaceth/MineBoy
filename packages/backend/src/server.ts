@@ -65,7 +65,10 @@ fastify.get('/v2/cartridges', async () => {
 
 // Open a mining session
 fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
-  const { wallet, cartridge, clientInfo, minerId } = request.body as any;
+  const body = request.body as any;
+  const { wallet, cartridge, clientInfo, minerId } = body;
+  
+  console.log('[session/open] Request body:', JSON.stringify(body, null, 2));
   
   try {
     // Validate minerId
