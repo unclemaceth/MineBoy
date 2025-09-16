@@ -24,6 +24,7 @@ import { initDb } from './db.js';
 import { startReceiptPoller } from './chain/receiptPoller.js';
 import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
+import { SessionStore } from './sessionStore.js';
 
 const fastify = Fastify({ 
   logger: true,
@@ -92,30 +93,45 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       return reply.code(403).send({ error: 'Wallet does not own this cartridge token' });
     }
     
-    // Acquire lock for this cartridge
+    // Acquire lock for this cartridge using Redis
     const { chainId, contract, tokenId } = cartridge;
-    const lockResult = locks.acquire(chainId, contract, tokenId, minerId);
-    if (!lockResult.ok) {
-      return reply.code(409).send({ error: lockResult.reason });
+    const lockAcquired = await SessionStore.acquireLock(contract, tokenId, minerId);
+    if (!lockAcquired) {
+      return reply.code(409).send({ error: 'Cartridge is locked by another miner' });
     }
     
-    // Create session
-    const session = sessionManager.createSession(request.body as OpenSessionReq);
+    // Create session in Redis
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const session = {
+      sessionId,
+      minerId,
+      wallet,
+      cartridge: { chainId, contract, tokenId },
+      createdAt: Date.now()
+    };
+    
+    await SessionStore.createSession(session);
     
     // Create initial job
-    const job = await jobManager.createJob(session.sessionId);
+    const job = await jobManager.createJob(sessionId);
     if (!job) {
+      await SessionStore.releaseLock(contract, tokenId, minerId);
+      await SessionStore.deleteSession(sessionId);
       return reply.code(500).send({ error: 'Failed to create job' });
     }
     
-    // Get cartridge config for claim info
-    const cartridgeConfig = cartridgeRegistry.getCartridge(cartridge.contract);
-    if (!cartridgeConfig) {
-      return reply.code(500).send({ error: 'Cartridge config not found' });
-    }
+    // Store job in session
+    await SessionStore.setJob(sessionId, {
+      jobId: job.jobId,
+      nonce: job.nonce,
+      suffix: job.suffix,
+      height: job.height
+    });
+    
+    console.log(`Created session ${sessionId} for wallet ${wallet} with token ${contract}:${tokenId}`);
     
     return {
-      sessionId: session.sessionId,
+      sessionId,
       job,
       policy: {
         heartbeatSec: 20,
@@ -188,8 +204,16 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
 fastify.post<{ Body: { sessionId: string } }>('/v2/session/close', async (request, reply) => {
   const { sessionId } = request.body;
   
-  const success = sessionManager.closeSession(sessionId);
-  return { ok: success };
+  // Get session to release lock
+  const session = await SessionStore.getSession(sessionId);
+  if (session) {
+    const { contract, tokenId } = session.cartridge;
+    await SessionStore.releaseLock(contract, tokenId, session.minerId);
+  }
+  
+  // Delete session
+  await SessionStore.deleteSession(sessionId);
+  return { ok: true };
 });
 
 // Admin endpoints (basic stats)
@@ -224,7 +248,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return reply.code(400).send({ error: 'sessionId and minerId required' });
     }
     
-    const session = sessionManager.getSession(sessionId);
+    const session = await SessionStore.getSession(sessionId);
     if (!session) {
       console.warn('[HB] 404 no session:', { sessionId });
       return reply.code(404).send({ error: 'Session not found' });
@@ -235,13 +259,17 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return reply.code(409).send({ error: 'MinerId mismatch' });
     }
     
-    const { chainId, contract, tokenId } = session.cartridge;
-    const lockOk = locks.refresh(chainId, contract, tokenId, minerId);
-    if (!lockOk) {
+    // Refresh session TTL
+    await SessionStore.refreshSession(sessionId);
+    
+    // Refresh cartridge lock
+    const { contract, tokenId } = session.cartridge;
+    const lockRefreshed = await SessionStore.refreshLock(contract, tokenId, minerId);
+    if (!lockRefreshed) {
+      console.warn('[HB] 409 lock refresh failed:', { sessionId, minerId, contract, tokenId });
       return reply.code(409).send({ error: 'Cartridge lock lost' });
     }
     
-    sessionManager.updateHeartbeat(sessionId);
     console.log('[HB] 200 success:', { sessionId, minerId });
     return { ok: true };
     
@@ -286,6 +314,7 @@ const start = async () => {
     console.log(`📡 Connected to Curtis testnet (${config.CHAIN_ID})`);
     console.log(`🎮 ${config.ALLOWED_CARTRIDGES.length} cartridges configured`);
     console.log(`💰 Initial reward: ${config.INITIAL_REWARD_WEI} wei (${config.INITIAL_REWARD_WEI.slice(0, 3)} ABIT)`);
+    console.log(`[SessionStore] using ${SessionStore.kind}`);
     
   } catch (err) {
     fastify.log.error(err);
