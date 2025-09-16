@@ -1,59 +1,69 @@
 import type { Job, Hex } from "./mining";
 
-/** The normalized shape the UI will use everywhere. */
+export type Address = `0x${string}`;
+
+export type ClaimStatus = "accepted" | "rejected" | "pending" | "error";
+
 export interface ClaimRes {
-  claimId?: string;
-  status?: "accepted" | "queued" | "pending" | "confirmed" | "failed";
-  txHash?: Hex;
-  nextJob?: Job;
+  claimId: string;
+  status: ClaimStatus;
+  txHash?: string;
+  nextJob?: Job; // optional – sometimes server won't issue a next job
+  // NOTE: there is **no** `ok` or `signature` here by design
 }
 
-/** Accept any backend shape and normalize it to ClaimRes. */
-export function normalizeClaimResponse(raw: unknown): ClaimRes {
-  const r: any = raw ?? {};
-  const claimId = r.claimId ?? r.claim_id ?? r.id ?? r.claim?.id;
-  const txHash = r.txHash ?? r.tx_hash ?? r.tx;
-  const status = r.status;
+const toNum = (v: unknown) =>
+  typeof v === "number" ? v :
+  typeof v === "string" && v.trim() ? Number(v) : undefined;
 
-  const nextJobRaw = r.nextJob ?? r.next_job;
-  const nextJob = normalizeJob(nextJobRaw);
+const idFrom = (x: any) => String(x?.id ?? x?.jobId ?? x?.job_id ?? crypto.randomUUID?.() ?? Math.random());
 
-  return { claimId, status, txHash, nextJob };
-}
-
-/** Accept any backend job shape and normalize it to Job. */
 export function normalizeJob(raw: unknown): Job | undefined {
   const j: any = raw;
-  if (!j || typeof j !== "object") return undefined;
+  if (!j || typeof j !== "object") return;
 
-  // Handle both new normalized format and backend legacy format
-  const id = j.id ?? j.jobId ?? j.job_id ?? randomId();
-  const data = j.data ?? j.header ?? j.blockHeader ?? j.nonce;
-  const target = j.target ?? j.threshold ?? j.suffix;
+  const data = j.data ?? j.header ?? j.blockHeader;
+  const target = j.target ?? j.threshold;
+  if (!data || !target) return;
 
-  if (!id) return undefined;
+  const id = idFrom(j);
+  const height = toNum(j.height ?? j.blockHeight ?? j.h);
+  const difficulty = toNum(j.difficulty ?? j.diff ?? j.difficultyBits ?? j.bits);
+  const nonceStart = toNum(j.nonceStart ?? j.nonce_start);
+  const nonceEnd = toNum(j.nonceEnd ?? j.nonce_end);
+  const nonce = toNum(j.nonce);
+  const expiresAt = toNum(j.expiresAt ?? j.expires_at);
+  const suffix = typeof j.suffix === "string" ? j.suffix : undefined;
+  const rule = j.rule === "suffix" || j.rule === "bits" ? j.rule : undefined;
+  const difficultyBits = toNum(j.difficultyBits ?? j.bits);
+  const targetBits = toNum(j.targetBits);
 
   return {
     id,
-    data: data || "0x0",
-    target: target || "0x0",
-    nonceStart: j.nonceStart ?? j.nonce_start,
-    nonceEnd: j.nonceEnd ?? j.nonce_end,
-    height: j.height ?? j.blockHeight ?? j.h,
-    difficulty: j.difficulty ?? j.diff,
-    // Backend compatibility fields
-    jobId: j.jobId ?? j.job_id,
-    algo: j.algo,
-    charset: j.charset,
-    nonce: j.nonce,
-    expiresAt: j.expiresAt ?? j.expires_at,
-    rule: j.rule,
-    suffix: j.suffix,
-    epoch: j.epoch,
-    ttlMs: j.ttlMs ?? j.ttl_ms
+    jobId: id, // compat
+    data,
+    target,
+    height,
+    difficulty,
+    nonceStart,
+    nonceEnd,
+    nonce,
+    expiresAt,
+    suffix,
+    rule,
+    difficultyBits,
+    targetBits,
+    bits: difficultyBits // compat alias
   };
 }
 
-function randomId() {
-  return Math.random().toString(36).slice(2);
+export function normalizeClaimRes(raw: unknown): ClaimRes {
+  const r: any = raw ?? {};
+  const nextJob = normalizeJob(r.nextJob ?? r.next_job);
+  return {
+    claimId: String(r.claimId ?? r.claim_id ?? ""),
+    status: (r.status as ClaimStatus) ?? "pending",
+    txHash: r.txHash ?? r.tx_hash,
+    ...(nextJob ? { nextJob } : {})
+  };
 }
