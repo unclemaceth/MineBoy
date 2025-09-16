@@ -64,15 +64,15 @@ export function normalizeJob(raw: unknown): Job | undefined {
   
   // Ensure data is properly formatted as hex
   const to0x = (v: any): `0x${string}` => {
-    if (typeof v === 'number') return (`0x${v.toString(16)}` as const);
-    if (typeof v === 'bigint') return (`0x${v.toString(16)}` as const);
-    if (typeof v === 'string') return ((v.startsWith('0x') ? v : `0x${v}`) as const);
-    return ('' as const);
+    if (typeof v === 'number') return `0x${v.toString(16)}` as `0x${string}`;
+    if (typeof v === 'bigint') return `0x${v.toString(16)}` as `0x${string}`;
+    if (typeof v === 'string') return (v.startsWith('0x') ? v : `0x${v}`) as `0x${string}`;
+    return '0x0' as `0x${string}`;
   };
   
   const data = to0x(dataRaw);
   
-  if (!data || !target) {
+  if (!data || data === '0x0' || !target) {
     console.error('[normalizeJob] missing data or target:', { data, target, raw: j });
     return;
   }
