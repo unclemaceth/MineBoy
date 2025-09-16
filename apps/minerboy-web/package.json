@@ -9,7 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@minerboy/shared": "workspace:*",
+    "@minerboy/shared": "file:../../packages/shared",
     "@noble/hashes": "^1.8.0",
     "@privy-io/react-auth": "^2.25.0",
     "@privy-io/wagmi": "^1.0.6",
