@@ -5,7 +5,7 @@ import { OpenSessionReq, ClaimReq } from '../../shared/src/mining.js';
 import { config, ADMIN_TOKEN } from './config.js';
 import { cartridgeRegistry } from './registry.js';
 import { ownershipVerifier } from './ownership.js';
-import { sessionManager } from './sessions.js';
+// import { sessionManager } from './sessions.js'; // Replaced with SessionStore
 import { jobManager } from './jobs.js';
 import { claimProcessor } from './claims.js';
 import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
@@ -213,7 +213,8 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
 fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (request, reply) => {
   const { sessionId } = request.query;
   
-  if (!sessionManager.isValidSession(sessionId)) {
+  const session = await SessionStore.getSession(sessionId);
+  if (!session) {
     return reply.code(404).send({ error: 'Session not found or expired' });
   }
   
@@ -236,7 +237,7 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     }
     
     // Check session and refresh lock
-    const session = sessionManager.getSession(sessionId);
+    const session = await SessionStore.getSession(sessionId);
     if (!session) {
       return reply.code(404).send({ error: 'Session not found' });
     }
@@ -282,7 +283,7 @@ fastify.post<{ Body: { sessionId: string } }>('/v2/session/close', async (reques
 // Admin endpoints (basic stats)
 fastify.get('/admin/stats', async () => {
   return {
-    sessions: sessionManager.getStats(),
+    sessions: { active: 'N/A' }, // Redis stats not implemented yet
     claims: claimProcessor.getStats(),
     cartridges: cartridgeRegistry.getAllCartridges().length
   };
