@@ -1,5 +1,7 @@
-import { normalizeJob, normalizeClaimRes } from "@/types/api";
-import type { ClaimRes, Job, Address, ClaimReq } from "@/types/api";
+import { normalizeClaimRes } from "@/types/api";
+import { normalizeJob } from "@/utils/normalizeJob";
+import type { ClaimRes, ApiJob, Address, ClaimReq } from "@/types/api";
+import type { Job } from "@/types/mining";
 
 export interface CartridgeConfig {
   chainId: number;
@@ -50,7 +52,7 @@ export const api = {
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
     return jfetch("/v2/session/open", { method: "POST", body: JSON.stringify(body) }, (j) => ({ 
       sessionId: String(j.sessionId ?? j.session_id),
-      job: normalizeJob(j.job) || { id: "", data: "", target: "" },
+      job: normalizeJob(j.job as ApiJob),
       policy: j.policy || { heartbeatSec: 20, cooldownSec: 2 },
       claim: j.claim
     }));
@@ -79,9 +81,7 @@ export const api = {
   
   getNextJob(sessionId: string): Promise<Job> {
     return jfetch(`/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => {
-      const job = normalizeJob(j);
-      if (!job) throw new Error("bad job payload");
-      return job;
+      return normalizeJob(j as ApiJob);
     });
   },
   
