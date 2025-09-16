@@ -214,7 +214,13 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         data: job.nonce,
         target: job.suffix,
         height: job.height ? Number(job.height) : 0, // Never undefined
-        difficulty: job.difficultyBits ? Number(job.difficultyBits) : 6
+        difficulty: job.difficultyBits ? Number(job.difficultyBits) : 6,
+        expiresAt: job.expiresAt ? Number(job.expiresAt) : undefined,
+        ttlMs: job.ttlMs ? Number(job.ttlMs) : undefined,
+        epoch: job.epoch ? Number(job.epoch) : undefined,
+        rule: job.rule || 'suffix',
+        difficultyBits: job.difficultyBits ? Number(job.difficultyBits) : 6,
+        targetBits: job.targetBits ? Number(job.targetBits) : undefined
       },
       policy: {
         heartbeatSec: 20,
