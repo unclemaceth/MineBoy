@@ -1,7 +1,7 @@
 import { ethers } from 'ethers';
-import { getDifficultyForEpoch } from '../../shared/src/mining';
+import { getDifficultyForEpoch } from '../../shared/src/mining.js';
 import { getDifficultyOverride } from './difficulty';
-import type { Job } from '../../shared/src/mining';
+import type { Job } from '../../shared/src/mining.js';
 import { config } from './config.js';
 import { cartridgeRegistry } from './registry.js';
 import { sessionManager } from './sessions.js';
