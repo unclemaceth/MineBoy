@@ -149,6 +149,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     });
     
     console.log(`Created session ${sessionId} for wallet ${wallet} with token ${contract}:${tokenId}`);
+    console.log('[OPEN_SESSION] Building response...');
     
     // Build JSON-safe response
     const response = {
@@ -166,10 +167,10 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       }
     };
     
-    // Use safe JSON serialization
-    reply.header('content-type', 'application/json; charset=utf-8');
-    reply.raw.end(safeStringify(response));
-    return;
+    // Use Fastify's serializer with our safe JSON replacer
+    console.log('[OPEN_SESSION] Sending response...');
+    reply.serializer((payload) => safeStringify(payload));
+    return reply.send(response);
     
   } catch (error: any) {
     console.error('[OPEN_SESSION] failed:', error);
