@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Job } from '@/types/mining';
+import type { MiningJob as Job } from '@/types/mining';
 import type { CartridgeConfig } from '@/lib/api';
 
 // Generate or retrieve stable minerId

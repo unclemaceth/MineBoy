@@ -46,7 +46,7 @@ export default function ClaimOverlayV2() {
       // Submit claim to backend
       const result = await api.claim({
         sessionId,
-        jobId: job.jobId || job.id,
+        jobId: job.jobId,
         preimage: lastFound.preimage,
         hash: to0x(lastFound.hash),
         steps: lastFound.attempts,
