@@ -34,9 +34,11 @@ export interface ClaimReq {
 }
 
 export interface ClaimRes {
-  success: boolean;
+  ok: boolean;
+  claimId: string;
+  claim: any; // ClaimStruct from backend
+  signature: string;
   nextJob?: Job;
-  reward?: string;
 }
 
 async function j<T>(res: Response): Promise<T> {
@@ -73,7 +75,7 @@ export const api = {
       method: 'POST', 
       headers: { 'content-type': 'application/json' }, 
       body: JSON.stringify(body)
-    }).then(j);
+    }).then(j<ClaimRes>);
   },
   
   close(sessionId: string): Promise<{ ok: true }> {
