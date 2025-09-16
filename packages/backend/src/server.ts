@@ -212,7 +212,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       job: {
         id: job.jobId,
         data: job.nonce,
+        nonce: job.nonce, // Add nonce field for debug modal
         target: job.suffix,
+        suffix: job.suffix, // Add suffix field for debug modal
         height: job.height ? Number(job.height) : 0, // Never undefined
         difficulty: job.difficultyBits ? Number(job.difficultyBits) : 6,
         expiresAt: job.expiresAt ? Number(job.expiresAt) : undefined,
