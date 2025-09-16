@@ -1730,7 +1730,7 @@ function Home() {
                     <>
                       <div><strong>Job ID:</strong> {(job.jobId || job.id).slice(0, 8)}...{(job.jobId || job.id).slice(-6)}</div>
                       <div><strong>Nonce:</strong> {job.nonce ? `${hexFrom(job.nonce).slice(0, 8)}...${hexFrom(job.nonce).slice(-6)}` : 'N/A'}</div>
-                      <div><strong>Difficulty:</strong> {job.suffix}</div>
+                      <div><strong>Difficulty:</strong> {job.difficultyBits ? `${job.difficultyBits} zeros (${job.suffix})` : job.suffix}</div>
                       <div><strong>Expires:</strong> {job.expiresAt ? new Date(job.expiresAt).toLocaleTimeString() : 'N/A'}</div>
                       <div><strong>TTL:</strong> {job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : 0}s</div>
                     </>

@@ -19,7 +19,7 @@ export type Job = {
 
   // legacy compat (existing call-sites expect these – keep optional)
   jobId?: string;
-  nonce?: number;
+  nonce?: string; // Changed from number to string for hex values
   suffix?: string;
   rule?: "suffix" | "bits";
   difficultyBits?: number;
@@ -82,7 +82,7 @@ export function normalizeJob(raw: unknown): Job | undefined {
   const difficulty = toNum(j.difficulty ?? j.diff ?? j.difficultyBits ?? j.bits);
   const nonceStart = toNum(j.nonceStart ?? j.nonce_start);
   const nonceEnd = toNum(j.nonceEnd ?? j.nonce_end);
-  const nonce = toNum(j.nonce);
+  const nonce = j.nonce; // Keep as string since it's a hex value
   const expiresAt = toNum(j.expiresAt ?? j.expires_at);
   const suffix = typeof j.suffix === "string" ? j.suffix : undefined;
   const rule = j.rule === "suffix" || j.rule === "bits" ? j.rule : undefined;
