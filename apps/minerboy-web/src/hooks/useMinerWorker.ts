@@ -33,15 +33,31 @@ export function useMinerWorker(events: Events = {}) {
     start(job: Job) {
       if (!workerRef.current) return;
       setRunning(true);
+      
+      // Create worker job with compat aliases for existing worker code
+      const workerJob = {
+        id: job.id,
+        // canonical fields we want to use going forward
+        data: job.data,
+        target: job.target,
+        
+        // --- COMPAT ALIASES (so the existing worker keeps working) ---
+        // many miners historically used `suffix` instead of `target`
+        suffix: job.target,
+        // many miners used `nonce` / `noncePrefix` as the preimage base
+        // our backend's "seed" is in `data`, so mirror it:
+        nonce: job.nonce ?? job.data,
+        noncePrefix: job.nonce ?? job.data,
+        // difficulty bits (optional; won't hurt if unused)
+        bits: job.bits,
+        targetBits: job.targetBits,
+        rule: job.rule ?? 'suffix',
+        height: job.height,
+      };
+      
       workerRef.current.postMessage({
         type: 'START',
-        job: {
-          id: job.id,
-          data: job.data,
-          target: job.target,
-          bits: job.bits,
-          height: job.height,
-        },
+        job: workerJob,
       });
     },
     stop() {
