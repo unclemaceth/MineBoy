@@ -1,4 +1,4 @@
-// @ts-ignore - tell TS it's a worker module
+// @ts-expect-error - tell TS it's a worker module
 export {};
 
 import { sha256 } from '@noble/hashes/sha256';
@@ -31,7 +31,7 @@ type OutFound = {
 type OutError = { type: 'ERROR'; message: string };
 type OutMsg = OutTick | OutFound | OutError;
 
-const ctx = self as any;
+const ctx = self as WorkerGlobalScope;
 
 let running = false;
 let attempts = 0;
@@ -140,7 +140,7 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
     try {
       mine({ nonce, rule, suffix, difficultyBits });
     } catch (err) {
-      const out: OutError = { type: 'ERROR', message: String((err as any)?.message || err) };
+      const out: OutError = { type: 'ERROR', message: String((err instanceof Error ? err.message : String(err))) };
       ctx.postMessage(out);
     }
   }

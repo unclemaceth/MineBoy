@@ -14,7 +14,7 @@ export function useMinerWorker(events: Events = {}) {
   useEffect(() => {
     const w = new Worker(new URL('../workers/sha.worker.ts', import.meta.url), { type: 'module' });
     workerRef.current = w;
-    w.onmessage = (e: MessageEvent<any>) => {
+    w.onmessage = (e: MessageEvent<unknown>) => {
       const msg = e.data;
       if (msg.type === 'TICK') {
         events.onTick?.(msg.attempts, msg.hr);

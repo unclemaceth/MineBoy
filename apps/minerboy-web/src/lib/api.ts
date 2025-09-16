@@ -48,13 +48,13 @@ export const api = {
     }).then(j);
   },
   
-  getNextJob(sessionId: string): Promise<any> {
+  getNextJob(sessionId: string): Promise<unknown> {
     return fetch(`${API_BASE}/v2/job/next?sessionId=${sessionId}`, {
       cache: 'no-store'
     }).then(j);
   },
   
-  getStats(): Promise<any> {
+  getStats(): Promise<unknown> {
     return fetch(`${API_BASE}/admin/stats`, { cache: 'no-store' }).then(j);
   },
 
@@ -66,7 +66,7 @@ export const api = {
     }).then(j);
   },
 
-  getLeaderboard(params: { period?: 'all'|'24h'|'7d'; limit?: number; wallet?: string } = {}): Promise<any> {
+  getLeaderboard(params: { period?: 'all'|'24h'|'7d'; limit?: number; wallet?: string } = {}): Promise<unknown> {
     const usp = new URLSearchParams();
     if (params.period) usp.set('period', params.period);
     if (params.limit) usp.set('limit', String(params.limit));
