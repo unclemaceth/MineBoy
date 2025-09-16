@@ -37,11 +37,11 @@ export function useMinerWorker(events: Events = {}) {
         type: 'START',
         job: {
           algo: 'sha256-suffix',
-          suffix: job.suffix?.toLowerCase() || '',
+          suffix: (job.suffix || job.target || '').toLowerCase(),
           charset: 'hex',
-          nonce: job.nonce || '0x0',
+          nonce: job.nonce || job.data || '0x0',
           // New difficulty fields
-          rule: job.rule,
+          rule: job.rule || 'suffix',
           difficultyBits: job.difficultyBits,
           targetBits: job.targetBits,
         },
