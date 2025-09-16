@@ -1,8 +1,41 @@
-import type { Job, Hex } from "./mining";
+import type { Hex } from "./mining";
 
 export type Address = `0x${string}`;
 
 export type ClaimStatus = "accepted" | "rejected" | "pending" | "error";
+
+export type Job = {
+  // canonical
+  id: string;
+  data: string;
+  target: string;
+
+  // optional/canonical
+  height?: number;
+  difficulty?: number;
+  nonceStart?: number;
+  nonceEnd?: number;
+  expiresAt?: number;
+
+  // legacy compat (existing call-sites expect these – keep optional)
+  jobId?: string;
+  nonce?: number;
+  suffix?: string;
+  rule?: "suffix" | "bits";
+  difficultyBits?: number;
+  targetBits?: number;
+  bits?: number; // read-only compat
+};
+
+export type ClaimReq = {
+  minerId: `0x${string}`;
+  sessionId: string;
+  jobId: string;
+  preimage: string;
+  hash: `0x${string}`;
+  steps: number;
+  hr: number;
+};
 
 export interface ClaimRes {
   claimId: string;

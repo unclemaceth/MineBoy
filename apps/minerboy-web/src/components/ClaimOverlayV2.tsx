@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { useSession } from '@/state/useSession';
 import { api } from '@/lib/api';
 import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/wagmi';
+import { to0x } from '@/lib/hex';
 
 export default function ClaimOverlayV2() {
   const { sessionId, job, lastFound, setFound, pushLine } = useSession();
+  const { address } = useAccount();
   const [claiming, setClaiming] = useState(false);
   const [claimData, setClaimData] = useState<unknown>(null);
   
@@ -46,9 +48,10 @@ export default function ClaimOverlayV2() {
         sessionId,
         jobId: job.jobId || job.id,
         preimage: lastFound.preimage,
-        hash: lastFound.hash,
+        hash: to0x(lastFound.hash),
         steps: lastFound.attempts,
         hr: lastFound.hr,
+        minerId: to0x(address || '0x0'),
       });
       
       if (result.status !== 'accepted') {

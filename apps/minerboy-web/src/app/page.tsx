@@ -16,7 +16,8 @@ import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { api } from "@/lib/api";
-import type { CartridgeConfig } from '../../../../packages/shared/src/mining';
+import { to0x, hexFrom } from "@/lib/hex";
+import type { CartridgeConfig } from "@/lib/api";
 
 const W = 390; // iPhone 13 CSS pixels
 const H = 844; // iPhone 13 CSS pixels
@@ -459,7 +460,7 @@ function Home() {
               }
             ],
             functionName: 'claim',
-            args: [claimResponse.claimId, claimResponse.txHash || '0x'],
+            args: [to0x(claimResponse.claimId), to0x(claimResponse.txHash || '0x')],
           });
           
           pushLine('Transaction submitted - waiting for hash...');
@@ -641,7 +642,7 @@ function Home() {
   // Update hash display when mining
   useEffect(() => {
     if (!mining || !job) {
-      setCurrentDisplayHash(job?.nonce || '0x0000000000000000000000000000000000000000000000000000000000000000');
+      setCurrentDisplayHash(hexFrom(job?.nonce, 64));
       return;
     }
 
@@ -649,7 +650,7 @@ function Home() {
     
     const updateHash = () => {
       // Generate a realistic-looking hash based on job nonce + counter
-      const nonce = job.nonce ? job.nonce.slice(2) : '0'; // Remove 0x
+      const nonce = hexFrom(job?.nonce, 64).slice(2); // Remove 0x
       const counterHex = counter.toString(16).padStart(8, '0');
       const combined = nonce + counterHex;
       
@@ -1650,7 +1651,7 @@ function Home() {
                   {job ? (
                     <>
                       <div><strong>Job ID:</strong> {(job.jobId || job.id).slice(0, 8)}...{(job.jobId || job.id).slice(-6)}</div>
-                      <div><strong>Nonce:</strong> {job.nonce ? `${job.nonce.slice(0, 8)}...${job.nonce.slice(-6)}` : 'N/A'}</div>
+                      <div><strong>Nonce:</strong> {job.nonce ? `${hexFrom(job.nonce).slice(0, 8)}...${hexFrom(job.nonce).slice(-6)}` : 'N/A'}</div>
                       <div><strong>Difficulty:</strong> {job.suffix}</div>
                       <div><strong>Expires:</strong> {job.expiresAt ? new Date(job.expiresAt).toLocaleTimeString() : 'N/A'}</div>
                       <div><strong>TTL:</strong> {job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : 0}s</div>
