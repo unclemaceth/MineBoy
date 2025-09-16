@@ -9,7 +9,16 @@ import { sessionManager } from './sessions.js';
 import { jobManager } from './jobs.js';
 import { claimProcessor } from './claims.js';
 import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
-import { getDifficultyForEpoch } from '../../shared/src/mining.js';
+// Robust interop-safe import
+import * as Mining from '../../shared/src/mining';
+
+const getDifficultyForEpoch =
+  (Mining as any).getDifficultyForEpoch ??
+  (Mining as any).default?.getDifficultyForEpoch;
+
+if (typeof getDifficultyForEpoch !== 'function') {
+  throw new Error('shared/mining is missing getDifficultyForEpoch');
+}
 import { locks } from './locks.js';
 import { initDb } from './db.js';
 import { startReceiptPoller } from './chain/receiptPoller.js';

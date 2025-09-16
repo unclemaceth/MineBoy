@@ -1,5 +1,14 @@
 import { ethers } from 'ethers';
-import { getDifficultyForEpoch } from '../../shared/src/mining.js';
+// Robust interop-safe import
+import * as Mining from '../../shared/src/mining';
+
+const getDifficultyForEpoch =
+  (Mining as any).getDifficultyForEpoch ??
+  (Mining as any).default?.getDifficultyForEpoch;
+
+if (typeof getDifficultyForEpoch !== 'function') {
+  throw new Error('shared/mining is missing getDifficultyForEpoch');
+}
 import { getDifficultyOverride } from './difficulty';
 import type { Job } from '../../shared/src/mining.js';
 import { config } from './config.js';
@@ -54,6 +63,10 @@ export class JobManager {
     const epoch = await this.getCurrentEpoch();
     const diff = getDifficultyForEpoch(epoch);
     const now = Date.now();
+    
+    // Debug logging
+    console.log('[jobs] epoch=%s zeros=%d suffix=%s', epoch, diff.zeros, diff.suffix);
+    
     const job: Job = {
       jobId: `job_${now}_${Math.random().toString(36).slice(2)}`,
       algo: 'sha256-suffix',
