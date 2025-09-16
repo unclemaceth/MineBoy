@@ -9,6 +9,7 @@ import { sessionManager } from './sessions.js';
 import { jobManager } from './jobs.js';
 import { claimProcessor } from './claims.js';
 import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
+import * as mining from '../../shared/src/mining.js';
 import { locks } from './locks.js';
 import { initDb } from './db.js';
 import { startReceiptPoller } from './chain/receiptPoller.js';
@@ -185,6 +186,17 @@ fastify.get('/admin/stats', async () => {
     sessions: sessionManager.getStats(),
     claims: claimProcessor.getStats(),
     cartridges: cartridgeRegistry.getAllCartridges().length
+  };
+});
+
+// Get current difficulty info
+fastify.get('/v2/difficulty', async () => {
+  const epoch = await jobManager.getCurrentEpoch();
+  const diff = mining.getDifficultyForEpoch(epoch, getDifficultyOverride() ?? undefined);
+  return {
+    epoch,
+    difficulty: diff,
+    override: getDifficultyOverride()
   };
 });
 
