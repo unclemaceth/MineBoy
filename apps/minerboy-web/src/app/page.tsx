@@ -17,6 +17,7 @@ import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
+import { MINER_ID } from "@/utils/minerId";
 import { to0x, hexFrom } from "@/lib/hex";
 import type { CartridgeConfig } from "@/lib/api";
 
@@ -211,12 +212,13 @@ function Home() {
     
     const heartbeatFn = async () => {
       try {
-        await api.heartbeat(sessionId, getOrCreateMinerId());
-      } catch (error: unknown) {
-        console.warn('Heartbeat failed:', error);
+        console.log('[HB_PAYLOAD]', { sessionId, minerId: MINER_ID });
+        await api.heartbeat(sessionId, MINER_ID);
+      } catch (error: any) {
+        console.warn('Heartbeat failed:', error.status, error.info);
         
         // If session not found (404) or lock lost (409), clear session and stop mining
-        if ((error instanceof Error && error.message?.includes('404')) || (error instanceof Error && error.message?.includes('Session not found')) || (error instanceof Error && error.message?.includes('409'))) {
+        if (error.status === 404 || error.status === 409) {
           console.log('Session expired or lock lost - clearing state and stopping mining');
           pushLine('Session expired - please reconnect');
           
@@ -267,7 +269,7 @@ function Home() {
         // Restart heartbeat if we're still mining
         const heartbeatFn = async () => {
           try {
-            await api.heartbeat(sessionId, getOrCreateMinerId());
+            await api.heartbeat(sessionId, MINER_ID);
           } catch (error) {
             console.warn('Heartbeat failed on visibility change:', error);
           }
@@ -331,8 +333,7 @@ function Home() {
     pushLine(`Opening session with ${cartridgeInfo.name}...`);
     
     try {
-      const minerId = to0x(getOrCreateMinerId());
-      console.log('[SESSION_OPEN] Using minerId:', minerId);
+      console.log('[SESSION_OPEN] Using minerId:', MINER_ID);
       
       const res = await api.openSession({
         wallet: address,
@@ -342,7 +343,7 @@ function Home() {
           tokenId
         },
         clientInfo: { ua: navigator.userAgent },
-        minerId
+        minerId: MINER_ID
       });
       
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
@@ -450,11 +451,8 @@ function Home() {
       heartbeat.pauseForClaim();
       pushLine('Stopped heartbeats for claim...');
 
-      // Get consistent minerId (same as used in session open)
-      const minerId = to0x(getOrCreateMinerId());
-      
       // Send the frozen payload exactly as received from worker
-      console.log('[CLAIM_BODY]', hit, { sessionId, jobId: job.jobId || job.id, minerId });
+      console.log('[CLAIM_PAYLOAD]', { sessionId, minerId: MINER_ID, jobId: job.jobId || job.id });
       
       const claimResponse = await api.claim({
         sessionId,
@@ -463,7 +461,7 @@ function Home() {
         hash: to0x(hit.hash),    // exact hash from worker
         steps: hit.attempts,
         hr: hit.hr,
-        minerId
+        minerId: MINER_ID
       });
 
       console.log('[CLAIM_OK]', claimResponse);
@@ -566,11 +564,11 @@ function Home() {
       }, 3000);
       
     } catch (err: unknown) {
-      console.error('[CLAIM] failed', err);
+      console.error('[CLAIM] failed', err.status, err.info);
       
       // Handle session expiration specifically
-      if ((err instanceof Error && err.message?.includes('Session expired')) || (err instanceof Error && err.message?.includes('404')) || (err instanceof Error && err.message?.includes('Session not found'))) {
-        pushLine('Session expired - please reconnect');
+      if (err.status === 404 || err.status === 409) {
+        pushLine(`Session conflict: ${err.info?.error || 'Unknown error'}`);
         
         // Clear session state
         clear();
@@ -579,7 +577,7 @@ function Home() {
         // Stop any running worker
         miner.stop();
       } else {
-        pushLine(`Claim failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+        pushLine(`Claim failed: ${err.status} ${err.info?.error || err.message || 'Unknown error'}`);
         setStatus('error');
       }
     } finally {

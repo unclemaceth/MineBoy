@@ -30,7 +30,14 @@ export interface OpenSessionRes {
 
 async function jfetch<T>(path: string, init?: RequestInit, map?: (x: any) => T): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) }});
-  if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
+  if (!res.ok) {
+    let info: any = undefined;
+    try { info = await res.json(); } catch {}
+    const err: any = new Error(`HTTP ${res.status} ${path}`);
+    err.status = res.status;
+    err.info = info;
+    throw err;
+  }
   const json = await res.json();
   return map ? map(json) : (json as T);
 }
