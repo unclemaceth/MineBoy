@@ -42,7 +42,7 @@ export default function Visualizer3x3({
     
     const generateHash = () => {
       // Generate a realistic-looking hash based on job nonce + counter
-      const nonce = job.nonce.slice(2); // Remove 0x
+      const nonce = job.nonce ? job.nonce.slice(2) : '0'; // Remove 0x
       const counterHex = counter.toString(16).padStart(8, '0');
       const combined = nonce + counterHex;
       

@@ -48,7 +48,7 @@ export default function LeaderboardPage() {
     (async () => {
       try {
         setLoading(true);
-        const resp = await api.getLeaderboard({ period, limit: 25, wallet: address });
+        const resp = await api.getLeaderboard({ period, limit: 25, ...(address ? { wallet: address } : {}) });
         if (!cancelled) setData(resp as ApiResp);
       } catch {
         // noop for now

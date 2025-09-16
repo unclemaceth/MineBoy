@@ -96,7 +96,7 @@ function Home() {
     onTick: (a, hashRate) => setTelemetry(a, hashRate),
     onFound: ({ hash, preimage, attempts, hr }) => {
       // Check if job is still valid before processing found hash
-      if (job && Date.now() > job.expiresAt) {
+      if (job && job.expiresAt && Date.now() > job.expiresAt) {
         console.log('[FOUND_EXPIRED] Job expired, ignoring found hash');
         pushLine('Hash found but job expired - ignoring');
         return;
@@ -172,7 +172,7 @@ function Home() {
     if (!job || !mining) return;
     
     const checkExpiry = async () => {
-      if (Date.now() > job.expiresAt) {
+      if (job.expiresAt && Date.now() > job.expiresAt) {
         miner.stop();
         setMining(false);
         setStatus('idle');
@@ -327,7 +327,7 @@ function Home() {
     
     if (!mining) {
       // Check if job is still valid
-      if (job && Date.now() > job.expiresAt) {
+      if (job && job.expiresAt && Date.now() > job.expiresAt) {
         pushLine('Job expired - requesting new job...');
         try {
           const newJob = await api.getNextJob(sessionId);
@@ -377,7 +377,7 @@ function Home() {
       }
 
       // Check if job is still valid
-      if (Date.now() > job.expiresAt) {
+      if (job.expiresAt && Date.now() > job.expiresAt) {
         throw new Error('Job expired - cannot claim');
       }
 
@@ -393,11 +393,11 @@ function Home() {
       }
 
       // Send the frozen payload exactly as received from worker
-      console.log('[CLAIM_BODY]', hit, { sessionId, jobId: job.jobId });
+      console.log('[CLAIM_BODY]', hit, { sessionId, jobId: job.jobId || job.id });
       
       const claimResponse = await api.claim({
         sessionId,
-        jobId: job.jobId,
+        jobId: job.jobId || job.id,
         preimage: hit.preimage,  // exact string from worker
         hash: hit.hash,          // exact hash from worker
         steps: hit.attempts,
@@ -421,9 +421,11 @@ function Home() {
       }
       
       // Check if we have claim data for on-chain transaction
-      if (claimResponse.claim && claimResponse.signature) {
+      if (claimResponse.claimId) {
         pushLine('Preparing on-chain transaction...');
-        pushLine(`Reward: ${claimResponse.claim.rewardAmount} wei`);
+        if (claimResponse.txHash) {
+          pushLine(`Transaction: ${claimResponse.txHash.slice(0, 8)}...${claimResponse.txHash.slice(-6)}`);
+        }
         
         try {
           // Submit claim to smart contract
@@ -457,7 +459,7 @@ function Home() {
               }
             ],
             functionName: 'claim',
-            args: [claimResponse.claim, claimResponse.signature],
+            args: [claimResponse.claimId, claimResponse.txHash || '0x'],
           });
           
           pushLine('Transaction submitted - waiting for hash...');
@@ -647,7 +649,7 @@ function Home() {
     
     const updateHash = () => {
       // Generate a realistic-looking hash based on job nonce + counter
-      const nonce = job.nonce.slice(2); // Remove 0x
+      const nonce = job.nonce ? job.nonce.slice(2) : '0'; // Remove 0x
       const counterHex = counter.toString(16).padStart(8, '0');
       const combined = nonce + counterHex;
       
@@ -1647,11 +1649,11 @@ function Home() {
                 <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                   {job ? (
                     <>
-                      <div><strong>Job ID:</strong> {job.jobId.slice(0, 8)}...{job.jobId.slice(-6)}</div>
-                      <div><strong>Nonce:</strong> {job.nonce.slice(0, 8)}...{job.nonce.slice(-6)}</div>
+                      <div><strong>Job ID:</strong> {(job.jobId || job.id).slice(0, 8)}...{(job.jobId || job.id).slice(-6)}</div>
+                      <div><strong>Nonce:</strong> {job.nonce ? `${job.nonce.slice(0, 8)}...${job.nonce.slice(-6)}` : 'N/A'}</div>
                       <div><strong>Difficulty:</strong> {job.suffix}</div>
-                      <div><strong>Expires:</strong> {new Date(job.expiresAt).toLocaleTimeString()}</div>
-                      <div><strong>TTL:</strong> {Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000))}s</div>
+                      <div><strong>Expires:</strong> {job.expiresAt ? new Date(job.expiresAt).toLocaleTimeString() : 'N/A'}</div>
+                      <div><strong>TTL:</strong> {job.expiresAt ? Math.max(0, Math.floor((job.expiresAt - Date.now()) / 1000)) : 0}s</div>
                     </>
                   ) : (
                     <div>No active job</div>
