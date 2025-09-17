@@ -4,9 +4,14 @@ class HeartbeatController {
   private inFlight = false;
   private inClaim = false;
 
-  start(fn: () => Promise<void>, intervalMs = 5000) {
-    if (this.active) return;
+  start(fn: () => Promise<void>, intervalMs = 2000) {
+    this.stop(); // Clear any existing timer
     this.active = true;
+    this.inClaim = false;
+    
+    // Immediate tick (don't await; fire and forget)
+    fn().catch(() => {});
+    
     this.timer = setInterval(async () => {
       if (this.inFlight || this.inClaim) return;
       this.inFlight = true;
@@ -17,7 +22,7 @@ class HeartbeatController {
       } finally { 
         this.inFlight = false; 
       }
-    }, intervalMs);
+    }, Math.max(1500, intervalMs));
     console.log('[HeartbeatController] Started');
   }
 

@@ -31,7 +31,14 @@ export interface OpenSessionRes {
 // ClaimReq is now imported from @/types/api
 
 async function jfetch<T>(path: string, init?: RequestInit, map?: (x: any) => T): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { ...init, headers: { "content-type": "application/json", ...(init?.headers || {}) }});
+  const res = await fetch(`${BASE}${path}`, { 
+    ...init, 
+    credentials: 'include', // Add this for cookie-sticky locks
+    headers: { 
+      "content-type": "application/json", 
+      ...(init?.headers || {}) 
+    } 
+  });
   if (!res.ok) {
     let info: any = undefined;
     try { info = await res.json(); } catch {}
