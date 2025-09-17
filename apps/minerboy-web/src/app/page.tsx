@@ -237,7 +237,7 @@ function Home() {
     };
     
     // Start heartbeat controller
-    heartbeat.start(heartbeatFn, 5000);
+    heartbeat.start(heartbeatFn, 2000);
     
     return () => {
       heartbeat.stop();
@@ -457,24 +457,17 @@ function Home() {
       assertString(jobId, 'jobId');
       assertString(address, 'address');
       
-      // 1) Refresh lock right before claim to prevent TTL race
-      try {
-        console.log('[CLAIM] pre-heartbeat', { sessionId, minerId });
-        await api.heartbeat(sessionId, minerId);
-        pushLine('Lock refreshed for claim...');
-      } catch (e: any) {
-        if (e.status === 409) {
-          pushLine('Session expired or cartridge lock lost. Please reconnect and try again.');
-          clear();
-          setStatus('idle');
-          return;
-        }
-        throw e;
-      }
+      // 1) Refresh lock right before claim
+      console.log('[CLAIM] pre-heartbeat', { sessionId, minerId });
+      await api.heartbeat(sessionId, minerId);
+      pushLine('Lock refreshed for claim...');
+      
+      // 2) Tiny backoff to let the lock propagate
+      await new Promise(r => setTimeout(r, 120));
       
       console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId });
       
-      // 2) Try claim with retry on 409
+      // 3) Try claim with reattach + retry on 409
       const doClaim = () => api.claim({
         sessionId,
         jobId,
@@ -490,11 +483,11 @@ function Home() {
         claimResponse = await doClaim();
       } catch (e: any) {
         if (e.status === 409) {
-          // tiny backoff and one more refresh
-          pushLine('Retrying claim after lock refresh...');
-          await new Promise(r => setTimeout(r, 250));
+          // 4) Reattach + one retry
+          pushLine('Retrying claim after reattach...');
           await api.heartbeat(sessionId, minerId);
-          claimResponse = await doClaim(); // second try
+          await new Promise(r => setTimeout(r, 150));
+          claimResponse = await doClaim();
         } else {
           throw e;
         }
@@ -795,38 +788,22 @@ function Home() {
   const ttlSec = useJobTtl(job);
   
   useEffect(() => {
-    if (!job) {
-      setDifficultyText('No job');
-      return;
+    if (!job) { 
+      setDifficultyText('No job'); 
+      return; 
     }
-
-    const updateDifficulty = () => {
-      const suffix = job.target;
-      const bits = job.bits ?? (suffix?.length ?? 0) * 4;
-      
-      // Determine difficulty level
-      let difficultyLevel = 'EASY';
-      if (suffix) {
-        if (suffix.length >= 8) difficultyLevel = 'HARD';
-        else if (suffix.length >= 7) difficultyLevel = 'MED';
-        else if (suffix.length >= 6) difficultyLevel = 'EASY';
-        else if (suffix.length >= 4) difficultyLevel = 'EASY';
-        else difficultyLevel = 'EASY';
-      } else {
-        if (bits >= 32) difficultyLevel = 'HARD';
-        else if (bits >= 28) difficultyLevel = 'MED';
-        else if (bits >= 24) difficultyLevel = 'EASY';
-        else if (bits >= 16) difficultyLevel = 'EASY';
-        else difficultyLevel = 'EASY';
-      }
-      
-      // Use TTL from hook (updates every second)
-      const ttlLabel = ttlSec != null ? `${ttlSec}s` : '--';
-      setDifficultyText(`D: ${difficultyLevel} | T: ${ttlLabel}`);
-    };
-
-    // Update immediately (TTL hook handles live updates)
-    updateDifficulty();
+    
+    const suffix = job.target;
+    const bits = job.bits ?? (suffix?.length ?? 0) * 4;
+    
+    let level = 'EASY';
+    if (suffix?.length >= 8) level = 'HARD';
+    else if (suffix?.length >= 7) level = 'MED';
+    else if (suffix?.length >= 6) level = 'EASY';
+    else if (suffix?.length >= 4) level = 'EASY';
+    else level = 'EASY';
+    
+    setDifficultyText(`D: ${level} | T: ${ttlSec != null ? `${ttlSec}s` : '--'}`);
   }, [job, ttlSec]);
 
   // Helper function for short hash display
