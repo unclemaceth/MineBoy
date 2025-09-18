@@ -7,6 +7,7 @@
 export const isiOS = typeof navigator !== 'undefined' ? /iPhone|iPad|iPod/i.test(navigator.userAgent) : false;
 export const isStandalone = typeof window !== 'undefined' ? window.matchMedia('(display-mode: standalone)').matches : false;
 export const isiOSPWA = isiOS && isStandalone;
+export const isiOSMobile = isiOS; // Show mobile wallet options in any iOS browser
 
 // Debug logging (client-side only)
 if (typeof window !== 'undefined') {

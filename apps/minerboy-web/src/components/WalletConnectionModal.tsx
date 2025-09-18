@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { injected, walletConnect } from 'wagmi/connectors';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
-import { isiOSPWA, reserveDeepLinkWindow, buildUniversalLink, openDeepLink, copyWalletConnectUri, logConnectionAttempt } from '@/utils/iosPwaWallet';
+import { isiOSPWA, isiOSMobile, reserveDeepLinkWindow, buildUniversalLink, openDeepLink, copyWalletConnectUri, logConnectionAttempt } from '@/utils/iosPwaWallet';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
 
 interface WalletConnectionModalProps {
@@ -101,7 +101,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
         setShowCopyButton(true);
         
         // Auto-open deep link for mobile
-        if (isiOSPWA) {
+        if (isiOSMobile) {
           const wallet = selectedOption === 'metamask' ? 'metamask' : 
                         selectedOption === 'coinbase' ? 'coinbase' : 'generic';
           const url = buildUniversalLink(wallet, uri);
@@ -193,7 +193,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               Choose your preferred wallet connection method:
             </p>
             
-            {isiOSPWA && (
+            {isiOSMobile && (
               <div style={{
                 backgroundColor: '#2a2a2a',
                 border: '1px solid #444',
@@ -203,13 +203,13 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                 fontSize: '12px',
                 color: '#ccc'
               }}>
-                📱 <strong>iOS PWA Detected:</strong> Using mobile-optimized wallet connection
+                📱 <strong>iOS Mobile Detected:</strong> Using mobile-optimized wallet connection
               </div>
             )}
             
             <div style={{
-              display: 'flex',
-              flexDirection: 'column',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 1fr)',
               gap: '12px'
             }}>
               <button
@@ -239,10 +239,10 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                 }}
               >
                 <span style={{ fontSize: '20px' }}>🔮</span>
-                Glyph Wallet
+                Glyph
               </button>
 
-              {isiOSPWA ? (
+              {isiOSMobile ? (
                 <>
                   <button
                     onClick={() => setSelectedOption('metamask')}
@@ -301,7 +301,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                     }}
                   >
                     <span style={{ fontSize: '20px' }}>🔵</span>
-                    Coinbase Wallet
+                    Coinbase
                   </button>
                 </>
               ) : (
@@ -464,7 +464,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               </span>
             </div>
             
-            {isiOSPWA && (
+            {isiOSMobile && (
               <div style={{
                 backgroundColor: '#2a2a2a',
                 border: '1px solid #444',
@@ -474,7 +474,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                 fontSize: '12px',
                 color: '#ccc'
               }}>
-                📱 <strong>iOS PWA Mode:</strong> Tap your wallet below to open it directly
+                📱 <strong>iOS Mobile Mode:</strong> Tap your wallet below to open it directly
               </div>
             )}
             
