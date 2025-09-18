@@ -322,6 +322,45 @@ fastify.get('/admin/stats', async () => {
   };
 });
 
+// Debug lock info
+fastify.get('/v2/debug/lock', async (request, reply) => {
+  const { sessionId, cartridge } = request.query as { sessionId?: string; cartridge?: string };
+  
+  if (sessionId) {
+    const session = await SessionStore.getSession(sessionId);
+    if (!session) {
+      return { error: 'Session not found' };
+    }
+    
+    const { contract, tokenId } = session.cartridge;
+    const lockKey = `mineboy:v2:lock:${contract.toLowerCase()}:${tokenId}`;
+    const lockOwner = await getRedis()?.get(lockKey);
+    
+    return {
+      sessionId,
+      cartridge: `${contract}:${tokenId}`,
+      ownerMinerId: lockOwner,
+      sessionMinerId: session.minerId,
+      match: lockOwner === session.minerId,
+      ttl: await getRedis()?.pttl(lockKey)
+    };
+  }
+  
+  if (cartridge) {
+    const [contract, tokenId] = cartridge.split(':');
+    const lockKey = `mineboy:v2:lock:${contract.toLowerCase()}:${tokenId}`;
+    const lockOwner = await getRedis()?.get(lockKey);
+    
+    return {
+      cartridge,
+      ownerMinerId: lockOwner,
+      ttl: await getRedis()?.pttl(lockKey)
+    };
+  }
+  
+  return { error: 'Provide sessionId or cartridge parameter' };
+});
+
 // Get current difficulty info
 fastify.get('/v2/difficulty', async () => {
   const epoch = await jobManager.getCurrentEpoch();

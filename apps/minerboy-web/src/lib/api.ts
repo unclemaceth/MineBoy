@@ -1,5 +1,6 @@
 import { normalizeClaimRes } from "@/types/api";
 import { normalizeJob } from "@/lib/normalizeJob";
+import { jfetchEx } from "@/lib/api/jfetchEx";
 import type { ClaimRes, ApiJob, Address, ClaimReq, SessionOpenApiResp } from "@/types/api";
 import type { MiningJob } from "@/types/mining";
 
@@ -69,24 +70,48 @@ export const api = {
     });
   },
   
-  heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
-    return jfetch(`/v2/session/heartbeat`, { 
+  async heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
+    const { headers } = await jfetchEx(`/v2/session/heartbeat`, { 
       method: "POST", 
       body: JSON.stringify({ sessionId, minerId }) 
-    }, () => ({ ok: true }));
+    });
+    
+    // Log pod and lock info for debugging
+    console.log('[HB]', { 
+      minerId, 
+      xInstance: headers['x-instance'], 
+      lockOwner: headers['x-lock-owner'], 
+      lockExp: Number(headers['x-lock-expires']) 
+    });
+    
+    return { ok: true };
   },
   
-  claim(body: ClaimReq): Promise<ClaimRes> {
-    return jfetch("/v2/claim", { 
-      method: "POST", 
-      body: JSON.stringify(body) 
-    }, (raw) => {
-      const res = normalizeClaimRes(raw);
+  async claim(body: ClaimReq): Promise<ClaimRes> {
+    try {
+      const { json, headers } = await jfetchEx("/v2/claim", { 
+        method: "POST", 
+        body: JSON.stringify(body) 
+      });
+      
+      console.log('[CLAIM_OK]', { 
+        xInstance: headers['x-instance'], 
+        lockOwner: headers['x-lock-owner'] 
+      });
+      
+      const res = normalizeClaimRes(json);
       if (res.nextJob) {
         res.nextJob = normalizeJob(res.nextJob as ApiJob);
       }
       return res;
-    });
+    } catch (e: any) {
+      console.log('[CLAIM_ERR]', e.status, { 
+        xInstance: e.headers?.['x-instance'], 
+        lockOwner: e.headers?.['x-lock-owner'], 
+        server: e.info 
+      });
+      throw e;
+    }
   },
   
   close(sessionId: string): Promise<{ ok: true }> {
@@ -119,5 +144,12 @@ export const api = {
     if (params.limit) usp.set('limit', String(params.limit));
     if (params.wallet) usp.set('wallet', params.wallet);
     return jfetch(`/v2/leaderboard?${usp.toString()}`, undefined, (j) => j);
+  },
+
+  async debugLock(sessionId?: string, cartridge?: string): Promise<unknown> {
+    const usp = new URLSearchParams();
+    if (sessionId) usp.set('sessionId', sessionId);
+    if (cartridge) usp.set('cartridge', cartridge);
+    return jfetch(`/v2/debug/lock?${usp.toString()}`, undefined, (j) => j);
   }
 };

@@ -62,6 +62,31 @@ function Home() {
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
+  
+  // Single-tab enforcement
+  useEffect(() => {
+    const bc = new BroadcastChannel('mineboy');
+    let hasLeader = false;
+    
+    bc.onmessage = (e) => { 
+      if (e.data === 'hello' && hasLeader) {
+        bc.postMessage('busy');
+      }
+    };
+    
+    bc.postMessage('hello');
+    bc.onmessage = (e) => { 
+      if (e.data === 'busy') {
+        alert('MineBoy already open in another tab. Please close the other tab first.');
+        window.close();
+      }
+    };
+    hasLeader = true;
+    
+    return () => {
+      bc.close();
+    };
+  }, []);
   const [mineBlink, setMineBlink] = useState(false);
   const [status, setStatus] = useState<'idle'|'mining'|'found'|'claiming'|'claimed'|'error'>('idle');
   const [foundResult, setFoundResult] = useState<FoundResult | null>(null);
@@ -217,7 +242,24 @@ function Home() {
       try {
         const minerId = getMinerIdCached();
         console.log('[HB_PAYLOAD]', { sessionId, minerId });
+        
+        // Log identity for debugging
+        console.log('[IDS]', {
+          sessionId,
+          minerId,
+          jobId: job?.id || 'none',
+          address
+        });
+        
         await api.heartbeat(sessionId, minerId);
+        
+        // Debug lock info after heartbeat
+        try {
+          const lockInfo = await api.debugLock(sessionId);
+          console.log('[LOCK_DEBUG]', lockInfo);
+        } catch (e) {
+          console.warn('Lock debug failed:', e);
+        }
       } catch (error: any) {
         console.warn('Heartbeat failed:', error.status, error.info);
         
@@ -328,6 +370,14 @@ function Home() {
     try {
       const minerId = getMinerIdCached();
       console.log('[SESSION_OPEN] Using minerId:', minerId);
+      
+      // Log identity for debugging
+      console.log('[IDS]', {
+        sessionId: 'opening...',
+        minerId,
+        jobId: 'none yet',
+        address
+      });
       
       const res = await api.openSession({
         wallet: address,
@@ -462,10 +512,26 @@ function Home() {
       await api.heartbeat(sessionId, minerId);
       pushLine('Lock refreshed for claim...');
       
+      // Debug lock info before claim
+      try {
+        const lockInfo = await api.debugLock(sessionId);
+        console.log('[CLAIM_LOCK_DEBUG]', lockInfo);
+      } catch (e) {
+        console.warn('Claim lock debug failed:', e);
+      }
+      
       // 2) Tiny backoff to let the lock propagate
       await new Promise(r => setTimeout(r, 120));
       
       console.log('[CLAIM_PAYLOAD]', { sessionId, minerId, jobId });
+      
+      // Log identity for debugging
+      console.log('[IDS]', {
+        sessionId,
+        minerId,
+        jobId,
+        address
+      });
       
       // 3) Try claim with reattach + retry on 409
       const doClaim = () => api.claim({
