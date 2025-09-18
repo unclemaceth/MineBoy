@@ -3,15 +3,13 @@ import React, { useEffect, useRef, useState } from "react";
 
 type Props = {
   children: React.ReactNode;
-  width?: number;   // logical device size
-  height?: number;
+  width?: number;   // device logical width (e.g. 390)
+  height?: number;  // device logical height (e.g. 844)
   fullscreen?: boolean; // default true
   className?: string;
   style?: React.CSSProperties;
-  /** ignore keyboard resize so stage doesn't bounce when typing */
-  ignoreKeyboardResize?: boolean;
-  /** never scale above 1 (keeps pixels crisp on large monitors) */
-  maxScale1?: boolean;
+  ignoreKeyboardResize?: boolean; // default true
+  maxScale1?: boolean; // default true -> never upscale above 1
 };
 
 export default function Stage({
@@ -24,102 +22,107 @@ export default function Stage({
   ignoreKeyboardResize = true,
   maxScale1 = true,
 }: Props) {
-  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
+  const lastStableH = useRef<number | null>(null);
+  const lastStableW = useRef<number | null>(null);
 
   useEffect(() => {
+    const parsePx = (v: string) => Number.parseFloat(v || "0") || 0;
+
+    const getSafeInsets = () => {
+      const root = getComputedStyle(document.documentElement);
+      return {
+        top: parsePx(root.getPropertyValue("--safe-top")),
+        bottom: parsePx(root.getPropertyValue("--safe-bottom")),
+        left: parsePx(root.getPropertyValue("--safe-left")),
+        right: parsePx(root.getPropertyValue("--safe-right")),
+      };
+    };
+
     const recompute = () => {
-      const el = wrapRef.current;
+      const el = containerRef.current;
       if (!el) return;
 
-      // container rect (includes padding)
       const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      const padX =
-        (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
-      const padY =
-        (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
-
-      // available space inside the container box
-      let availW = r.width - padX;
-      let availH = r.height - padY;
-
-      // iOS/Android: use VisualViewport so we don't include the URL bar / toolbars
       const vv = window.visualViewport;
+
+      const { top: st, bottom: sb, left: sl, right: sr } = getSafeInsets();
+
+      // Base available area = content box of the container
+      let availW = r.width;
+      let availH = r.height;
+
+      // Use the *visible* viewport (minus safe areas) when available
       if (vv) {
-        let vvH = vv.height; // excludes top/bottom browser chrome
-        // When the keyboard is up, vv.height shrinks a lot — optionally ignore
-        if (ignoreKeyboardResize) {
-          const active = document.activeElement as HTMLElement | null;
-          const typing =
-            active && (active.tagName === "INPUT" || active.tagName === "TEXTAREA");
-          if (!typing) {
-            availH = Math.min(availH, vvH);
-          }
+        let vw = vv.width - sl - sr;
+        let vh = vv.height - st - sb;
+
+        // When keyboard is open on mobile, vv.height shrinks dramatically.
+        // If we're typing into an input, keep the previous stable size.
+        const active = document.activeElement as HTMLElement | null;
+        const keyboardLikelyOpen =
+          ignoreKeyboardResize &&
+          !!active &&
+          (active.tagName === "INPUT" || active.tagName === "TEXTAREA") &&
+          vh < window.innerHeight * 0.8;
+
+        if (!keyboardLikelyOpen) {
+          lastStableH.current = vh;
+          lastStableW.current = vw;
         } else {
-          availH = Math.min(availH, vvH);
+          vh = lastStableH.current ?? vh;
+          vw = lastStableW.current ?? vw;
         }
+
+        availW = Math.min(availW, vw);
+        availH = Math.min(availH, vh);
       }
 
+      // Final scale
       let s = Math.min(availW / width, availH / height);
       if (maxScale1) s = Math.min(s, 1);
-      // round a tiny bit to reduce jitter
-      s = Math.max(0, Math.floor(s * 10000) / 10000);
+
+      // tiny rounding to avoid jitter
+      s = Math.floor(s * 10000) / 10000;
 
       setScale(s);
     };
 
-    // first compute and on changes
     recompute();
 
-    // changes from resizing, URL bar show/hide, PWA orientation, etc.
-    const onWinResize = () => recompute();
+    const onResize = () => recompute();
     const onVVResize = () => recompute();
-    const onVVScroll = () => recompute(); // Safari toggles bars on scroll
+    const onScroll = () => recompute();
 
-    window.addEventListener("resize", onWinResize, { passive: true });
+    window.addEventListener("resize", onResize, { passive: true });
     window.visualViewport?.addEventListener("resize", onVVResize as any, {
       passive: true,
     });
-    window.visualViewport?.addEventListener("scroll", onVVScroll as any, {
+    window.visualViewport?.addEventListener("scroll", onScroll as any, {
       passive: true,
     });
 
     return () => {
-      window.removeEventListener("resize", onWinResize);
+      window.removeEventListener("resize", onResize);
       window.visualViewport?.removeEventListener("resize", onVVResize as any);
-      window.visualViewport?.removeEventListener("scroll", onVVScroll as any);
+      window.visualViewport?.removeEventListener("scroll", onScroll as any);
     };
   }, [width, height, ignoreKeyboardResize, maxScale1]);
 
   if (!fullscreen) {
     return (
-      <div className={className} style={{ position: "relative", width, height, ...style }}>
+      <div
+        className={className}
+        style={{ position: "relative", width, height, ...style }}
+      >
         {children}
       </div>
     );
   }
 
   return (
-    <div
-      ref={wrapRef}
-      className={className || "stage"}
-      style={{
-        position: "fixed",
-        inset: 0,
-        display: "grid",
-        placeItems: "center",
-        // Keep out of iOS notches/home indicator (PWA + Safari)
-        paddingTop: "env(safe-area-inset-top)",
-        paddingRight: "env(safe-area-inset-right)",
-        paddingBottom: "env(safe-area-inset-bottom)",
-        paddingLeft: "env(safe-area-inset-left)",
-        // No scrolling/bounce
-        overflow: "hidden",
-        touchAction: "manipulation",
-        ...style,
-      }}
-    >
+    <div ref={containerRef} className={className || "stage"} style={style}>
       <div
         style={{
           position: "relative",

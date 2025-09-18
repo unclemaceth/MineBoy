@@ -11,7 +11,15 @@ body {
   touch-action: manipulation;
 }
 
-/* Stage container is fixed fullscreen; padding uses safe-areas already */
+/* Safe-area vars we can read from JS */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+/* Stage container is fixed fullscreen; no padding (we subtract safe areas in JS instead) */
 .stage {
   position: fixed;
   inset: 0;
@@ -19,14 +27,14 @@ body {
   place-items: center;
   overflow: hidden;
   background: #0a0a0a;
-
+  
+  /* IMPORTANT: no padding here (we subtract safe areas in JS instead) */
+  padding: 0;
+  
   /* best available viewport height units */
   height: 100svh;  /* iOS 16+ small viewport (excludes bars) */
   height: 100dvh;  /* dynamic viewport (newer browsers) */
   height: 100vh;   /* fallback */
-
-  padding: env(safe-area-inset-top) env(safe-area-inset-right)
-           env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 :root {
