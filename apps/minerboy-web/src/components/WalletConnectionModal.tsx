@@ -110,12 +110,17 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
       };
 
       // Listen for WalletConnect events
-      window.addEventListener('walletconnect_display_uri', (e: any) => {
-        handleDisplayUri(e.detail.uri);
-      });
+      const onDisplayUri = (evt: Event) => {
+        const { uri } = (evt as CustomEvent<{ uri: string }>).detail || {};
+        if (!uri) return;
+        handleDisplayUri(uri);
+      };
+
+      // Now with proper typing from events.d.ts
+      window.addEventListener('walletconnect_display_uri', onDisplayUri);
 
       return () => {
-        window.removeEventListener('walletconnect_display_uri', handleDisplayUri);
+        window.removeEventListener('walletconnect_display_uri', onDisplayUri);
       };
     }
   }, [selectedOption]);
