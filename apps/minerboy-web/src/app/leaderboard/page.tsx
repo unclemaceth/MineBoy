@@ -43,20 +43,28 @@ export default function LeaderboardPage() {
   const [data, setData] = useState<ApiResp | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const resp = await api.getLeaderboard({ period, limit: 25, ...(address ? { wallet: address } : {}) });
+      setData(resp as ApiResp);
+    } catch {
+      // noop for now
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      try {
-        setLoading(true);
-        const resp = await api.getLeaderboard({ period, limit: 25, ...(address ? { wallet: address } : {}) });
-        if (!cancelled) setData(resp as ApiResp);
-      } catch {
-        // noop for now
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+    fetchData();
     return () => { cancelled = true; };
+  }, [period, address]);
+
+  // Auto-refresh every 30 seconds to catch new confirmations
+  useEffect(() => {
+    const interval = setInterval(fetchData, 30000);
+    return () => clearInterval(interval);
   }, [period, address]);
 
   const meNotInTop = useMemo(() => {
