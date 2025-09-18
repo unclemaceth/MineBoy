@@ -1,68 +1,56 @@
 @import "tailwindcss";
 
-/* reset */
+/* Fill the viewport and center content. Prevent scroll/bounce. */
 html, body, #__next { 
-  height: 100svh; 
+  height: 100%; 
+  margin: 0; 
   overflow: hidden; 
-  background: #0b0b0b; 
+  background: #0a0a0a; 
 }
 *, *::before, *::after { box-sizing: border-box; }
-body { 
-  margin: 0; 
-  background: #0b0b0b; 
-  overflow: hidden; 
-  touch-action: manipulation; 
-}
 
-/* stage sizing variables - iPhone 13 CSS pixels */
 :root {
-  --W: 390;
-  --H: 844;
-  /* Safe area calculations */
-  --safeX: calc(env(safe-area-inset-left) + env(safe-area-inset-right));
-  --safeY: calc(env(safe-area-inset-top) + env(safe-area-inset-bottom));
+  --W: 390;      /* device logical width */
+  --H: 844;      /* device logical height */
+  --safeX: calc(env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px));
+  --safeY: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
   --vw: calc(100vw - var(--safeX));
+  /* 100svh handles mobile URL bar; falls back elsewhere */
   --vh: calc(100svh - var(--safeY));
-  /* crisp scale: never > 1, handles safe areas */
   --s: min(calc(var(--vw) / var(--W)), calc(var(--vh) / var(--H)), 1);
 }
 
 .stage {
   position: fixed;
   inset: 0;
-  overflow: hidden;
   display: grid;
   place-items: center;
-  background: #0b0b0b;
-  /* Safe area support for iOS */
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-  /* Viewport height with fallbacks */
-  height: 100svh;
-  height: 100dvh;
-  height: 100vh;
+  /* No padding by default (desktop) */
+  padding: 0;
+  height: 100svh; /* safe viewport on mobile */
+  overflow: hidden;
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  background: #0a0a0a;
 }
 
-/* Remove padding when in standalone PWA mode */
-@media (display-mode: standalone) {
+/* Only apply safe-area padding on devices that actually expose it */
+@supports (padding: env(safe-area-inset-top)) {
   .stage {
-    padding: 0;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right)
+             env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
 }
 
-/* the device "canvas" */
+/* The fixed-size device that we scale */
 .stage__device {
   position: relative;
   width: calc(var(--W) * 1px);
   height: calc(var(--H) * 1px);
-  
-  /* scale from center, no translate needed (grid handles centering) */
-  transform-origin: center;
+  transform-origin: center center;
   transform: scale(var(--s));
   will-change: transform;
-
-  border-radius: 28px;
-  box-shadow: 0 20px 80px rgba(0,0,0,.5);
-  background: transparent;
 }
 
 :root {
