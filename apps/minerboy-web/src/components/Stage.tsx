@@ -3,13 +3,13 @@ import React, { useEffect, useRef, useState } from "react";
 
 type Props = {
   children: React.ReactNode;
-  width?: number;   // device logical width (e.g. 390)
-  height?: number;  // device logical height (e.g. 844)
-  fullscreen?: boolean; // default true
+  width?: number;
+  height?: number;
+  fullscreen?: boolean;
   className?: string;
   style?: React.CSSProperties;
   ignoreKeyboardResize?: boolean; // default true
-  maxScale1?: boolean; // default true -> never upscale above 1
+  maxScale1?: boolean;            // default true
 };
 
 export default function Stage({
@@ -24,19 +24,17 @@ export default function Stage({
 }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = useState(1);
-  const lastStableH = useRef<number | null>(null);
-  const lastStableW = useRef<number | null>(null);
+  const lastStable = useRef<{w:number; h:number} | null>(null);
 
   useEffect(() => {
-    const parsePx = (v: string) => Number.parseFloat(v || "0") || 0;
-
-    const getSafeInsets = () => {
-      const root = getComputedStyle(document.documentElement);
+    const px = (v: string) => Number.parseFloat(v || "0") || 0;
+    const safe = () => {
+      const cs = getComputedStyle(document.documentElement);
       return {
-        top: parsePx(root.getPropertyValue("--safe-top")),
-        bottom: parsePx(root.getPropertyValue("--safe-bottom")),
-        left: parsePx(root.getPropertyValue("--safe-left")),
-        right: parsePx(root.getPropertyValue("--safe-right")),
+        top: px(cs.getPropertyValue("--safe-top")),
+        bottom: px(cs.getPropertyValue("--safe-bottom")),
+        left: px(cs.getPropertyValue("--safe-left")),
+        right: px(cs.getPropertyValue("--safe-right")),
       };
     };
 
@@ -44,22 +42,17 @@ export default function Stage({
       const el = containerRef.current;
       if (!el) return;
 
-      const r = el.getBoundingClientRect();
-      const vv = window.visualViewport;
+      const r = el.getBoundingClientRect();     // layout viewport box of container
+      const vv = window.visualViewport || null; // visible viewport (minus browser chrome)
+      const s = safe();
 
-      const { top: st, bottom: sb, left: sl, right: sr } = getSafeInsets();
-
-      // Base available area = content box of the container
       let availW = r.width;
       let availH = r.height;
 
-      // Use the *visible* viewport (minus safe areas) when available
       if (vv) {
-        let vw = vv.width - sl - sr;
-        let vh = vv.height - st - sb;
+        let vw = vv.width  - s.left - s.right;
+        let vh = vv.height - s.top  - s.bottom;
 
-        // When keyboard is open on mobile, vv.height shrinks dramatically.
-        // If we're typing into an input, keep the previous stable size.
         const active = document.activeElement as HTMLElement | null;
         const keyboardLikelyOpen =
           ignoreKeyboardResize &&
@@ -68,67 +61,59 @@ export default function Stage({
           vh < window.innerHeight * 0.8;
 
         if (!keyboardLikelyOpen) {
-          lastStableH.current = vh;
-          lastStableW.current = vw;
-        } else {
-          vh = lastStableH.current ?? vh;
-          vw = lastStableW.current ?? vw;
+          lastStable.current = { w: vw, h: vh };
+        } else if (lastStable.current) {
+          vw = lastStable.current.w;
+          vh = lastStable.current.h;
         }
 
+        // Use the smaller of container box and visible viewport
         availW = Math.min(availW, vw);
         availH = Math.min(availH, vh);
       }
 
-      // Final scale
-      let s = Math.min(availW / width, availH / height);
-      if (maxScale1) s = Math.min(s, 1);
+      let k = Math.min(availW / width, availH / height);
+      if (maxScale1) k = Math.min(k, 1);
+      k = Math.round(k * 10000) / 10000; // de-jitter
 
-      // tiny rounding to avoid jitter
-      s = Math.floor(s * 10000) / 10000;
-
-      setScale(s);
+      setScale(k);
     };
 
     recompute();
-
     const onResize = () => recompute();
     const onVVResize = () => recompute();
-    const onScroll = () => recompute();
+    const onVVScroll = () => recompute();
 
     window.addEventListener("resize", onResize, { passive: true });
-    window.visualViewport?.addEventListener("resize", onVVResize as any, {
-      passive: true,
-    });
-    window.visualViewport?.addEventListener("scroll", onScroll as any, {
-      passive: true,
-    });
+    window.visualViewport?.addEventListener("resize", onVVResize as any, { passive: true });
+    window.visualViewport?.addEventListener("scroll", onVVScroll as any, { passive: true });
 
     return () => {
       window.removeEventListener("resize", onResize);
       window.visualViewport?.removeEventListener("resize", onVVResize as any);
-      window.visualViewport?.removeEventListener("scroll", onScroll as any);
+      window.visualViewport?.removeEventListener("scroll", onVVScroll as any);
     };
   }, [width, height, ignoreKeyboardResize, maxScale1]);
 
   if (!fullscreen) {
     return (
-      <div
-        className={className}
-        style={{ position: "relative", width, height, ...style }}
-      >
+      <div className={className} style={{ position: "relative", width, height, ...style }}>
         {children}
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className={className || "stage"} style={style}>
+    <div ref={containerRef} className={className || "stage"} style={{ ...style }}>
+      {/* Absolute + translate keeps the *visual* box perfectly centered even when scaled */}
       <div
         style={{
-          position: "relative",
+          position: "absolute",
+          left: "50%",
+          top: "50%",
           width,
           height,
-          transform: `scale(${scale})`,
+          transform: `translate(-50%, -50%) scale(${scale})`,
           transformOrigin: "center center",
           willChange: "transform",
         }}

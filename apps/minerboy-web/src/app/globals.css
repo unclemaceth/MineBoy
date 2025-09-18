@@ -1,17 +1,6 @@
 @import "tailwindcss";
 
-/* Fill screen, no scroll/bounce */
-html, body, #__next { height: 100%; }
-body {
-  margin: 0;
-  background: #0a0a0a;
-  overflow: hidden;
-  overscroll-behavior: none;
-  -webkit-tap-highlight-color: transparent;
-  touch-action: manipulation;
-}
-
-/* Safe-area vars we can read from JS */
+/* Safe-area variables that JS reads */
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -19,22 +8,21 @@ body {
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
-/* Stage container is fixed fullscreen; no padding (we subtract safe areas in JS instead) */
+html, body, #__next { height: 100%; overflow: hidden; background: #0a0a0a; }
+body { margin: 0; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+
 .stage {
   position: fixed;
   inset: 0;
-  display: grid;
-  place-items: center;
   overflow: hidden;
+  /* centering is handled by the child's translate(-50%,-50%) */
   background: #0a0a0a;
-  
-  /* IMPORTANT: no padding here (we subtract safe areas in JS instead) */
-  padding: 0;
-  
-  /* best available viewport height units */
-  height: 100svh;  /* iOS 16+ small viewport (excludes bars) */
-  height: 100dvh;  /* dynamic viewport (newer browsers) */
-  height: 100vh;   /* fallback */
+
+  /* viewport height fallbacks – order matters: last supported wins */
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
+  padding: 0; /* important: no safe-area padding here */
 }
 
 :root {
