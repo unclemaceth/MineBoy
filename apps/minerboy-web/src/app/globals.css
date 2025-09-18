@@ -1,56 +1,32 @@
 @import "tailwindcss";
 
-/* Fill the viewport and center content. Prevent scroll/bounce. */
-html, body, #__next { 
-  height: 100%; 
-  margin: 0; 
-  overflow: hidden; 
-  background: #0a0a0a; 
-}
-*, *::before, *::after { box-sizing: border-box; }
-
-:root {
-  --W: 390;      /* device logical width */
-  --H: 844;      /* device logical height */
-  --safeX: calc(env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px));
-  --safeY: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
-  --vw: calc(100vw - var(--safeX));
-  /* Use dvh (dynamic viewport) which accounts for mobile UI changes */
-  --vh: calc(100dvh - var(--safeY));
-  --s: min(calc(var(--vw) / var(--W)), calc(var(--vh) / var(--H)), 1);
+/* Fill screen, no scroll/bounce */
+html, body, #__next { height: 100%; }
+body {
+  margin: 0;
+  background: #0a0a0a;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
+/* Stage container is fixed fullscreen; padding uses safe-areas already */
 .stage {
   position: fixed;
   inset: 0;
   display: grid;
   place-items: center;
-  /* No padding by default (desktop) */
-  padding: 0;
-  height: 100dvh; /* dynamic viewport height - accounts for mobile UI changes */
   overflow: hidden;
-  touch-action: manipulation;
-  overscroll-behavior: none;
-  -webkit-tap-highlight-color: transparent;
   background: #0a0a0a;
-}
 
-/* Only apply safe-area padding on devices that actually expose it */
-@supports (padding: env(safe-area-inset-top)) {
-  .stage {
-    padding: env(safe-area-inset-top) env(safe-area-inset-right)
-             env(safe-area-inset-bottom) env(safe-area-inset-left);
-  }
-}
+  /* best available viewport height units */
+  height: 100svh;  /* iOS 16+ small viewport (excludes bars) */
+  height: 100dvh;  /* dynamic viewport (newer browsers) */
+  height: 100vh;   /* fallback */
 
-/* The fixed-size device that we scale */
-.stage__device {
-  position: relative;
-  width: calc(var(--W) * 1px);
-  height: calc(var(--H) * 1px);
-  transform-origin: center center;
-  transform: scale(var(--s));
-  will-change: transform;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 :root {
