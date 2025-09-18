@@ -560,6 +560,11 @@ function Home() {
       }
 
       console.log('[CLAIM_OK]', claimResponse);
+      console.log('[CLAIM_DATA]', { 
+        hasClaim: !!claimResponse.claim, 
+        hasSignature: !!claimResponse.signature,
+        claimId: claimResponse.claimId 
+      });
       pushLine('Claim verified by backend');
       
       // Store claimId for later use
@@ -575,7 +580,7 @@ function Home() {
       }
       
       // Check if we have claim data for on-chain transaction
-      if (claimResponse.claimId) {
+      if (claimResponse.claimId && claimResponse.claim && claimResponse.signature) {
         pushLine('Preparing on-chain transaction...');
         if (claimResponse.txHash) {
           pushLine(`Transaction: ${claimResponse.txHash.slice(0, 8)}...${claimResponse.txHash.slice(-6)}`);
@@ -588,17 +593,17 @@ function Home() {
           // Use the proper MiningClaimRouter contract
           const routerAddress = '0x34a227cf6c6a2f5f4f7c7710e8416555334e01bf';
           
-          // Build the claim data tuple
+          // Use the claim data from backend (properly formatted)
           const claimData = {
-            wallet: to0x(address || '0x0'),
-            cartridge: to0x(cartridge?.info?.contract || '0x0000000000000000000000000000000000000000'),
-            tokenId: BigInt(cartridge?.tokenId || 0),
-            rewardToken: to0x('0x0000000000000000000000000000000000000000'), // Placeholder
-            rewardAmount: BigInt(0), // Placeholder
-            workHash: to0x(hit.hash),
-            attempts: BigInt(hit.attempts),
-            nonce: to0x(hit.preimage),
-            expiry: BigInt(job?.expiresAt || Date.now() + 60000)
+            wallet: to0x(claimResponse.claim.wallet),
+            cartridge: to0x(claimResponse.claim.cartridge),
+            tokenId: BigInt(claimResponse.claim.tokenId),
+            rewardToken: to0x(claimResponse.claim.rewardToken),
+            rewardAmount: BigInt(claimResponse.claim.rewardAmount),
+            workHash: to0x(claimResponse.claim.workHash),
+            attempts: BigInt(claimResponse.claim.attempts),
+            nonce: to0x(claimResponse.claim.nonce),
+            expiry: BigInt(claimResponse.claim.expiry)
           };
 
           writeContract({
@@ -626,7 +631,7 @@ function Home() {
               }
             ],
             functionName: 'claim',
-            args: [claimData, to0x(claimResponse.txHash || '0x')],
+            args: [claimData, to0x(claimResponse.signature)],
           });
           
           pushLine('Transaction submitted - waiting for hash...');

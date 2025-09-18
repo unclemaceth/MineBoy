@@ -45,7 +45,19 @@ export interface ClaimRes {
   status: ClaimStatus;
   txHash?: string;
   nextJob?: any; // optional – sometimes server won't issue a next job
-  // NOTE: there is **no** `ok` or `signature` here by design
+  // EIP-712 transaction data for client-side submission
+  claim?: {
+    wallet: string;
+    cartridge: string;
+    tokenId: string;
+    rewardToken: string;
+    rewardAmount: string;
+    workHash: string;
+    attempts: string;
+    nonce: string;
+    expiry: string;
+  };
+  signature?: string;
 }
 
 export function normalizeClaimRes(raw: any): ClaimRes {
@@ -54,5 +66,7 @@ export function normalizeClaimRes(raw: any): ClaimRes {
     status: (raw.status ?? 'pending') as ClaimStatus,
     txHash: raw.txHash ?? raw.tx_hash,
     nextJob: raw.nextJob ?? raw.next_job,
+    claim: raw.claim,
+    signature: raw.signature,
   };
 }
