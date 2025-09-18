@@ -1,6 +1,8 @@
 "use client";
 
 import { GlyphWalletProvider } from "@use-glyph/sdk-react";
+import { WagmiProvider } from 'wagmi';
+import { wagmiConfig } from '@/lib/wallet';
 import type { Chain } from "viem";
 import { apeChain, mainnet, base, curtis } from "viem/chains";
 
@@ -12,8 +14,10 @@ export default function GlyphWalletWrapper({
   children: React.ReactNode;
 }) {
   return (
-    <GlyphWalletProvider chains={supportedChains} askForSignature={false}>
-      {children}
-    </GlyphWalletProvider>
+    <WagmiProvider config={wagmiConfig}>
+      <GlyphWalletProvider chains={supportedChains} askForSignature={false}>
+        {children}
+      </GlyphWalletProvider>
+    </WagmiProvider>
   );
 }
