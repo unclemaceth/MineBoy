@@ -2062,21 +2062,42 @@ function Home() {
         onClick={() => setMobileZoom(!mobileZoom)}
         style={{
           position: 'fixed',
-          top: '10px',
-          right: '10px',
-          zIndex: 1000,
-          padding: '8px 12px',
-          backgroundColor: mobileZoom ? '#64ff8a' : '#555',
-          color: mobileZoom ? '#000' : '#fff',
-          border: '1px solid #777',
-          borderRadius: '4px',
+          left: '0px',
+          top: '21.55%',
+          transform: 'translateY(-50%)',
+          zIndex: 0, // Behind the shell
+          width: '10px',
+          height: '109.5px',
+          background: 'linear-gradient(145deg, #cc6666, #aa4444)',
+          border: 'none',
+          borderRadius: '10px',
           cursor: 'pointer',
-          fontSize: '12px',
-          fontFamily: 'Menlo, monospace',
+          boxShadow: `
+            inset 2px 2px 4px rgba(255, 255, 255, 0.3),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.3),
+            0 4px 8px rgba(0,0,0,0.4)
+          `,
+          transition: 'all 0.2s ease',
         }}
-      >
-        {mobileZoom ? '85%' : '100%'}
-      </button>
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'linear-gradient(145deg, #dd7777, #bb5555)';
+          e.currentTarget.style.height = '90px';
+          e.currentTarget.style.boxShadow = `
+            inset 2px 2px 4px rgba(255, 255, 255, 0.4),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.2),
+            0 6px 12px rgba(0,0,0,0.5)
+          `;
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'linear-gradient(145deg, #cc6666, #aa4444)';
+          e.currentTarget.style.height = '109.5px';
+          e.currentTarget.style.boxShadow = `
+            inset 2px 2px 4px rgba(255, 255, 255, 0.3),
+            inset -2px -2px 4px rgba(0, 0, 0, 0.3),
+            0 4px 8px rgba(0,0,0,0.4)
+          `;
+        }}
+      />
     </Stage>
     </div>
   );

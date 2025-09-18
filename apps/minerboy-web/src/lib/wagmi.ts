@@ -30,13 +30,10 @@ export const config = createConfig({
   chains: [curtis],
   connectors: [
     injected(),
-    // Only add walletConnect if we have a real project ID
-    ...(process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID && process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID !== 'demo-project-id' 
-      ? [walletConnect({
-          projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID,
-        })]
-      : []
-    ),
+    // Add walletConnect with project ID (demo or real)
+    walletConnect({
+      projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id',
+    }),
   ],
   transports: {
     [curtis.id]: http(),
