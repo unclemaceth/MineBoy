@@ -5,7 +5,7 @@ import { injected, walletConnect } from 'wagmi/connectors';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
 import { isiOSPWA, isiOSMobile, reserveDeepLinkWindow, buildUniversalLink, openDeepLink, copyWalletConnectUri, logConnectionAttempt } from '@/utils/iosPwaWallet';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
-import { useOpenWalletApp } from '@/hooks/useOpenWalletApp';
+import { useAppKit } from '@reown/appkit/react';
 
 interface WalletConnectionModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
   useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
   const { attachDisplayUri, connectWalletConnect } = useWalletConnect();
-  const openWalletApp = useOpenWalletApp();
+  const { open } = useAppKit();
 
   const handleGlyphConnect = async () => {
     try {
@@ -46,39 +46,6 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     }
   };
 
-  const handleMetamaskConnect = async () => {
-    logConnectionAttempt();
-    reserveDeepLinkWindow();
-    
-    try {
-      // Use the new deep linking approach
-      await openWalletApp('metamask');
-    } catch (error) {
-      console.log('Deep link failed, trying direct MetaMask:', error);
-      try {
-        await connect({ connector: injected() });
-      } catch (injectedError) {
-        console.log('Direct MetaMask also failed:', injectedError);
-      }
-    }
-  };
-
-  const handleCoinbaseConnect = async () => {
-    logConnectionAttempt();
-    reserveDeepLinkWindow();
-    
-    try {
-      // Use the new deep linking approach
-      await openWalletApp('coinbase');
-    } catch (error) {
-      console.log('Deep link failed, trying direct Coinbase:', error);
-      try {
-        await connect({ connector: injected() });
-      } catch (injectedError) {
-        console.log('Direct Coinbase also failed:', injectedError);
-      }
-    }
-  };
 
   const handleCopyUri = async () => {
     if (wcUri) {
@@ -243,99 +210,66 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                 Glyph
               </button>
 
-              {isiOSMobile ? (
-                <>
-                  <button
-                    onClick={() => setSelectedOption('metamask')}
-                    style={{
-                      backgroundColor: '#f6851b',
-                      border: '2px solid #f6851b',
-                      borderRadius: '6px',
-                      padding: '16px',
-                      color: '#fff',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#e2761b';
-                      e.currentTarget.style.borderColor = '#e2761b';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#f6851b';
-                      e.currentTarget.style.borderColor = '#f6851b';
-                    }}
-                  >
-                    <span style={{ fontSize: '20px' }}>🦊</span>
-                    MetaMask
-                  </button>
+              <button
+                onClick={() => setSelectedOption('walletconnect')}
+                style={{
+                  backgroundColor: '#2a2a2a',
+                  border: '2px solid #444',
+                  borderRadius: '6px',
+                  padding: '16px',
+                  color: '#fff',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#333';
+                  e.currentTarget.style.borderColor = '#555';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#2a2a2a';
+                  e.currentTarget.style.borderColor = '#444';
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>🔗</span>
+                WalletConnect
+              </button>
 
-                  <button
-                    onClick={() => setSelectedOption('coinbase')}
-                    style={{
-                      backgroundColor: '#0052ff',
-                      border: '2px solid #0052ff',
-                      borderRadius: '6px',
-                      padding: '16px',
-                      color: '#fff',
-                      fontSize: '16px',
-                      fontWeight: 'bold',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px'
-                    }}
-                    onMouseOver={(e) => {
-                      e.currentTarget.style.backgroundColor = '#0041cc';
-                      e.currentTarget.style.borderColor = '#0041cc';
-                    }}
-                    onMouseOut={(e) => {
-                      e.currentTarget.style.backgroundColor = '#0052ff';
-                      e.currentTarget.style.borderColor = '#0052ff';
-                    }}
-                  >
-                    <span style={{ fontSize: '20px' }}>🔵</span>
-                    Coinbase
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setSelectedOption('walletconnect')}
-                  style={{
-                    backgroundColor: '#2a2a2a',
-                    border: '2px solid #444',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    color: '#fff',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#333';
-                    e.currentTarget.style.borderColor = '#555';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2a2a2a';
-                    e.currentTarget.style.borderColor = '#444';
-                  }}
-                >
-                  <span style={{ fontSize: '20px' }}>🔗</span>
-                  WalletConnect
-                </button>
-              )}
+              <button
+                onClick={() => open()}
+                style={{
+                  backgroundColor: '#64ff8a',
+                  border: '2px solid #64ff8a',
+                  borderRadius: '6px',
+                  padding: '16px',
+                  color: '#000',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  gridColumn: 'span 2'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = '#55e577';
+                  e.currentTarget.style.borderColor = '#55e577';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = '#64ff8a';
+                  e.currentTarget.style.borderColor = '#64ff8a';
+                }}
+              >
+                <span style={{ fontSize: '20px' }}>🔌</span>
+                Other Wallets (MetaMask, Coinbase, Trust...)
+              </button>
             </div>
           </div>
         ) : selectedOption === 'glyph' ? (
