@@ -1,59 +1,55 @@
-import { useEffect } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useConnect } from 'wagmi';
-import { walletConnect } from 'wagmi/connectors';
-import type { EthereumProvider } from '@walletconnect/ethereum-provider';
 
-/**
- * Hook to handle WalletConnect events and deep linking
- */
+type DisplayUriHandler = (uri: string) => void;
+
 export function useWalletConnect() {
-  const { connect } = useConnect();
+  const { connect, connectors } = useConnect();
 
-  useEffect(() => {
-    // Listen for WalletConnect display_uri events
-    const handleDisplayUri = (uri: string) => {
-      console.log('[WalletConnect] Display URI received:', uri.length, 'chars');
-      
-      // Dispatch custom event for the modal to listen to
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('walletconnect_display_uri', {
-          detail: { uri }
-        }));
-      }
-    };
+  // grab the actual connector instance, not the factory
+  const wc = useMemo(
+    () =>
+      connectors.find(
+        (c) => c.id === 'walletConnect' || /walletconnect/i.test(c.name)
+      ),
+    [connectors]
+  );
 
-    // Set up WalletConnect event listeners
-    const setupWalletConnect = async () => {
-      try {
-        // Create a temporary connector to set up event listeners
-        const connector = walletConnect({
-          projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id',
-        });
+  // listen for WalletConnect provider's "display_uri" event
+  const attachDisplayUri = useCallback(
+    (onUri: DisplayUriHandler) => {
+      let cleanup: (() => void) | undefined;
 
-        // Get the provider to listen for events
-        const provider = (await connector.getProvider()) as EthereumProvider;
-        
-        // Listen for display_uri events on the provider
-        const wrapped = (uri: string) => handleDisplayUri(uri);
-        (provider.on ?? provider.addListener).call(provider, 'display_uri', wrapped);
+      (async () => {
+        try {
+          // some versions expose getProvider; cast to any to avoid type drama
+          const provider: any = await (wc as any)?.getProvider?.();
+          if (!provider) return;
 
-        return () => {
-          (provider.off ?? provider.removeListener)?.call(provider, 'display_uri', wrapped);
-        };
-      } catch (error) {
-        console.warn('[WalletConnect] Failed to set up event listeners:', error);
-        return () => {};
-      }
-    };
+          const handler = (uri: string) => onUri(uri);
+          const on = provider.on || provider.addListener;
+          const off = provider.off || provider.removeListener;
 
-    const cleanup = setupWalletConnect();
+          on?.call(provider, 'display_uri', handler);
+          cleanup = () => off?.call(provider, 'display_uri', handler);
+        } catch {
+          /* no-op */
+        }
+      })();
 
-    return () => {
-      cleanup.then(cleanupFn => cleanupFn());
-    };
-  }, [connect]);
+      return () => cleanup?.();
+    },
+    [wc]
+  );
 
-  return {
-    connectWalletConnect: () => connect({ connector: walletConnect() })
-  };
+  // connect via wagmi's connect() (requires an argument)
+  const connectWalletConnect = useCallback(
+    (chainId?: number) => {
+      if (!wc) throw new Error('WalletConnect connector not found');
+      return connect({ connector: wc, chainId });
+    },
+    [connect, wc]
+  );
+
+  return { wcConnector: wc, attachDisplayUri, connectWalletConnect };
 }

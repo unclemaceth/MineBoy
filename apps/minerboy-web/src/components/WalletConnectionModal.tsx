@@ -19,7 +19,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
   const { connect } = useConnect();
   useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
-  const { connectWalletConnect } = useWalletConnect();
+  const { attachDisplayUri, connectWalletConnect } = useWalletConnect();
 
   const handleGlyphConnect = async () => {
     try {
@@ -57,7 +57,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
         await connect({ connector: injected() });
       } catch (error) {
         console.log('Direct MetaMask failed, trying WalletConnect:', error);
-        await handleWalletConnect();
+        await connectWalletConnect();
       }
     }
   };
@@ -75,7 +75,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
         await connect({ connector: injected() });
       } catch (error) {
         console.log('Direct Coinbase failed, trying WalletConnect:', error);
-        await handleWalletConnect();
+        await connectWalletConnect();
       }
     }
   };
@@ -109,21 +109,10 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
         }
       };
 
-      // Listen for WalletConnect events
-      const onDisplayUri = (evt: Event) => {
-        const { uri } = (evt as CustomEvent<{ uri: string }>).detail || {};
-        if (!uri) return;
-        handleDisplayUri(uri);
-      };
-
-      // Now with proper typing from events.d.ts
-      window.addEventListener('walletconnect_display_uri', onDisplayUri);
-
-      return () => {
-        window.removeEventListener('walletconnect_display_uri', onDisplayUri);
-      };
+      // Use the hook directly instead of custom window events
+      return attachDisplayUri(handleDisplayUri);
     }
-  }, [selectedOption]);
+  }, [selectedOption, attachDisplayUri]);
 
   const handleClose = () => {
     setSelectedOption(null);
