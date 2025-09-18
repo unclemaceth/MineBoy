@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { formatEther } from 'viem';
