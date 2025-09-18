@@ -48,16 +48,15 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     logConnectionAttempt();
     reserveDeepLinkWindow();
     
-    if (wcUri) {
-      const url = buildUniversalLink('metamask', wcUri);
-      openDeepLink(url);
-    } else {
-      // Try direct connection first
+    try {
+      // Always start with WalletConnect to get proper deep link
+      await connectWalletConnect();
+    } catch (error) {
+      console.log('WalletConnect failed, trying direct MetaMask:', error);
       try {
         await connect({ connector: injected() });
-      } catch (error) {
-        console.log('Direct MetaMask failed, trying WalletConnect:', error);
-        await connectWalletConnect();
+      } catch (injectedError) {
+        console.log('Direct MetaMask also failed:', injectedError);
       }
     }
   };
@@ -66,16 +65,15 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     logConnectionAttempt();
     reserveDeepLinkWindow();
     
-    if (wcUri) {
-      const url = buildUniversalLink('coinbase', wcUri);
-      openDeepLink(url);
-    } else {
-      // Try direct connection first
+    try {
+      // Always start with WalletConnect to get proper deep link
+      await connectWalletConnect();
+    } catch (error) {
+      console.log('WalletConnect failed, trying direct Coinbase:', error);
       try {
         await connect({ connector: injected() });
-      } catch (error) {
-        console.log('Direct Coinbase failed, trying WalletConnect:', error);
-        await connectWalletConnect();
+      } catch (injectedError) {
+        console.log('Direct Coinbase also failed:', injectedError);
       }
     }
   };
@@ -105,7 +103,8 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
           const wallet = selectedOption === 'metamask' ? 'metamask' : 
                         selectedOption === 'coinbase' ? 'coinbase' : 'generic';
           const url = buildUniversalLink(wallet, uri);
-          setTimeout(() => openDeepLink(url), 500); // Small delay to ensure URI is set
+          console.log('[iOS Mobile] Opening deep link:', url);
+          openDeepLink(url);
         }
       };
 
