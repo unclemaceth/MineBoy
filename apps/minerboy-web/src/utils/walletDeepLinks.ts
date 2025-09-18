@@ -3,9 +3,9 @@
  * Handles proper deep linking to wallet apps on mobile devices
  */
 
-type WalletKey = 'metamask' | 'coinbase' | 'rainbow' | 'trust' | 'okx'
+export type WalletKey = 'metamask' | 'coinbase' | 'rainbow' | 'trust' | 'okx'
 
-const WALLET_LINKS: Record<WalletKey, {
+export const WALLET_LINKS: Record<WalletKey, {
   ios: string;        // universal link preferred on iOS
   android?: string;   // native scheme or universal on Android
   store?: string;     // optional fallback
@@ -34,8 +34,8 @@ const WALLET_LINKS: Record<WalletKey, {
   }
 }
 
-const isIOS = () => typeof navigator !== 'undefined' ? /iPhone|iPad|iPod/i.test(navigator.userAgent) : false
-const isAndroid = () => typeof navigator !== 'undefined' ? /Android/i.test(navigator.userAgent) : false
+export const isIOS = () => typeof navigator !== 'undefined' ? /iPhone|iPad|iPod/i.test(navigator.userAgent) : false
+export const isAndroid = () => typeof navigator !== 'undefined' ? /Android/i.test(navigator.userAgent) : false
 
 /**
  * Build a deep link URL for a specific wallet
