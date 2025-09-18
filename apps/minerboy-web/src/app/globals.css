@@ -15,8 +15,8 @@ html, body, #__next {
   --safeX: calc(env(safe-area-inset-left, 0px) + env(safe-area-inset-right, 0px));
   --safeY: calc(env(safe-area-inset-top, 0px) + env(safe-area-inset-bottom, 0px));
   --vw: calc(100vw - var(--safeX));
-  /* 100svh handles mobile URL bar; falls back elsewhere */
-  --vh: calc(100svh - var(--safeY));
+  /* Use dvh (dynamic viewport) which accounts for mobile UI changes */
+  --vh: calc(100dvh - var(--safeY));
   --s: min(calc(var(--vw) / var(--W)), calc(var(--vh) / var(--H)), 1);
 }
 
@@ -27,7 +27,7 @@ html, body, #__next {
   place-items: center;
   /* No padding by default (desktop) */
   padding: 0;
-  height: 100svh; /* safe viewport on mobile */
+  height: 100dvh; /* dynamic viewport height - accounts for mobile UI changes */
   overflow: hidden;
   touch-action: manipulation;
   overscroll-behavior: none;
