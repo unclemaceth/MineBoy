@@ -5,6 +5,7 @@ import { injected, walletConnect } from 'wagmi/connectors';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
 import { isiOSPWA, isiOSMobile, reserveDeepLinkWindow, buildUniversalLink, openDeepLink, copyWalletConnectUri, logConnectionAttempt } from '@/utils/iosPwaWallet';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
+import { useOpenWalletApp } from '@/hooks/useOpenWalletApp';
 
 interface WalletConnectionModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
   useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
   const { attachDisplayUri, connectWalletConnect } = useWalletConnect();
+  const openWalletApp = useOpenWalletApp();
 
   const handleGlyphConnect = async () => {
     try {
@@ -49,10 +51,10 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     reserveDeepLinkWindow();
     
     try {
-      // Always start with WalletConnect to get proper deep link
-      await connectWalletConnect();
+      // Use the new deep linking approach
+      await openWalletApp('metamask');
     } catch (error) {
-      console.log('WalletConnect failed, trying direct MetaMask:', error);
+      console.log('Deep link failed, trying direct MetaMask:', error);
       try {
         await connect({ connector: injected() });
       } catch (injectedError) {
@@ -66,10 +68,10 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     reserveDeepLinkWindow();
     
     try {
-      // Always start with WalletConnect to get proper deep link
-      await connectWalletConnect();
+      // Use the new deep linking approach
+      await openWalletApp('coinbase');
     } catch (error) {
-      console.log('WalletConnect failed, trying direct Coinbase:', error);
+      console.log('Deep link failed, trying direct Coinbase:', error);
       try {
         await connect({ connector: injected() });
       } catch (injectedError) {
