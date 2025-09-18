@@ -900,21 +900,11 @@ function Home() {
   };
 
   return (
-    <div style={{
-      transform: mobileZoom ? 'scale(0.85)' : 'scale(1)',
-      transformOrigin: 'center center',
-      transition: 'transform 0.3s ease',
-      width: '100vw',
-      height: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <Stage>
+    <Stage width={390} height={844}>
       {/* Navigation Links */}
       <div style={{
         position: 'absolute',
-        top: 809,
+        top: 807.5,
         right: 280,
         zIndex: 100,
         display: 'flex',
@@ -2057,8 +2047,8 @@ function Home() {
         onClose={() => setShowWalletModal(false)}
       />
       
-      {/* Mobile Zoom Toggle */}
-      <button
+      {/* Mobile Zoom Toggle - COMMENTED OUT FOR TESTING */}
+      {/* <button
         onClick={() => setMobileZoom(!mobileZoom)}
         style={{
           position: 'fixed',
@@ -2097,9 +2087,8 @@ function Home() {
             0 4px 8px rgba(0,0,0,0.4)
           `;
         }}
-      />
+      /> */}
     </Stage>
-    </div>
   );
 }
 
