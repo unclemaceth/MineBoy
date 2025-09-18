@@ -1,5 +1,8 @@
 'use client';
 import { useEffect, useMemo, useState } from 'react';
+
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
 import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import Link from 'next/link';

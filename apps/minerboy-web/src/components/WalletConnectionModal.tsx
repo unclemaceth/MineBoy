@@ -5,7 +5,7 @@ import { injected, walletConnect } from 'wagmi/connectors';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
 import { isiOSPWA, isiOSMobile, reserveDeepLinkWindow, buildUniversalLink, openDeepLink, copyWalletConnectUri, logConnectionAttempt } from '@/utils/iosPwaWallet';
 import { useWalletConnect } from '@/hooks/useWalletConnect';
-import { useAppKit } from '@reown/appkit/react';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 interface WalletConnectionModalProps {
   isOpen: boolean;
@@ -21,7 +21,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
   useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
   const { attachDisplayUri, connectWalletConnect } = useWalletConnect();
-  const { open } = useAppKit();
+  const { open } = useWeb3Modal();
 
   const handleGlyphConnect = async () => {
     try {
@@ -44,6 +44,14 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
       // Fallback to injected wallet
       connect({ connector: injected() });
     }
+  };
+
+  const handleMetamaskConnect = () => {
+    open();
+  };
+
+  const handleCoinbaseConnect = () => {
+    open();
   };
 
 
