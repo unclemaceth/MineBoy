@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useConnect } from 'wagmi';
 import { walletConnect } from 'wagmi/connectors';
+import type { EthereumProvider } from '@walletconnect/ethereum-provider';
 
 /**
  * Hook to handle WalletConnect events and deep linking
@@ -14,9 +15,11 @@ export function useWalletConnect() {
       console.log('[WalletConnect] Display URI received:', uri.length, 'chars');
       
       // Dispatch custom event for the modal to listen to
-      window.dispatchEvent(new CustomEvent('walletconnect_display_uri', {
-        detail: { uri }
-      }));
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('walletconnect_display_uri', {
+          detail: { uri }
+        }));
+      }
     };
 
     // Set up WalletConnect event listeners
@@ -27,11 +30,15 @@ export function useWalletConnect() {
           projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || 'demo-project-id',
         });
 
-        // Listen for display_uri events
-        connector.on('display_uri', handleDisplayUri);
+        // Get the provider to listen for events
+        const provider = (await connector.getProvider()) as EthereumProvider;
+        
+        // Listen for display_uri events on the provider
+        const wrapped = (uri: string) => handleDisplayUri(uri);
+        (provider.on ?? provider.addListener).call(provider, 'display_uri', wrapped);
 
         return () => {
-          connector.off('display_uri', handleDisplayUri);
+          (provider.off ?? provider.removeListener)?.call(provider, 'display_uri', wrapped);
         };
       } catch (error) {
         console.warn('[WalletConnect] Failed to set up event listeners:', error);
