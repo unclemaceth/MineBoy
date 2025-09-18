@@ -69,7 +69,8 @@ const stopPoller = startReceiptPoller(process.env.RPC_URL!);
 // Register CORS
 await fastify.register(cors, {
   origin: true, // Allow all origins for development
-  credentials: true
+  credentials: true,
+  exposedHeaders: ['X-Instance', 'X-Lock-Owner', 'X-Lock-Session', 'X-Lease-Id', 'X-Lock-Expires']
 });
 
 // Register new routes
@@ -278,16 +279,37 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     const { chainId, contract, tokenId } = session.cartridge;
     console.log(`[CLAIM_DEBUG] Session minerId: ${session.minerId}, Claim minerId: ${minerId}, Lock key: ${chainId}:${contract}:${tokenId}`);
     
-    const lockOk = locks.refresh(chainId, contract, tokenId, minerId);
-    if (!lockOk) {
-      console.log(`[CLAIM_DEBUG] Lock refresh failed for ${chainId}:${contract}:${tokenId} with minerId ${minerId}`);
-      return reply.code(409).send({ error: 'Cartridge lock lost or held by another miner' });
+    // Atomic renew-then-validate for claim
+    const lockRefreshed = await SessionStore.refreshLock(contract, tokenId, minerId);
+    if (!lockRefreshed) {
+      console.log(`[CLAIM_DEBUG] Lock refresh failed for ${contract}:${tokenId} with minerId ${minerId}`);
+      
+      // Add debug headers even on 409
+      reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
+      reply.header('X-Lock-Owner', 'none');
+      reply.header('X-Lock-Session', 'none');
+      reply.header('X-Lock-Expires', '0');
+      
+      return reply.code(409).send({ 
+        error: 'Cartridge lock lost or held by another miner',
+        reason: 'lock_mismatch',
+        cartridgeId: `${contract}:${tokenId}`,
+        expected: { ownerMinerId: 'unknown', sessionId, minerId },
+        got: { minerId, sessionId },
+        instance: process.env.HOSTNAME || 'unknown'
+      });
     }
     
     const result = await claimProcessor.processClaim(request.body);
     if (!result) {
       return reply.code(400).send({ error: 'Failed to process claim' });
     }
+    
+    // Add success headers
+    reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
+    reply.header('X-Lock-Owner', minerId);
+    reply.header('X-Lock-Session', sessionId);
+    reply.header('X-Lock-Expires', Date.now() + 45000);
     
     return result;
     
@@ -405,6 +427,12 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       console.warn('[HB] 409 lock refresh failed:', { sessionId, minerId, contract, tokenId });
       return reply.code(409).send({ error: 'lock-missing', sessionId, contract, tokenId });
     }
+    
+    // Add lock headers for debugging
+    reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
+    reply.header('X-Lock-Owner', minerId);
+    reply.header('X-Lock-Session', sessionId);
+    reply.header('X-Lock-Expires', Date.now() + 45000); // 45s from now
     
     console.log('[HB] 200 success:', { sessionId, minerId });
     return { ok: true };
