@@ -62,6 +62,7 @@ function Home() {
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
+  const [mobileZoom, setMobileZoom] = useState(false);
   
   // Single-tab enforcement
   useEffect(() => {
@@ -899,7 +900,17 @@ function Home() {
   };
 
   return (
-    <Stage>
+    <div style={{
+      transform: mobileZoom ? 'scale(0.85)' : 'scale(1)',
+      transformOrigin: 'center center',
+      transition: 'transform 0.3s ease',
+      width: '100vw',
+      height: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <Stage>
       {/* Navigation Links */}
       <div style={{
         position: 'absolute',
@@ -1407,9 +1418,18 @@ function Home() {
             maxWidth: 300,
             width: '90%',
           }}>
-            <h3 style={{ color: '#64ff8a', marginBottom: 16, textAlign: 'center' }}>
+            <h3 style={{ color: '#64ff8a', marginBottom: 8, textAlign: 'center' }}>
               Select Cartridge
             </h3>
+            <div style={{ 
+              color: '#888', 
+              fontSize: '12px', 
+              textAlign: 'center', 
+              marginBottom: 16,
+              fontFamily: 'Menlo, monospace'
+            }}>
+              Lock expires in 45s if inactive
+            </div>
             {cartridges.map((cart) => (
               <div key={cart.contract} style={{ marginBottom: 12 }}>
                 <div style={{ color: '#fff', marginBottom: 4 }}>{cart.name}</div>
@@ -1445,7 +1465,10 @@ function Home() {
                       onClick={() => {
                         const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
                         if (input) {
-                          input.value = num.toString();
+                          const currentValue = input.value;
+                          if (currentValue.length < 6) {
+                            input.value = currentValue + num.toString();
+                          }
                         }
                       }}
                       style={{
@@ -1464,26 +1487,75 @@ function Home() {
                   ))}
                 </div>
                 
-                <button
-                  onClick={() => {
-                    const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
-                    const tokenId = input?.value;
-                    if (tokenId) {
-                      handleCartridgeSelect(cart, tokenId);
-                    }
-                  }}
-                  style={{
-                    backgroundColor: '#64ff8a',
-                    color: '#000',
-                    border: 'none',
-                    padding: '6px 12px',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                    fontSize: 12,
-                  }}
-                >
-                  Select
-                </button>
+                {/* Bottom row: Submit, 0, Delete */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 8 }}>
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
+                      const tokenId = input?.value;
+                      if (tokenId) {
+                        handleCartridgeSelect(cart, tokenId);
+                      }
+                    }}
+                    style={{
+                      backgroundColor: '#64ff8a',
+                      color: '#000',
+                      border: 'none',
+                      padding: '6px 12px',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontSize: 12,
+                      fontWeight: 'bold',
+                    }}
+                  >
+                    SUBMIT
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
+                      if (input) {
+                        const currentValue = input.value;
+                        if (currentValue.length < 6) {
+                          input.value = currentValue + '0';
+                        }
+                      }
+                    }}
+                    style={{
+                      padding: '6px',
+                      backgroundColor: '#555',
+                      color: 'white',
+                      border: '1px solid #777',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontFamily: 'Menlo, monospace',
+                      fontSize: 12,
+                    }}
+                  >
+                    0
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
+                      if (input) {
+                        input.value = input.value.slice(0, -1);
+                      }
+                    }}
+                    style={{
+                      padding: '6px',
+                      backgroundColor: '#ff6b6b',
+                      color: 'white',
+                      border: '1px solid #ff8a8a',
+                      borderRadius: 4,
+                      cursor: 'pointer',
+                      fontFamily: 'Menlo, monospace',
+                      fontSize: 12,
+                    }}
+                  >
+                    DEL
+                  </button>
+                </div>
               </div>
             ))}
             
@@ -1984,7 +2056,29 @@ function Home() {
         isOpen={showWalletModal}
         onClose={() => setShowWalletModal(false)}
       />
+      
+      {/* Mobile Zoom Toggle */}
+      <button
+        onClick={() => setMobileZoom(!mobileZoom)}
+        style={{
+          position: 'fixed',
+          top: '10px',
+          right: '10px',
+          zIndex: 1000,
+          padding: '8px 12px',
+          backgroundColor: mobileZoom ? '#64ff8a' : '#555',
+          color: mobileZoom ? '#000' : '#fff',
+          border: '1px solid #777',
+          borderRadius: '4px',
+          cursor: 'pointer',
+          fontSize: '12px',
+          fontFamily: 'Menlo, monospace',
+        }}
+      >
+        {mobileZoom ? '85%' : '100%'}
+      </button>
     </Stage>
+    </div>
   );
 }
 
