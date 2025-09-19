@@ -1,119 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import ConnectButton from './ConnectButton';
+import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { LoginButton } from '@use-glyph/sdk-react';
+import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
-export default function WalletConnectionModal({
-  isOpen,
-  onClose,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-}) {
+export default function WalletConnectionModal() {
+  const { isOpen, close } = useWalletModal();
+  const { open } = useWeb3Modal();
   const { isConnected } = useAccount();
-  const [step, setStep] = useState<'choose' | 'glyph'>('choose');
 
-  // Auto-close when wallet connects
-  useEffect(() => {
-    if (isConnected && isOpen) {
-      onClose();
-    }
-  }, [isConnected, isOpen, onClose]);
-
-  // Reset step when modal closes
-  useEffect(() => {
-    if (!isOpen) {
-      setStep('choose');
-    }
-  }, [isOpen]);
+  // auto-close if connection already happened (belt and braces)
+  useEffect(() => { if (isConnected && isOpen) close(); }, [isConnected, isOpen, close]);
 
   if (!isOpen) return null;
 
+  const onConnectClick = () => {
+    // close *our* wrapper first so you don't see 2 stacked modals
+    close();
+    // then open Web3Modal
+    setTimeout(() => open(), 0);
+  };
+
   return (
-    <div style={backdrop}>
-      <div style={sheet}>
-        <div style={head}>
-          <h2 style={{ margin: 0 }}>Connect Wallet</h2>
-          <button onClick={onClose} style={xBtn}>×</button>
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60">
+      <div className="w-[520px] max-w-[90vw] rounded-2xl bg-[#1c1c1c] p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-white">Connect Wallet</h3>
+          <button onClick={close} className="rounded p-1 text-zinc-400 hover:text-white">✕</button>
         </div>
 
-        {step === 'choose' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <ConnectButton label="Connect Wallet" />
-            <button style={secondary} onClick={() => setStep('glyph')}>
-              Glyph
-            </button>
-          </div>
-        )}
+        <button
+          onClick={onConnectClick}
+          className="mb-3 h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90"
+        >
+          Connect Wallet
+        </button>
 
-        {step === 'glyph' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <button onClick={() => setStep('choose')} style={linkBtn}>← Back</button>
-            <p style={{ opacity: .8, margin: 0 }}>Login with Glyph using your connected wallet:</p>
-            <div style={{ padding: 12, border: '1px solid #333', borderRadius: 8 }}>
-              <LoginButton />
-            </div>
-          </div>
-        )}
+        {/* GLYPH: uses the provider we bridged in GlyphBridge */}
+        <LoginButton />
       </div>
     </div>
   );
 }
-
-const backdrop: React.CSSProperties = { 
-  position:'fixed', 
-  inset:0, 
-  background:'rgba(0,0,0,.8)', 
-  display:'flex', 
-  alignItems:'center', 
-  justifyContent:'center', 
-  zIndex:1000, 
-  padding:20 
-};
-
-const sheet: React.CSSProperties = { 
-  width:'100%', 
-  maxWidth:420, 
-  background:'#141414', 
-  color:'#fff', 
-  border:'1px solid #2a2a2a', 
-  borderRadius:12, 
-  padding:16, 
-  fontFamily:'monospace' 
-};
-
-const head: React.CSSProperties = { 
-  display:'flex', 
-  alignItems:'center', 
-  justifyContent:'space-between', 
-  marginBottom:12 
-};
-
-const xBtn: React.CSSProperties = { 
-  background:'none', 
-  border:'none', 
-  color:'#888', 
-  fontSize:20, 
-  cursor:'pointer' 
-};
-
-const secondary: React.CSSProperties = { 
-  height:48, 
-  borderRadius:12, 
-  border:'1px solid #333', 
-  background:'#222', 
-  color:'#fff',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: 600
-};
-
-const linkBtn: React.CSSProperties = { 
-  background:'none', 
-  border:'none', 
-  color:'#9cf', 
-  textAlign:'left', 
-  cursor:'pointer' 
-};

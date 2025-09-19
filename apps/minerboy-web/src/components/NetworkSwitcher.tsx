@@ -1,51 +1,24 @@
 'use client';
+import { useChainId, useSwitchChain } from 'wagmi';
 
-import { useAccount, useSwitchChain } from 'wagmi';
-import { APECHAIN, CURTIS } from '@/lib/wallet';
+export const APECHAIN = 33133 as const;
+export const CURTIS  = 33111 as const;
 
-export default function NetworkSwitcher() {
-  const { chainId } = useAccount();
+export default function NetworkSwitcher({ target = APECHAIN }:{ target?: number }) {
+  const chainId = useChainId();
   const { switchChain, isPending } = useSwitchChain();
 
+  if (!chainId || chainId === target) return null;
+
+  const label = target === APECHAIN ? 'Switch to ApeChain' : 'Switch to Curtis';
+
   return (
-    <div style={{ display:'flex', gap:8, flexWrap: 'wrap' }}>
-      <button 
-        disabled={isPending || chainId === APECHAIN.id} 
-        onClick={() => switchChain({ chainId: APECHAIN.id })}
-        style={{
-          padding: '8px 16px',
-          borderRadius: '8px',
-          border: '1px solid #333',
-          background: chainId === APECHAIN.id ? '#00ff88' : '#222',
-          color: chainId === APECHAIN.id ? '#000' : '#fff',
-          cursor: chainId === APECHAIN.id ? 'default' : 'pointer',
-          fontSize: '14px',
-          fontWeight: 600,
-          opacity: isPending ? 0.6 : 1,
-          transition: 'all 0.2s ease'
-        }}
-      >
-        {chainId === APECHAIN.id ? 'On ApeChain' : 'Switch to ApeChain'}
-      </button>
-      
-      <button 
-        disabled={isPending || chainId === CURTIS.id} 
-        onClick={() => switchChain({ chainId: CURTIS.id })}
-        style={{
-          padding: '8px 16px',
-          borderRadius: '8px',
-          border: '1px solid #333',
-          background: chainId === CURTIS.id ? '#00ff88' : '#222',
-          color: chainId === CURTIS.id ? '#000' : '#fff',
-          cursor: chainId === CURTIS.id ? 'default' : 'pointer',
-          fontSize: '14px',
-          fontWeight: 600,
-          opacity: isPending ? 0.6 : 1,
-          transition: 'all 0.2s ease'
-        }}
-      >
-        {chainId === CURTIS.id ? 'On Curtis' : 'Switch to Curtis'}
-      </button>
-    </div>
+    <button
+      disabled={isPending}
+      onClick={() => switchChain({ chainId: target })}
+      className="h-10 rounded-lg bg-amber-400 px-4 font-medium text-black hover:brightness-95"
+    >
+      {label}
+    </button>
   );
 }

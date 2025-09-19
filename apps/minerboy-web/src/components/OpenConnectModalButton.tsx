@@ -1,38 +1,14 @@
 'use client';
 import { useWalletModal } from '@/state/walletModal';
 
-export default function OpenConnectModalButton({ 
-  label = 'Connect Wallet' 
-}: { 
-  label?: string; 
+export default function OpenConnectModalButton({ children = 'Connect Wallet', className = '' }:{
+  children?: React.ReactNode;
+  className?: string;
 }) {
   const { open } = useWalletModal();
-  
   return (
-    <button 
-      onClick={open} 
-      style={{ 
-        height: 48, 
-        borderRadius: 12, 
-        fontWeight: 700,
-        background: '#00ff88',
-        color: '#000',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '14px',
-        padding: '0 24px',
-        transition: 'all 0.2s ease',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.background = '#00cc6a';
-        e.currentTarget.style.transform = 'translateY(-1px)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.background = '#00ff88';
-        e.currentTarget.style.transform = 'translateY(0)';
-      }}
-    >
-      {label}
+    <button onClick={open} className={`h-12 rounded-xl bg-[#4BE477] px-5 font-semibold text-black hover:opacity-90 ${className}`}>
+      {children}
     </button>
   );
 }

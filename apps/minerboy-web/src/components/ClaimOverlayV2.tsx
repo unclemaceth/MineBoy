@@ -71,12 +71,11 @@ export default function ClaimOverlayV2() {
       
       // Submit transaction to blockchain
       writeContract({
-        address: contracts.miningClaimRouter,
+        address: contracts.miningClaimRouter as `0x${string}`,
         abi: MINING_CLAIM_ROUTER_ABI,
-        functionName: 'claim',
+        functionName: 'claimRewards',
         args: [
-          result.claimId, // Claim ID
-          result.txHash || '0x', // Transaction hash
+          [BigInt(result.claimId)], // Claim ID as array of token IDs
         ],
       });
       
