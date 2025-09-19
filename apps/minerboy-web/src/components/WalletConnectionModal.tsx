@@ -1,10 +1,8 @@
 "use client";
-import { useState, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { injected, walletConnect } from 'wagmi/connectors';
+import { useState } from 'react';
+import { useAccount } from 'wagmi';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
-import { isiOSPWA, isiOSMobile, reserveDeepLinkWindow, buildUniversalLink, openDeepLink, copyWalletConnectUri, logConnectionAttempt } from '@/utils/iosPwaWallet';
-import { useWalletConnect } from '@/hooks/useWalletConnect';
+import { isiOSMobile } from '@/utils/iosPwaWallet';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 
 interface WalletConnectionModalProps {
@@ -13,14 +11,10 @@ interface WalletConnectionModalProps {
 }
 
 export default function WalletConnectionModal({ isOpen, onClose }: WalletConnectionModalProps) {
-  const [selectedOption, setSelectedOption] = useState<'glyph' | 'walletconnect' | 'metamask' | 'coinbase' | null>(null);
+  const [selectedOption, setSelectedOption] = useState<'glyph' | 'walletconnect' | 'other' | null>(null);
   const [glyphStep, setGlyphStep] = useState<'connect' | 'login'>('connect');
-  const [wcUri, setWcUri] = useState<string>('');
-  const [showCopyButton, setShowCopyButton] = useState(false);
-  const { connect } = useConnect();
   useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
-  const { attachDisplayUri, connectWalletConnect } = useWalletConnect();
   const { open } = useWeb3Modal();
 
   const handleGlyphConnect = async () => {
@@ -32,69 +26,19 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     }
   };
 
-  const handleWalletConnect = async () => {
-    logConnectionAttempt();
-    reserveDeepLinkWindow();
-    
-    try {
-      // Use the hook's WalletConnect function
-      await connectWalletConnect();
-    } catch (error) {
-      console.log('WalletConnect failed, trying injected:', error);
-      // Fallback to injected wallet
-      connect({ connector: injected() });
-    }
+  const handleWalletConnectQR = () => {
+    // Open Web3Modal with Connect view for direct WalletConnect
+    open({ view: 'Connect' });
   };
 
-  const handleMetamaskConnect = () => {
+  const handleOtherWallets = () => {
+    // Open Web3Modal wallet list - handles deep links on mobile automatically
     open();
   };
-
-  const handleCoinbaseConnect = () => {
-    open();
-  };
-
-
-  const handleCopyUri = async () => {
-    if (wcUri) {
-      const success = await copyWalletConnectUri(wcUri);
-      if (success) {
-        alert('Connection link copied to clipboard!');
-      } else {
-        alert('Failed to copy. Please try again.');
-      }
-    }
-  };
-
-  // Listen for WalletConnect URI events
-  useEffect(() => {
-    if (selectedOption === 'walletconnect' || selectedOption === 'metamask' || selectedOption === 'coinbase') {
-      // Set up WalletConnect URI listener
-      const handleDisplayUri = (uri: string) => {
-        console.log('[WalletConnect] Display URI received:', uri.length, 'chars');
-        setWcUri(uri);
-        setShowCopyButton(true);
-        
-        // Auto-open deep link for mobile
-        if (isiOSMobile) {
-          const wallet = selectedOption === 'metamask' ? 'metamask' : 
-                        selectedOption === 'coinbase' ? 'coinbase' : 'generic';
-          const url = buildUniversalLink(wallet, uri);
-          console.log('[iOS Mobile] Opening deep link:', url);
-          openDeepLink(url);
-        }
-      };
-
-      // Use the hook directly instead of custom window events
-      return attachDisplayUri(handleDisplayUri);
-    }
-  }, [selectedOption, attachDisplayUri]);
 
   const handleClose = () => {
     setSelectedOption(null);
     setGlyphStep('connect');
-    setWcUri('');
-    setShowCopyButton(false);
     onClose();
   };
 
@@ -219,7 +163,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               </button>
 
               <button
-                onClick={() => setSelectedOption('walletconnect')}
+                onClick={handleWalletConnectQR}
                 style={{
                   backgroundColor: '#2a2a2a',
                   border: '2px solid #444',
@@ -249,7 +193,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               </button>
 
               <button
-                onClick={() => open()}
+                onClick={handleOtherWallets}
                 style={{
                   backgroundColor: '#64ff8a',
                   border: '2px solid #64ff8a',
@@ -378,177 +322,7 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               </>
             )}
           </div>
-        ) : (
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '16px'
-            }}>
-              <button
-                onClick={() => setSelectedOption(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#666',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  padding: '0',
-                  width: '24px',
-                  height: '24px'
-                }}
-              >
-                ←
-              </button>
-              <span style={{ fontSize: '16px', fontWeight: 'bold' }}>
-                {selectedOption === 'metamask' ? 'MetaMask' : 
-                 selectedOption === 'coinbase' ? 'Coinbase Wallet' : 'WalletConnect'}
-              </span>
-            </div>
-            
-            {isiOSMobile && (
-              <div style={{
-                backgroundColor: '#2a2a2a',
-                border: '1px solid #444',
-                borderRadius: '6px',
-                padding: '12px',
-                marginBottom: '16px',
-                fontSize: '12px',
-                color: '#ccc'
-              }}>
-                📱 <strong>iOS Mobile Mode:</strong> Tap your wallet below to open it directly
-              </div>
-            )}
-            
-            <p style={{
-              marginBottom: '20px',
-              color: '#ccc',
-              fontSize: '14px'
-            }}>
-              {selectedOption === 'metamask' ? 'Connect with MetaMask:' :
-               selectedOption === 'coinbase' ? 'Connect with Coinbase Wallet:' :
-               'Connect with any WalletConnect-compatible wallet:'}
-            </p>
-            
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              {selectedOption === 'walletconnect' && (
-                <button
-                  onClick={handleWalletConnect}
-                  style={{
-                    backgroundColor: '#4a5568',
-                    border: '2px solid #64ff8a',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    color: '#64ff8a',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#64ff8a';
-                    e.currentTarget.style.color = '#1a1a1a';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#4a5568';
-                    e.currentTarget.style.color = '#64ff8a';
-                  }}
-                >
-                  🔗 Connect with WalletConnect
-                </button>
-              )}
-
-              {selectedOption === 'metamask' && (
-                <button
-                  onClick={handleMetamaskConnect}
-                  style={{
-                    backgroundColor: '#f6851b',
-                    border: '2px solid #f6851b',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    color: '#fff',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#e2761b';
-                    e.currentTarget.style.borderColor = '#e2761b';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#f6851b';
-                    e.currentTarget.style.borderColor = '#f6851b';
-                  }}
-                >
-                  🦊 Open in MetaMask
-                </button>
-              )}
-
-              {selectedOption === 'coinbase' && (
-                <button
-                  onClick={handleCoinbaseConnect}
-                  style={{
-                    backgroundColor: '#0052ff',
-                    border: '2px solid #0052ff',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    color: '#fff',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0041cc';
-                    e.currentTarget.style.borderColor = '#0041cc';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#0052ff';
-                    e.currentTarget.style.borderColor = '#0052ff';
-                  }}
-                >
-                  🔵 Open in Coinbase Wallet
-                </button>
-              )}
-
-              {showCopyButton && wcUri && (
-                <button
-                  onClick={handleCopyUri}
-                  style={{
-                    backgroundColor: '#2a2a2a',
-                    border: '2px solid #666',
-                    borderRadius: '6px',
-                    padding: '12px',
-                    color: '#ccc',
-                    fontSize: '14px',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#333';
-                    e.currentTarget.style.borderColor = '#888';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#2a2a2a';
-                    e.currentTarget.style.borderColor = '#666';
-                  }}
-                >
-                  📋 Copy Connection Link
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
