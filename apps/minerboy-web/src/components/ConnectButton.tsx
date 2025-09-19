@@ -1,11 +1,15 @@
 'use client';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
+import { projectId } from '@/lib/wallet';
 
 export default function ConnectButton({ variant = 'default' }: { variant?: 'default' | 'qr' }) {
   const { open } = useWeb3Modal();
+  const disabled = !projectId;
+  
   return (
     <button
-      onClick={() => open(variant === 'qr' ? { view: 'Connect' } : undefined)}
+      onClick={() => !disabled && open(variant === 'qr' ? { view: 'Connect' } : undefined)}
+      disabled={disabled}
       className="btn"
       aria-label="Connect wallet"
       style={{
@@ -17,7 +21,8 @@ export default function ConnectButton({ variant = 'default' }: { variant?: 'defa
         border: '2px solid #64ff8a',
         color: '#000',
         fontWeight: 'bold',
-        cursor: 'pointer',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
         transition: 'all 0.2s',
         display: 'flex',
         alignItems: 'center',
@@ -32,6 +37,7 @@ export default function ConnectButton({ variant = 'default' }: { variant?: 'defa
         e.currentTarget.style.backgroundColor = '#64ff8a';
         e.currentTarget.style.borderColor = '#64ff8a';
       }}
+      title={disabled ? 'WalletConnect not configured' : 'Connect wallet'}
     >
       {variant === 'qr' ? 'WalletConnect (QR)' : 'Connect Wallet'}
     </button>
