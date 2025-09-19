@@ -1,63 +1,34 @@
 'use client';
 
-import { http, cookieStorage, createStorage } from 'wagmi';
+import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { mainnet, base, sepolia } from 'wagmi/chains';
-import { defineChain } from 'viem';
-
-// Curtis testnet
-export const CURTIS = defineChain({
-  id: 33111,
-  name: 'Curtis',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'APE',
-    symbol: 'APE',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://curtis.rpc.caldera.xyz/http'],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: 'Curtis Explorer',
-      url: 'https://curtis.explorer.caldera.xyz',
-    },
-  },
-  testnet: true,
-});
-
-// ApeChain mainnet
-export const APECHAIN = defineChain({
-  id: 33133,
-  name: 'ApeChain',
-  nativeCurrency: {
-    decimals: 18,
-    name: 'ApeCoin',
-    symbol: 'APE',
-  },
-  rpcUrls: {
-    default: {
-      http: ['https://apechain.rpc.thirdweb.com'],
-    },
-  },
-  blockExplorers: {
-    default: {
-      name: 'ApeChain Explorer',
-      url: 'https://apechain.explorer.thirdweb.com',
-    },
-  },
-  testnet: false,
-});
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
 
-const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://mineboy.app';
+// dynamic to avoid metadata mismatch warnings on prod vs preview
+const siteUrl =
+  typeof window !== 'undefined' ? window.location.origin : 'https://mineboy.app';
 
-export const chains = [mainnet, base, sepolia, CURTIS, APECHAIN] as const satisfies readonly [Chain, ...Chain[]];
+export const curtis = {
+  id: 33111,
+  name: 'Curtis',
+  nativeCurrency: { name: 'ApeCoin', symbol: 'APE', decimals: 18 },
+  rpcUrls: { default: { http: ['https://curtis.rpc.caldera.xyz/http'] } },
+  blockExplorers: { default: { name: 'Curtis Explorer', url: 'https://curtis.explorer.caldera.xyz' } }
+} as const satisfies Chain;
+
+export const apechain = {
+  id: 33133,
+  name: 'ApeChain',
+  nativeCurrency: { name: 'ApeCoin', symbol: 'APE', decimals: 18 },
+  rpcUrls: { default: { http: ['https://apechain.rpc.thirdweb.com'] } },
+  blockExplorers: { default: { name: 'ApeScan', url: 'https://apechain.explorer.thirdweb.com' } }
+} as const satisfies Chain;
+
+export const chains = [mainnet, base, sepolia, curtis, apechain] as const;
 
 const metadata = {
   name: 'MineBoy',
@@ -70,18 +41,15 @@ export const wagmiConfig = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
-  ssr: true,
-  storage: createStorage({ 
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    key: 'mineboy_wagmi'
-  }),
   transports: {
-    [mainnet.id]: http(),
-    [base.id]: http(),
-    [sepolia.id]: http(),
-    [APECHAIN.id]: http('https://apechain.rpc.thirdweb.com'),
-    [CURTIS.id]: http('https://curtis.rpc.caldera.xyz/http'),
-  }
+    [mainnet.id]:  http(),
+    [base.id]:     http(),
+    [sepolia.id]:  http(),
+    [curtis.id]:   http('https://curtis.rpc.caldera.xyz/http'),
+    [apechain.id]: http('https://apechain.rpc.thirdweb.com')
+  },
+  // localStorage persistence (already default, but explicit doesn't hurt)
+  // storage: typeof window !== 'undefined' ? window.localStorage : null
 });
 
 declare global { interface Window { __W3M_INIT__?: boolean } }

@@ -1,40 +1,31 @@
-// Contract configuration for ApeBit MinerBoy
-export const CURTIS_CHAIN_ID = 33111;
+import { parseAbi } from 'viem';
 
-// Cartridge contract address (from backend logs)
-export const CARTRIDGE_ADDRESS = "0xb05fa76709b6bd18c63782e9044ff81430f6769c";
+export const CARTRIDGE_ABI = parseAbi([
+  'function mintPrice() view returns (uint256)',
+  'function mint(uint256 quantity) payable',
+  'function totalSupply() view returns (uint256)',
+  'function maxSupply() view returns (uint256)',
+  'function balanceOf(address owner) view returns (uint256)',
+  'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
+]);
 
-// Explorer base URL (set via environment variable)
-export const EXPLORER_BASE = process.env.NEXT_PUBLIC_EXPLORER_BASE || null;
+// fill these with the real deployed addresses
+export const CONTRACTS: Record<number, { cartridge: `0x${string}` }> = {
+  33133: { cartridge: '0xYOUR_APECHAIN_CONTRACT' },
+  33111: { cartridge: '0xYOUR_CURTIS_CONTRACT' }
+};
 
-// ERC-721 Cartridge ABI (minimal for minting)
-export const CARTRIDGE_ABI = [
-  // Events
-  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)",
-  
-  // Functions
-  "function mint(uint256 count) external payable returns (uint256)",
-  "function mintBatch(uint256 count) external payable",
-  "function mint() external payable returns (uint256)",
-  "function mintPrice() external view returns (uint256)",
-  "function totalSupply() external view returns (uint256)",
-  "function ownerOf(uint256 tokenId) external view returns (address)",
-  "function balanceOf(address owner) external view returns (uint256)",
-] as const;
-
-// Alias for compatibility
+// Legacy exports for compatibility with existing code
 export const APEBIT_CARTRIDGE_ABI = CARTRIDGE_ABI;
+export const CARTRIDGE_ADDRESS = '0xYOUR_CURTIS_CONTRACT'; // Temporary fallback
+export const CURTIS_CHAIN_ID = 33111;
+export const EXPLORER_BASE = 'https://curtis.explorer.caldera.xyz';
 
-// Mining Claim Router ABI (minimal for claiming)
-export const MINING_CLAIM_ROUTER_ABI = [
-  'function claim((address wallet, address cartridge, uint256 tokenId, address rewardToken, uint256 rewardAmount, bytes32 workHash, uint64 attempts, bytes32 nonce, uint64 expiry) claimData, bytes signature)',
-  'function allowedCartridge(address) view returns (bool)',
-  'function signer() view returns (address)',
-] as const;
+export const MINING_CLAIM_ROUTER_ABI = parseAbi([
+  'function claimRewards(uint256[] memory tokenIds) external',
+  'function getClaimableRewards(address user, uint256[] memory tokenIds) view returns (uint256)'
+]);
 
-// Contract addresses (will be set after deployment)
 export const contracts = {
-  apeBitToken: process.env.NEXT_PUBLIC_APEBIT_TOKEN_ADDRESS as `0x${string}`,
-  miningClaimRouter: process.env.NEXT_PUBLIC_MINING_CLAIM_ROUTER_ADDRESS as `0x${string}`,
-  apeBitCartridge: process.env.NEXT_PUBLIC_APEBIT_CARTRIDGE_ADDRESS as `0x${string}`,
-} as const;
+  miningClaimRouter: '0xYOUR_MINING_CLAIM_ROUTER_ADDRESS'
+};

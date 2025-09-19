@@ -2,15 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-// Force dynamic rendering
+// Force dynamic rendering and disable SSR
 export const dynamic = 'force-dynamic';
+export const ssr = false;
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
 import OpenConnectModalButton from '@/components/OpenConnectModalButton';
 import NetworkSwitcher from '@/components/NetworkSwitcher';
 import { formatEther } from 'viem';
 import Link from 'next/link';
-import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE } from "../../lib/contracts";
-import { APEBIT_CARTRIDGE_ABI } from "../../lib/contracts";
+import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE, CARTRIDGE_ABI, CONTRACTS } from "../../lib/contracts";
 import Stage from "@/components/Stage";
 
 export default function MintPage() {
@@ -21,7 +21,6 @@ export default function MintPage() {
   });
   
   const [count, setCount] = useState(1);
-  const [priceWei, setPriceWei] = useState<bigint | null>(null);
   const [mintedTokenIds, setMintedTokenIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -31,56 +30,36 @@ export default function MintPage() {
     setMounted(true);
   }, []);
 
-  const canMint = mounted && isConnected && chainId === CURTIS_CHAIN_ID && CARTRIDGE_ADDRESS;
-
-  // Test if we can read from the contract (optional)
-  const { data: totalSupply, error: readError } = useReadContract({
-    address: CARTRIDGE_ADDRESS as `0x${string}`,
-    abi: APEBIT_CARTRIDGE_ABI,
-    functionName: 'totalSupply',
-  });
-
-  useEffect(() => {
-    if (readError) {
-      console.error('Contract read error:', readError);
-      // Don't set error for read failures, just log them
-    } else if (totalSupply !== undefined) {
-      console.log('Contract is readable, totalSupply:', totalSupply);
-    }
-  }, [totalSupply, readError]);
+  // Get contract address for current chain
+  const contractAddress = chainId ? CONTRACTS[chainId]?.cartridge : null;
+  const onApeChain = chainId === 33133; // APECHAIN
+  const onCurtis = chainId === 33111; // CURTIS
+  
+  const canMint = mounted && isConnected && contractAddress && (onApeChain || onCurtis);
 
   // Fetch the actual mint price from the contract
   const { data: mintPrice, error: priceError } = useReadContract({
-    address: CARTRIDGE_ADDRESS as `0x${string}`,
-    abi: APEBIT_CARTRIDGE_ABI,
+    address: contractAddress || undefined,
+    abi: CARTRIDGE_ABI,
     functionName: 'mintPrice',
+    chainId,
+    query: { enabled: !!contractAddress }
   });
 
-  useEffect(() => {
-    if (mintPrice !== undefined && typeof mintPrice === 'bigint') {
-      console.log('Contract mint price:', mintPrice);
-      setPriceWei(mintPrice);
-    } else if (priceError) {
-      console.error('Failed to fetch mint price:', priceError);
-      // Fallback to 0 if we can't fetch the price
-      setPriceWei(BigInt(0));
-    }
-  }, [mintPrice, priceError]);
-
   const totalCostWei = useMemo(() => {
-    if (priceWei == null) return null;
-    return priceWei * BigInt(count);
-  }, [priceWei, count]);
+    if (!mintPrice || typeof mintPrice !== 'bigint') return BigInt(0);
+    return mintPrice * BigInt(count);
+  }, [mintPrice, count]);
 
   const handleMint = async () => {
     setError(null);
     setMintedTokenIds([]);
     try {
-      console.log('Mint button clicked!', { isConnected, chainId, address, CARTRIDGE_ADDRESS });
+      console.log('Mint button clicked!', { isConnected, chainId, address, contractAddress });
       
       if (!isConnected) throw new Error("Connect your wallet");
-      if (!CARTRIDGE_ADDRESS) throw new Error("Missing CARTRIDGE address");
-      if (chainId !== CURTIS_CHAIN_ID) throw new Error(`Switch to chain ${CURTIS_CHAIN_ID}`);
+      if (!contractAddress) throw new Error("Contract not available on this network");
+      if (!(onApeChain || onCurtis)) throw new Error("Switch to ApeChain or Curtis network");
 
       if (count < 1 || count > 10) throw new Error("Choose 1–10 cartridges");
 
@@ -92,11 +71,11 @@ export default function MintPage() {
       }
 
       console.log('Calling writeContract with:', {
-        address: CARTRIDGE_ADDRESS,
+        address: contractAddress,
         functionName: 'mint',
-        args: [address],
-        value: totalCostWei || BigInt(0),
-        valueInEther: formatEther(totalCostWei || BigInt(0))
+        args: [BigInt(count)],
+        value: totalCostWei,
+        valueInEther: formatEther(totalCostWei)
       });
 
       // Try to call the contract - this should trigger wallet popup
@@ -106,11 +85,11 @@ export default function MintPage() {
       if (!address) throw new Error("No wallet address");
       
       writeContract({
-        address: CARTRIDGE_ADDRESS as `0x${string}`,
-        abi: APEBIT_CARTRIDGE_ABI,
+        address: contractAddress,
+        abi: CARTRIDGE_ABI,
         functionName: 'mint',
-        args: [address], // mint(address to) - mint to current address
-        value: totalCostWei || BigInt(0),
+        args: [BigInt(count)], // mint(uint256 quantity) - mint specified quantity
+        value: totalCostWei,
       });
       
       console.log('writeContract called - wallet popup should appear');
@@ -189,13 +168,20 @@ export default function MintPage() {
         {!mounted ? (
           <div style={{ fontSize: '14px', opacity: 0.8 }}>LOADING...</div>
         ) : !isConnected ? (
-          <OpenConnectModalButton label="Connect Wallet" />
-        ) : chainId !== CURTIS_CHAIN_ID ? (
+          <OpenConnectModalButton>Connect Wallet</OpenConnectModalButton>
+        ) : !(onApeChain || onCurtis) ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
             <div style={{ fontSize: '12px', opacity: 0.8, textAlign: 'center' }}>
-              Switch to Curtis network to mint:
+              Switch to ApeChain or Curtis network to mint:
             </div>
-            <NetworkSwitcher />
+            <div style={{ display: 'flex', gap: 8 }}>
+              <NetworkSwitcher target={33133} />
+              <NetworkSwitcher target={33111} />
+            </div>
+          </div>
+        ) : !contractAddress ? (
+          <div style={{ fontSize: '12px', color: '#ffa500', textAlign: 'center' }}>
+            Mint contract not configured for this chain
           </div>
         ) : (
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
@@ -279,31 +265,31 @@ export default function MintPage() {
           textAlign: 'center'
         }}>
           MAX PER TX: 10
-          {priceWei != null && (
+          {mintPrice && (
             <>
-              {" • "}PRICE: <span style={{ fontFamily: 'monospace' }}>{formatEther(priceWei ?? BigInt(0))} APE</span>
-              {" • "}TOTAL: <span style={{ fontFamily: 'monospace' }}>{formatEther(totalCostWei ?? BigInt(0))} APE</span>
+              {" • "}PRICE: <span style={{ fontFamily: 'monospace' }}>{formatEther(mintPrice)} APE</span>
+              {" • "}TOTAL: <span style={{ fontFamily: 'monospace' }}>{formatEther(totalCostWei)} APE</span>
             </>
           )}
         </div>
 
         {/* Mint Button */}
         <button
-          disabled={!canMint || isMinting || isConfirming}
+          disabled={!canMint || isMinting || isConfirming || !mintPrice}
           onClick={handleMint}
           style={{
             width: '100%',
             padding: '16px',
             borderRadius: '8px',
-            background: canMint && !isMinting && !isConfirming
+            background: canMint && !isMinting && !isConfirming && mintPrice
               ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)' 
               : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
             color: '#c8ffc8',
             border: '2px solid #8a8a8a',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: canMint && !isMinting && !isConfirming ? 'pointer' : 'not-allowed',
-            opacity: canMint && !isMinting && !isConfirming ? 1 : 0.5,
+            cursor: canMint && !isMinting && !isConfirming && mintPrice ? 'pointer' : 'not-allowed',
+            opacity: canMint && !isMinting && !isConfirming && mintPrice ? 1 : 0.5,
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
             marginBottom: '16px'
           }}
@@ -369,16 +355,6 @@ export default function MintPage() {
           </div>
         )}
 
-        {/* Missing Config */}
-        {!CARTRIDGE_ADDRESS && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ffa500',
-            textAlign: 'center'
-          }}>
-            MISSING CARTRIDGE ADDRESS
-          </div>
-        )}
       </div>
 
       {/* Tip */}
