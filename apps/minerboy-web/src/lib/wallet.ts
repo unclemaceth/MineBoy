@@ -2,7 +2,7 @@
 
 import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
-import { mainnet, base, sepolia } from 'wagmi/chains';
+import { mainnet } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
@@ -27,35 +27,33 @@ export const apechain = {
   blockExplorers: { default: { name: 'ApeScan', url: 'https://apechain.explorer.thirdweb.com' } }
 } as const satisfies Chain;
 
-export const chains = [mainnet, base, sepolia, curtis, apechain] as const;
+export const chains = [mainnet, apechain, curtis] as const;
 
-const metadata = {
-  name: 'MineBoy',
-  description: 'MineBoy',
-  url: siteUrl,
-  icons: [`${siteUrl}/icon.png`]
-};
-
+// Single wagmi config used everywhere
 export const wagmiConfig = defaultWagmiConfig({
   chains,
   projectId,
-  metadata,
+  metadata: {
+    name: 'MineBoy',
+    description: 'MineBoy',
+    url: siteUrl,
+    icons: [`${siteUrl}/icon.png`]
+  },
   transports: {
-    [mainnet.id]:  http(),
-    [base.id]:     http(),
-    [sepolia.id]:  http(),
-    [curtis.id]:   http('https://curtis.rpc.caldera.xyz/http'),
-    [apechain.id]: http('https://apechain.rpc.thirdweb.com')
+    [mainnet.id]: http(),
+    [apechain.id]: http('https://apechain.rpc.thirdweb.com'),
+    [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
   }
 });
 
-declare global { interface Window { __W3M_INIT__?: boolean } }
+// Initialize Web3Modal with the same config (only once)
+declare global { interface Window { __W3M__?: boolean } }
 
 if (typeof window !== 'undefined') {
   if (!w3mReady) {
     console.warn('[MineBoy] NEXT_PUBLIC_WC_PROJECT_ID missing – Web3Modal disabled');
-  } else if (!window.__W3M_INIT__) {
-    window.__W3M_INIT__ = true;
+  } else if (!window.__W3M__) {
+    window.__W3M__ = true;
     console.log('[MineBoy] Initializing Web3Modal with projectId:', projectId);
     createWeb3Modal({
       wagmiConfig,
