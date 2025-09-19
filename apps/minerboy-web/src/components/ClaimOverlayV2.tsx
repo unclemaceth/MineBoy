@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useWriteContract, useWaitForTransactionReceipt, useAccount } from 'wagmi';
 import { useSession } from '@/state/useSession';
 import { api } from '@/lib/api';
-import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/wagmi';
+import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/contracts';
 import { to0x } from '@/lib/hex';
 import { getJobId, assertString } from '@/utils/job';
 

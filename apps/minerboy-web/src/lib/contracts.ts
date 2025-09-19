@@ -21,3 +21,20 @@ export const CARTRIDGE_ABI = [
   "function ownerOf(uint256 tokenId) external view returns (address)",
   "function balanceOf(address owner) external view returns (uint256)",
 ] as const;
+
+// Alias for compatibility
+export const APEBIT_CARTRIDGE_ABI = CARTRIDGE_ABI;
+
+// Mining Claim Router ABI (minimal for claiming)
+export const MINING_CLAIM_ROUTER_ABI = [
+  'function claim((address wallet, address cartridge, uint256 tokenId, address rewardToken, uint256 rewardAmount, bytes32 workHash, uint64 attempts, bytes32 nonce, uint64 expiry) claimData, bytes signature)',
+  'function allowedCartridge(address) view returns (bool)',
+  'function signer() view returns (address)',
+] as const;
+
+// Contract addresses (will be set after deployment)
+export const contracts = {
+  apeBitToken: process.env.NEXT_PUBLIC_APEBIT_TOKEN_ADDRESS as `0x${string}`,
+  miningClaimRouter: process.env.NEXT_PUBLIC_MINING_CLAIM_ROUTER_ADDRESS as `0x${string}`,
+  apeBitCartridge: process.env.NEXT_PUBLIC_APEBIT_CARTRIDGE_ADDRESS as `0x${string}`,
+} as const;

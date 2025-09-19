@@ -3,18 +3,61 @@
 import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { mainnet, base, sepolia } from 'wagmi/chains';
+import { defineChain } from 'viem';
+
+// Curtis testnet
+export const curtis = defineChain({
+  id: 33111,
+  name: 'Curtis',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'APE',
+    symbol: 'APE',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://curtis.rpc.caldera.xyz/http'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Curtis Explorer',
+      url: 'https://curtis.explorer.caldera.xyz',
+    },
+  },
+  testnet: true,
+});
+
+// ApeChain mainnet
+export const apeChain = defineChain({
+  id: 33133,
+  name: 'ApeChain',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'ApeCoin',
+    symbol: 'APE',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://apechain.rpc.thirdweb.com'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'ApeChain Explorer',
+      url: 'https://apechain.explorer.thirdweb.com',
+    },
+  },
+  testnet: false,
+});
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
-// --------------- REQUIRED: valid project id ---------------
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
+export const w3mReady = !!projectId;
 
-// --------------- Chains ---------------
-export const chains = [mainnet, base, sepolia] as const satisfies readonly [
-  Chain, ...Chain[]
-];
+const siteUrl = 'https://mineboy.app';
 
-// --------------- Metadata (use your public URL) ---------------
-const siteUrl = 'https://mineboy-web-git-main-macs-projects-20ae48e1.vercel.app';
+export const chains = [mainnet, base, sepolia, curtis, apeChain] as const satisfies readonly [Chain, ...Chain[]];
 
 const metadata = {
   name: 'MineBoy',
@@ -23,7 +66,6 @@ const metadata = {
   icons: [`${siteUrl}/icon.png`]
 };
 
-// --------------- wagmi config ---------------
 export const wagmiConfig = defaultWagmiConfig({
   chains,
   projectId,
@@ -31,19 +73,19 @@ export const wagmiConfig = defaultWagmiConfig({
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),
-    [sepolia.id]: http()
+    [sepolia.id]: http(),
+    [curtis.id]: http(),
+    [apeChain.id]: http()
   }
 });
 
-// --------------- Init Web3Modal once ---------------
 declare global { interface Window { __W3M_INIT__?: boolean } }
 
 if (typeof window !== 'undefined') {
-  if (!projectId) {
+  if (!w3mReady) {
     console.warn('[MineBoy] NEXT_PUBLIC_WC_PROJECT_ID missing – Web3Modal disabled');
   } else if (!window.__W3M_INIT__) {
     window.__W3M_INIT__ = true;
-    console.log('[MineBoy] WC projectId:', projectId);
     createWeb3Modal({
       wagmiConfig,
       projectId,
