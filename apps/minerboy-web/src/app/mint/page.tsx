@@ -9,7 +9,7 @@ import ConnectButton from '@/components/ConnectButton';
 import { formatEther } from 'viem';
 import Link from 'next/link';
 import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE } from "../../lib/contracts";
-import { APEBIT_CARTRIDGE_ABI } from "../../lib/wagmi";
+import { APEBIT_CARTRIDGE_ABI } from "../../lib/contracts";
 import Stage from "@/components/Stage";
 
 export default function MintPage() {
@@ -56,7 +56,7 @@ export default function MintPage() {
   });
 
   useEffect(() => {
-    if (mintPrice !== undefined) {
+    if (mintPrice !== undefined && typeof mintPrice === 'bigint') {
       console.log('Contract mint price:', mintPrice);
       setPriceWei(mintPrice);
     } else if (priceError) {

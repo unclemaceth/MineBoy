@@ -1,9 +1,7 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
-import { isiOSMobile } from '@/utils/iosPwaWallet';
-import { useWeb3Modal } from '@web3modal/wagmi/react';
 import ConnectButton from './ConnectButton';
 
 interface WalletConnectionModalProps {
@@ -14,9 +12,15 @@ interface WalletConnectionModalProps {
 export default function WalletConnectionModal({ isOpen, onClose }: WalletConnectionModalProps) {
   const [selectedOption, setSelectedOption] = useState<'glyph' | 'walletconnect' | 'other' | null>(null);
   const [glyphStep, setGlyphStep] = useState<'connect' | 'login'>('connect');
-  useAccount();
+  const { address, isConnected } = useAccount();
   const { connect: glyphConnect } = useNativeGlyphConnection();
-  const { open } = useWeb3Modal();
+
+  // Auto-close modal when wallet connects
+  useEffect(() => {
+    if (isConnected && address && isOpen) {
+      handleClose();
+    }
+  }, [isConnected, address, isOpen]);
 
   const handleGlyphConnect = async () => {
     try {
@@ -27,15 +31,6 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
     }
   };
 
-  const handleWalletConnectQR = () => {
-    // Open Web3Modal with Connect view for direct WalletConnect
-    open({ view: 'Connect' });
-  };
-
-  const handleOtherWallets = () => {
-    // Open Web3Modal wallet list - handles deep links on mobile automatically
-    open();
-  };
 
   const handleClose = () => {
     setSelectedOption(null);
@@ -114,19 +109,6 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               Choose your preferred wallet connection method:
             </p>
             
-            {isiOSMobile && (
-              <div style={{
-                backgroundColor: '#2a2a2a',
-                border: '1px solid #444',
-                borderRadius: '6px',
-                padding: '12px',
-                marginBottom: '16px',
-                fontSize: '12px',
-                color: '#ccc'
-              }}>
-                📱 <strong>iOS Mobile Detected:</strong> Using mobile-optimized wallet connection
-              </div>
-            )}
             
             <div style={{
               display: 'grid',
@@ -161,36 +143,6 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
               >
                 <span style={{ fontSize: '20px' }}>🔮</span>
                 Glyph
-              </button>
-
-              <button
-                onClick={handleWalletConnectQR}
-                style={{
-                  backgroundColor: '#2a2a2a',
-                  border: '2px solid #444',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  color: '#fff',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#333';
-                  e.currentTarget.style.borderColor = '#555';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a';
-                  e.currentTarget.style.borderColor = '#444';
-                }}
-              >
-                <span style={{ fontSize: '20px' }}>🔗</span>
-                WalletConnect
               </button>
 
               <div style={{ gridColumn: 'span 2' }}>
