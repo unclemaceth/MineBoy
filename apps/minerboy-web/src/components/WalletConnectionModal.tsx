@@ -4,6 +4,7 @@ import { useAccount } from 'wagmi';
 import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
 import { isiOSMobile } from '@/utils/iosPwaWallet';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
+import ConnectButton from './ConnectButton';
 
 interface WalletConnectionModalProps {
   isOpen: boolean;
@@ -192,36 +193,9 @@ export default function WalletConnectionModal({ isOpen, onClose }: WalletConnect
                 WalletConnect
               </button>
 
-              <button
-                onClick={handleOtherWallets}
-                style={{
-                  backgroundColor: '#64ff8a',
-                  border: '2px solid #64ff8a',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  color: '#000',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  gridColumn: 'span 2'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#55e577';
-                  e.currentTarget.style.borderColor = '#55e577';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#64ff8a';
-                  e.currentTarget.style.borderColor = '#64ff8a';
-                }}
-              >
-                <span style={{ fontSize: '20px' }}>🔌</span>
-                Other Wallets (MetaMask, Coinbase, Trust...)
-              </button>
+              <div style={{ gridColumn: 'span 2' }}>
+                <ConnectButton />
+              </div>
             </div>
           </div>
         ) : selectedOption === 'glyph' ? (
