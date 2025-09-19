@@ -48,23 +48,30 @@ export default function WalletConnectionModal() {
           Connect Wallet
         </button>
 
-        {/* GLYPH: Custom button that triggers Glyph login */}
-        <button
-          onClick={() => {
-            console.log('WalletConnectionModal: Closing wrapper modal and opening Glyph');
-            // Close our modal first
-            close();
-            // Then trigger Glyph login
-            setTimeout(() => {
-              glyphLogin();
-              console.log('[Glyph] Login triggered');
-            }, 0);
-          }}
-          className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-2"
-        >
-          <span className="text-lg">⛓️</span>
-          <span>Glyph</span>
-        </button>
+        {/* GLYPH: Only show when wallet is connected */}
+        {isConnected ? (
+          <button
+            onClick={() => {
+              console.log('WalletConnectionModal: Closing wrapper modal and opening Glyph');
+              // Close our modal first
+              close();
+              // Then trigger Glyph login
+              setTimeout(() => {
+                glyphLogin();
+                console.log('[Glyph] Login triggered');
+              }, 0);
+            }}
+            className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-2"
+          >
+            <span className="text-lg">⛓️</span>
+            <span>Glyph</span>
+          </button>
+        ) : (
+          <div className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-900 text-zinc-500 font-semibold flex items-center justify-center gap-2">
+            <span className="text-lg">⛓️</span>
+            <span>Glyph (Connect wallet first)</span>
+          </div>
+        )}
       </div>
     </div>
   );

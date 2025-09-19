@@ -15,9 +15,7 @@ export default function Providers({ children }: { children: ReactNode }) {
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={qc}>
         <GlyphProvider 
-          strategy={StrategyType.EIP1193}
-          walletClientType={WalletClientType.WAGMI}
-          askForSignature={true}
+          strategy={StrategyType.PRIVY}
           onLogin={() => console.log('[Glyph] Login successful')}
           onLogout={() => console.log('[Glyph] Logout')}
         >
