@@ -1,255 +1,119 @@
-"use client";
-import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
-import { useNativeGlyphConnection, LoginButton } from '@use-glyph/sdk-react';
-import ConnectButton from './ConnectButton';
+'use client';
 
-interface WalletConnectionModalProps {
+import { useEffect, useState } from 'react';
+import { useAccount } from 'wagmi';
+import ConnectButton from './ConnectButton';
+import { LoginButton } from '@use-glyph/sdk-react';
+
+export default function WalletConnectionModal({
+  isOpen,
+  onClose,
+}: {
   isOpen: boolean;
   onClose: () => void;
-}
+}) {
+  const { isConnected } = useAccount();
+  const [step, setStep] = useState<'choose' | 'glyph'>('choose');
 
-export default function WalletConnectionModal({ isOpen, onClose }: WalletConnectionModalProps) {
-  const [selectedOption, setSelectedOption] = useState<'glyph' | 'walletconnect' | 'other' | null>(null);
-  const [glyphStep, setGlyphStep] = useState<'connect' | 'login'>('connect');
-  const { address, isConnected } = useAccount();
-  const { connect: glyphConnect } = useNativeGlyphConnection();
-
-  // Auto-close modal when wallet connects
+  // Auto-close when wallet connects
   useEffect(() => {
-    if (isConnected && address && isOpen) {
-      handleClose();
+    if (isConnected && isOpen) {
+      onClose();
     }
-  }, [isConnected, address, isOpen]);
+  }, [isConnected, isOpen, onClose]);
 
-  const handleGlyphConnect = async () => {
-    try {
-      await glyphConnect();
-      setGlyphStep('login');
-    } catch (error) {
-      console.error('Glyph connection failed:', error);
+  // Reset step when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setStep('choose');
     }
-  };
-
-
-  const handleClose = () => {
-    setSelectedOption(null);
-    setGlyphStep('connect');
-    onClose();
-  };
-
-  const handleGlyphLoginComplete = () => {
-    handleClose();
-  };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div style={{
-        backgroundColor: '#1a1a1a',
-        border: '2px solid #333',
-        borderRadius: '8px',
-        padding: '24px',
-        maxWidth: '400px',
-        width: '100%',
-        color: '#fff',
-        fontFamily: 'monospace'
-      }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px'
-        }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '18px',
-            fontWeight: 'bold',
-            color: '#64ff8a'
-          }}>
-            Connect Wallet
-          </h2>
-          <button
-            onClick={handleClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#666',
-              fontSize: '20px',
-              cursor: 'pointer',
-              padding: '0',
-              width: '24px',
-              height: '24px'
-            }}
-          >
-            ×
-          </button>
+    <div style={backdrop}>
+      <div style={sheet}>
+        <div style={head}>
+          <h2 style={{ margin: 0 }}>Connect Wallet</h2>
+          <button onClick={onClose} style={xBtn}>×</button>
         </div>
 
-        {!selectedOption ? (
-          <div>
-            <p style={{
-              marginBottom: '20px',
-              color: '#ccc',
-              fontSize: '14px'
-            }}>
-              Choose your preferred wallet connection method:
-            </p>
-            
-            
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 1fr)',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => setSelectedOption('glyph')}
-                style={{
-                  backgroundColor: '#2a2a2a',
-                  border: '2px solid #444',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  color: '#fff',
-                  fontSize: '16px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = '#333';
-                  e.currentTarget.style.borderColor = '#555';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = '#2a2a2a';
-                  e.currentTarget.style.borderColor = '#444';
-                }}
-              >
-                <span style={{ fontSize: '20px' }}>🔮</span>
-                Glyph
-              </button>
+        {step === 'choose' && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <ConnectButton label="Connect Wallet" />
+            <button style={secondary} onClick={() => setStep('glyph')}>
+              Glyph
+            </button>
+          </div>
+        )}
 
-              <div style={{ gridColumn: 'span 2' }}>
-                <ConnectButton />
-              </div>
+        {step === 'glyph' && (
+          <div style={{ display: 'grid', gap: 12 }}>
+            <button onClick={() => setStep('choose')} style={linkBtn}>← Back</button>
+            <p style={{ opacity: .8, margin: 0 }}>Login with Glyph using your connected wallet:</p>
+            <div style={{ padding: 12, border: '1px solid #333', borderRadius: 8 }}>
+              <LoginButton />
             </div>
           </div>
-        ) : selectedOption === 'glyph' ? (
-          <div>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '16px'
-            }}>
-              <button
-                onClick={() => setSelectedOption(null)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: '#666',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  padding: '0',
-                  width: '24px',
-                  height: '24px'
-                }}
-              >
-                ←
-              </button>
-              <span style={{ fontSize: '16px', fontWeight: 'bold' }}>Glyph Wallet</span>
-            </div>
-            
-            {glyphStep === 'connect' ? (
-              <>
-                <p style={{
-                  marginBottom: '20px',
-                  color: '#ccc',
-                  fontSize: '14px'
-                }}>
-                  Connect with Glyph Wallet for seamless Web3 authentication:
-                </p>
-                
-                <button
-                  onClick={handleGlyphConnect}
-                  style={{
-                    backgroundColor: '#4a5568',
-                    border: '2px solid #64ff8a',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    color: '#64ff8a',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    e.currentTarget.style.backgroundColor = '#64ff8a';
-                    e.currentTarget.style.color = '#1a1a1a';
-                  }}
-                  onMouseOut={(e) => {
-                    e.currentTarget.style.backgroundColor = '#4a5568';
-                    e.currentTarget.style.color = '#64ff8a';
-                  }}
-                >
-                  Connect to Glyph
-                </button>
-              </>
-            ) : (
-              <>
-                <p style={{
-                  marginBottom: '20px',
-                  color: '#ccc',
-                  fontSize: '14px'
-                }}>
-                  Complete authentication by signing a message:
-                </p>
-                
-                <div style={{
-                  backgroundColor: '#2a2a2a',
-                  border: '1px solid #444',
-                  borderRadius: '6px',
-                  padding: '16px',
-                  marginBottom: '16px'
-                }}>
-                  <div style={{
-                    backgroundColor: '#4a5568',
-                    border: '2px solid #64ff8a',
-                    borderRadius: '6px',
-                    padding: '16px',
-                    color: '#64ff8a',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: 'pointer',
-                    width: '100%',
-                    transition: 'all 0.2s',
-                    textAlign: 'center'
-                  }}>
-                    <LoginButton />
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        ) : null}
+        )}
       </div>
     </div>
   );
 }
+
+const backdrop: React.CSSProperties = { 
+  position:'fixed', 
+  inset:0, 
+  background:'rgba(0,0,0,.8)', 
+  display:'flex', 
+  alignItems:'center', 
+  justifyContent:'center', 
+  zIndex:1000, 
+  padding:20 
+};
+
+const sheet: React.CSSProperties = { 
+  width:'100%', 
+  maxWidth:420, 
+  background:'#141414', 
+  color:'#fff', 
+  border:'1px solid #2a2a2a', 
+  borderRadius:12, 
+  padding:16, 
+  fontFamily:'monospace' 
+};
+
+const head: React.CSSProperties = { 
+  display:'flex', 
+  alignItems:'center', 
+  justifyContent:'space-between', 
+  marginBottom:12 
+};
+
+const xBtn: React.CSSProperties = { 
+  background:'none', 
+  border:'none', 
+  color:'#888', 
+  fontSize:20, 
+  cursor:'pointer' 
+};
+
+const secondary: React.CSSProperties = { 
+  height:48, 
+  borderRadius:12, 
+  border:'1px solid #333', 
+  background:'#222', 
+  color:'#fff',
+  cursor: 'pointer',
+  fontSize: '14px',
+  fontWeight: 600
+};
+
+const linkBtn: React.CSSProperties = { 
+  background:'none', 
+  border:'none', 
+  color:'#9cf', 
+  textAlign:'left', 
+  cursor:'pointer' 
+};

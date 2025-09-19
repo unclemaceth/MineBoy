@@ -9,7 +9,7 @@ import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
-import WalletConnectionModal from "@/components/WalletConnectionModal";
+import { useWalletModal } from '@/state/walletModal';
 import { useAccount, useDisconnect, useWriteContract } from 'wagmi';
 import { useSession, getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
@@ -59,7 +59,6 @@ function Home() {
   const [showCartridgeSelect, setShowCartridgeSelect] = useState(false);
   const [showJobExpired, setShowJobExpired] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
-  const [showWalletModal, setShowWalletModal] = useState(false);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
   const [mobileZoom, setMobileZoom] = useState(false);
@@ -95,6 +94,7 @@ function Home() {
   // Wagmi hooks
   const { address, isConnected } = useAccount();
   const { disconnect } = useDisconnect();
+  const { open: openWalletModal } = useWalletModal();
   const { writeContract, data: hash } = useWriteContract();
   
   // Session state
@@ -339,7 +339,7 @@ function Home() {
     setTimeout(() => setConnectPressed(false), 150);
 
     if (!isConnected) {
-      setShowWalletModal(true);
+      openWalletModal();
     } else {
       // Close any active session before disconnecting
       if (sessionId) {
@@ -2041,11 +2041,6 @@ function Home() {
         />
       </div>
 
-      {/* Wallet Connection Modal */}
-      <WalletConnectionModal 
-        isOpen={showWalletModal}
-        onClose={() => setShowWalletModal(false)}
-      />
       
       {/* Mobile Zoom Toggle - COMMENTED OUT FOR TESTING */}
       {/* <button
