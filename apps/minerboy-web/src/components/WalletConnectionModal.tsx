@@ -9,7 +9,12 @@ import { useWalletModal } from '@/state/walletModal'; // your zustand store
 export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
   const { open } = useWeb3Modal();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('WalletConnectionModal state:', { isOpen, isConnected, address: address?.slice(0, 8) + '...' + address?.slice(-6) });
+  }, [isOpen, isConnected, address]);
 
   // auto-close if connection already happened (belt and braces)
   useEffect(() => { if (isConnected && isOpen) close(); }, [isConnected, isOpen, close]);
