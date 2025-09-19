@@ -5,12 +5,13 @@ import { useEffect, useMemo, useState } from "react";
 // Force dynamic rendering and disable SSR
 export const dynamic = 'force-dynamic';
 export const ssr = false;
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import OpenConnectModalButton from '@/components/OpenConnectModalButton';
-import NetworkSwitcher from '@/components/NetworkSwitcher';
+import MintNetworkGuard from '@/components/MintNetworkGuard';
+import { useMintPrice } from '@/hooks/useMintPrice';
 import { formatEther } from 'viem';
 import Link from 'next/link';
-import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE, CARTRIDGE_ABI, CONTRACTS } from "../../lib/contracts";
+import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../../lib/contracts";
 import Stage from "@/components/Stage";
 
 export default function MintPage() {
@@ -36,20 +37,14 @@ export default function MintPage() {
   }, [isConnected, address, chainId, mounted]);
 
   // Get contract address for current chain
-  const contractAddress = chainId ? CONTRACTS[chainId]?.cartridge : null;
+  const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
   const onApeChain = chainId === 33133; // APECHAIN
   const onCurtis = chainId === 33111; // CURTIS
   
   const canMint = mounted && isConnected && contractAddress && (onApeChain || onCurtis);
 
-  // Fetch the actual mint price from the contract
-  const { data: mintPrice, error: priceError } = useReadContract({
-    address: contractAddress || undefined,
-    abi: CARTRIDGE_ABI,
-    functionName: 'mintPrice',
-    chainId,
-    query: { enabled: !!contractAddress }
-  });
+  // Fetch the actual mint price from the contract using the new hook
+  const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
 
   const totalCostWei = useMemo(() => {
     if (!mintPrice || typeof mintPrice !== 'bigint') return BigInt(0);
@@ -91,7 +86,7 @@ export default function MintPage() {
       
       writeContract({
         address: contractAddress,
-        abi: CARTRIDGE_ABI,
+        abi: APEBIT_CARTRIDGE_ABI,
         functionName: 'mint',
         args: [BigInt(count)], // mint(uint256 quantity) - mint specified quantity
         value: totalCostWei,
@@ -175,15 +170,7 @@ export default function MintPage() {
         ) : !isConnected ? (
           <OpenConnectModalButton>Connect Wallet</OpenConnectModalButton>
         ) : !(onApeChain || onCurtis) ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
-            <div style={{ fontSize: '12px', opacity: 0.8, textAlign: 'center' }}>
-              Switch to ApeChain or Curtis network to mint:
-            </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <NetworkSwitcher target={33133} />
-              <NetworkSwitcher target={33111} />
-            </div>
-          </div>
+          <MintNetworkGuard />
         ) : !contractAddress ? (
           <div style={{ fontSize: '12px', color: '#ffa500', textAlign: 'center' }}>
             Mint contract not configured for this chain
@@ -270,11 +257,17 @@ export default function MintPage() {
           textAlign: 'center'
         }}>
           MAX PER TX: 10
-          {mintPrice && (
+          {priceLoading ? (
+            <span style={{ color: '#ffa500' }}> • LOADING PRICE...</span>
+          ) : priceError ? (
+            <span style={{ color: '#ff6b6b' }}> • PRICE ERROR</span>
+          ) : mintPrice ? (
             <>
               {" • "}PRICE: <span style={{ fontFamily: 'monospace' }}>{formatEther(mintPrice)} APE</span>
               {" • "}TOTAL: <span style={{ fontFamily: 'monospace' }}>{formatEther(totalCostWei)} APE</span>
             </>
+          ) : (
+            <span style={{ color: '#ffa500' }}> • PRICE: 0.1 APE (fallback)</span>
           )}
         </div>
 

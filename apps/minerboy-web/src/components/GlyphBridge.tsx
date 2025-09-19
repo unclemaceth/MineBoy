@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 
 /**
@@ -8,22 +8,52 @@ import { useAccount } from 'wagmi';
  * Bridges the Web3Modal provider to Glyph so they share the same connection state.
  */
 export default function GlyphBridge() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, connector } = useAccount();
+  const [provider, setProvider] = useState<any>();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!isConnected || !connector) {
+        setProvider(undefined);
+        return;
+      }
+      
+      try {
+        // Get the real EIP-1193 provider from the active wagmi connector
+        const prov = await connector.getProvider();
+        if (!cancelled) {
+          setProvider(prov);
+          console.log('GlyphBridge: Got provider from connector', { 
+            isConnected, 
+            connectorName: connector.name,
+            hasProvider: !!prov
+          });
+        }
+      } catch (error) {
+        console.error('GlyphBridge: Failed to get provider from connector', error);
+        if (!cancelled) setProvider(undefined);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isConnected, connector]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       // Set global flags that Glyph can use to know a wallet is connected
       (window as any).__GLYPH_WALLET_CONNECTED__ = {
-        address,
-        isConnected
+        address: isConnected ? (window as any).ethereum?.selectedAddress : undefined,
+        isConnected,
+        provider
       };
 
       console.log('GlyphBridge: Updated wallet state', { 
         isConnected, 
-        address: address?.slice(0, 8) + '...' + address?.slice(-6)
+        hasProvider: !!provider,
+        connectorName: connector?.name
       });
     }
-  }, [isConnected, address]);
+  }, [isConnected, provider, connector]);
 
   return null;
 }

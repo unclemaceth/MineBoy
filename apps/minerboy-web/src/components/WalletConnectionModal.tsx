@@ -22,6 +22,7 @@ export default function WalletConnectionModal() {
   if (!isOpen) return null;
 
   const onConnectClick = () => {
+    console.log('WalletConnectionModal: Closing wrapper modal and opening Web3Modal');
     // close *our* wrapper first so you don't see 2 stacked modals
     close();
     // then open Web3Modal
