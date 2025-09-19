@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
-import { useAccount, useConnect, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
+import ConnectButton from '@/components/ConnectButton';
 import { formatEther } from 'viem';
 import Link from 'next/link';
 import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE } from "../../lib/contracts";
@@ -14,7 +14,6 @@ import Stage from "@/components/Stage";
 
 export default function MintPage() {
   const { address, isConnected, chainId } = useAccount();
-  const { connect } = useConnect();
   const { writeContract, isPending: isMinting, data: hash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
@@ -189,22 +188,7 @@ export default function MintPage() {
         {!mounted ? (
           <div style={{ fontSize: '14px', opacity: 0.8 }}>LOADING...</div>
         ) : !isConnected ? (
-          <button
-            onClick={() => connect({ connector: injected() })}
-            style={{
-              padding: '12px 24px',
-              borderRadius: '8px',
-              background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-              color: '#c8ffc8',
-              border: '2px solid #8a8a8a',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
-            }}
-          >
-            CONNECT WALLET
-          </button>
+          <ConnectButton />
         ) : (
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
             CONNECTED: <span style={{ fontFamily: 'monospace' }}>{address?.slice(0, 8)}...{address?.slice(-6)}</span>
