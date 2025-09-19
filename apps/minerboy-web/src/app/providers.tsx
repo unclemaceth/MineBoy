@@ -1,14 +1,19 @@
 'use client';
 import { ReactNode, useState } from 'react';
 import { WagmiConfig } from 'wagmi';
-import { wagmiConfig } from '@/lib/wallet';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { wagmiConfig } from '@/lib/wallet';
+import { GlyphProvider, StrategyType } from '@use-glyph/sdk-react';
 
 export default function Providers({ children }: { children: ReactNode }) {
   const [qc] = useState(() => new QueryClient());
   return (
     <QueryClientProvider client={qc}>
-      <WagmiConfig config={wagmiConfig}>{children}</WagmiConfig>
+      <WagmiConfig config={wagmiConfig}>
+        <GlyphProvider strategy={StrategyType.PRIVY}>
+          {children}
+        </GlyphProvider>
+      </WagmiConfig>
     </QueryClientProvider>
   );
 }

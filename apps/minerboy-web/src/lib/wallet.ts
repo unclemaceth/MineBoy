@@ -5,18 +5,29 @@ import type { Chain } from 'wagmi/chains';
 import { mainnet, base, sepolia } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
-// non-empty tuple of chains
-export const chains = [mainnet, base, sepolia] as const satisfies readonly [Chain, ...Chain[]];
+// --------------- REQUIRED: valid project id ---------------
+export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? '';
+if (typeof window !== 'undefined' && !projectId) {
+  // Fail loudly so we don't end up with "buttons do nothing"
+  throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is missing');
+}
 
-export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID!;
+// --------------- Chains ---------------
+export const chains = [mainnet, base, sepolia] as const satisfies readonly [
+  Chain, ...Chain[]
+];
+
+// --------------- Metadata (use your public URL) ---------------
+const siteUrl = 'https://mineboy-web-git-main-macs-projects-20ae48e1.vercel.app';
+
 const metadata = {
   name: 'MineBoy',
   description: 'MineBoy',
-  // IMPORTANT: put your real public URL here (use your Vercel domain for now)
-  url: 'https://mineboy-web-git-main-macs-projects-20ae48e1.vercel.app',
-  icons: ['https://mineboy-web-git-main-macs-projects-20ae48e1.vercel.app/icon.png']
+  url: siteUrl,
+  icons: [`${siteUrl}/icon.png`]
 };
 
+// --------------- wagmi config ---------------
 export const wagmiConfig = defaultWagmiConfig({
   chains,
   projectId,
@@ -28,11 +39,12 @@ export const wagmiConfig = defaultWagmiConfig({
   }
 });
 
-// guard against double init in HMR/Next
+// --------------- Init Web3Modal once ---------------
 declare global { interface Window { __W3M_INIT__?: boolean } }
 
 if (typeof window !== 'undefined' && !window.__W3M_INIT__) {
   window.__W3M_INIT__ = true;
+  console.log('[MineBoy] WC projectId:', projectId); // sanity check
   createWeb3Modal({
     wagmiConfig,
     projectId,
