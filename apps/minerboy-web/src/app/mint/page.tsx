@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import ConnectButton from '@/components/ConnectButton';
+import OpenConnectModalButton from '@/components/OpenConnectModalButton';
+import NetworkSwitcher from '@/components/NetworkSwitcher';
 import { formatEther } from 'viem';
 import Link from 'next/link';
 import { CARTRIDGE_ADDRESS, CURTIS_CHAIN_ID, EXPLORER_BASE } from "../../lib/contracts";
@@ -188,13 +189,17 @@ export default function MintPage() {
         {!mounted ? (
           <div style={{ fontSize: '14px', opacity: 0.8 }}>LOADING...</div>
         ) : !isConnected ? (
-          <ConnectButton />
+          <OpenConnectModalButton label="Connect Wallet" />
+        ) : chainId !== CURTIS_CHAIN_ID ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+            <div style={{ fontSize: '12px', opacity: 0.8, textAlign: 'center' }}>
+              Switch to Curtis network to mint:
+            </div>
+            <NetworkSwitcher />
+          </div>
         ) : (
           <div style={{ fontSize: '12px', opacity: 0.8 }}>
             CONNECTED: <span style={{ fontFamily: 'monospace' }}>{address?.slice(0, 8)}...{address?.slice(-6)}</span>
-            {chainId !== CURTIS_CHAIN_ID && (
-              <span style={{ color: '#ff6b6b', marginLeft: '8px' }}>WRONG NETWORK</span>
-            )}
           </div>
         )}
       </div>

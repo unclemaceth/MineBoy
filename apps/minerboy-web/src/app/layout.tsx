@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
+import GlobalWalletModal from "./GlobalWalletModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,6 +38,7 @@ export const viewport = {
   userScalable: false,
 };
 
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,6 +51,8 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          {/* mounted once globally */}
+          <GlobalWalletModal />
         </Providers>
       </body>
     </html>

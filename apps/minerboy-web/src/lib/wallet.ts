@@ -1,12 +1,12 @@
 'use client';
 
-import { http } from 'wagmi';
+import { http, cookieStorage, createStorage } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { mainnet, base, sepolia } from 'wagmi/chains';
 import { defineChain } from 'viem';
 
 // Curtis testnet
-export const curtis = defineChain({
+export const CURTIS = defineChain({
   id: 33111,
   name: 'Curtis',
   nativeCurrency: {
@@ -29,7 +29,7 @@ export const curtis = defineChain({
 });
 
 // ApeChain mainnet
-export const apeChain = defineChain({
+export const APECHAIN = defineChain({
   id: 33133,
   name: 'ApeChain',
   nativeCurrency: {
@@ -55,9 +55,9 @@ import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
 
-const siteUrl = 'https://mineboy.app';
+const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://mineboy.app';
 
-export const chains = [mainnet, base, sepolia, curtis, apeChain] as const satisfies readonly [Chain, ...Chain[]];
+export const chains = [mainnet, base, sepolia, CURTIS, APECHAIN] as const satisfies readonly [Chain, ...Chain[]];
 
 const metadata = {
   name: 'MineBoy',
@@ -70,12 +70,17 @@ export const wagmiConfig = defaultWagmiConfig({
   chains,
   projectId,
   metadata,
+  ssr: true,
+  storage: createStorage({ 
+    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    key: 'mineboy_wagmi'
+  }),
   transports: {
     [mainnet.id]: http(),
     [base.id]: http(),
     [sepolia.id]: http(),
-    [curtis.id]: http(),
-    [apeChain.id]: http()
+    [APECHAIN.id]: http('https://apechain.rpc.thirdweb.com'),
+    [CURTIS.id]: http('https://curtis.rpc.caldera.xyz/http'),
   }
 });
 
