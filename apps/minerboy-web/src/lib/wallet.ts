@@ -8,9 +8,8 @@ import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
 
-// dynamic to avoid metadata mismatch warnings on prod vs preview
-const siteUrl =
-  typeof window !== 'undefined' ? window.location.origin : 'https://mineboy.app';
+// Use static siteUrl to stop metadata mismatch warning
+const siteUrl = 'https://mineboy.app';
 
 export const curtis = {
   id: 33111,
@@ -47,9 +46,7 @@ export const wagmiConfig = defaultWagmiConfig({
     [sepolia.id]:  http(),
     [curtis.id]:   http('https://curtis.rpc.caldera.xyz/http'),
     [apechain.id]: http('https://apechain.rpc.thirdweb.com')
-  },
-  // localStorage persistence (already default, but explicit doesn't hurt)
-  // storage: typeof window !== 'undefined' ? window.localStorage : null
+  }
 });
 
 declare global { interface Window { __W3M_INIT__?: boolean } }
