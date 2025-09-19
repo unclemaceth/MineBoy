@@ -3,14 +3,13 @@
 import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useGlyph } from '@use-glyph/sdk-react';
+import { NativeGlyphConnectButton } from '@use-glyph/sdk-react';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
 export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
   const { open } = useWeb3Modal();
   const { isConnected, address } = useAccount();
-  const { login: glyphLogin, authenticated: glyphAuthenticated } = useGlyph();
 
   // Debug logging
   useEffect(() => {
@@ -19,9 +18,6 @@ export default function WalletConnectionModal() {
 
   // auto-close if connection already happened (belt and braces)
   useEffect(() => { if (isConnected && isOpen) close(); }, [isConnected, isOpen, close]);
-  
-  // auto-close if Glyph authentication happened
-  useEffect(() => { if (glyphAuthenticated && isOpen) close(); }, [glyphAuthenticated, isOpen, close]);
 
   if (!isOpen) return null;
 
@@ -48,30 +44,10 @@ export default function WalletConnectionModal() {
           Connect Wallet
         </button>
 
-        {/* GLYPH: Only show when wallet is connected */}
-        {isConnected ? (
-          <button
-            onClick={() => {
-              console.log('WalletConnectionModal: Closing wrapper modal and opening Glyph');
-              // Close our modal first
-              close();
-              // Then trigger Glyph login
-              setTimeout(() => {
-                glyphLogin();
-                console.log('[Glyph] Login triggered');
-              }, 0);
-            }}
-            className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-2"
-          >
-            <span className="text-lg">⛓️</span>
-            <span>Glyph</span>
-          </button>
-        ) : (
-          <div className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-900 text-zinc-500 font-semibold flex items-center justify-center gap-2">
-            <span className="text-lg">⛓️</span>
-            <span>Glyph (Connect wallet first)</span>
-          </div>
-        )}
+        {/* GLYPH: Standalone wallet creation and connection */}
+        <div className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 overflow-hidden">
+          <NativeGlyphConnectButton />
+        </div>
       </div>
     </div>
   );
