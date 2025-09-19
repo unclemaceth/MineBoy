@@ -6,11 +6,7 @@ import { mainnet, base, sepolia } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
 // --------------- REQUIRED: valid project id ---------------
-export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? '';
-if (typeof window !== 'undefined' && !projectId) {
-  // Fail loudly so we don't end up with "buttons do nothing"
-  throw new Error('NEXT_PUBLIC_WC_PROJECT_ID is missing');
-}
+export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 
 // --------------- Chains ---------------
 export const chains = [mainnet, base, sepolia] as const satisfies readonly [
@@ -42,14 +38,18 @@ export const wagmiConfig = defaultWagmiConfig({
 // --------------- Init Web3Modal once ---------------
 declare global { interface Window { __W3M_INIT__?: boolean } }
 
-if (typeof window !== 'undefined' && !window.__W3M_INIT__) {
-  window.__W3M_INIT__ = true;
-  console.log('[MineBoy] WC projectId:', projectId); // sanity check
-  createWeb3Modal({
-    wagmiConfig,
-    projectId,
-    themeMode: 'dark',
-    enableAnalytics: false,
-    enableOnramp: false
-  });
+if (typeof window !== 'undefined') {
+  if (!projectId) {
+    console.warn('[MineBoy] NEXT_PUBLIC_WC_PROJECT_ID missing – Web3Modal disabled');
+  } else if (!window.__W3M_INIT__) {
+    window.__W3M_INIT__ = true;
+    console.log('[MineBoy] WC projectId:', projectId);
+    createWeb3Modal({
+      wagmiConfig,
+      projectId,
+      themeMode: 'dark',
+      enableAnalytics: false,
+      enableOnramp: false
+    });
+  }
 }
