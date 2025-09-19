@@ -183,6 +183,7 @@ function Home() {
   
   // Update wallet when account changes
   useEffect(() => {
+    console.log('Main page wallet state:', { isConnected, address });
     if (isConnected && address) {
       setWallet(address);
       pushLine('Connected to Curtis Network');

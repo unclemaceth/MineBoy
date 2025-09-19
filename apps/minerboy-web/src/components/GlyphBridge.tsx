@@ -1,12 +1,28 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useAccount } from 'wagmi';
+
 /**
  * GlyphBridge component to handle Glyph wallet integration.
- * For now, this is a placeholder that will be enhanced once
- * we have proper wallet integration working.
+ * Sets up Glyph to use the connected wallet from Wagmi.
  */
 export default function GlyphBridge() {
-  // Placeholder component - Glyph integration will be enhanced
-  // once the basic wallet connection flow is working
+  const { isConnected, address } = useAccount();
+
+  useEffect(() => {
+    if (!isConnected || !address) return;
+
+    // Set up Glyph to use the connected wallet
+    // This tells Glyph to use the wallet that's already connected via Wagmi
+    if (typeof window !== 'undefined') {
+      // Set a global flag that Glyph can use to know a wallet is connected
+      (window as any).__GLYPH_WALLET_CONNECTED__ = {
+        address,
+        isConnected: true
+      };
+    }
+  }, [isConnected, address]);
+
   return null;
 }

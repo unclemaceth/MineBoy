@@ -30,6 +30,11 @@ export default function MintPage() {
     setMounted(true);
   }, []);
 
+  // Debug logging
+  useEffect(() => {
+    console.log('Mint page wallet state:', { isConnected, address, chainId, mounted });
+  }, [isConnected, address, chainId, mounted]);
+
   // Get contract address for current chain
   const contractAddress = chainId ? CONTRACTS[chainId]?.cartridge : null;
   const onApeChain = chainId === 33133; // APECHAIN
