@@ -59,6 +59,7 @@ if (typeof window !== 'undefined') {
     console.warn('[MineBoy] NEXT_PUBLIC_WC_PROJECT_ID missing – Web3Modal disabled');
   } else if (!window.__W3M_INIT__) {
     window.__W3M_INIT__ = true;
+    console.log('[MineBoy] Initializing Web3Modal with projectId:', projectId);
     createWeb3Modal({
       wagmiConfig,
       projectId,
@@ -66,5 +67,8 @@ if (typeof window !== 'undefined') {
       enableAnalytics: false,
       enableOnramp: false
     });
+    console.log('[MineBoy] Web3Modal initialized successfully');
+  } else {
+    console.log('[MineBoy] Web3Modal already initialized');
   }
 }

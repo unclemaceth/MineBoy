@@ -9,15 +9,15 @@ export const CARTRIDGE_ABI = parseAbi([
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
 ]);
 
-// fill these with the real deployed addresses
+// Real deployed addresses from Curtis deployment
 export const CONTRACTS: Record<number, { cartridge: `0x${string}` }> = {
-  33133: { cartridge: '0xYOUR_APECHAIN_CONTRACT' },
-  33111: { cartridge: '0xYOUR_CURTIS_CONTRACT' }
+  33133: { cartridge: '0x1234567890123456789012345678901234567890' }, // ApeChain - not deployed yet
+  33111: { cartridge: '0xb05fa76709b6bd18c63782e9044ff81430f6769c' }  // Curtis - actual deployed cartridge address
 };
 
 // Legacy exports for compatibility with existing code
 export const APEBIT_CARTRIDGE_ABI = CARTRIDGE_ABI;
-export const CARTRIDGE_ADDRESS = '0xYOUR_CURTIS_CONTRACT'; // Temporary fallback
+export const CARTRIDGE_ADDRESS = '0xb05fa76709b6bd18c63782e9044ff81430f6769c'; // Curtis cartridge address
 export const CURTIS_CHAIN_ID = 33111;
 export const EXPLORER_BASE = 'https://curtis.explorer.caldera.xyz';
 
