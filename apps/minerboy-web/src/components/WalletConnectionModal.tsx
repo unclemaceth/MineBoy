@@ -44,21 +44,10 @@ export default function WalletConnectionModal() {
           Connect Wallet
         </button>
 
-        {/* GLYPH: Custom button that opens Glyph */}
-        <button
-          onClick={() => {
-            // Close our modal first
-            close();
-            // Open Glyph connection
-            if (typeof window !== 'undefined') {
-              // For now, just show an alert - will implement proper Glyph connection
-              alert('Glyph connection will be implemented once basic wallet flow is working');
-            }
-          }}
-          className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold"
-        >
-          Glyph
-        </button>
+        {/* GLYPH: Real LoginButton component */}
+        <div className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 overflow-hidden">
+          <LoginButton />
+        </div>
       </div>
     </div>
   );
