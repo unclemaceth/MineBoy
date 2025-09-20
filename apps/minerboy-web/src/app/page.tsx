@@ -253,7 +253,9 @@ function Home() {
           address
         });
         
-        await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+        if (cartridge) {
+          await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+        }
         
         // Debug lock info after heartbeat
         try {
@@ -511,7 +513,9 @@ function Home() {
       
       // 1) Refresh lock right before claim
       console.log('[CLAIM] pre-heartbeat', { sessionId, minerId });
-      await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+      if (cartridge) {
+        await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+      }
       pushLine('Lock refreshed for claim...');
       
       // Debug lock info before claim
@@ -553,7 +557,9 @@ function Home() {
         if (e.status === 409) {
           // 4) Reattach + one retry
           pushLine('Retrying claim after reattach...');
-          await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+          if (cartridge) {
+            await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+          }
           await new Promise(r => setTimeout(r, 150));
           claimResponse = await doClaim();
         } else {
