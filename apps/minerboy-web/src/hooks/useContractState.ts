@@ -45,18 +45,26 @@ export function useContractState() {
     query: { enabled: false } // Disabled since walletMints() likely doesn't exist
   });
 
-  const { data: totalSupply } = useReadContract({
+  const { data: totalSupply, isLoading: totalSupplyLoading } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
     functionName: 'totalSupply',
-    query: { enabled: Boolean(contract) }
+    query: { 
+      enabled: Boolean(contract),
+      retry: 1, // Reduce retries to prevent hanging
+      retryDelay: 1000
+    }
   });
 
-  const { data: maxSupply } = useReadContract({
+  const { data: maxSupply, isLoading: maxSupplyLoading } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
     functionName: 'maxSupply',
-    query: { enabled: Boolean(contract) }
+    query: { 
+      enabled: Boolean(contract),
+      retry: 1, // Reduce retries to prevent hanging
+      retryDelay: 1000
+    }
   });
 
   const { data: paymentToken } = useReadContract({
@@ -108,8 +116,8 @@ export function useContractState() {
     // Error message
     errorReason: getErrorReason(),
     
-    // Loading state
-    isLoading: Boolean(contract) && (totalSupply === undefined && maxSupply === undefined),
+    // Loading state - with timeout to prevent infinite loading
+    isLoading: Boolean(contract) && (totalSupplyLoading || maxSupplyLoading),
     
     // Contract info
     contract

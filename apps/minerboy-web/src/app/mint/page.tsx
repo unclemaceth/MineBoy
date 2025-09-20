@@ -28,6 +28,7 @@ export default function MintPage() {
   const [mintedTokenIds, setMintedTokenIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [isChecking, setIsChecking] = useState(false);
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function MintPage() {
 
   // Use the new safety hooks
   const { simulate, mint, isReady, estTotal, value } = useSafeMint(count);
-  const { bal, feeFormatted, enoughForFee, enoughForValue, enoughTotal, isLoading: spendLoading } = useSpendChecks(
+  const { bal, feeFormatted, enoughForFee, enoughForValue, enoughTotal, isLoading: spendLoading, gasEstimateError } = useSpendChecks(
     contractAddress || undefined, 
     value, 
     '0xa0712d680000000000000000000000000000000000000000000000000000000000000001' // mint function call data
@@ -63,11 +64,19 @@ export default function MintPage() {
   const handleMint = async () => {
     setError(null);
     setMintedTokenIds([]);
+    setIsChecking(true);
+    
     try {
       console.log('Mint button clicked!', { isConnected, chainId, address, contractAddress });
       
-      // Preflight check - this will throw with a specific reason if the tx would fail
-      await simulate();
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Transaction check timeout')), 8000)
+      );
+      
+      // Preflight check with timeout
+      const simulatePromise = simulate();
+      await Promise.race([simulatePromise, timeoutPromise]);
       
       // If simulation passes, send the transaction
       const txHash = await mint();
@@ -77,8 +86,21 @@ export default function MintPage() {
       console.error('Mint preflight failed:', err);
       
       // Extract meaningful error message from viem
-      const errorMessage = err.shortMessage || err.details || err.message || 'Transaction reverted';
+      let errorMessage = 'Transaction failed';
+      
+      if (err.message?.includes('timeout')) {
+        errorMessage = 'Transaction check timed out - please try again';
+      } else if (err.shortMessage) {
+        errorMessage = err.shortMessage;
+      } else if (err.details) {
+        errorMessage = err.details;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -305,6 +327,22 @@ export default function MintPage() {
           </div>
         )}
 
+        {/* Gas Estimation Warning */}
+        {gasEstimateError && (
+          <div style={{
+            fontSize: '12px',
+            color: '#ffa500',
+            marginBottom: '12px',
+            padding: '8px',
+            background: 'rgba(255, 165, 0, 0.1)',
+            borderRadius: '4px',
+            textAlign: 'center',
+            border: '1px solid #ffa500'
+          }}>
+            ⚠️ Gas estimation failed - transaction may still work
+          </div>
+        )}
+
         {/* Balance Warnings */}
         {!enoughForValue && bal && (
           <div style={{
@@ -342,6 +380,7 @@ export default function MintPage() {
             !canMint || 
             isMinting || 
             isConfirming || 
+            isChecking ||
             !isReady || 
             !!errorReason || 
             !enoughTotal || 
@@ -354,20 +393,20 @@ export default function MintPage() {
             width: '100%',
             padding: '16px',
             borderRadius: '8px',
-            background: canMint && !isMinting && !isConfirming && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval
+            background: canMint && !isMinting && !isConfirming && !isChecking && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval
               ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)' 
               : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
             color: '#c8ffc8',
             border: '2px solid #8a8a8a',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: canMint && !isMinting && !isConfirming && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 'pointer' : 'not-allowed',
-            opacity: canMint && !isMinting && !isConfirming && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 1 : 0.5,
+            cursor: canMint && !isMinting && !isConfirming && !isChecking && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 'pointer' : 'not-allowed',
+            opacity: canMint && !isMinting && !isConfirming && !isChecking && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 1 : 0.5,
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
             marginBottom: '16px'
           }}
         >
-          {spendLoading || contractLoading ? "CHECKING..." : 
+          {spendLoading || contractLoading || isChecking ? "CHECKING..." : 
            isMinting ? "MINTING..." : 
            isConfirming ? "CONFIRMING..." : 
            errorReason ? "CANNOT MINT" :
