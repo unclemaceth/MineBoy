@@ -3,46 +3,67 @@
 import { useAccount, useChainId, useReadContract } from 'wagmi';
 import { APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from '@/lib/contracts';
 
-export function useContractState() {
+export function useContractState(): {
+  paused: undefined;
+  saleActive: undefined;
+  maxPerTx: undefined;
+  maxPerWallet: undefined;
+  walletMints: undefined;
+  totalSupply: any;
+  maxSupply: any;
+  paymentToken: undefined;
+  allowance: undefined;
+  tokenBalance: undefined;
+  isPaused: boolean;
+  isSaleInactive: boolean;
+  isSoldOut: boolean;
+  hasReachedWalletLimit: boolean;
+  isERC20Payment: boolean;
+  needsApproval: boolean;
+  insufficientTokenBalance: boolean;
+  errorReason: string | null;
+  isLoading: boolean;
+  contract: any;
+} {
   const { address } = useAccount();
   const chainId = useChainId();
   const contract = chainId ? CARTRIDGE_ADDRESSES[chainId] : undefined;
 
-  // Try to read various contract states (ignore failures if functions don't exist)
-  // Note: These functions may not exist in the actual contract, so we'll handle gracefully
-  const { data: paused } = useReadContract({
+  // Only read functions that exist in our ABI
+  // Note: Most of these functions don't exist in the actual contract, so we'll disable them
+  const { data: paused, error: pausedError } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
-    functionName: 'mintPrice', // Use a function we know exists as a fallback
-    query: { enabled: false } // Disabled since paused() likely doesn't exist
+    functionName: 'mintPrice', // Use existing function as fallback
+    query: { enabled: false } // Disabled since paused() doesn't exist
   });
 
-  const { data: saleActive } = useReadContract({
+  const { data: saleActive, error: saleActiveError } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
-    functionName: 'mintPrice', // Use a function we know exists as a fallback
-    query: { enabled: false } // Disabled since saleActive() likely doesn't exist
+    functionName: 'mintPrice', // Use existing function as fallback
+    query: { enabled: false } // Disabled since saleActive() doesn't exist
   });
 
-  const { data: maxPerTx } = useReadContract({
+  const { data: maxPerTx, error: maxPerTxError } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
-    functionName: 'mintPrice', // Use a function we know exists as a fallback
-    query: { enabled: false } // Disabled since maxPerTx() likely doesn't exist
+    functionName: 'mintPrice', // Use existing function as fallback
+    query: { enabled: false } // Disabled since maxPerTx() doesn't exist
   });
 
-  const { data: maxPerWallet } = useReadContract({
+  const { data: maxPerWallet, error: maxPerWalletError } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
-    functionName: 'mintPrice', // Use a function we know exists as a fallback
-    query: { enabled: false } // Disabled since maxPerWallet() likely doesn't exist
+    functionName: 'mintPrice', // Use existing function as fallback
+    query: { enabled: false } // Disabled since maxPerWallet() doesn't exist
   });
 
-  const { data: walletMints } = useReadContract({
+  const { data: walletMints, error: walletMintsError } = useReadContract({
     address: contract,
     abi: APEBIT_CARTRIDGE_ABI,
-    functionName: 'mintPrice', // Use a function we know exists as a fallback
-    query: { enabled: false } // Disabled since walletMints() likely doesn't exist
+    functionName: 'mintPrice', // Use existing function as fallback
+    query: { enabled: false } // Disabled since walletMints() doesn't exist
   });
 
   const { data: totalSupply, isLoading: totalSupplyLoading } = useReadContract({
@@ -74,25 +95,28 @@ export function useContractState() {
     query: { enabled: false } // Disabled since paymentToken() likely doesn't exist
   });
 
-  // Calculate states - since most functions don't exist, we'll keep it simple
+  // Calculate states - assume false since we can't read most contract states
   const isPaused = false; // Assume not paused since we can't read it
   const isSaleInactive = false; // Assume active since we can't read it
   const isSoldOut = totalSupply && maxSupply ? totalSupply >= maxSupply : false;
   const hasReachedWalletLimit = false; // Assume no limit since we can't read it
-  const isERC20Payment = false; // Assume native ETH payments since we can't read it
+  const isERC20Payment = false; // Assume native ETH payments for now
   
   // ERC20 specific checks - disabled since we can't read payment token
   const needsApproval = false;
   const insufficientTokenBalance = false;
 
   // Generate user-friendly error messages
-  const getErrorReason = () => {
+  const getErrorReason = (): string | null => {
+    if (isPaused) return 'Sale is currently paused';
+    if (isSaleInactive) return 'Sale is not active';
     if (isSoldOut) return 'All tokens have been sold out';
+    if (hasReachedWalletLimit) return 'Maximum mints per wallet reached';
     return null;
   };
 
   return {
-    // Raw data
+    // Raw data - return undefined since we can't read most contract states
     paused: undefined,
     saleActive: undefined,
     maxPerTx: undefined,

@@ -1,23 +1,63 @@
 'use client';
 
 import { useAccount, useBalance, useGasPrice, useEstimateGas } from 'wagmi';
-import { formatEther } from 'viem';
+import { formatEther, encodeFunctionData } from 'viem';
+import { APEBIT_CARTRIDGE_ABI } from '@/lib/contracts';
 
-export function useSpendChecks(to: `0x${string}` | undefined, value: bigint, data?: `0x${string}`) {
+export function useSpendChecks(to: `0x${string}` | undefined, value: bigint, count: number = 1) {
   const { address } = useAccount();
-  const { data: bal, isLoading: balanceLoading } = useBalance({ address });
-  const { data: gasPrice, isLoading: gasPriceLoading } = useGasPrice();
-  const { data: gasLimit, isLoading: gasLimitLoading, error: gasEstimateError } = useEstimateGas({ 
-    account: address, 
-    to, 
-    data, 
-    value, 
-    query: { 
-      enabled: Boolean(address && to),
-      retry: 1, // Reduce retries to prevent hanging
-      retryDelay: 1000
-    } 
-  });
+  
+  // Wrap all hooks in try-catch to prevent crashes
+  let bal, balanceLoading, gasPrice, gasPriceLoading, gasLimit, gasLimitLoading, gasEstimateError;
+  
+  try {
+    const balanceResult = useBalance({ address });
+    bal = balanceResult.data;
+    balanceLoading = balanceResult.isLoading;
+  } catch (error) {
+    console.warn('Balance check failed:', error);
+    bal = undefined;
+    balanceLoading = false;
+  }
+  
+  try {
+    const gasPriceResult = useGasPrice();
+    gasPrice = gasPriceResult.data;
+    gasPriceLoading = gasPriceResult.isLoading;
+  } catch (error) {
+    console.warn('Gas price check failed:', error);
+    gasPrice = undefined;
+    gasPriceLoading = false;
+  }
+  
+  try {
+    // Generate proper calldata for the current count
+    const data = encodeFunctionData({
+      abi: APEBIT_CARTRIDGE_ABI,
+      functionName: 'mint',
+      args: [BigInt(count)]
+    });
+
+    const gasEstimateResult = useEstimateGas({ 
+      account: address, 
+      to, 
+      data, 
+      value, 
+      query: { 
+        enabled: Boolean(address && to),
+        retry: 1, // Reduce retries to prevent hanging
+        retryDelay: 1000
+      } 
+    });
+    gasLimit = gasEstimateResult.data;
+    gasLimitLoading = gasEstimateResult.isLoading;
+    gasEstimateError = gasEstimateResult.error;
+  } catch (error) {
+    console.warn('Gas estimation failed:', error);
+    gasLimit = undefined;
+    gasLimitLoading = false;
+    gasEstimateError = error;
+  }
 
   const fee = gasPrice && gasLimit ? gasPrice * gasLimit : undefined;
   const enoughForFee = bal && fee ? bal.value >= fee : true;

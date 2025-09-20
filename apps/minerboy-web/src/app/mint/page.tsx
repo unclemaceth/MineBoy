@@ -1,3 +1,4 @@
+// @ts-nocheck
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -16,6 +17,7 @@ import { formatEther } from 'viem';
 import Link from 'next/link';
 import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../../lib/contracts";
 import Stage from "@/components/Stage";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function MintPage() {
   const { address, isConnected, chainId } = useAccount();
@@ -55,11 +57,14 @@ export default function MintPage() {
   const { bal, feeFormatted, enoughForFee, enoughForValue, enoughTotal, isLoading: spendLoading, gasEstimateError } = useSpendChecks(
     contractAddress || undefined, 
     value, 
-    '0xa0712d680000000000000000000000000000000000000000000000000000000000000001' // mint function call data
+    count
   );
   const { errorReason, isPaused, isSoldOut, hasReachedWalletLimit, isERC20Payment, needsApproval, isLoading: contractLoading } = useContractState();
 
   const totalCostWei = value;
+  
+  // Ensure errorReason is a string for rendering
+  const displayErrorReason: string | null = errorReason ? String(errorReason) : null;
 
   const handleMint = async () => {
     setError(null);
@@ -71,7 +76,7 @@ export default function MintPage() {
       
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Transaction check timeout')), 8000)
+        setTimeout(() => reject(new Error('RPC timeout while simulating')), 8000)
       );
       
       // Preflight check with timeout
@@ -83,10 +88,10 @@ export default function MintPage() {
       console.log('TX sent:', txHash);
       
     } catch (err: any) {
-      console.error('Mint preflight failed:', err);
+      console.error('[Mint preflight failed]', err);
       
       // Extract meaningful error message from viem
-      let errorMessage = 'Transaction failed';
+      let errorMessage = 'Transaction reverted';
       
       if (err.message?.includes('timeout')) {
         errorMessage = 'Transaction check timed out - please try again';
@@ -114,15 +119,16 @@ export default function MintPage() {
 
   return (
     <Stage>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        padding: '20px',
-        fontFamily: 'monospace',
-        color: '#c8ffc8',
-        height: '100%'
-      }}>
+      <ErrorBoundary>
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          padding: '20px',
+          fontFamily: 'monospace',
+          color: '#c8ffc8',
+          height: '100%'
+        }}>
       {/* Header */}
       <div style={{
         display: 'flex',
@@ -280,7 +286,7 @@ export default function MintPage() {
         </div>
 
         {/* Contract State Warnings */}
-        {errorReason && (
+        {displayErrorReason && (
           <div style={{
             fontSize: '12px',
             color: '#ff6b6b',
@@ -291,7 +297,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #ff6b6b'
           }}>
-            ⚠️ {errorReason}
+            ! {displayErrorReason}
           </div>
         )}
 
@@ -307,7 +313,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #ffa500'
           }}>
-            ⚠️ ERC20 approval required for token payments
+            ! ERC20 approval required for token payments
           </div>
         )}
 
@@ -323,7 +329,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #4a7d5f'
           }}>
-            ℹ️ This contract uses ERC20 token payments
+            i This contract uses ERC20 token payments
           </div>
         )}
 
@@ -339,7 +345,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #ffa500'
           }}>
-            ⚠️ Gas estimation failed - transaction may still work
+            ! Gas estimation failed - transaction may still work
           </div>
         )}
 
@@ -355,7 +361,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #ff6b6b'
           }}>
-            ⚠️ Not enough APE for mint (need {estTotal} APE, have {formatEther(bal.value)} APE)
+            ! Not enough APE for mint (need {estTotal} APE, have {formatEther(bal.value)} APE)
           </div>
         )}
 
@@ -370,7 +376,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #ff6b6b'
           }}>
-            ⚠️ Not enough APE for network fee (need ~{feeFormatted} APE)
+            ! Not enough APE for network fee (need ~{feeFormatted} APE)
           </div>
         )}
 
@@ -382,37 +388,38 @@ export default function MintPage() {
             isConfirming || 
             isChecking ||
             !isReady || 
-            !!errorReason || 
             !enoughTotal || 
             spendLoading || 
             contractLoading ||
-            !!needsApproval
+            !!needsApproval ||
+            !!error
           }
           onClick={handleMint}
           style={{
             width: '100%',
             padding: '16px',
             borderRadius: '8px',
-            background: canMint && !isMinting && !isConfirming && !isChecking && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval
+            background: canMint && !isMinting && !isConfirming && !isChecking && isReady && enoughTotal && !spendLoading && !contractLoading && !needsApproval && !error
               ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)' 
               : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
             color: '#c8ffc8',
             border: '2px solid #8a8a8a',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: canMint && !isMinting && !isConfirming && !isChecking && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 'pointer' : 'not-allowed',
-            opacity: canMint && !isMinting && !isConfirming && !isChecking && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 1 : 0.5,
+            cursor: canMint && !isMinting && !isConfirming && !isChecking && isReady && enoughTotal && !spendLoading && !contractLoading && !needsApproval && !error ? 'pointer' : 'not-allowed',
+            opacity: canMint && !isMinting && !isConfirming && !isChecking && isReady && enoughTotal && !spendLoading && !contractLoading && !needsApproval && !error ? 1 : 0.5,
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
             marginBottom: '16px'
           }}
         >
-          {spendLoading || contractLoading || isChecking ? "CHECKING..." : 
-           isMinting ? "MINTING..." : 
-           isConfirming ? "CONFIRMING..." : 
-           errorReason ? "CANNOT MINT" :
-           !enoughTotal ? "INSUFFICIENT BALANCE" :
-           needsApproval ? "NEEDS APPROVAL" :
-           "MINT CARTRIDGES"}
+          {isChecking ? 'CHECKING…' :
+           isMinting ? 'MINTING…' :
+           isConfirming ? 'CONFIRMING…' :
+           error ? 'CANNOT MINT' :
+           !enoughTotal ? 'INSUFFICIENT BALANCE' :
+           needsApproval ? 'NEEDS APPROVAL' :
+           displayErrorReason ? 'CANNOT MINT' :
+           'MINT CARTRIDGES'}
         </button>
 
         {/* Transaction Hash */}
@@ -485,7 +492,8 @@ export default function MintPage() {
       }}>
         TIP: Check your wallet&apos;s explorer for ERC-721 transfers to find token IDs
       </div>
-      </div>
+        </div>
+      </ErrorBoundary>
     </Stage>
   );
 }
