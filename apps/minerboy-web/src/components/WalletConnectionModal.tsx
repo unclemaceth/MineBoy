@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
+import GlyphProvider from './GlyphProvider';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
 export default function WalletConnectionModal() {
@@ -45,27 +46,29 @@ export default function WalletConnectionModal() {
           Connect Wallet
         </button>
 
-        {/* GLYPH: Custom button that triggers Glyph connection */}
-        <button
-          onClick={() => {
-            console.log('WalletConnectionModal: Closing wrapper modal and opening Glyph');
-            // Close our modal first
-            close();
-            // Then trigger Glyph connection
-            setTimeout(() => {
-              try {
-                glyphConnect();
-                console.log('[Glyph] Connection triggered');
-              } catch (error) {
-                console.error('[Glyph] Connection error:', error);
-              }
-            }, 0);
-          }}
-          className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-2"
-        >
-          <span className="text-lg">⛓️</span>
-          <span>Create Wallet with Glyph</span>
-        </button>
+        {/* GLYPH: Wrapped in its own provider to avoid conflicts */}
+        <GlyphProvider>
+          <button
+            onClick={() => {
+              console.log('WalletConnectionModal: Closing wrapper modal and opening Glyph');
+              // Close our modal first
+              close();
+              // Then trigger Glyph connection
+              setTimeout(() => {
+                try {
+                  glyphConnect();
+                  console.log('[Glyph] Connection triggered');
+                } catch (error) {
+                  console.error('[Glyph] Connection error:', error);
+                }
+              }, 0);
+            }}
+            className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-2"
+          >
+            <span className="text-lg">⛓️</span>
+            <span>Create Wallet with Glyph</span>
+          </button>
+        </GlyphProvider>
       </div>
     </div>
   );
