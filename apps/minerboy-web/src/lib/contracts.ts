@@ -25,7 +25,9 @@ export const CARTRIDGE_ADDRESSES: Record<number, `0x${string}`> = {
 };
 export const CARTRIDGE_ADDRESS = '0xb05fa76709b6bd18c63782e9044ff81430f6769c'; // Curtis cartridge address
 export const CURTIS_CHAIN_ID = 33111;
+export const APECHAIN_CHAIN_ID = 33133;
 export const EXPLORER_BASE = 'https://curtis.explorer.caldera.xyz';
+export const APECHAIN_EXPLORER_BASE = 'https://apescan.io';
 
 export const MINING_CLAIM_ROUTER_ABI = parseAbi([
   'function claimRewards(uint256[] memory tokenIds) external',

@@ -24,7 +24,7 @@ export const apechain = {
   name: 'ApeChain',
   nativeCurrency: { name: 'ApeCoin', symbol: 'APE', decimals: 18 },
   rpcUrls: { default: { http: ['https://apechain.rpc.thirdweb.com'] } },
-  blockExplorers: { default: { name: 'ApeScan', url: 'https://apechain.explorer.thirdweb.com' } }
+  blockExplorers: { default: { name: 'ApeScan', url: 'https://apescan.io' } }
 } as const satisfies Chain;
 
 export const chains = [mainnet, apechain, curtis] as const;
