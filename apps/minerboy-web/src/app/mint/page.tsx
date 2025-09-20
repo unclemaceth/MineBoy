@@ -9,6 +9,9 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import OpenConnectModalButton from '@/components/OpenConnectModalButton';
 import MintNetworkGuard from '@/components/MintNetworkGuard';
 import { useMintPrice } from '@/hooks/useMintPrice';
+import { useSafeMint } from '@/hooks/useSafeMint';
+import { useSpendChecks } from '@/hooks/useSpendChecks';
+import { useContractState } from '@/hooks/useContractState';
 import { formatEther } from 'viem';
 import Link from 'next/link';
 import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../../lib/contracts";
@@ -46,10 +49,16 @@ export default function MintPage() {
   // Fetch the actual mint price from the contract using the new hook
   const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
 
-  const totalCostWei = useMemo(() => {
-    if (!mintPrice || typeof mintPrice !== 'bigint') return BigInt(0);
-    return mintPrice * BigInt(count);
-  }, [mintPrice, count]);
+  // Use the new safety hooks
+  const { simulate, mint, isReady, estTotal, value } = useSafeMint(count);
+  const { bal, feeFormatted, enoughForFee, enoughForValue, enoughTotal, isLoading: spendLoading } = useSpendChecks(
+    contractAddress || undefined, 
+    value, 
+    '0xa0712d680000000000000000000000000000000000000000000000000000000000000001' // mint function call data
+  );
+  const { errorReason, isPaused, isSoldOut, hasReachedWalletLimit, isERC20Payment, needsApproval, isLoading: contractLoading } = useContractState();
+
+  const totalCostWei = value;
 
   const handleMint = async () => {
     setError(null);
@@ -57,45 +66,19 @@ export default function MintPage() {
     try {
       console.log('Mint button clicked!', { isConnected, chainId, address, contractAddress });
       
-      if (!isConnected) throw new Error("Connect your wallet");
-      if (!contractAddress) throw new Error("Contract not available on this network");
-      if (!(onApeChain || onCurtis)) throw new Error("Switch to ApeChain or Curtis network");
-
-      if (count < 1 || count > 10) throw new Error("Choose 1–10 cartridges");
-
-      // Check if we have enough balance for the mint
-      if (totalCostWei && totalCostWei > BigInt(0)) {
-        console.log(`Minting will cost ${formatEther(totalCostWei)} APE`);
-      } else {
-        console.log('Minting is free (0 APE)');
-      }
-
-      console.log('Calling writeContract with:', {
-        address: contractAddress,
-        functionName: 'mint',
-        args: [BigInt(count)],
-        value: totalCostWei,
-        valueInEther: formatEther(totalCostWei)
-      });
-
-      // Try to call the contract - this should trigger wallet popup
-      console.log('About to call writeContract...');
+      // Preflight check - this will throw with a specific reason if the tx would fail
+      await simulate();
       
-      // writeContract is a void function that triggers the transaction
-      if (!address) throw new Error("No wallet address");
+      // If simulation passes, send the transaction
+      const txHash = await mint();
+      console.log('TX sent:', txHash);
       
-      writeContract({
-        address: contractAddress,
-        abi: APEBIT_CARTRIDGE_ABI,
-        functionName: 'mint',
-        args: [BigInt(count)], // mint(uint256 quantity) - mint specified quantity
-        value: totalCostWei,
-      });
+    } catch (err: any) {
+      console.error('Mint preflight failed:', err);
       
-      console.log('writeContract called - wallet popup should appear');
-    } catch (err: unknown) {
-      console.error('Mint error:', err);
-      setError(err instanceof Error ? err.message : String(err));
+      // Extract meaningful error message from viem
+      const errorMessage = err.shortMessage || err.details || err.message || 'Transaction reverted';
+      setError(errorMessage);
     }
   };
 
@@ -261,38 +244,136 @@ export default function MintPage() {
             <span style={{ color: '#ffa500' }}> • LOADING PRICE...</span>
           ) : priceError ? (
             <span style={{ color: '#ff6b6b' }}> • PRICE ERROR</span>
-          ) : mintPrice ? (
+          ) : estTotal ? (
             <>
-              {" • "}PRICE: <span style={{ fontFamily: 'monospace' }}>{formatEther(mintPrice)} APE</span>
-              {" • "}TOTAL: <span style={{ fontFamily: 'monospace' }}>{formatEther(totalCostWei)} APE</span>
+              {" • "}PRICE: <span style={{ fontFamily: 'monospace' }}>{formatEther(mintPrice || BigInt(0))} APE</span>
+              {" • "}TOTAL: <span style={{ fontFamily: 'monospace' }}>{estTotal} APE</span>
+              {feeFormatted && (
+                <span> • FEE: ~<span style={{ fontFamily: 'monospace' }}>{feeFormatted} APE</span></span>
+              )}
             </>
           ) : (
             <span style={{ color: '#ffa500' }}> • PRICE: 0.1 APE (fallback)</span>
           )}
         </div>
 
+        {/* Contract State Warnings */}
+        {errorReason && (
+          <div style={{
+            fontSize: '12px',
+            color: '#ff6b6b',
+            marginBottom: '12px',
+            padding: '8px',
+            background: 'rgba(255, 107, 107, 0.1)',
+            borderRadius: '4px',
+            textAlign: 'center',
+            border: '1px solid #ff6b6b'
+          }}>
+            ⚠️ {errorReason}
+          </div>
+        )}
+
+        {/* ERC20 Approval Warning */}
+        {needsApproval && (
+          <div style={{
+            fontSize: '12px',
+            color: '#ffa500',
+            marginBottom: '12px',
+            padding: '8px',
+            background: 'rgba(255, 165, 0, 0.1)',
+            borderRadius: '4px',
+            textAlign: 'center',
+            border: '1px solid #ffa500'
+          }}>
+            ⚠️ ERC20 approval required for token payments
+          </div>
+        )}
+
+        {/* ERC20 Payment Info */}
+        {isERC20Payment && (
+          <div style={{
+            fontSize: '12px',
+            color: '#4a7d5f',
+            marginBottom: '12px',
+            padding: '8px',
+            background: 'rgba(74, 125, 95, 0.1)',
+            borderRadius: '4px',
+            textAlign: 'center',
+            border: '1px solid #4a7d5f'
+          }}>
+            ℹ️ This contract uses ERC20 token payments
+          </div>
+        )}
+
+        {/* Balance Warnings */}
+        {!enoughForValue && bal && (
+          <div style={{
+            fontSize: '12px',
+            color: '#ff6b6b',
+            marginBottom: '12px',
+            padding: '8px',
+            background: 'rgba(255, 107, 107, 0.1)',
+            borderRadius: '4px',
+            textAlign: 'center',
+            border: '1px solid #ff6b6b'
+          }}>
+            ⚠️ Not enough APE for mint (need {estTotal} APE, have {formatEther(bal.value)} APE)
+          </div>
+        )}
+
+        {!enoughForFee && bal && feeFormatted && (
+          <div style={{
+            fontSize: '12px',
+            color: '#ff6b6b',
+            marginBottom: '12px',
+            padding: '8px',
+            background: 'rgba(255, 107, 107, 0.1)',
+            borderRadius: '4px',
+            textAlign: 'center',
+            border: '1px solid #ff6b6b'
+          }}>
+            ⚠️ Not enough APE for network fee (need ~{feeFormatted} APE)
+          </div>
+        )}
+
         {/* Mint Button */}
         <button
-          disabled={!canMint || isMinting || isConfirming || !mintPrice}
+          disabled={
+            !canMint || 
+            isMinting || 
+            isConfirming || 
+            !isReady || 
+            !!errorReason || 
+            !enoughTotal || 
+            spendLoading || 
+            contractLoading ||
+            !!needsApproval
+          }
           onClick={handleMint}
           style={{
             width: '100%',
             padding: '16px',
             borderRadius: '8px',
-            background: canMint && !isMinting && !isConfirming && mintPrice
+            background: canMint && !isMinting && !isConfirming && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval
               ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)' 
               : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
             color: '#c8ffc8',
             border: '2px solid #8a8a8a',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: canMint && !isMinting && !isConfirming && mintPrice ? 'pointer' : 'not-allowed',
-            opacity: canMint && !isMinting && !isConfirming && mintPrice ? 1 : 0.5,
+            cursor: canMint && !isMinting && !isConfirming && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 'pointer' : 'not-allowed',
+            opacity: canMint && !isMinting && !isConfirming && isReady && !errorReason && enoughTotal && !spendLoading && !contractLoading && !needsApproval ? 1 : 0.5,
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
             marginBottom: '16px'
           }}
         >
-          {isMinting ? "MINTING..." : isConfirming ? "CONFIRMING..." : "MINT CARTRIDGES"}
+          {spendLoading || contractLoading ? "CHECKING..." : 
+           isMinting ? "MINTING..." : 
+           isConfirming ? "CONFIRMING..." : 
+           errorReason ? "CANNOT MINT" :
+           !enoughTotal ? "INSUFFICIENT BALANCE" :
+           needsApproval ? "NEEDS APPROVAL" :
+           "MINT CARTRIDGES"}
         </button>
 
         {/* Transaction Hash */}
