@@ -31,12 +31,12 @@ export function useSpendChecks(to: `0x${string}` | undefined, value: bigint, cou
   }
   
   try {
-    // Generate proper calldata for the current count
-    const data = encodeFunctionData({
-      abi: APEBIT_CARTRIDGE_ABI,
-      functionName: 'mint',
-      args: [BigInt(count)]
-    });
+           // Generate proper calldata for mint(address to)
+           const data = encodeFunctionData({
+             abi: APEBIT_CARTRIDGE_ABI,
+             functionName: 'mint',
+             args: [address || '0x0000000000000000000000000000000000000000']
+           });
 
     const gasEstimateResult = useEstimateGas({ 
       account: address, 

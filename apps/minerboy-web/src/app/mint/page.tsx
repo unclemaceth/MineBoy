@@ -109,12 +109,13 @@ export default function MintPage() {
     }
   };
 
-  // Handle successful transaction
-  useEffect(() => {
-    if (isConfirmed && hash) {
-      setMintedTokenIds([1, 2, 3]); // Mock token IDs for now
-    }
-  }, [isConfirmed, hash]);
+         // Handle successful transaction
+         useEffect(() => {
+           if (isConfirmed && hash) {
+             // TODO: Parse actual token IDs from transaction logs
+             console.log('Mint successful! TX:', hash);
+           }
+         }, [isConfirmed, hash]);
 
 
   return (
@@ -203,62 +204,16 @@ export default function MintPage() {
         borderRadius: '12px',
         boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
       }}>
-        {/* Quantity Selector */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: '16px'
-        }}>
-          <div style={{ fontSize: '14px', fontWeight: 'bold' }}>QUANTITY</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <button
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                background: 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
-                border: '2px solid #8a8a8a',
-                color: '#c8ffc8',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: isMinting || count <= 1 ? 'not-allowed' : 'pointer',
-                opacity: isMinting || count <= 1 ? 0.5 : 1
-              }}
-              disabled={isMinting || count <= 1}
-              onClick={() => setCount(Math.max(1, count - 1))}
-            >
-              –
-            </button>
-            <div style={{
-              width: '48px',
-              textAlign: 'center',
-              fontFamily: 'monospace',
-              fontSize: '16px',
-              fontWeight: 'bold'
-            }}>
-              {count}
-            </div>
-            <button
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '6px',
-                background: 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
-                border: '2px solid #8a8a8a',
-                color: '#c8ffc8',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                cursor: isMinting || count >= 10 ? 'not-allowed' : 'pointer',
-                opacity: isMinting || count >= 10 ? 0.5 : 1
-              }}
-              disabled={isMinting || count >= 10}
-              onClick={() => setCount(Math.min(10, count + 1))}
-            >
-              +
-            </button>
-          </div>
-        </div>
+                 {/* Single Mint Info */}
+                 <div style={{
+                   fontSize: '14px',
+                   fontWeight: 'bold',
+                   marginBottom: '16px',
+                   textAlign: 'center',
+                   color: '#4a7d5f'
+                 }}>
+                   SINGLE CARTRIDGE MINT
+                 </div>
 
         {/* Price Info */}
         <div style={{
@@ -267,7 +222,7 @@ export default function MintPage() {
           marginBottom: '20px',
           textAlign: 'center'
         }}>
-          MAX PER TX: 10
+                 MAX PER TX: 1
           {priceLoading ? (
             <span style={{ color: '#ffa500' }}> • LOADING PRICE...</span>
           ) : priceError ? (
@@ -280,9 +235,9 @@ export default function MintPage() {
                 <span> • FEE: ~<span style={{ fontFamily: 'monospace' }}>{feeFormatted} APE</span></span>
               )}
             </>
-          ) : (
-            <span style={{ color: '#ffa500' }}> • PRICE: 0.1 APE (fallback)</span>
-          )}
+                   ) : (
+                     <span style={{ color: '#ffa500' }}> • PRICE: 0.01 APE (fallback)</span>
+                   )}
         </div>
 
         {/* Contract State Warnings */}
@@ -419,7 +374,7 @@ export default function MintPage() {
            !enoughTotal ? 'INSUFFICIENT BALANCE' :
            needsApproval ? 'NEEDS APPROVAL' :
            displayErrorReason ? 'CANNOT MINT' :
-           'MINT CARTRIDGES'}
+                     'MINT CARTRIDGE'}
         </button>
 
         {/* Transaction Hash */}

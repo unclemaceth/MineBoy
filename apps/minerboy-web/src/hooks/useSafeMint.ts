@@ -13,7 +13,7 @@ export function useSafeMint(count: number) {
   const { data: mintPrice } = useMintPrice();
 
   const contract = chainId ? CARTRIDGE_ADDRESSES[chainId] : undefined;
-  const value = mintPrice ? mintPrice * BigInt(count) : 0n;
+  const value = mintPrice || 0n; // Single mint price (no quantity multiplier)
 
   async function simulate() {
     if (!isConnected || !address) throw new Error('Connect your wallet');
@@ -34,7 +34,7 @@ export function useSafeMint(count: number) {
       address: contract,
       abi: APEBIT_CARTRIDGE_ABI,
       functionName: 'mint' as const,
-      args: [BigInt(count)] as const,
+      args: [address] as const, // mint(address to) - recipient address
       value
     };
   }
@@ -44,7 +44,7 @@ export function useSafeMint(count: number) {
     return await writeContractAsync(request);          // actual transaction
   }
 
-  const estTotal = useMemo(() => (mintPrice ? formatEther(mintPrice * BigInt(count)) : null), [mintPrice, count]);
+  const estTotal = useMemo(() => (mintPrice ? formatEther(mintPrice) : null), [mintPrice]);
 
   return { 
     simulate, 

@@ -2,7 +2,7 @@ import { parseAbi } from 'viem';
 
 export const APEBIT_CARTRIDGE_ABI = parseAbi([
   'function mintPrice() view returns (uint256)',
-  'function mint(uint256 quantity) payable',
+  'function mint(address to) payable',
   'function totalSupply() view returns (uint256)',
   'function maxSupply() view returns (uint256)',
   'function balanceOf(address owner) view returns (uint256)',
