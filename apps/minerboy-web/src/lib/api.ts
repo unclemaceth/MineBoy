@@ -70,10 +70,10 @@ export const api = {
     });
   },
   
-  async heartbeat(sessionId: string, minerId: string): Promise<{ ok: true }> {
+  async heartbeat(sessionId: string, minerId: string, tokenId: string, chainId: number, contract: string): Promise<{ ok: true }> {
     const { headers } = await jfetchEx(`/v2/session/heartbeat`, { 
       method: "POST", 
-      body: JSON.stringify({ sessionId, minerId }) 
+      body: JSON.stringify({ sessionId, minerId, tokenId, chainId, contract }) 
     });
     
     // Log pod and lock info for debugging
