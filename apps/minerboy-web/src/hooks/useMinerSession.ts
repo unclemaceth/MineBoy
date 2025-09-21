@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getOrCreateSessionId, clearSessionId } from '@/lib/miningSession';
+import { getOrCreateSessionId, clearSessionId, getMinerIdCached } from '@/lib/miningSession';
 import { apiStart, apiHeartbeat, apiStop, type ErrRes } from '@/lib/miningApi';
 
 export type MinerState =
@@ -42,7 +42,8 @@ export function useMinerSession(opts: UseMinerSessionOpts) {
         chainId: chainId!, 
         contract: contract!, 
         tokenId, 
-        sessionId 
+        sessionId,
+        minerId: getMinerIdCached()
       });
       setOwnershipTtl(res.ownershipTtlSec);
       setState('running');

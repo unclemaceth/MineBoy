@@ -440,13 +440,15 @@ function Home() {
       const sessionId = getOrCreateSessionId(parseInt(tokenId));
       const chainId = cartridgeInfo.chainId;
       const contract = cartridgeInfo.contract as `0x${string}`;
+      const minerId = getMinerIdCached();
       
       console.log('[SESSION_OPEN] Using new two-tier system:', {
         sessionId,
         wallet: address,
         chainId,
         contract,
-        tokenId: parseInt(tokenId)
+        tokenId: parseInt(tokenId),
+        minerId
       });
       
       const res = await apiStart({
@@ -454,7 +456,8 @@ function Home() {
         chainId,
         contract,
         tokenId: parseInt(tokenId),
-        sessionId
+        sessionId,
+        minerId
       });
       
       console.log('[SESSION_OPEN] Success:', res);

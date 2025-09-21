@@ -565,9 +565,18 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return errorResponse(reply, 404, 'session_not_found', 'Session expired - please restart mining');
     }
     
+    // Handle legacy miner ID migration
     if (session.minerId !== minerId) {
-      console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
-      return errorResponse(reply, 409, 'ownership_conflict', 'Miner ID mismatch', { expected: session.minerId, received: minerId });
+      // If session was created with legacy-miner, migrate to the real miner ID
+      if (session.minerId === 'legacy-miner' || !session.minerId) {
+        console.log('[HB] Migrating legacy miner ID:', { from: session.minerId, to: minerId, sessionId });
+        session.minerId = minerId;
+        // Update the session in Redis with the new miner ID
+        await SessionStore.createSession(session);
+      } else {
+        console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
+        return errorResponse(reply, 409, 'ownership_conflict', 'Miner ID mismatch', { expected: session.minerId, received: minerId });
+      }
     }
     
     // Validate session cartridge matches request using canonical keys
