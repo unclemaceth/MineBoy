@@ -21,6 +21,8 @@ import { heartbeat } from "@/utils/HeartbeatController";
 import { getMinerIdCached } from "@/utils/minerId";
 import { getJobId, assertString } from "@/utils/job";
 import { to0x, hexFrom } from "@/lib/hex";
+import { playButtonSound, playConfirmSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
+import SoundSettings from '@/components/SoundSettings';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
 
@@ -136,10 +138,12 @@ function Home() {
       
       setMining(false);
       setStatus('found');
+      stopMiningSound();
       // Freeze the exact FOUND payload - never recompute
       const frozenResult = { hash, preimage, attempts, hr };
       setFoundResult(frozenResult);
       setFound({ hash: hash as `0x${string}`, preimage, attempts, hr });
+      playConfirmSound();
       pushLine(`Found hash: ${hash.slice(0, 10)}...`);
       pushLine(`Press B to submit solution`);
       // Switch to grid view to show overlay
@@ -150,6 +154,7 @@ function Home() {
       pushLine(`Error: ${message}`);
       setMining(false);
       setStatus('error');
+      stopMiningSound();
     },
   });
   
@@ -408,6 +413,7 @@ function Home() {
   };
   
   const handleA = async () => {
+    playButtonSound();
     hapticFeedback();
     
     console.log('A button pressed - Debug info:', {
@@ -450,6 +456,7 @@ function Home() {
           setMining(true);
           setMode('visual');
           miner.start(newJob);
+          startMiningSound();
           pushLine('Mining started...');
         } catch {
           pushLine('Failed to get new job - re-insert cartridge');
@@ -474,6 +481,7 @@ function Home() {
       setMining(true);
       setMode('visual'); // Auto-switch to visualizer
       miner.start(job);
+      startMiningSound();
       pushLine('Mining started...');
     } else {
       // Stop mining
@@ -481,6 +489,7 @@ function Home() {
       miner.stop();
       setMining(false);
       setStatus('idle');
+      stopMiningSound();
       pushLine('Mining stopped');
     }
   };
@@ -716,6 +725,7 @@ function Home() {
 
 
   const handleB = () => {
+    playButtonSound();
     hapticFeedback();
     
     if (status === 'found' && foundResult) {
@@ -733,6 +743,7 @@ function Home() {
   };
   
   const handleDpad = (direction: string) => {
+    playButtonSound();
     hapticFeedback();
     
     // Handle mode switching with left/right
@@ -1039,8 +1050,8 @@ function Home() {
               {short(foundResult.hash, 12)} • attempts {foundResult.attempts.toLocaleString()}
             </div>
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button onClick={() => handleClaim(foundResult)} style={btnGreen}>Claim</button>
-              <button onClick={() => setStatus('idle')} style={btnGray}>Dismiss</button>
+              <button onClick={() => { playButtonSound(); handleClaim(foundResult); }} style={btnGreen}>Claim</button>
+              <button onClick={() => { playButtonSound(); setStatus('idle'); }} style={btnGray}>Dismiss</button>
             </div>
           </div>
         </div>
@@ -1222,39 +1233,60 @@ function Home() {
         </div>
       </div>
 
-      {/* Debug Button: small button in top right */}
+      {/* SELECT Button: small button in top right */}
       <button
-        onClick={() => setShowDebugModal(true)}
+        onClick={() => { playButtonSound(); setShowDebugModal(true); }}
+        onPointerDown={(e) => {
+          e.currentTarget.style.borderTopColor = "#1a1a1a";
+          e.currentTarget.style.borderLeftColor = "#1a1a1a";
+          e.currentTarget.style.borderRightColor = "#6a6a6a";
+          e.currentTarget.style.borderBottomColor = "#6a6a6a";
+          e.currentTarget.style.boxShadow = "inset 0 2px 3px rgba(0,0,0,0.6)";
+          e.currentTarget.style.transform = "translateY(2px)";
+        }}
+        onPointerUp={(e) => {
+          e.currentTarget.style.borderTopColor = "#8a8a8a";
+          e.currentTarget.style.borderLeftColor = "#8a8a8a";
+          e.currentTarget.style.borderRightColor = "#2a2a2a";
+          e.currentTarget.style.borderBottomColor = "#2a2a2a";
+          e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
+        onPointerLeave={(e) => {
+          e.currentTarget.style.borderTopColor = "#8a8a8a";
+          e.currentTarget.style.borderLeftColor = "#8a8a8a";
+          e.currentTarget.style.borderRightColor = "#2a2a2a";
+          e.currentTarget.style.borderBottomColor = "#2a2a2a";
+          e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
         style={{
           position: "absolute",
           top: px(7.8, H) - 25,
-          right: px(54.5, W),
-          width: 40,
-          height: 30,
-          background: "linear-gradient(145deg, #4a7d5f, #1a3d24)",
-          border: "2px solid #8a8a8a",
-          borderRadius: 6,
-          color: "#c8ffc8",
-          fontSize: 10,
-          fontWeight: "bold",
-          fontFamily: "Menlo, monospace",
+          right: px(54.5, W) - 10,
+          width: 70,
+          height: 27,
+          borderRadius: 18,
+          border: "2px solid",
+          borderTopColor: "#8a8a8a",
+          borderLeftColor: "#8a8a8a",
+          borderRightColor: "#2a2a2a",
+          borderBottomColor: "#2a2a2a",
           cursor: "pointer",
-          boxShadow: "0 2px 4px rgba(0,0,0,0.5)",
+          background: "linear-gradient(145deg, #4a4a4a, #1a1a1a)",
+          boxShadow: "0 2px 2px rgba(0,0,0,0.5)",
+          fontWeight: 900,
+          fontSize: 10,
+          letterSpacing: 0.5,
+          color: "#ffffff",
+          transform: "translateY(0)",
+          transition: "transform 120ms, border-color 120ms",
           display: "flex",
           alignItems: "center",
           justifyContent: "center"
         }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.background = "linear-gradient(145deg, #1a3d24, #4a7d5f)";
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.background = "linear-gradient(145deg, #4a7d5f, #1a3d24)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = "linear-gradient(145deg, #4a7d5f, #1a3d24)";
-        }}
       >
-        DEBUG
+        SELECT
       </button>
 
       {/* Difficulty LCD: top 66%, left 7%, width 200px */}
@@ -1287,9 +1319,9 @@ function Home() {
       </div>
 
       {/* CONNECT pill: 46px from bottom, left 37px */}
-      <div style={{ position: "absolute", left: 37, bottom: 775 }}>
+      <div style={{ position: "absolute", left: 17, bottom: 775 }}>
         <button
-          onClick={handleConnect}
+          onClick={() => { playButtonSound(); handleConnect(); }}
           onPointerDown={() => setConnectPressed(true)}
           onPointerUp={() => setConnectPressed(false)}
           onPointerLeave={() => setConnectPressed(false)}
@@ -1369,9 +1401,9 @@ function Home() {
           const leds = [
             { label: 'PWR',  on: true },
             { label: 'NET',  on: isConnected },
-            { label: 'CART', on: !!sessionId },
-            { label: 'HASH', on: hashFound },
-            { label: 'MINE', on: mining && mineBlink },
+            { label: 'CRT',  on: !!sessionId },
+            { label: 'SHA',  on: hashFound },
+            { label: 'MNE',  on: mining && mineBlink },
           ];
           
           return leds.map(({ label, on }) => (
@@ -1385,9 +1417,48 @@ function Home() {
                 transition: "all 0.3s ease"
               }} />
               <div style={{
-                color: "#6ccf85", 
+                color: "#2c396f", 
                 fontSize: 9, 
                 marginTop: 2
+              }}>
+                {label}
+              </div>
+            </div>
+          ));
+        })()}
+      </div>
+
+      {/* LED Clone: white bevel effect */}
+      <div style={{ 
+        position: "absolute", 
+        top: 38, 
+        right: 19.5, 
+        display: "flex", 
+        gap: 12 
+      }}>
+        {(() => {
+          const leds = [
+            { label: 'PWR' },
+            { label: 'NET' },
+            { label: 'CRT' },
+            { label: 'SHA' },
+            { label: 'MNE' },
+          ];
+          
+          return leds.map(({ label }) => (
+            <div key={`${label}-clone`} style={{ textAlign: "center" }}>
+              <div style={{
+                width: 10, 
+                height: 10, 
+                borderRadius: 10,
+                background: "#ffffff",
+                opacity: 0.2
+              }} />
+              <div style={{
+                color: "#ffffff", 
+                fontSize: 9, 
+                marginTop: 2,
+                opacity: 0.2
               }}>
                 {label}
               </div>
@@ -1446,6 +1517,7 @@ function Home() {
                   }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
+                      playButtonSound();
                       const tokenId = (e.target as HTMLInputElement).value;
                       if (tokenId) {
                         handleCartridgeSelect(cart, tokenId);
@@ -1460,6 +1532,7 @@ function Home() {
                     <button
                       key={num}
                       onClick={() => {
+                        playButtonSound();
                         const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
                         if (input) {
                           const currentValue = input.value;
@@ -1488,6 +1561,7 @@ function Home() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 8 }}>
                   <button
                     onClick={() => {
+                      playButtonSound();
                       const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
                       const tokenId = input?.value;
                       if (tokenId) {
@@ -1510,6 +1584,7 @@ function Home() {
                   
                   <button
                     onClick={() => {
+                      playButtonSound();
                       const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
                       if (input) {
                         const currentValue = input.value;
@@ -1534,6 +1609,7 @@ function Home() {
                   
                   <button
                     onClick={() => {
+                      playButtonSound();
                       const input = document.getElementById(`tokenId-${cart.contract}`) as HTMLInputElement;
                       if (input) {
                         input.value = input.value.slice(0, -1);
@@ -1558,7 +1634,7 @@ function Home() {
             
             
             <button
-              onClick={() => setShowCartridgeSelect(false)}
+              onClick={() => { playButtonSound(); setShowCartridgeSelect(false); }}
               style={{
                 backgroundColor: '#333',
                 color: '#fff',
@@ -1605,7 +1681,7 @@ function Home() {
       {/* Cartridge - shows when connected but no session */}
       {isConnected && !sessionId && (
         <div 
-          onClick={handleInsertCartridge}
+          onClick={() => { playButtonSound(); handleInsertCartridge(); }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateX(-50%) translateY(-2px)";
             e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2)";
@@ -1732,7 +1808,7 @@ function Home() {
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
               <button
-                onClick={handleGetNewJob}
+                onClick={() => { playButtonSound(); handleGetNewJob(); }}
                 style={{
                   backgroundColor: '#4CAF50',
                   color: 'white',
@@ -1747,7 +1823,7 @@ function Home() {
                 GET NEW JOB
               </button>
               <button
-                onClick={handleReinsertCartridge}
+                onClick={() => { playButtonSound(); handleReinsertCartridge(); }}
                 style={{
                   backgroundColor: '#ff6b6b',
                   color: 'white',
@@ -1768,7 +1844,13 @@ function Home() {
 
       {/* Debug Modal */}
       {showDebugModal && (
-        <div style={{
+        <>
+          <style jsx>{`
+            .debug-modal::-webkit-scrollbar {
+              display: none;
+            }
+          `}</style>
+          <div style={{
           position: 'fixed',
           top: 0,
           left: 0,
@@ -1780,19 +1862,23 @@ function Home() {
           justifyContent: 'center',
           zIndex: 1000
         }}>
-          <div style={{
-            backgroundColor: '#1a3d24',
-            border: '3px solid #4a7d5f',
-            borderRadius: '12px',
-            padding: '20px',
-            maxWidth: '500px',
-            width: '90%',
-            maxHeight: '80vh',
-            overflow: 'auto',
-            fontFamily: 'Menlo, monospace',
-            color: '#c8ffc8',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)'
-          }}>
+          <div 
+            className="debug-modal"
+            style={{
+              backgroundColor: '#1a3d24',
+              border: '3px solid #4a7d5f',
+              borderRadius: '12px',
+              padding: '20px',
+              maxWidth: '500px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflow: 'auto',
+              scrollbarWidth: 'none', /* Firefox */
+              msOverflowStyle: 'none', /* IE and Edge */
+              fontFamily: 'Menlo, monospace',
+              color: '#c8ffc8',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)'
+            }}>
             {/* Header */}
             <div style={{
               display: 'flex',
@@ -1811,7 +1897,7 @@ function Home() {
                 DEBUG INFO
               </h2>
               <button
-                onClick={() => setShowDebugModal(false)}
+                onClick={() => { playButtonSound(); setShowDebugModal(false); }}
                 style={{
                   background: 'linear-gradient(145deg, #ff6b6b, #d63031)',
                   color: 'white',
@@ -1931,6 +2017,9 @@ function Home() {
               </div>
             </div>
 
+            {/* Sound Settings */}
+            <SoundSettings />
+
             {/* Footer */}
             <div style={{
               marginTop: '20px',
@@ -1939,7 +2028,7 @@ function Home() {
               textAlign: 'center'
             }}>
               <button
-                onClick={() => setShowDebugModal(false)}
+                onClick={() => { playButtonSound(); setShowDebugModal(false); }}
                 style={{
                   background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                   color: '#c8ffc8',
@@ -1967,6 +2056,7 @@ function Home() {
             </div>
           </div>
         </div>
+        </>
       )}
 
         {/* MineBoy Branding */}
