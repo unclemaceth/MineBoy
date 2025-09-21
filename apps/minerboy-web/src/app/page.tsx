@@ -2150,11 +2150,14 @@ function Home() {
                 <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
                   JOB INFO
                 </div>
+                <div style={{ fontSize: '10px', color: '#6a8d7f', marginBottom: '8px' }}>
+                  Job ID = server handle • Nonce = local counter
+                </div>
                 <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                   {job ? (
                     <>
                       <div><strong>Job ID:</strong> {job?.id ? `${job.id.slice(0, 8)}...${job.id.slice(-6)}` : 'N/A'}</div>
-                      <div><strong>Nonce:</strong> {job.nonce ? `${job.nonce.slice(0, 12)}...${job.nonce.slice(-8)}` : 'N/A'}</div>
+                      <div><strong>Nonce (local):</strong> {mining ? attempts.toLocaleString() : 'N/A'}</div>
                       <div><strong>Difficulty:</strong> {job.bits ? `${job.bits} bits` : `${(job.target?.length ?? 0) * 4} bits (from suffix)`}</div>
                       <div><strong>Target:</strong> {job.target || 'N/A'}</div>
                       <div><strong>Time Remaining:</strong> {ttlSec != null ? `${ttlSec}s` : 'N/A'}</div>
