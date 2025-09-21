@@ -232,6 +232,13 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         return errorResponse(reply, 409, 'ownership_conflict', 'Failed to acquire ownership lock');
       }
       
+      // Bind miner ID to ownership lock
+      const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
+      if (ownershipLock && (!ownershipLock.minerId || ownershipLock.minerId === 'legacy-miner')) {
+        console.log('[session/open] Adopting miner ID for ownership lock:', { from: ownershipLock.minerId, to: minerId });
+        await SessionStore.setOwnershipMinerId(canonical.chainId, canonical.contract, canonical.tokenId, minerId);
+      }
+      
     } catch (error) {
       console.error('[OPEN] Lock acquisition failed:', error);
       return reply.code(500).send({ error: 'Failed to acquire locks' });
@@ -585,7 +592,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return errorResponse(reply, 404, 'session_not_found', 'Session expired - please restart mining');
     }
     
-    // Handle legacy miner ID migration
+    // Handle legacy miner ID migration for both session and ownership locks
     if (session.minerId !== minerId) {
       // If session was created with legacy-miner, migrate to the real miner ID
       if (session.minerId === 'legacy-miner' || !session.minerId) {
@@ -597,6 +604,13 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
         console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
         return errorResponse(reply, 409, 'ownership_conflict', 'Miner ID mismatch', { expected: session.minerId, received: minerId });
       }
+    }
+    
+    // Adopt miner ID for ownership lock if it's missing or legacy
+    const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
+    if (ownershipLock && (!ownershipLock.minerId || ownershipLock.minerId === 'legacy-miner')) {
+      console.log('[HB] Adopting miner ID for ownership lock:', { from: ownershipLock.minerId, to: minerId });
+      await SessionStore.setOwnershipMinerId(canonical.chainId, canonical.contract, canonical.tokenId, minerId);
     }
     
     // Validate session cartridge matches request using canonical keys

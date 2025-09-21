@@ -123,6 +123,21 @@ export const SessionStore = r
         }
       },
 
+      async setOwnershipMinerId(chainId: number, contract: string, tokenId: string, minerId: string) {
+        const key = ownershipLockKey(chainId, contract, tokenId);
+        const cur = await r!.get(key);
+        if (!cur) return false;
+        
+        try {
+          const data = JSON.parse(cur);
+          data.minerId = minerId;
+          await r!.set(key, JSON.stringify(data), "PX", OWNERSHIP_LOCK_TTL_MS);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+
       // Session lock: prevents multi-tab mining (60 seconds, allows graceful recovery)
       async acquireSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string) {
         const key = sessionLockKey(chainId, contract, tokenId);
