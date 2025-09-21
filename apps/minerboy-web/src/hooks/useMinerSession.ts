@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { getOrCreateSessionId, clearSessionId, getMinerIdCached } from '@/lib/miningSession';
+import { getOrCreateSessionId, clearSessionId } from '@/lib/miningSession';
+import { getMinerIdCached } from '@/utils/minerId';
 import { apiStart, apiHeartbeat, apiStop, type ErrRes } from '@/lib/miningApi';
 
 export type MinerState =
