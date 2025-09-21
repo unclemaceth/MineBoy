@@ -28,7 +28,10 @@ export interface StartOk {
 export interface ErrRes { 
   code: LockErrorCode; 
   message?: string; 
-  ttlRemainingSec?: number; 
+  ttlRemainingSec?: number;
+  remainingMinutes?: number;
+  limit?: number;
+  activeCount?: number;
 }
 
 async function json<T>(res: Response): Promise<T> {
