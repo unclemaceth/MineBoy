@@ -162,6 +162,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
   }
   
   console.log('[session/open] Request body:', JSON.stringify(body, null, 2));
+  console.log('[session/open] Extracted params:', { wallet, chainId, contract, tokenId, sessionId, minerId });
   
   try {
     // Canonicalize cartridge parameters
@@ -259,11 +260,27 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     try {
       const sessionLock = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
       
+      console.log('[session/open] Session lock check:', { 
+        exists: !!sessionLock, 
+        sessionId: sessionLock?.sessionId, 
+        wallet: sessionLock?.wallet,
+        updatedAt: sessionLock?.updatedAt,
+        requestingWallet: wallet 
+      });
+      
       if (sessionLock) {
         const now = Date.now();
         const timeSinceUpdate = now - sessionLock.updatedAt;
         
+        console.log('[session/open] Session lock details:', {
+          timeSinceUpdate,
+          gracePeriod: 30000,
+          withinGrace: timeSinceUpdate < 30000,
+          walletMatch: sessionLock.wallet === wallet
+        });
+        
         if (timeSinceUpdate < 30000) { // 30 second grace period
+          console.log('[session/open] 409 - session still active within grace period');
           return reply.code(409).send({ 
             error: 'session_still_active',
             message: 'Another session is still active on this cartridge. Please wait ~30 seconds before retrying.',
@@ -274,6 +291,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         
         // Allow same wallet to resume after grace period
         if (sessionLock.wallet !== wallet) {
+          console.log('[session/open] 409 - active session elsewhere');
           return reply.code(409).send({ 
             error: 'active_session_elsewhere',
             message: 'Another wallet has an active session on this cartridge.',

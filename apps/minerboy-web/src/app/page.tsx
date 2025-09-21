@@ -437,6 +437,9 @@ function Home() {
     pushLine(`Opening session with ${cartridgeInfo.name}...`);
     
     try {
+      // Clear any existing session state first
+      clear();
+      
       // Use the new two-tier locking system
       const sessionId = getOrCreateSessionId(parseInt(tokenId));
       const chainId = cartridgeInfo.chainId;
@@ -479,12 +482,7 @@ function Home() {
           nonce: res.job.nonce,
           expiresAt: res.job.expiresAt,
           ttlMs: res.job.ttlMs
-        }) : {
-          id: 'placeholder',
-          data: '0xplaceholder' as `0x${string}`,
-          target: 'placeholder',
-          expiresAt: Date.now() + 60000 // Default 60 seconds
-        }
+        }) : undefined // No placeholder - if no job, don't create session
       };
       
       loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
