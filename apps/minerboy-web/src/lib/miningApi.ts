@@ -41,34 +41,46 @@ async function json<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-export async function apiStart(req: StartReq): Promise<StartOk> {
-  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
-  const res = await fetch(`${BASE}/v2/session/open`, { 
-    method: 'POST', 
-    headers: { 'Content-Type': 'application/json' }, 
-    body: JSON.stringify(req) 
+const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+
+const fetchJSON = async (path: string, body: any) => {
+  const res = await fetch(`${API_BASE}/v2${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',          // IMPORTANT for cookie auth
+    body: JSON.stringify(body),
   });
-  return json<StartOk>(res);
+  const text = await res.text();
+  if (!res.ok) throw new Error(`[${path} ${res.status}] ${text}`);
+  return text ? JSON.parse(text) : {};
+};
+
+export async function apiStart(req: StartReq): Promise<StartOk> {
+  return fetchJSON('/session/open', req) as Promise<StartOk>;
 }
 
 export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: number }> {
-  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
-  const { wallet, ...heartbeatReq } = req; // Remove wallet from heartbeat request
-  const res = await fetch(`${BASE}/v2/session/heartbeat`, { 
-    method: 'POST', 
-    headers: { 'Content-Type': 'application/json' }, 
-    body: JSON.stringify(heartbeatReq) 
-  });
-  return json(res);
+  // Include wallet for ownership lock validation
+  const payload = {
+    sessionId: req.sessionId,
+    minerId: req.minerId,
+    wallet: req.wallet,
+    chainId: req.chainId,
+    contract: req.contract,
+    tokenId: Number(req.tokenId), // Ensure it's a number
+  };
+  return fetchJSON('/session/heartbeat', payload) as Promise<{ sessionTtlSec: number }>;
 }
 
 export async function apiStop(req: StartReq): Promise<{ ok: true }> {
-  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
-  const { wallet, ...stopReq } = req; // Remove wallet from stop request
-  const res = await fetch(`${BASE}/v2/session/stop`, { 
-    method: 'POST', 
-    headers: { 'Content-Type': 'application/json' }, 
-    body: JSON.stringify(stopReq) 
-  });
-  return json(res);
+  // Include wallet for session validation
+  const payload = {
+    sessionId: req.sessionId,
+    minerId: req.minerId,
+    wallet: req.wallet,
+    chainId: req.chainId,
+    contract: req.contract,
+    tokenId: Number(req.tokenId), // Ensure it's a number
+  };
+  return fetchJSON('/session/stop', payload) as Promise<{ ok: true }>;
 }
