@@ -1960,10 +1960,10 @@ function Home() {
                   {job ? (
                     <>
                       <div><strong>Job ID:</strong> {job?.id ? `${job.id.slice(0, 8)}...${job.id.slice(-6)}` : 'N/A'}</div>
-                      <div><strong>Nonce:</strong> {job.nonce || 'N/A'}</div>
+                      <div><strong>Nonce:</strong> {job.nonce ? `${job.nonce.slice(0, 12)}...${job.nonce.slice(-8)}` : 'N/A'}</div>
                       <div><strong>Difficulty:</strong> {job.bits ? `${job.bits} bits` : `${(job.target?.length ?? 0) * 4} bits (from suffix)`}</div>
                       <div><strong>Target:</strong> {job.target || 'N/A'}</div>
-                      <div><strong>Height:</strong> {job.height ?? 'N/A'}</div>
+                      <div><strong>Time Remaining:</strong> {ttlSec != null ? `${ttlSec}s` : 'N/A'}</div>
                     </>
                   ) : (
                     <div>No active job</div>
