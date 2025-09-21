@@ -1,6 +1,23 @@
 import { getRedis } from "./redis";
 import { encode, decode } from "./redisJson";
-import { canonicalizeCartridge, cartKey } from "./canonical";
+import { canonicalizeCartridge, cartKey, normalizeAddress, sameAddr } from "./canonical";
+
+// Ownership lock types
+export type OwnershipLock = {
+  ownerAtAcquire: string;          // wallet bound at acquire
+  ownerMinerId?: string | null;    // informational only
+  issuedAt: number;
+  lastActive: number;
+  expiresAt: number;
+  phase?: 'active' | 'cooldown';
+};
+
+export type SessionLock = {
+  sessionId: string;
+  wallet: string;
+  minerId: string;
+  issuedAt: number;
+};
 
 const PREFIX = process.env.REDIS_PREFIX ?? "mineboy:v2:";
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 45_000);
@@ -86,51 +103,79 @@ export const SessionStore = r
       // Two-tier locking system
       
       // Ownership lock: reserves cartridge for wallet (1 hour anti-flip protection)
-      async acquireOwnershipLock(chainId: number, contract: string, tokenId: string, wallet: string) {
+      async getOwnershipLock(chainId: number, contract: string, tokenId: string): Promise<OwnershipLock | null> {
         const key = ownershipLockKey(chainId, contract, tokenId);
-        const value = JSON.stringify({ wallet, issuedAt: Date.now(), lastActive: Date.now() });
-        const ok = await r!.set(key, value, "NX", "PX", OWNERSHIP_LOCK_TTL_MS);
+        const raw = await r!.get(key);
+        return raw ? JSON.parse(raw) as OwnershipLock : null;
+      },
+
+      async createOwnershipLock(chainId: number, contract: string, tokenId: string, payload: OwnershipLock): Promise<boolean> {
+        const key = ownershipLockKey(chainId, contract, tokenId);
+        const ok = await r!.set(key, JSON.stringify(payload), "NX", "PX", OWNERSHIP_LOCK_TTL_MS);
         return ok === "OK";
       },
 
-      async refreshOwnershipLock(chainId: number, contract: string, tokenId: string, wallet: string) {
+      async setOwnershipMinerId(chainId: number, contract: string, tokenId: string, minerId: string): Promise<void> {
         const key = ownershipLockKey(chainId, contract, tokenId);
-        const cur = await r!.get(key);
-        if (!cur) return false;
-        
-        try {
-          const data = JSON.parse(cur);
-          if (data.wallet !== wallet) return false;
-          
-          // Update lastActive and refresh TTL
-          data.lastActive = Date.now();
-          await r!.set(key, JSON.stringify(data), "PX", OWNERSHIP_LOCK_TTL_MS);
-          return true;
-        } catch {
-          return false;
+        const cur = await this.getOwnershipLock(chainId, contract, tokenId);
+        if (!cur) return;
+        if (!cur.ownerMinerId || cur.ownerMinerId === 'legacy-miner') {
+          cur.ownerMinerId = minerId;
+          await r!.set(key, JSON.stringify(cur), "PX", OWNERSHIP_LOCK_TTL_MS);
         }
       },
 
-      async getOwnershipLock(chainId: number, contract: string, tokenId: string) {
+      async refreshOwnershipLock(chainId: number, contract: string, tokenId: string, nowMs: number, ttlMs: number): Promise<void> {
         const key = ownershipLockKey(chainId, contract, tokenId);
-        const cur = await r!.get(key);
-        if (!cur) return null;
-        
-        try {
-          const data = JSON.parse(cur);
-          // Ownership lock is wallet-scoped only (no minerId field)
-          return { wallet: data.wallet, issuedAt: data.issuedAt, lastActive: data.lastActive };
-        } catch {
-          return null;
-        }
+        const cur = await this.getOwnershipLock(chainId, contract, tokenId);
+        if (!cur) return;
+        if (cur.phase && cur.phase !== 'active') return; // don't extend cooldown
+        cur.lastActive = nowMs;
+        cur.expiresAt = nowMs + ttlMs;
+        await r!.set(key, JSON.stringify(cur), "PX", OWNERSHIP_LOCK_TTL_MS);
+      },
+
+      async freezeOwnershipToCooldown(chainId: number, contract: string, tokenId: string): Promise<void> {
+        const key = ownershipLockKey(chainId, contract, tokenId);
+        const cur = await this.getOwnershipLock(chainId, contract, tokenId);
+        if (!cur) return;
+        cur.phase = 'cooldown';
+        await r!.set(key, JSON.stringify(cur), "PX", OWNERSHIP_LOCK_TTL_MS);
+      },
+
+      async getOwnershipPttlMs(chainId: number, contract: string, tokenId: string): Promise<number> {
+        const key = ownershipLockKey(chainId, contract, tokenId);
+        return await r!.pttl(key);
+      },
+
+      // Session lock helpers
+      async getSessionLock(chainId: number, contract: string, tokenId: string): Promise<SessionLock | null> {
+        const key = sessionLockKey(chainId, contract, tokenId);
+        const raw = await r!.get(key);
+        return raw ? JSON.parse(raw) as SessionLock : null;
+      },
+
+      async getSessionLockPttlMs(chainId: number, contract: string, tokenId: string): Promise<number> {
+        const key = sessionLockKey(chainId, contract, tokenId);
+        return await r!.pttl(key);
+      },
+
+      async getSessionHolderMinerId(chainId: number, contract: string, tokenId: string): Promise<string | null> {
+        const lock = await this.getSessionLock(chainId, contract, tokenId);
+        return lock?.minerId ?? null;
+      },
+
+      async releaseSessionLock(chainId: number, contract: string, tokenId: string): Promise<void> {
+        const key = sessionLockKey(chainId, contract, tokenId);
+        await r!.del(key);
       },
 
 
       // Session lock: prevents multi-tab mining (60 seconds, allows graceful recovery)
-      async acquireSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string) {
+      async acquireSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string, minerId: string) {
         const key = sessionLockKey(chainId, contract, tokenId);
-        const value = JSON.stringify({ sessionId, wallet, updatedAt: Date.now() });
-        const ok = await r!.set(key, value, "NX", "PX", SESSION_LOCK_TTL_MS);
+        const value: SessionLock = { sessionId, wallet, minerId, issuedAt: Date.now() };
+        const ok = await r!.set(key, JSON.stringify(value), "NX", "PX", SESSION_LOCK_TTL_MS);
         return ok === "OK";
       },
 
@@ -140,27 +185,15 @@ export const SessionStore = r
         if (!cur) return false;
         
         try {
-          const data = JSON.parse(cur);
+          const data = JSON.parse(cur) as SessionLock;
           if (data.sessionId !== sessionId || data.wallet !== wallet) return false;
           
           // Update timestamp and refresh TTL
-          data.updatedAt = Date.now();
+          data.issuedAt = Date.now();
           await r!.set(key, JSON.stringify(data), "PX", SESSION_LOCK_TTL_MS);
           return true;
         } catch {
           return false;
-        }
-      },
-
-      async getSessionLock(chainId: number, contract: string, tokenId: string) {
-        const key = sessionLockKey(chainId, contract, tokenId);
-        const cur = await r!.get(key);
-        if (!cur) return null;
-        
-        try {
-          return JSON.parse(cur);
-        } catch {
-          return null;
         }
       },
 
@@ -276,8 +309,8 @@ export const SessionStore = r
       // Fallback in-memory (dev only)
       kind: "memory" as const,
       _s: new Map<string, any>(),
-      _ownershipLocks: new Map<string, { wallet: string; issuedAt: number; lastActive: number; expires: number }>(),
-      _sessionLocks: new Map<string, { sessionId: string; wallet: string; updatedAt: number; expires: number }>(),
+      _ownershipLocks: new Map<string, OwnershipLock>(),
+      _sessionLocks: new Map<string, SessionLock>(),
       _walletSessions: new Map<string, Set<string>>(), // wallet -> Set of session members
       _sessionMeta: new Map<string, { wallet: string; chainId: number; contract: string; tokenId: string; sessionId: string; createdAt: number }>(),
 
@@ -300,56 +333,77 @@ export const SessionStore = r
       },
 
       // Two-tier locking system (memory fallback)
-      async acquireOwnershipLock(chainId: number, contract: string, tokenId: string, wallet: string) {
+      async getOwnershipLock(chainId: number, contract: string, tokenId: string): Promise<OwnershipLock | null> {
+        const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const l = this._ownershipLocks.get(key);
+        const now = Date.now();
+        
+        if (!l || l.expiresAt < now) return null;
+        return l;
+      },
+
+      async createOwnershipLock(chainId: number, contract: string, tokenId: string, payload: OwnershipLock): Promise<boolean> {
         const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
         const now = Date.now();
         const l = this._ownershipLocks.get(key);
         
-        if (!l || l.expires < now) {
-          this._ownershipLocks.set(key, { 
-            wallet, 
-            issuedAt: now, 
-            lastActive: now, 
-            expires: now + OWNERSHIP_LOCK_TTL_MS 
-          });
+        if (!l || l.expiresAt < now) {
+          this._ownershipLocks.set(key, payload);
           return true;
         }
-        return l.wallet === wallet;
+        return false; // Already exists and not expired
       },
 
-      async refreshOwnershipLock(chainId: number, contract: string, tokenId: string, wallet: string) {
-        const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
-        const now = Date.now();
-        const l = this._ownershipLocks.get(key);
-        
-        if (!l || l.wallet !== wallet || l.expires < now) return false;
-        
-        l.lastActive = now;
-        l.expires = now + OWNERSHIP_LOCK_TTL_MS;
-        return true;
-      },
-
-      async getOwnershipLock(chainId: number, contract: string, tokenId: string) {
+      async setOwnershipMinerId(chainId: number, contract: string, tokenId: string, minerId: string): Promise<void> {
         const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
         const l = this._ownershipLocks.get(key);
         const now = Date.now();
         
-        if (!l || l.expires < now) return null;
-        // Ownership lock is wallet-scoped only (no minerId field)
-        return { wallet: l.wallet, issuedAt: l.issuedAt, lastActive: l.lastActive };
+        if (!l || l.expiresAt < now) return;
+        if (!l.ownerMinerId || l.ownerMinerId === 'legacy-miner') {
+          l.ownerMinerId = minerId;
+        }
       },
 
-      async acquireSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string) {
+      async refreshOwnershipLock(chainId: number, contract: string, tokenId: string, nowMs: number, ttlMs: number): Promise<void> {
+        const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const l = this._ownershipLocks.get(key);
+        
+        if (!l || l.expiresAt < nowMs) return;
+        if (l.phase && l.phase !== 'active') return; // don't extend cooldown
+        
+        l.lastActive = nowMs;
+        l.expiresAt = nowMs + ttlMs;
+      },
+
+      async freezeOwnershipToCooldown(chainId: number, contract: string, tokenId: string): Promise<void> {
+        const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const l = this._ownershipLocks.get(key);
+        
+        if (!l) return;
+        l.phase = 'cooldown';
+      },
+
+      async getOwnershipPttlMs(chainId: number, contract: string, tokenId: string): Promise<number> {
+        const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const l = this._ownershipLocks.get(key);
+        const now = Date.now();
+        
+        if (!l || l.expiresAt < now) return 0;
+        return l.expiresAt - now;
+      },
+
+      async acquireSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string, minerId: string) {
         const key = `session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
         const now = Date.now();
         const l = this._sessionLocks.get(key);
         
-        if (!l || l.expires < now) {
+        if (!l || l.issuedAt + SESSION_LOCK_TTL_MS < now) {
           this._sessionLocks.set(key, { 
             sessionId, 
             wallet, 
-            updatedAt: now, 
-            expires: now + SESSION_LOCK_TTL_MS 
+            minerId,
+            issuedAt: now
           });
           return true;
         }
@@ -358,34 +412,41 @@ export const SessionStore = r
 
       async refreshSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string) {
         const key = `session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
-        const now = Date.now();
         const l = this._sessionLocks.get(key);
+        const now = Date.now();
         
-        if (!l || l.sessionId !== sessionId || l.wallet !== wallet || l.expires < now) return false;
+        if (!l || l.sessionId !== sessionId || l.wallet !== wallet || l.issuedAt + SESSION_LOCK_TTL_MS < now) return false;
         
-        l.updatedAt = now;
-        l.expires = now + SESSION_LOCK_TTL_MS;
+        l.issuedAt = now;
         return true;
       },
 
-      async getSessionLock(chainId: number, contract: string, tokenId: string) {
+      async getSessionLock(chainId: number, contract: string, tokenId: string): Promise<SessionLock | null> {
         const key = `session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
         const l = this._sessionLocks.get(key);
         const now = Date.now();
         
-        if (!l || l.expires < now) return null;
-        return { sessionId: l.sessionId, wallet: l.wallet, updatedAt: l.updatedAt };
+        if (!l || l.issuedAt + SESSION_LOCK_TTL_MS < now) return null;
+        return l;
       },
 
-      async releaseSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string) {
+      async getSessionLockPttlMs(chainId: number, contract: string, tokenId: string): Promise<number> {
         const key = `session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
         const l = this._sessionLocks.get(key);
+        const now = Date.now();
         
-        if (l && l.sessionId === sessionId && l.wallet === wallet) {
-          this._sessionLocks.delete(key);
-          return true;
-        }
-        return false;
+        if (!l || l.issuedAt + SESSION_LOCK_TTL_MS < now) return 0;
+        return (l.issuedAt + SESSION_LOCK_TTL_MS) - now;
+      },
+
+      async getSessionHolderMinerId(chainId: number, contract: string, tokenId: string): Promise<string | null> {
+        const lock = await this.getSessionLock(chainId, contract, tokenId);
+        return lock?.minerId ?? null;
+      },
+
+      async releaseSessionLock(chainId: number, contract: string, tokenId: string): Promise<void> {
+        const key = `session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        this._sessionLocks.delete(key);
       },
 
       // Wallet session limit management (memory fallback)

@@ -13,18 +13,22 @@ export function toTokenIdString(x: string | number | bigint): string {
  * Simple address validation and checksum normalization
  * Replaces viem's getAddress() to avoid adding viem dependency
  */
-function normalizeAddress(address: string): string {
+export function normalizeAddress(address: string): string {
   if (!address || typeof address !== 'string') {
     throw new Error(`Invalid address: ${address}`);
   }
-  
+
   // Basic validation - should be 0x followed by 40 hex characters
   if (!/^0x[a-fA-F0-9]{40}$/.test(address)) {
     throw new Error(`Invalid address format: ${address}`);
   }
-  
+
   // Convert to lowercase for consistent storage
   return address.toLowerCase();
+}
+
+export function sameAddr(a?: string | null, b?: string | null): boolean {
+  return !!a && !!b && a.toLowerCase() === b.toLowerCase();
 }
 
 export function canonicalizeCartridge(input: {
