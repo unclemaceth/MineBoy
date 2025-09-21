@@ -13,6 +13,7 @@ export interface StartReq {
   contract: `0x${string}`;
   tokenId: number;
   sessionId: string;
+  minerId?: string;
 }
 
 export interface StartOk {
@@ -52,20 +53,22 @@ export async function apiStart(req: StartReq): Promise<StartOk> {
 
 export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: number }> {
   const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+  const { wallet, ...heartbeatReq } = req; // Remove wallet from heartbeat request
   const res = await fetch(`${BASE}/v2/session/heartbeat`, { 
     method: 'POST', 
     headers: { 'Content-Type': 'application/json' }, 
-    body: JSON.stringify(req) 
+    body: JSON.stringify(heartbeatReq) 
   });
   return json(res);
 }
 
 export async function apiStop(req: StartReq): Promise<{ ok: true }> {
   const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+  const { wallet, ...stopReq } = req; // Remove wallet from stop request
   const res = await fetch(`${BASE}/v2/session/stop`, { 
     method: 'POST', 
     headers: { 'Content-Type': 'application/json' }, 
-    body: JSON.stringify(req) 
+    body: JSON.stringify(stopReq) 
   });
   return json(res);
 }

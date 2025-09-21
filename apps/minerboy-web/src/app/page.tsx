@@ -262,15 +262,17 @@ function Home() {
         const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
         const chainId = cartridge.info.chainId;
         const contract = cartridge.info.contract as `0x${string}`;
+        const minerId = getMinerIdCached();
         
-        console.log('[HB_PAYLOAD]', { sessionId, chainId, contract, tokenId: cartridge.tokenId });
+        console.log('[HB_PAYLOAD]', { sessionId, minerId, chainId, contract, tokenId: cartridge.tokenId });
         
         await apiHeartbeat({
           wallet: address as `0x${string}`,
           chainId,
           contract,
           tokenId: parseInt(cartridge.tokenId),
-          sessionId
+          sessionId,
+          minerId
         });
         
         // Debug lock info after heartbeat
