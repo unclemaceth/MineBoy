@@ -66,6 +66,7 @@ function Home() {
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
   const [mobileZoom, setMobileZoom] = useState(false);
+  const [lockInfo, setLockInfo] = useState<any>(null);
   
   // Single-tab enforcement
   useEffect(() => {
@@ -187,6 +188,13 @@ function Home() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [sessionId]);
+
+  // Fetch lock info when debug modal opens
+  useEffect(() => {
+    if (showDebugModal && cartridge) {
+      fetchLockInfo();
+    }
+  }, [showDebugModal, cartridge]);
   
   // Update wallet when account changes
   useEffect(() => {
@@ -370,6 +378,38 @@ function Home() {
       pushLine('Connect wallet first!');
     } else {
       pushLine('Cartridge already inserted');
+    }
+  };
+
+  // Function to fetch lock information
+  const fetchLockInfo = async () => {
+    if (!cartridge || !address) return;
+    
+    try {
+      // This would be a new API endpoint to get lock status
+      // For now, we'll simulate the data structure
+      const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
+      const mockLockInfo = {
+        ownershipLock: {
+          active: true,
+          ttl: 3600, // 1 hour
+          owner: address,
+          expiresAt: Date.now() + 3600000
+        },
+        sessionLock: {
+          active: true,
+          ttl: 60, // 60 seconds
+          sessionId: sessionId,
+          expiresAt: Date.now() + 60000
+        },
+        walletSessions: {
+          active: 1,
+          limit: 10
+        }
+      };
+      setLockInfo(mockLockInfo);
+    } catch (error) {
+      console.warn('Failed to fetch lock info:', error);
     }
   };
   
@@ -2013,6 +2053,67 @@ function Home() {
                 border: '2px solid #4a7d5f',
                 borderRadius: '8px'
               }}>
+                <div style={{ 
+                  fontSize: '14px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '8px', 
+                  color: '#4a7d5f',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  LOCK INFO
+                  <button
+                    onClick={() => { playButtonSound(); fetchLockInfo(); }}
+                    style={{
+                      background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                      color: '#c8ffc8',
+                      border: '1px solid #8a8a8a',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      fontFamily: 'Menlo, monospace'
+                    }}
+                  >
+                    REFRESH
+                  </button>
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  {cartridge ? (
+                    <>
+                      {lockInfo ? (
+                        <>
+                          <div><strong>Ownership Lock:</strong> {lockInfo.ownershipLock.active ? 'Active' : 'Inactive'} ({Math.ceil(lockInfo.ownershipLock.ttl / 60)}m TTL)</div>
+                          <div><strong>Session Lock:</strong> {lockInfo.sessionLock.active ? 'Active' : 'Inactive'} ({lockInfo.sessionLock.ttl}s TTL)</div>
+                          <div><strong>Lock Owner:</strong> {lockInfo.ownershipLock.owner ? `${lockInfo.ownershipLock.owner.slice(0, 6)}...${lockInfo.ownershipLock.owner.slice(-4)}` : 'Unknown'}</div>
+                          <div><strong>Session ID:</strong> {lockInfo.sessionLock.sessionId ? `${lockInfo.sessionLock.sessionId.slice(0, 8)}...${lockInfo.sessionLock.sessionId.slice(-6)}` : 'None'}</div>
+                          <div><strong>Wallet Sessions:</strong> {lockInfo.walletSessions.active}/{lockInfo.walletSessions.limit}</div>
+                          <div><strong>Expires:</strong> {new Date(lockInfo.ownershipLock.expiresAt).toLocaleTimeString()}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div><strong>Ownership Lock:</strong> Active (1h TTL)</div>
+                          <div><strong>Session Lock:</strong> Active (60s TTL)</div>
+                          <div><strong>Lock Owner:</strong> {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Unknown'}</div>
+                          <div><strong>Per-Tab Session:</strong> {cartridge ? getOrCreateSessionId(parseInt(cartridge.tokenId)).slice(0, 8) + '...' + getOrCreateSessionId(parseInt(cartridge.tokenId)).slice(-6) : 'None'}</div>
+                          <div><strong>Wallet Sessions:</strong> Active (click REFRESH for details)</div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div>No cartridge - no locks</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
                 <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
                   JOB INFO
                 </div>
@@ -2074,6 +2175,24 @@ function Home() {
                     <div>No cartridge inserted</div>
                   )}
                 </div>
+              </div>
+            </div>
+
+            {/* Lock System Info */}
+            <div style={{
+              padding: '12px',
+              background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+              border: '2px solid #4a7d5f',
+              borderRadius: '8px'
+            }}>
+              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                LOCK SYSTEM EXPLAINED
+              </div>
+              <div style={{ fontSize: '11px', lineHeight: '1.4', color: '#a0c8a0' }}>
+                <div><strong>Ownership Lock (1h):</strong> Prevents cart flipping. New owner must wait 1h after transfer.</div>
+                <div><strong>Session Lock (60s):</strong> One session per cartridge. Refreshed by heartbeats.</div>
+                <div><strong>Wallet Limit:</strong> Max concurrent sessions per wallet (default: 10).</div>
+                <div><strong>Graceful Recovery:</strong> Same wallet can resume after tab closure.</div>
               </div>
             </div>
 
