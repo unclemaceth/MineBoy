@@ -147,9 +147,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
   } else {
     // New format: { wallet, chainId, contract, tokenId, sessionId }
     wallet = body.wallet;
-    chainId = body.chainId;
+    chainId = Number(body.chainId);
     contract = body.contract;
-    tokenId = body.tokenId;
+    tokenId = Number(body.tokenId);
     sessionId = body.sessionId;
     clientInfo = body.clientInfo || { ua: 'Unknown' };
     minerId = body.minerId || 'legacy-miner'; // Generate if not provided
@@ -520,16 +520,20 @@ fastify.get('/v2/difficulty', async () => {
 // Heartbeat route to refresh locks (two-tier system)
 fastify.post('/v2/session/heartbeat', async (request, reply) => {
   try {
-    const { sessionId, minerId, tokenId, chainId, contract } = request.body as any;
+    const { sessionId, minerId, tokenId, chainId, contract, wallet } = request.body as any;
     
-    console.log('[HB] Request:', { sessionId, minerId, tokenId, chainId, contract });
+    // Convert tokenId to number to handle string/number mismatch
+    const tokenIdNum = Number(tokenId);
+    const chainIdNum = Number(chainId);
     
-    if (!sessionId || !minerId || !tokenId || !chainId || !contract) {
+    console.log('[HB] Request:', { sessionId, minerId, tokenId: tokenIdNum, chainId: chainIdNum, contract, wallet });
+    
+    if (!sessionId || !minerId || !tokenIdNum || !chainIdNum || !contract) {
       console.warn('[HB] 400 missing fields:', { 
         sessionId: !!sessionId, 
         minerId: !!minerId, 
-        tokenId: !!tokenId, 
-        chainId: !!chainId, 
+        tokenId: !!tokenIdNum, 
+        chainId: !!chainIdNum, 
         contract: !!contract 
       });
       return reply.code(400).send({ error: 'sessionId, minerId, tokenId, chainId, and contract required' });
@@ -548,23 +552,23 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     
     // Validate session cartridge matches request
     const { chainId: sessionChainId, contract: sessionContract, tokenId: sessionTokenId } = session.cartridge;
-    if (sessionChainId !== chainId || sessionContract !== contract || sessionTokenId !== tokenId) {
+    if (sessionChainId !== chainIdNum || sessionContract !== contract || sessionTokenId !== tokenIdNum) {
       console.warn('[HB] 409 cartridge mismatch:', { 
         session: `${sessionChainId}:${sessionContract}:${sessionTokenId}`,
-        request: `${chainId}:${contract}:${tokenId}`
+        request: `${chainIdNum}:${contract}:${tokenIdNum}`
       });
       return reply.code(409).send({ error: 'cartridge-mismatch' });
     }
     
     // Step 1: Validate ownership lock (must own the cartridge)
-    const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
+    const ownershipLock = await SessionStore.getOwnershipLock(chainIdNum, contract, tokenId.toString());
     if (!ownershipLock || ownershipLock.wallet !== session.wallet) {
       console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet });
       return reply.code(409).send({ error: 'lock_owned_elsewhere', message: 'Ownership lock lost - another wallet may have taken over' });
     }
     
     // Step 2: Validate session lock (must be the active session)
-    const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+    const sessionLock = await SessionStore.getSessionLock(chainIdNum, contract, tokenId.toString());
     if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
       console.warn('[HB] 409 session lock lost:', { sessionId, sessionLock });
       return reply.code(409).send({ error: 'lock_owned_elsewhere', message: 'Session lock lost - another session may be active' });
@@ -573,14 +577,14 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     // Step 3: Refresh both locks
     try {
       // Refresh ownership lock (update lastActive)
-      const ownershipRefreshed = await SessionStore.refreshOwnershipLock(chainId, contract, tokenId, session.wallet);
+      const ownershipRefreshed = await SessionStore.refreshOwnershipLock(chainIdNum, contract, tokenId.toString(), session.wallet);
       if (!ownershipRefreshed) {
         console.warn('[HB] 409 ownership refresh failed:', { sessionId, wallet: session.wallet });
         return reply.code(409).send({ error: 'ownership_refresh_failed' });
       }
       
       // Refresh session lock (60s TTL)
-      const sessionRefreshed = await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+      const sessionRefreshed = await SessionStore.refreshSessionLock(chainIdNum, contract, tokenId.toString(), sessionId, session.wallet);
       if (!sessionRefreshed) {
         console.warn('[HB] 409 session refresh failed:', { sessionId });
         return reply.code(409).send({ error: 'session_refresh_failed' });
