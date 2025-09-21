@@ -31,13 +31,15 @@ import { getRedis } from './redis.js';
 
 // ---- Job serialization helpers ----
 type ApiJob = {
-  id: string;
+  id: string;            // same as jobId
   jobId: string;
-  data: `0x${string}`;
-  target: string;
+  data: string;          // hex string of the fixed part
   rule: 'suffix' | 'prefix';
-  difficultyBits: number;
-  expiresAt: number;
+  target: string;        // e.g. "000000"
+  difficulty: number;    // bits (optional but nice)
+  nonceStart?: number;   // default 0 (for UI)
+  ttlSec?: number;       // optional
+  expiresAt?: number;    // legacy compatibility
 };
 
 function hexlifyData(data: any): `0x${string}` {
@@ -53,13 +55,31 @@ function hexlifyData(data: any): `0x${string}` {
 
 function serializeJob(job: any | null): ApiJob | null {
   if (!job) return null;
+  
+  // Ensure data is always present - use nonce for suffix-POW
+  let dataHex: string;
+  if (job.dataHex) {
+    dataHex = job.dataHex;
+  } else if (job.nonce) {
+    dataHex = hexlifyData(job.nonce);
+  } else if (job.data) {
+    dataHex = hexlifyData(job.data);
+  } else if (job.bytes) {
+    dataHex = hexlifyData(job.bytes);
+  } else {
+    // Fallback - generate some default data
+    dataHex = '0x48656c6c6f20576f726c64'; // "Hello World" in hex
+  }
+  
   return {
-    id: job.jobId,
-    jobId: job.jobId,
-    data: hexlifyData(job.nonce ?? job.dataHex ?? job.data ?? job.bytes),
-    target: job.suffix,
-    rule: job.rule,
-    difficultyBits: 6, // Default difficulty bits
+    id: job.jobId || job.id,
+    jobId: job.jobId || job.id,
+    data: dataHex,
+    rule: job.rule || 'suffix',
+    target: job.suffix || job.target || '000000',
+    difficulty: job.difficultyBits || job.difficulty || 6,
+    nonceStart: 0,
+    ttlSec: job.ttlMs ? Math.ceil(job.ttlMs / 1000) : undefined,
     expiresAt: job.expiresAt,
   };
 }
@@ -181,10 +201,10 @@ fastify.get('/v2/cartridges', async () => {
 // Open a mining session
 fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
   const body = request.body as any;
-  const { wallet, minerId, chainId, contract, tokenId } = body;
+  const { sessionId: clientSessionId, wallet, minerId, chainId, contract, tokenId } = body;
   
-  if (!wallet || !minerId || !chainId || !contract || !tokenId) {
-    return errorResponse(reply, 400, 'invalid_request', 'Missing required fields: wallet, minerId, chainId, contract, tokenId');
+  if (!clientSessionId || !wallet || !minerId || !chainId || !contract || !tokenId) {
+    return errorResponse(reply, 400, 'invalid_request', 'Missing required fields: sessionId, wallet, minerId, chainId, contract, tokenId');
   }
 
   try {
@@ -192,9 +212,8 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
     const w = normalizeAddress(wallet);
     
-    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     console.log('[OPEN] Using new cartridge lock system:', {
-      sessionId,
+      sessionId: clientSessionId,
       wallet: w,
       chainId: canonical.chainId,
       contract: canonical.contract,
@@ -266,7 +285,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     }
 
     // 3) Session lock: one active tab/session
-    const gotSession = await SessionStore.acquireSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, sessionId, w, minerId);
+    const gotSession = await SessionStore.acquireSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId, w, minerId);
     if (!gotSession) {
       const ttl = await SessionStore.getSessionLockPttlMs(canonical.chainId, canonical.contract, canonical.tokenId);
       const holderMinerId = await SessionStore.getSessionHolderMinerId(canonical.chainId, canonical.contract, canonical.tokenId);
@@ -280,7 +299,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
 
     // 4) Create/refresh short session doc (45s)
     const session = {
-      sessionId,
+      sessionId: clientSessionId,
       wallet: w,
       cartridge: { chainId: canonical.chainId, contract: canonical.contract, tokenId: canonical.tokenId },
       minerId,
@@ -288,20 +307,20 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       lastActive: now
     };
     await SessionStore.createSession(session);
-    await SessionStore.addWalletSession(w, canonical.chainId, canonical.contract, canonical.tokenId, sessionId);
+    await SessionStore.addWalletSession(w, canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId);
 
     // 5) Issue job + policy + TTLs
-    const job = await jobManager.createJob(sessionId);
+    const job = await jobManager.createJob(clientSessionId);
     if (!job) {
       await SessionStore.releaseSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
-      await SessionStore.deleteSession(sessionId);
+      await SessionStore.deleteSession(clientSessionId);
       return errorResponse(reply, 500, 'internal_error', 'Failed to create job');
     }
 
-    console.log('[OPEN] Session created successfully:', { sessionId, jobId: job.jobId });
+    console.log('[OPEN] Session created successfully:', { sessionId: clientSessionId, jobId: job.jobId });
 
     return reply.send({
-      sessionId,
+      sessionId: clientSessionId,
       ownershipTtlSec: Math.ceil((finalLock!.expiresAt - now) / 1000),
       sessionTtlSec: Math.ceil(60_000 / 1000), // 60 seconds
       job: serializeJob(job),

@@ -33,13 +33,31 @@ function hexlifyData(data: any): `0x${string}` {
 
 function serializeJob(job: any | null): any | null {
   if (!job) return null;
+  
+  // Ensure data is always present - use nonce for suffix-POW
+  let dataHex: string;
+  if (job.dataHex) {
+    dataHex = job.dataHex;
+  } else if (job.nonce) {
+    dataHex = hexlifyData(job.nonce);
+  } else if (job.data) {
+    dataHex = hexlifyData(job.data);
+  } else if (job.bytes) {
+    dataHex = hexlifyData(job.bytes);
+  } else {
+    // Fallback - generate some default data
+    dataHex = '0x48656c6c6f20576f726c64'; // "Hello World" in hex
+  }
+  
   return {
-    id: job.jobId,
-    jobId: job.jobId,
-    data: hexlifyData(job.nonce ?? job.dataHex ?? job.data ?? job.bytes),
-    target: job.suffix,
-    rule: job.rule,
-    difficultyBits: 6, // Default difficulty bits
+    id: job.jobId || job.id,
+    jobId: job.jobId || job.id,
+    data: dataHex,
+    rule: job.rule || 'suffix',
+    target: job.suffix || job.target || '000000',
+    difficulty: job.difficultyBits || job.difficulty || 6,
+    nonceStart: 0,
+    ttlSec: job.ttlMs ? Math.ceil(job.ttlMs / 1000) : undefined,
     expiresAt: job.expiresAt,
   };
 }
