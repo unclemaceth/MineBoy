@@ -10,7 +10,7 @@ import { jobManager } from './jobs.js';
 import { claimProcessor } from './claims.js';
 import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
 // Robust interop-safe import
-import * as Mining from '../../shared/src/mining';
+import * as Mining from '../../shared/src/mining.js';
 
 const getDifficultyForEpoch =
   (Mining as any).getDifficultyForEpoch ??
@@ -157,17 +157,36 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       return reply.code(403).send({ error: 'Wallet does not own this cartridge token' });
     }
     
-    // Acquire lock for this cartridge using Redis
+    // Two-tier locking system
     const { chainId, contract, tokenId } = cartridge;
     
     try {
-      const lockAcquired = await SessionStore.acquireLock(contract, tokenId, minerId);
-      if (!lockAcquired) {
-        return reply.code(409).send({ error: 'Cartridge is locked by another miner' });
+      // Step 1: Check/acquire ownership lock (1 hour anti-flip protection)
+      const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
+      
+      if (ownershipLock && ownershipLock.wallet !== wallet) {
+        // Cartridge is owned by different wallet - check TTL
+        const lockKey = `mineboy:v2:lock:cartridge:${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const ttl = await getRedis()?.pttl(lockKey) ?? 0;
+        const remainingMinutes = Math.ceil(ttl / 60000);
+        
+        return reply.code(409).send({ 
+          error: 'cartridge_in_use',
+          message: `Cartridge is locked by another wallet. Lock expires in ~${remainingMinutes} minutes.`,
+          ttl: ttl,
+          remainingMinutes: remainingMinutes
+        });
       }
+      
+      // Acquire ownership lock if not exists or owned by same wallet
+      const ownershipAcquired = await SessionStore.acquireOwnershipLock(chainId, contract, tokenId, wallet);
+      if (!ownershipAcquired) {
+        return reply.code(409).send({ error: 'cartridge_in_use', message: 'Failed to acquire ownership lock' });
+      }
+      
     } catch (error) {
-      console.error('[OPEN] Lock acquisition failed:', error);
-      return reply.code(500).send({ error: 'Failed to acquire cartridge lock' });
+      console.error('[OPEN] Ownership lock acquisition failed:', error);
+      return reply.code(500).send({ error: 'Failed to acquire ownership lock' });
     }
     
     // Create session in Redis
@@ -184,14 +203,54 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       await SessionStore.createSession(session);
     } catch (error) {
       console.error('[OPEN] Session creation failed:', error);
-      await SessionStore.releaseLock(contract, tokenId, minerId);
       return reply.code(500).send({ error: 'Failed to create session' });
+    }
+    
+    // Step 2: Acquire session lock (60 seconds, prevents multi-tab mining)
+    try {
+      const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+      
+      if (sessionLock) {
+        const now = Date.now();
+        const timeSinceUpdate = now - sessionLock.updatedAt;
+        
+        if (timeSinceUpdate < 30000) { // 30 second grace period
+          return reply.code(409).send({ 
+            error: 'session_still_active',
+            message: 'Another session is still active on this cartridge. Please wait ~30 seconds before retrying.',
+            sessionId: sessionLock.sessionId,
+            timeSinceUpdate: timeSinceUpdate
+          });
+        }
+        
+        // Allow same wallet to resume after grace period
+        if (sessionLock.wallet !== wallet) {
+          return reply.code(409).send({ 
+            error: 'active_session_elsewhere',
+            message: 'Another wallet has an active session on this cartridge.',
+            sessionId: sessionLock.sessionId
+          });
+        }
+      }
+      
+      // Acquire session lock
+      const sessionAcquired = await SessionStore.acquireSessionLock(chainId, contract, tokenId, sessionId, wallet);
+      if (!sessionAcquired) {
+        console.error('[OPEN] Session lock acquisition failed');
+        await SessionStore.deleteSession(sessionId);
+        return reply.code(409).send({ error: 'session_lock_failed', message: 'Failed to acquire session lock' });
+      }
+      
+    } catch (error) {
+      console.error('[OPEN] Session lock acquisition failed:', error);
+      await SessionStore.deleteSession(sessionId);
+      return reply.code(500).send({ error: 'Failed to acquire session lock' });
     }
     
     // Create initial job
     const job = await jobManager.createJob(sessionId);
     if (!job) {
-      await SessionStore.releaseLock(contract, tokenId, minerId);
+      await SessionStore.releaseSessionLock(chainId, contract, tokenId, sessionId, wallet);
       await SessionStore.deleteSession(sessionId);
       return reply.code(500).send({ error: 'Failed to create job' });
     }
@@ -201,7 +260,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       jobId: job.jobId,
       nonce: job.nonce,
       suffix: job.suffix,
-      height: job.height
+      height: 1 // Default height value
     });
     
     console.log(`Created session ${sessionId} for wallet ${wallet} with token ${contract}:${tokenId}`);
@@ -216,14 +275,14 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         nonce: job.nonce, // Add nonce field for debug modal
         target: job.suffix,
         suffix: job.suffix, // Add suffix field for debug modal
-        height: job.height ? Number(job.height) : 0, // Never undefined
-        difficulty: job.difficultyBits ? Number(job.difficultyBits) : 6,
+        height: 1, // Default height value
+        difficulty: 6, // Default difficulty
         expiresAt: job.expiresAt ? Number(job.expiresAt) : undefined,
         ttlMs: job.ttlMs ? Number(job.ttlMs) : undefined,
         epoch: job.epoch ? Number(job.epoch) : undefined,
         rule: job.rule || 'suffix',
-        difficultyBits: job.difficultyBits ? Number(job.difficultyBits) : 6,
-        targetBits: job.targetBits ? Number(job.targetBits) : undefined
+        difficultyBits: 6, // Default difficulty bits
+        targetBits: undefined // Not available in Job type
       },
       policy: {
         heartbeatSec: 20,
@@ -279,25 +338,51 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     const { chainId, contract, tokenId } = session.cartridge;
     console.log(`[CLAIM_DEBUG] Session minerId: ${session.minerId}, Claim minerId: ${minerId}, Lock key: ${chainId}:${contract}:${tokenId}`);
     
-    // Atomic renew-then-validate for claim
-    const lockRefreshed = await SessionStore.refreshLock(contract, tokenId, minerId);
-    if (!lockRefreshed) {
-      console.log(`[CLAIM_DEBUG] Lock refresh failed for ${contract}:${tokenId} with minerId ${minerId}`);
+    // Validate both locks for claim
+    const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
+    const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+    
+    if (!ownershipLock || ownershipLock.wallet !== session.wallet) {
+      console.log(`[CLAIM_DEBUG] Ownership lock lost for ${contract}:${tokenId}`);
       
-      // Add debug headers even on 409
       reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
       reply.header('X-Lock-Owner', 'none');
       reply.header('X-Lock-Session', 'none');
       reply.header('X-Lock-Expires', '0');
       
       return reply.code(409).send({ 
-        error: 'Cartridge lock lost or held by another miner',
-        reason: 'lock_mismatch',
+        error: 'lock_owned_elsewhere',
+        message: 'Ownership lock lost - another wallet may have taken over',
         cartridgeId: `${contract}:${tokenId}`,
-        expected: { ownerMinerId: 'unknown', sessionId, minerId },
-        got: { minerId, sessionId },
-        instance: process.env.HOSTNAME || 'unknown'
+        sessionId,
+        wallet: session.wallet
       });
+    }
+    
+    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
+      console.log(`[CLAIM_DEBUG] Session lock lost for ${contract}:${tokenId}`);
+      
+      reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
+      reply.header('X-Lock-Owner', session.wallet);
+      reply.header('X-Lock-Session', 'none');
+      reply.header('X-Lock-Expires', '0');
+      
+      return reply.code(409).send({ 
+        error: 'lock_owned_elsewhere',
+        message: 'Session lock lost - another session may be active',
+        cartridgeId: `${contract}:${tokenId}`,
+        sessionId,
+        wallet: session.wallet
+      });
+    }
+    
+    // Refresh both locks
+    try {
+      await SessionStore.refreshOwnershipLock(chainId, contract, tokenId, session.wallet);
+      await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+    } catch (error) {
+      console.error('[CLAIM_DEBUG] Lock refresh failed:', error);
+      return reply.code(500).send({ error: 'lock_refresh_failed' });
     }
     
     const result = await claimProcessor.processClaim(request.body);
@@ -394,22 +479,28 @@ fastify.get('/v2/difficulty', async () => {
   };
 });
 
-// Heartbeat route to refresh lock
+// Heartbeat route to refresh locks (two-tier system)
 fastify.post('/v2/session/heartbeat', async (request, reply) => {
   try {
-    const { sessionId, minerId } = request.body as any;
+    const { sessionId, minerId, tokenId, chainId, contract } = request.body as any;
     
-    console.log('[HB] Request:', { sessionId, minerId });
+    console.log('[HB] Request:', { sessionId, minerId, tokenId, chainId, contract });
     
-    if (!sessionId || !minerId) {
-      console.warn('[HB] 400 missing fields:', { sessionId: !!sessionId, minerId: !!minerId });
-      return reply.code(400).send({ error: 'sessionId and minerId required' });
+    if (!sessionId || !minerId || !tokenId || !chainId || !contract) {
+      console.warn('[HB] 400 missing fields:', { 
+        sessionId: !!sessionId, 
+        minerId: !!minerId, 
+        tokenId: !!tokenId, 
+        chainId: !!chainId, 
+        contract: !!contract 
+      });
+      return reply.code(400).send({ error: 'sessionId, minerId, tokenId, chainId, and contract required' });
     }
     
     const session = await SessionStore.getSession(sessionId);
     if (!session) {
-      console.warn('[HB] 404 no session:', { sessionId });
-      return reply.code(409).send({ error: 'session-missing', sessionId });
+      console.warn('[HB] 410 session expired:', { sessionId });
+      return reply.code(410).send({ error: 'lock_expired', message: 'Session expired - please restart mining' });
     }
     
     if (session.minerId !== minerId) {
@@ -417,29 +508,134 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return reply.code(409).send({ error: 'miner-mismatch', have: session.minerId, got: minerId });
     }
     
-    // Refresh session TTL
-    await SessionStore.refreshSession(sessionId);
+    // Validate session cartridge matches request
+    const { chainId: sessionChainId, contract: sessionContract, tokenId: sessionTokenId } = session.cartridge;
+    if (sessionChainId !== chainId || sessionContract !== contract || sessionTokenId !== tokenId) {
+      console.warn('[HB] 409 cartridge mismatch:', { 
+        session: `${sessionChainId}:${sessionContract}:${sessionTokenId}`,
+        request: `${chainId}:${contract}:${tokenId}`
+      });
+      return reply.code(409).send({ error: 'cartridge-mismatch' });
+    }
     
-    // Refresh cartridge lock
-    const { contract, tokenId } = session.cartridge;
-    const lockRefreshed = await SessionStore.refreshLock(contract, tokenId, minerId);
-    if (!lockRefreshed) {
-      console.warn('[HB] 409 lock refresh failed:', { sessionId, minerId, contract, tokenId });
-      return reply.code(409).send({ error: 'lock-missing', sessionId, contract, tokenId });
+    // Step 1: Validate ownership lock (must own the cartridge)
+    const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
+    if (!ownershipLock || ownershipLock.wallet !== session.wallet) {
+      console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet });
+      return reply.code(409).send({ error: 'lock_owned_elsewhere', message: 'Ownership lock lost - another wallet may have taken over' });
+    }
+    
+    // Step 2: Validate session lock (must be the active session)
+    const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
+      console.warn('[HB] 409 session lock lost:', { sessionId, sessionLock });
+      return reply.code(409).send({ error: 'lock_owned_elsewhere', message: 'Session lock lost - another session may be active' });
+    }
+    
+    // Step 3: Refresh both locks
+    try {
+      // Refresh ownership lock (update lastActive)
+      const ownershipRefreshed = await SessionStore.refreshOwnershipLock(chainId, contract, tokenId, session.wallet);
+      if (!ownershipRefreshed) {
+        console.warn('[HB] 409 ownership refresh failed:', { sessionId, wallet: session.wallet });
+        return reply.code(409).send({ error: 'ownership_refresh_failed' });
+      }
+      
+      // Refresh session lock (60s TTL)
+      const sessionRefreshed = await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+      if (!sessionRefreshed) {
+        console.warn('[HB] 409 session refresh failed:', { sessionId });
+        return reply.code(409).send({ error: 'session_refresh_failed' });
+      }
+      
+      // Refresh session TTL
+      await SessionStore.refreshSession(sessionId);
+      
+    } catch (error) {
+      console.error('[HB] Lock refresh error:', error);
+      return reply.code(500).send({ error: 'lock_refresh_error' });
     }
     
     // Add lock headers for debugging
     reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
-    reply.header('X-Lock-Owner', minerId);
+    reply.header('X-Lock-Owner', session.wallet);
     reply.header('X-Lock-Session', sessionId);
-    reply.header('X-Lock-Expires', Date.now() + 45000); // 45s from now
+    reply.header('X-Lock-Expires', Date.now() + 60000); // 60s from now
     
-    console.log('[HB] 200 success:', { sessionId, minerId });
+    console.log('[HB] 200 success:', { sessionId, minerId, wallet: session.wallet });
     return { ok: true };
     
   } catch (error: any) {
     fastify.log.error('Error processing heartbeat:', error);
     return reply.code(400).send({ error: 'Heartbeat failed' });
+  }
+});
+
+// Stop mining session - releases session lock but keeps ownership lock
+fastify.post('/v2/session/stop', async (request, reply) => {
+  try {
+    const { sessionId, minerId, tokenId, chainId, contract } = request.body as any;
+    
+    console.log('[STOP] Request:', { sessionId, minerId, tokenId, chainId, contract });
+    
+    if (!sessionId || !minerId || !tokenId || !chainId || !contract) {
+      console.warn('[STOP] 400 missing fields:', { 
+        sessionId: !!sessionId, 
+        minerId: !!minerId, 
+        tokenId: !!tokenId, 
+        chainId: !!chainId, 
+        contract: !!contract 
+      });
+      return reply.code(400).send({ error: 'sessionId, minerId, tokenId, chainId, and contract required' });
+    }
+    
+    const session = await SessionStore.getSession(sessionId);
+    if (!session) {
+      console.warn('[STOP] 404 session not found:', { sessionId });
+      return reply.code(404).send({ error: 'session_not_found' });
+    }
+    
+    if (session.minerId !== minerId) {
+      console.warn('[STOP] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
+      return reply.code(409).send({ error: 'miner-mismatch', have: session.minerId, got: minerId });
+    }
+    
+    // Validate session cartridge matches request
+    const { chainId: sessionChainId, contract: sessionContract, tokenId: sessionTokenId } = session.cartridge;
+    if (sessionChainId !== chainId || sessionContract !== contract || sessionTokenId !== tokenId) {
+      console.warn('[STOP] 409 cartridge mismatch:', { 
+        session: `${sessionChainId}:${sessionContract}:${sessionTokenId}`,
+        request: `${chainId}:${contract}:${tokenId}`
+      });
+      return reply.code(409).send({ error: 'cartridge-mismatch' });
+    }
+    
+    // Release session lock (but keep ownership lock for 1-hour cooldown)
+    try {
+      const sessionReleased = await SessionStore.releaseSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+      if (!sessionReleased) {
+        console.warn('[STOP] Session lock release failed:', { sessionId });
+        // Don't fail the request - session might have already expired
+      }
+      
+      // Delete session
+      await SessionStore.deleteSession(sessionId);
+      
+      console.log('[STOP] 200 success:', { sessionId, minerId, wallet: session.wallet });
+      return { 
+        ok: true, 
+        message: 'Mining session stopped. Ownership lock remains for 1 hour cooldown.',
+        ownershipLockTtl: 3600 // 1 hour in seconds
+      };
+      
+    } catch (error) {
+      console.error('[STOP] Error releasing locks:', error);
+      return reply.code(500).send({ error: 'failed_to_stop_session' });
+    }
+    
+  } catch (error: any) {
+    fastify.log.error('Error stopping mining session:', error);
+    return reply.code(400).send({ error: 'Stop session failed' });
   }
 });
 
