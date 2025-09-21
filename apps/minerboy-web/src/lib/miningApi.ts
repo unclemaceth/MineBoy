@@ -41,7 +41,8 @@ async function json<T>(res: Response): Promise<T> {
 }
 
 export async function apiStart(req: StartReq): Promise<StartOk> {
-  const res = await fetch('/v2/session/open', { 
+  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+  const res = await fetch(`${BASE}/v2/session/open`, { 
     method: 'POST', 
     headers: { 'Content-Type': 'application/json' }, 
     body: JSON.stringify(req) 
@@ -50,7 +51,8 @@ export async function apiStart(req: StartReq): Promise<StartOk> {
 }
 
 export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: number }> {
-  const res = await fetch('/v2/session/heartbeat', { 
+  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+  const res = await fetch(`${BASE}/v2/session/heartbeat`, { 
     method: 'POST', 
     headers: { 'Content-Type': 'application/json' }, 
     body: JSON.stringify(req) 
@@ -59,7 +61,8 @@ export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: numb
 }
 
 export async function apiStop(req: StartReq): Promise<{ ok: true }> {
-  const res = await fetch('/v2/session/stop', { 
+  const BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
+  const res = await fetch(`${BASE}/v2/session/stop`, { 
     method: 'POST', 
     headers: { 'Content-Type': 'application/json' }, 
     body: JSON.stringify(req) 
