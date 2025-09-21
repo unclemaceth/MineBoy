@@ -18,6 +18,8 @@ export interface StartReq {
 
 export interface StartOk {
   sessionId: string;
+  ownershipTtlSec: number;   // TTL for ownership lock
+  sessionTtlSec: number;     // TTL for session
   job?: {
     id: string;
     data: string;  // Backend sends as string, will be normalized to 0x${string}

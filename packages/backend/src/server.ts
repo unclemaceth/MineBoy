@@ -321,6 +321,8 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     // Build JSON-safe response
     const response = {
       sessionId,
+      ownershipTtlSec: Math.floor(3_600_000 / 1000), // 1 hour in seconds
+      sessionTtlSec: Math.floor(60_000 / 1000),      // 60 seconds in seconds
       job: {
         id: job.jobId,
         data: job.nonce,
