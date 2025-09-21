@@ -17,13 +17,26 @@ export interface StartReq {
 }
 
 export interface StartOk {
-  tokenId: number;
   sessionId: string;
-  ownerWallet: `0x${string}`;
-  ownershipTtlSec: number;   // ~3600
-  sessionTtlSec: number;     // ~60
-  // optionally server can echo now/exp for countdown UX
-  ownershipExp?: number;     // unix seconds
+  job?: {
+    id: string;
+    data: string;  // Backend sends as string, will be normalized to 0x${string}
+    nonce: string;
+    target: string;
+    suffix: string;
+    height: number;
+    difficulty: number;
+    expiresAt?: number;
+    ttlMs?: number;
+    epoch?: number;
+    rule: string;
+    difficultyBits: number;
+    targetBits?: number;
+  };
+  policy?: {
+    heartbeatSec: number;
+    cooldownSec: number;
+  };
 }
 
 export interface ErrRes { 
@@ -56,7 +69,7 @@ const fetchJSON = async (path: string, body: any) => {
 };
 
 export async function apiStart(req: StartReq): Promise<StartOk> {
-  return fetchJSON('/session/open', req) as Promise<StartOk>;
+  return fetchJSON('/v2/session/open', req) as Promise<StartOk>;
 }
 
 export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: number }> {

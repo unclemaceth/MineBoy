@@ -22,6 +22,7 @@ import { getMinerIdCached } from "@/utils/minerId";
 import { getJobId, assertString } from "@/utils/job";
 import { getOrCreateSessionId } from '@/lib/miningSession';
 import { apiStart, apiHeartbeat } from '@/lib/miningApi';
+import { normalizeJob } from '@/lib/normalizeJob';
 import { to0x, hexFrom } from "@/lib/hex";
 import { playButtonSound, playConfirmSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
 import SoundSettings from '@/components/SoundSettings';
@@ -465,16 +466,29 @@ function Home() {
       // Create a compatible session object for the existing loadOpenSession function
       const compatibleSession = {
         sessionId: res.sessionId,
-        job: {
+        job: res.job ? normalizeJob({
+          id: res.job.id,
+          data: res.job.data as `0x${string}`, // Cast to expected type
+          target: res.job.target,
+          suffix: res.job.suffix,
+          height: res.job.height,
+          difficulty: {
+            rule: res.job.rule as 'suffix',
+            bits: res.job.difficultyBits
+          },
+          nonce: res.job.nonce,
+          expiresAt: res.job.expiresAt,
+          ttlMs: res.job.ttlMs
+        }) : {
           id: 'placeholder',
-          data: 'placeholder',
+          data: '0xplaceholder' as `0x${string}`,
           target: 'placeholder',
-          expiresAt: Date.now() + (res.sessionTtlSec * 1000)
-        } as any
+          expiresAt: Date.now() + 60000 // Default 60 seconds
+        }
       };
       
       loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
-      pushLine(`Session opened! Lock expires in ~${Math.ceil(res.ownershipTtlSec / 60)} minutes.`);
+      pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
       
     } catch (error: any) {
       // Handle new two-tier locking error codes
