@@ -67,7 +67,7 @@ export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: numb
     wallet: req.wallet,
     chainId: req.chainId,
     contract: req.contract,
-    tokenId: Number(req.tokenId), // Ensure it's a number
+    tokenId: req.tokenId.toString(), // Ensure it's a string for canonical consistency
   };
   return fetchJSON('/session/heartbeat', payload) as Promise<{ sessionTtlSec: number }>;
 }

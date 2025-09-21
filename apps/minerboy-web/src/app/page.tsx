@@ -270,7 +270,7 @@ function Home() {
           wallet: address as `0x${string}`,
           chainId,
           contract,
-          tokenId: parseInt(cartridge.tokenId),
+          tokenId: parseInt(cartridge.tokenId), // Convert to number for type compatibility
           sessionId,
           minerId
         });
@@ -283,12 +283,26 @@ function Home() {
           console.warn('Lock debug failed:', e);
         }
       } catch (error: any) {
-        console.warn('Heartbeat failed:', error.status, error.info);
+        console.warn('Heartbeat failed:', error);
+        
+        // Parse structured error response
+        let errorCode = 'unknown';
+        let errorMessage = 'Heartbeat failed';
+        
+        if (error?.code) {
+          errorCode = error.code;
+          errorMessage = error.message || errorMessage;
+        } else if (error?.status) {
+          errorCode = `http_${error.status}`;
+          errorMessage = error.info || errorMessage;
+        }
+        
+        console.warn('Heartbeat error details:', { code: errorCode, message: errorMessage, original: error });
         
         // If session not found (404) or lock lost (409), clear session and stop mining
-        if (error.status === 404 || error.status === 409) {
+        if (errorCode === 'session_not_found' || errorCode === 'ownership_conflict' || error.status === 404 || error.status === 409) {
           console.log('Session expired or lock lost - clearing state and stopping mining');
-          pushLine('Session expired - please reconnect');
+          pushLine(`Session expired: ${errorMessage}`);
           
           // Stop mining immediately
           miner.stop();

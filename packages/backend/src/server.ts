@@ -27,6 +27,12 @@ import { registerLeaderboardRoute } from './routes/leaderboard.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
+import { canonicalizeCartridge, cartKey } from './canonical.js';
+
+// Structured error response helper
+function errorResponse(reply: any, status: number, code: string, message: string, details?: any) {
+  return reply.code(status).send({ code, message, details });
+}
 
 const fastify = Fastify({ 
   logger: true,
@@ -147,9 +153,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
   } else {
     // New format: { wallet, chainId, contract, tokenId, sessionId }
     wallet = body.wallet;
-    chainId = Number(body.chainId);
+    chainId = body.chainId;
     contract = body.contract;
-    tokenId = Number(body.tokenId);
+    tokenId = body.tokenId;
     sessionId = body.sessionId;
     clientInfo = body.clientInfo || { ua: 'Unknown' };
     minerId = body.minerId || 'legacy-miner'; // Generate if not provided
@@ -158,25 +164,35 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
   console.log('[session/open] Request body:', JSON.stringify(body, null, 2));
   
   try {
+    // Canonicalize cartridge parameters
+    const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
+    const cartKeyString = cartKey(canonical);
+    
+    console.log('[session/open] Canonicalized:', { 
+      original: { chainId, contract, tokenId },
+      canonical,
+      cartKey: cartKeyString
+    });
+    
     // Validate minerId
     if (!minerId || typeof minerId !== 'string') {
-      return reply.code(400).send({ error: 'minerId required' });
+      return errorResponse(reply, 400, 'invalid_payload', 'minerId required');
     }
     
     // Validate cartridge is allowed
-    if (!cartridgeRegistry.isAllowed(contract)) {
-      return reply.code(400).send({ error: 'Cartridge not allowed' });
+    if (!cartridgeRegistry.isAllowed(canonical.contract)) {
+      return errorResponse(reply, 400, 'invalid_payload', 'Cartridge not allowed');
     }
     
     // Verify ownership
     const ownsToken = await ownershipVerifier.ownsCartridge(
       wallet, 
-      contract, 
-      tokenId
+      canonical.contract, 
+      canonical.tokenId
     );
     
     if (!ownsToken) {
-      return reply.code(403).send({ error: 'Wallet does not own this cartridge token' });
+      return errorResponse(reply, 403, 'unauthorized', 'Wallet does not own this cartridge token');
     }
     
     // Two-tier locking system
@@ -195,26 +211,24 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       }
       
       // Step 1: Check/acquire ownership lock (1 hour anti-flip protection)
-      const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
+      const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
       
       if (ownershipLock && ownershipLock.wallet !== wallet) {
         // Cartridge is owned by different wallet - check TTL
-        const lockKey = `mineboy:v2:lock:cartridge:${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const lockKey = `mineboy:v2:lock:cartridge:${cartKeyString}`;
         const ttl = await getRedis()?.pttl(lockKey) ?? 0;
         const remainingMinutes = Math.ceil(ttl / 60000);
         
-        return reply.code(409).send({ 
-          error: 'cartridge_in_use',
-          message: `Cartridge is locked by another wallet. Lock expires in ~${remainingMinutes} minutes.`,
-          ttl: ttl,
-          remainingMinutes: remainingMinutes
-        });
+        return errorResponse(reply, 409, 'ownership_conflict', 
+          `Cartridge is locked by another wallet. Lock expires in ~${remainingMinutes} minutes.`,
+          { ttl, remainingMinutes }
+        );
       }
       
       // Acquire ownership lock if not exists or owned by same wallet
-      const ownershipAcquired = await SessionStore.acquireOwnershipLock(chainId, contract, tokenId, wallet);
+      const ownershipAcquired = await SessionStore.acquireOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId, wallet);
       if (!ownershipAcquired) {
-        return reply.code(409).send({ error: 'cartridge_in_use', message: 'Failed to acquire ownership lock' });
+        return errorResponse(reply, 409, 'ownership_conflict', 'Failed to acquire ownership lock');
       }
       
     } catch (error) {
@@ -230,7 +244,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       sessionId,
       minerId,
       wallet,
-      cartridge: { chainId, contract, tokenId },
+      cartridge: { chainId: canonical.chainId, contract: canonical.contract, tokenId: canonical.tokenId },
       createdAt: Date.now()
     };
     
@@ -243,7 +257,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     
     // Step 2: Acquire session lock (60 seconds, prevents multi-tab mining)
     try {
-      const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+      const sessionLock = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
       
       if (sessionLock) {
         const now = Date.now();
@@ -269,15 +283,15 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       }
       
       // Acquire session lock
-      const sessionAcquired = await SessionStore.acquireSessionLock(chainId, contract, tokenId, sessionId, wallet);
+      const sessionAcquired = await SessionStore.acquireSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, sessionId, wallet);
       if (!sessionAcquired) {
         console.error('[OPEN] Session lock acquisition failed');
         await SessionStore.deleteSession(sessionId);
-        return reply.code(409).send({ error: 'session_lock_failed', message: 'Failed to acquire session lock' });
+        return errorResponse(reply, 409, 'ownership_conflict', 'Failed to acquire session lock');
       }
       
       // Add to wallet session tracking
-      await SessionStore.addWalletSession(wallet, chainId, contract, tokenId, sessionId);
+      await SessionStore.addWalletSession(wallet, canonical.chainId, canonical.contract, canonical.tokenId, sessionId);
       
     } catch (error) {
       console.error('[OPEN] Session lock acquisition failed:', error);
@@ -288,9 +302,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     // Create initial job
     const job = await jobManager.createJob(sessionId);
     if (!job) {
-      await SessionStore.releaseSessionLock(chainId, contract, tokenId, sessionId, wallet);
+      await SessionStore.releaseSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, sessionId, wallet);
       await SessionStore.deleteSession(sessionId);
-      return reply.code(500).send({ error: 'Failed to create job' });
+      return errorResponse(reply, 500, 'internal_error', 'Failed to create job');
     }
     
     // Store job in session
@@ -522,72 +536,91 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
   try {
     const { sessionId, minerId, tokenId, chainId, contract, wallet } = request.body as any;
     
-    // Convert tokenId to number to handle string/number mismatch
-    const tokenIdNum = Number(tokenId);
-    const chainIdNum = Number(chainId);
+    console.log('[HB] Request:', { sessionId, minerId, tokenId, chainId, contract, wallet });
     
-    console.log('[HB] Request:', { sessionId, minerId, tokenId: tokenIdNum, chainId: chainIdNum, contract, wallet });
-    
-    if (!sessionId || !minerId || !tokenIdNum || !chainIdNum || !contract) {
+    if (!sessionId || !minerId || !tokenId || !chainId || !contract) {
       console.warn('[HB] 400 missing fields:', { 
         sessionId: !!sessionId, 
         minerId: !!minerId, 
-        tokenId: !!tokenIdNum, 
-        chainId: !!chainIdNum, 
+        tokenId: !!tokenId, 
+        chainId: !!chainId, 
         contract: !!contract 
       });
-      return reply.code(400).send({ error: 'sessionId, minerId, tokenId, chainId, and contract required' });
+      return errorResponse(reply, 400, 'invalid_payload', 'sessionId, minerId, tokenId, chainId, and contract required');
     }
+    
+    // Canonicalize cartridge parameters
+    const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
+    const cartKeyString = cartKey(canonical);
+    
+    console.log('[HB] Canonicalized:', { 
+      original: { chainId, contract, tokenId },
+      canonical,
+      cartKey: cartKeyString
+    });
     
     const session = await SessionStore.getSession(sessionId);
     if (!session) {
-      console.warn('[HB] 410 session expired:', { sessionId });
-      return reply.code(410).send({ error: 'lock_expired', message: 'Session expired - please restart mining' });
+      console.warn('[HB] 404 session not found:', { sessionId });
+      return errorResponse(reply, 404, 'session_not_found', 'Session expired - please restart mining');
     }
     
     if (session.minerId !== minerId) {
       console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
-      return reply.code(409).send({ error: 'miner-mismatch', have: session.minerId, got: minerId });
+      return errorResponse(reply, 409, 'ownership_conflict', 'Miner ID mismatch', { expected: session.minerId, received: minerId });
     }
     
-    // Validate session cartridge matches request
-    const { chainId: sessionChainId, contract: sessionContract, tokenId: sessionTokenId } = session.cartridge;
-    if (sessionChainId !== chainIdNum || sessionContract !== contract || sessionTokenId !== tokenIdNum) {
+    // Validate session cartridge matches request using canonical keys
+    const sessionCartKey = cartKey(session.cartridge);
+    console.log('[HB] CartKey comparison:', {
+      sessionCartKey,
+      requestCartKey: cartKeyString,
+      session: session.cartridge,
+      request: canonical,
+      match: sessionCartKey === cartKeyString
+    });
+    
+    if (sessionCartKey !== cartKeyString) {
       console.warn('[HB] 409 cartridge mismatch:', { 
-        session: `${sessionChainId}:${sessionContract}:${sessionTokenId}`,
-        request: `${chainIdNum}:${contract}:${tokenIdNum}`
+        sessionCartKey,
+        requestCartKey: cartKeyString,
+        session: session.cartridge,
+        request: canonical
       });
-      return reply.code(409).send({ error: 'cartridge-mismatch' });
+      return errorResponse(reply, 409, 'ownership_conflict', 'Cartridge mismatch', {
+        session: session.cartridge,
+        request: canonical
+      });
     }
     
     // Step 1: Validate ownership lock (must own the cartridge)
-    const ownershipLock = await SessionStore.getOwnershipLock(chainIdNum, contract, tokenId.toString());
+    const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
     if (!ownershipLock || ownershipLock.wallet !== session.wallet) {
       console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet });
-      return reply.code(409).send({ error: 'lock_owned_elsewhere', message: 'Ownership lock lost - another wallet may have taken over' });
+      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over');
     }
     
     // Step 2: Validate session lock (must be the active session)
-    const sessionLock = await SessionStore.getSessionLock(chainIdNum, contract, tokenId.toString());
+    const sessionLock = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
     if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
       console.warn('[HB] 409 session lock lost:', { sessionId, sessionLock });
-      return reply.code(409).send({ error: 'lock_owned_elsewhere', message: 'Session lock lost - another session may be active' });
+      return errorResponse(reply, 409, 'ownership_conflict', 'Session lock lost - another session may be active');
     }
     
     // Step 3: Refresh both locks
     try {
       // Refresh ownership lock (update lastActive)
-      const ownershipRefreshed = await SessionStore.refreshOwnershipLock(chainIdNum, contract, tokenId.toString(), session.wallet);
+      const ownershipRefreshed = await SessionStore.refreshOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId, session.wallet);
       if (!ownershipRefreshed) {
         console.warn('[HB] 409 ownership refresh failed:', { sessionId, wallet: session.wallet });
-        return reply.code(409).send({ error: 'ownership_refresh_failed' });
+        return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock refresh failed');
       }
       
       // Refresh session lock (60s TTL)
-      const sessionRefreshed = await SessionStore.refreshSessionLock(chainIdNum, contract, tokenId.toString(), sessionId, session.wallet);
+      const sessionRefreshed = await SessionStore.refreshSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, sessionId, session.wallet);
       if (!sessionRefreshed) {
         console.warn('[HB] 409 session refresh failed:', { sessionId });
-        return reply.code(409).send({ error: 'session_refresh_failed' });
+        return errorResponse(reply, 409, 'ownership_conflict', 'Session lock refresh failed');
       }
       
       // Refresh session TTL
@@ -595,7 +628,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       
     } catch (error) {
       console.error('[HB] Lock refresh error:', error);
-      return reply.code(500).send({ error: 'lock_refresh_error' });
+      return errorResponse(reply, 500, 'internal_error', 'Lock refresh error');
     }
     
     // Add lock headers for debugging
@@ -609,7 +642,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     
   } catch (error: any) {
     fastify.log.error('Error processing heartbeat:', error);
-    return reply.code(400).send({ error: 'Heartbeat failed' });
+    return errorResponse(reply, 400, 'internal_error', 'Heartbeat failed', { details: error?.message });
   }
 });
 

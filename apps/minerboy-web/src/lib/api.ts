@@ -73,6 +73,7 @@ export const api = {
   async heartbeat(sessionId: string, minerId: string, tokenId: string, chainId: number, contract: string): Promise<{ ok: true }> {
     const { headers } = await jfetchEx(`/v2/session/heartbeat`, { 
       method: "POST", 
+      credentials: 'include',
       body: JSON.stringify({ sessionId, minerId, tokenId, chainId, contract }) 
     });
     

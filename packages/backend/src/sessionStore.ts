@@ -1,5 +1,6 @@
 import { getRedis } from "./redis";
 import { encode, decode } from "./redisJson";
+import { canonicalizeCartridge, cartKey } from "./canonical";
 
 const PREFIX = process.env.REDIS_PREFIX ?? "mineboy:v2:";
 const SESSION_TTL_MS = Number(process.env.SESSION_TTL_MS ?? 45_000);
@@ -24,12 +25,16 @@ function sKey(id: string) {
 
 // Ownership lock: reserves cartridge for wallet (1 hour)
 function ownershipLockKey(chainId: number, contract: string, tokenId: string) {
-  return `${PREFIX}lock:cartridge:${chainId}:${contract.toLowerCase()}:${tokenId}`;
+  const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
+  const key = cartKey(canonical);
+  return `${PREFIX}lock:cartridge:${key}`;
 }
 
 // Session lock: prevents multi-tab mining (60 seconds)
 function sessionLockKey(chainId: number, contract: string, tokenId: string) {
-  return `${PREFIX}lock:cartridge:session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
+  const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
+  const key = cartKey(canonical);
+  return `${PREFIX}lock:cartridge:session:${key}`;
 }
 
 // Wallet session tracking for limits
