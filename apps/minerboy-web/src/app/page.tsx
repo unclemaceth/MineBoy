@@ -20,6 +20,8 @@ import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
 import { getMinerIdCached } from "@/utils/minerId";
 import { getJobId, assertString } from "@/utils/job";
+import { getOrCreateSessionId } from '@/lib/miningSession';
+import { apiStart, apiHeartbeat } from '@/lib/miningApi';
 import { to0x, hexFrom } from "@/lib/hex";
 import { playButtonSound, playConfirmSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
 import SoundSettings from '@/components/SoundSettings';
@@ -247,20 +249,21 @@ function Home() {
     
     const heartbeatFn = async () => {
       try {
-        const minerId = getMinerIdCached();
-        console.log('[HB_PAYLOAD]', { sessionId, minerId });
+        if (!address || !cartridge) return;
         
-        // Log identity for debugging
-        console.log('[IDS]', {
-          sessionId,
-          minerId,
-          jobId: job?.id || 'none',
-          address
+        const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
+        const chainId = cartridge.info.chainId;
+        const contract = cartridge.info.contract as `0x${string}`;
+        
+        console.log('[HB_PAYLOAD]', { sessionId, chainId, contract, tokenId: cartridge.tokenId });
+        
+        await apiHeartbeat({
+          wallet: address as `0x${string}`,
+          chainId,
+          contract,
+          tokenId: parseInt(cartridge.tokenId),
+          sessionId
         });
-        
-        if (cartridge) {
-          await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
-        }
         
         // Debug lock info after heartbeat
         try {
@@ -377,31 +380,42 @@ function Home() {
     pushLine(`Opening session with ${cartridgeInfo.name}...`);
     
     try {
-      const minerId = getMinerIdCached();
-      console.log('[SESSION_OPEN] Using minerId:', minerId);
+      // Use the new two-tier locking system
+      const sessionId = getOrCreateSessionId(parseInt(tokenId));
+      const chainId = cartridgeInfo.chainId;
+      const contract = cartridgeInfo.contract as `0x${string}`;
       
-      // Log identity for debugging
-      console.log('[IDS]', {
-        sessionId: 'opening...',
-        minerId,
-        jobId: 'none yet',
-        address
-      });
-      
-      const res = await api.openSession({
+      console.log('[SESSION_OPEN] Using new two-tier system:', {
+        sessionId,
         wallet: address,
-        cartridge: {
-          chainId: cartridgeInfo.chainId,
-          contract: cartridgeInfo.contract,
-          tokenId
-        },
-        clientInfo: { ua: navigator.userAgent },
-        minerId
+        chainId,
+        contract,
+        tokenId: parseInt(tokenId)
       });
       
-      console.log('[JOB]', res.job);
-      loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
-      pushLine('Session opened successfully!');
+      const res = await apiStart({
+        wallet: address as `0x${string}`,
+        chainId,
+        contract,
+        tokenId: parseInt(tokenId),
+        sessionId
+      });
+      
+      console.log('[SESSION_OPEN] Success:', res);
+      
+      // Create a compatible session object for the existing loadOpenSession function
+      const compatibleSession = {
+        sessionId: res.sessionId,
+        job: {
+          id: 'placeholder',
+          data: 'placeholder',
+          target: 'placeholder',
+          expiresAt: Date.now() + (res.sessionTtlSec * 1000)
+        } as any
+      };
+      
+      loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
+      pushLine(`Session opened! Lock expires in ~${Math.ceil(res.ownershipTtlSec / 60)} minutes.`);
       
     } catch (error: any) {
       // Handle new two-tier locking error codes
@@ -547,9 +561,19 @@ function Home() {
       assertString(address, 'address');
       
       // 1) Refresh lock right before claim
-      console.log('[CLAIM] pre-heartbeat', { sessionId, minerId });
+      console.log('[CLAIM] pre-heartbeat', { sessionId, wallet: address });
       if (cartridge) {
-        await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+        const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
+        const chainId = cartridge.info.chainId;
+        const contract = cartridge.info.contract as `0x${string}`;
+        
+        await apiHeartbeat({
+          wallet: address as `0x${string}`,
+          chainId,
+          contract,
+          tokenId: parseInt(cartridge.tokenId),
+          sessionId
+        });
       }
       pushLine('Lock refreshed for claim...');
       
@@ -593,7 +617,17 @@ function Home() {
           // 4) Reattach + one retry
           pushLine('Retrying claim after reattach...');
           if (cartridge) {
-            await api.heartbeat(sessionId, minerId, cartridge.tokenId, cartridge.info.chainId, cartridge.info.contract);
+            const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
+            const chainId = cartridge.info.chainId;
+            const contract = cartridge.info.contract as `0x${string}`;
+            
+            await apiHeartbeat({
+              wallet: address as `0x${string}`,
+              chainId,
+              contract,
+              tokenId: parseInt(cartridge.tokenId),
+              sessionId
+            });
           }
           await new Promise(r => setTimeout(r, 150));
           claimResponse = await doClaim();

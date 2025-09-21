@@ -161,6 +161,17 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     const { chainId, contract, tokenId } = cartridge;
     
     try {
+      // Step 0: Check wallet session limit
+      const sessionLimit = await SessionStore.checkWalletSessionLimit(wallet);
+      if (!sessionLimit.allowed) {
+        return reply.code(409).send({ 
+          error: 'wallet_session_limit_exceeded',
+          message: `You have reached the maximum of ${sessionLimit.limit} concurrent sessions. Close a session to start another.`,
+          activeCount: sessionLimit.activeCount,
+          limit: sessionLimit.limit
+        });
+      }
+      
       // Step 1: Check/acquire ownership lock (1 hour anti-flip protection)
       const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
       
@@ -185,8 +196,8 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       }
       
     } catch (error) {
-      console.error('[OPEN] Ownership lock acquisition failed:', error);
-      return reply.code(500).send({ error: 'Failed to acquire ownership lock' });
+      console.error('[OPEN] Lock acquisition failed:', error);
+      return reply.code(500).send({ error: 'Failed to acquire locks' });
     }
     
     // Create session in Redis
@@ -240,6 +251,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         await SessionStore.deleteSession(sessionId);
         return reply.code(409).send({ error: 'session_lock_failed', message: 'Failed to acquire session lock' });
       }
+      
+      // Add to wallet session tracking
+      await SessionStore.addWalletSession(wallet, chainId, contract, tokenId, sessionId);
       
     } catch (error) {
       console.error('[OPEN] Session lock acquisition failed:', error);
@@ -617,6 +631,9 @@ fastify.post('/v2/session/stop', async (request, reply) => {
         console.warn('[STOP] Session lock release failed:', { sessionId });
         // Don't fail the request - session might have already expired
       }
+      
+      // Remove from wallet session tracking
+      await SessionStore.removeWalletSession(session.wallet, sessionId);
       
       // Delete session
       await SessionStore.deleteSession(sessionId);

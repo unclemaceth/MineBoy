@@ -32,6 +32,18 @@ function sessionLockKey(chainId: number, contract: string, tokenId: string) {
   return `${PREFIX}lock:cartridge:session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
 }
 
+// Wallet session tracking for limits
+function walletSessionsKey(wallet: string) {
+  return `${PREFIX}wallet:sessions:${wallet.toLowerCase()}`;
+}
+
+function sessionMetaKey(sessionId: string) {
+  return `${PREFIX}session:meta:${sessionId}`;
+}
+
+// Session limit configuration
+const WALLET_SESSION_LIMIT = Number(process.env.WALLET_SESSION_LIMIT ?? 10);
+
 export const SessionStore = r
   ? {
       kind: "redis" as const,
@@ -161,6 +173,81 @@ export const SessionStore = r
         }
       },
 
+      // Wallet session limit management
+      async checkWalletSessionLimit(wallet: string): Promise<{ allowed: boolean; activeCount: number; limit: number }> {
+        const key = walletSessionsKey(wallet);
+        
+        // Clean up expired sessions first
+        await this.cleanupExpiredWalletSessions(wallet);
+        
+        // Count active sessions
+        const activeCount = await r!.scard(key);
+        const allowed = activeCount < WALLET_SESSION_LIMIT;
+        
+        return { allowed, activeCount, limit: WALLET_SESSION_LIMIT };
+      },
+
+      async addWalletSession(wallet: string, chainId: number, contract: string, tokenId: string, sessionId: string) {
+        const walletKey = walletSessionsKey(wallet);
+        const sessionKey = sessionMetaKey(sessionId);
+        const member = `${chainId}:${contract.toLowerCase()}:${tokenId}:${sessionId}`;
+        
+        // Add to wallet sessions set
+        await r!.sadd(walletKey, member);
+        
+        // Store session metadata for cleanup
+        await r!.set(sessionKey, JSON.stringify({ 
+          wallet, 
+          chainId, 
+          contract, 
+          tokenId, 
+          sessionId, 
+          createdAt: Date.now() 
+        }), "EX", 3600); // 1 hour TTL
+      },
+
+      async removeWalletSession(wallet: string, sessionId: string) {
+        const walletKey = walletSessionsKey(wallet);
+        const sessionKey = sessionMetaKey(sessionId);
+        
+        // Get session metadata to find the member
+        const sessionData = await r!.get(sessionKey);
+        if (sessionData) {
+          try {
+            const meta = JSON.parse(sessionData);
+            const member = `${meta.chainId}:${meta.contract.toLowerCase()}:${meta.tokenId}:${sessionId}`;
+            await r!.srem(walletKey, member);
+          } catch (error) {
+            console.error('Failed to parse session metadata:', error);
+          }
+        }
+        
+        // Remove session metadata
+        await r!.del(sessionKey);
+      },
+
+      async cleanupExpiredWalletSessions(wallet: string) {
+        const walletKey = walletSessionsKey(wallet);
+        const members = await r!.smembers(walletKey);
+        
+        for (const member of members) {
+          const parts = member.split(':');
+          if (parts.length === 4) {
+            const [chainId, contract, tokenId, sessionId] = parts;
+            
+            // Check if session lock still exists
+            const lockKey = sessionLockKey(Number(chainId), contract, tokenId);
+            const sessionLockExists = await r!.exists(lockKey);
+            
+            if (!sessionLockExists) {
+              // Session lock expired, remove from wallet sessions
+              await r!.srem(walletKey, member);
+              await r!.del(sessionMetaKey(sessionId));
+            }
+          }
+        }
+      },
+
       // Backward compatibility - will be removed after migration
       async acquireLock(contract: string, tokenId: string, owner: string) {
         // This is now handled by the two-tier system
@@ -183,6 +270,8 @@ export const SessionStore = r
       _s: new Map<string, any>(),
       _ownershipLocks: new Map<string, { wallet: string; issuedAt: number; lastActive: number; expires: number }>(),
       _sessionLocks: new Map<string, { sessionId: string; wallet: string; updatedAt: number; expires: number }>(),
+      _walletSessions: new Map<string, Set<string>>(), // wallet -> Set of session members
+      _sessionMeta: new Map<string, { wallet: string; chainId: number; contract: string; tokenId: string; sessionId: string; createdAt: number }>(),
 
       async createSession(s: Session) {
         this._s.set(s.sessionId, s);
@@ -288,6 +377,84 @@ export const SessionStore = r
           return true;
         }
         return false;
+      },
+
+      // Wallet session limit management (memory fallback)
+      async checkWalletSessionLimit(wallet: string): Promise<{ allowed: boolean; activeCount: number; limit: number }> {
+        // Clean up expired sessions first
+        await this.cleanupExpiredWalletSessions(wallet);
+        
+        // Count active sessions
+        const sessions = this._walletSessions.get(wallet.toLowerCase()) || new Set();
+        const activeCount = sessions.size;
+        const allowed = activeCount < WALLET_SESSION_LIMIT;
+        
+        return { allowed, activeCount, limit: WALLET_SESSION_LIMIT };
+      },
+
+      async addWalletSession(wallet: string, chainId: number, contract: string, tokenId: string, sessionId: string) {
+        const walletKey = wallet.toLowerCase();
+        const member = `${chainId}:${contract.toLowerCase()}:${tokenId}:${sessionId}`;
+        
+        // Add to wallet sessions set
+        if (!this._walletSessions.has(walletKey)) {
+          this._walletSessions.set(walletKey, new Set());
+        }
+        this._walletSessions.get(walletKey)!.add(member);
+        
+        // Store session metadata
+        this._sessionMeta.set(sessionId, { 
+          wallet, 
+          chainId, 
+          contract, 
+          tokenId, 
+          sessionId, 
+          createdAt: Date.now() 
+        });
+      },
+
+      async removeWalletSession(wallet: string, sessionId: string) {
+        const walletKey = wallet.toLowerCase();
+        const meta = this._sessionMeta.get(sessionId);
+        
+        if (meta && meta.wallet === wallet) {
+          const member = `${meta.chainId}:${meta.contract.toLowerCase()}:${meta.tokenId}:${sessionId}`;
+          this._walletSessions.get(walletKey)?.delete(member);
+          this._sessionMeta.delete(sessionId);
+        }
+      },
+
+      async cleanupExpiredWalletSessions(wallet: string) {
+        const walletKey = wallet.toLowerCase();
+        const sessions = this._walletSessions.get(walletKey);
+        if (!sessions) return;
+        
+        const now = Date.now();
+        const toRemove: string[] = [];
+        
+        for (const member of sessions) {
+          const parts = member.split(':');
+          if (parts.length === 4) {
+            const [chainId, contract, tokenId, sessionId] = parts;
+            
+            // Check if session lock still exists
+            const lockKey = `session:${chainId}:${contract.toLowerCase()}:${tokenId}`;
+            const sessionLock = this._sessionLocks.get(lockKey);
+            
+            if (!sessionLock || sessionLock.expires < now || sessionLock.sessionId !== sessionId) {
+              toRemove.push(member);
+            }
+          }
+        }
+        
+        // Remove expired sessions
+        for (const member of toRemove) {
+          sessions.delete(member);
+          const parts = member.split(':');
+          if (parts.length === 4) {
+            this._sessionMeta.delete(parts[3]); // sessionId
+          }
+        }
       },
 
       // Backward compatibility - will be removed after migration
