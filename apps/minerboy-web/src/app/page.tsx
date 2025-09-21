@@ -403,13 +403,39 @@ function Home() {
       loadOpenSession(res, address, { info: cartridgeInfo, tokenId });
       pushLine('Session opened successfully!');
       
-        } catch (error: any) {
-          if (String(error.message).includes('HTTP 409')) {
-            pushLine('Cartridge is in use. If you just reloaded, wait a few seconds and try again.');
-            return;
-          }
-          pushLine(`Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-        }
+    } catch (error: any) {
+      // Handle new two-tier locking error codes
+      if (error.code === 'cartridge_in_use') {
+        const minutes = error.remainingMinutes || 'unknown';
+        pushLine(`Cartridge locked for ~${minutes} minutes. Try later.`);
+        return;
+      }
+      
+      if (error.code === 'session_still_active') {
+        pushLine('Mining already active in another tab for this cartridge.');
+        return;
+      }
+      
+      if (error.code === 'active_session_elsewhere') {
+        pushLine('Another session is active on this cartridge.');
+        return;
+      }
+      
+      if (error.code === 'wallet_session_limit_exceeded') {
+        const limit = error.limit || 10;
+        const active = error.activeCount || 0;
+        pushLine(`Max ${limit} concurrent sessions reached (${active}/${limit}). Close a session to start another.`);
+        return;
+      }
+      
+      // Fallback for old error format
+      if (String(error.message).includes('HTTP 409')) {
+        pushLine('Cartridge is in use. If you just reloaded, wait a few seconds and try again.');
+        return;
+      }
+      
+      pushLine(`Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
   
   const handleA = async () => {
