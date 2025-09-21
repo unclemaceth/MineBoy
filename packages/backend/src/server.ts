@@ -131,7 +131,29 @@ fastify.get('/v2/cartridges', async () => {
 // Open a mining session
 fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
   const body = request.body as any;
-  const { wallet, cartridge, clientInfo, minerId } = body;
+  
+  // Handle both old and new request formats
+  let wallet, chainId, contract, tokenId, sessionId, minerId, clientInfo;
+  
+  if (body.cartridge) {
+    // Old format: { wallet, cartridge: { chainId, contract, tokenId }, clientInfo, minerId }
+    wallet = body.wallet;
+    chainId = body.cartridge.chainId;
+    contract = body.cartridge.contract;
+    tokenId = body.cartridge.tokenId;
+    clientInfo = body.clientInfo;
+    minerId = body.minerId;
+    sessionId = null; // Will be generated
+  } else {
+    // New format: { wallet, chainId, contract, tokenId, sessionId }
+    wallet = body.wallet;
+    chainId = body.chainId;
+    contract = body.contract;
+    tokenId = body.tokenId;
+    sessionId = body.sessionId;
+    clientInfo = body.clientInfo || { ua: 'Unknown' };
+    minerId = body.minerId || 'legacy-miner'; // Generate if not provided
+  }
   
   console.log('[session/open] Request body:', JSON.stringify(body, null, 2));
   
@@ -142,15 +164,15 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     }
     
     // Validate cartridge is allowed
-    if (!cartridgeRegistry.isAllowed(cartridge.contract)) {
+    if (!cartridgeRegistry.isAllowed(contract)) {
       return reply.code(400).send({ error: 'Cartridge not allowed' });
     }
     
     // Verify ownership
     const ownsToken = await ownershipVerifier.ownsCartridge(
       wallet, 
-      cartridge.contract, 
-      cartridge.tokenId
+      contract, 
+      tokenId
     );
     
     if (!ownsToken) {
@@ -158,7 +180,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     }
     
     // Two-tier locking system
-    const { chainId, contract, tokenId } = cartridge;
+    // chainId, contract, tokenId are already extracted above
     
     try {
       // Step 0: Check wallet session limit
@@ -200,8 +222,10 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       return reply.code(500).send({ error: 'Failed to acquire locks' });
     }
     
-    // Create session in Redis
-    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    // Create session in Redis (generate sessionId if not provided)
+    if (!sessionId) {
+      sessionId = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    }
     const session = {
       sessionId,
       minerId,
