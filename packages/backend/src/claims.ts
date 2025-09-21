@@ -34,12 +34,12 @@ function hexlifyData(data: any): `0x${string}` {
 function serializeJob(job: any | null): any | null {
   if (!job) return null;
   return {
-    id: job.id,
-    jobId: job.id,
-    data: hexlifyData(job.dataHex ?? job.data ?? job.bytes),
-    target: job.target,
+    id: job.jobId,
+    jobId: job.jobId,
+    data: hexlifyData(job.nonce ?? job.dataHex ?? job.data ?? job.bytes),
+    target: job.suffix,
     rule: job.rule,
-    difficultyBits: job.difficultyBits,
+    difficultyBits: 6, // Default difficulty bits
     expiresAt: job.expiresAt,
   };
 }
