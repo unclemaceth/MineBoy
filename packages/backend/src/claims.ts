@@ -20,6 +20,30 @@ import { utf8ToBytes, bytesToHex } from '@noble/hashes/utils';
 import { insertPendingClaim } from './db.js';
 import { randomUUID } from 'crypto';
 
+// Import job serializer from server
+function hexlifyData(data: any): `0x${string}` {
+  if (typeof data === 'string' && data.startsWith('0x')) return data as `0x${string}`;
+  if (typeof data === 'string') return (`0x${Buffer.from(data, 'utf8').toString('hex')}`) as `0x${string}`;
+  if (data instanceof Uint8Array) return (`0x${Buffer.from(data).toString('hex')}`) as `0x${string}`;
+  if (Array.isArray(data)) return (`0x${Buffer.from(Uint8Array.from(data)).toString('hex')}`) as `0x${string}`;
+  if (data?.bytes) return (`0x${Buffer.from(data.bytes).toString('hex')}`) as `0x${string}`;
+  if (data?.dataHex) return data.dataHex as `0x${string}`;
+  throw new Error('Unsupported job data type');
+}
+
+function serializeJob(job: any | null): any | null {
+  if (!job) return null;
+  return {
+    id: job.id,
+    jobId: job.id,
+    data: hexlifyData(job.dataHex ?? job.data ?? job.bytes),
+    target: job.target,
+    rule: job.rule,
+    difficultyBits: job.difficultyBits,
+    expiresAt: job.expiresAt,
+  };
+}
+
 const EIP712_TYPES = {
   Claim: [
     { name: 'wallet',        type: 'address' },
@@ -172,7 +196,7 @@ export class ClaimProcessor {
       claimId,
       claim: claimStruct,
       signature,
-      nextJob
+      nextJob: serializeJob(nextJob)
     } as ClaimRes & { claimId: string; claim: ClaimStruct; signature: string };
   }
   

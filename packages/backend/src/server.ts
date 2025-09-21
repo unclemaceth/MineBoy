@@ -29,6 +29,41 @@ import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
 import { canonicalizeCartridge, cartKey } from './canonical.js';
 
+// ---- Job serialization helpers ----
+type ApiJob = {
+  id: string;
+  jobId: string;
+  data: `0x${string}`;
+  target: string;
+  rule: 'suffix' | 'prefix';
+  difficultyBits: number;
+  expiresAt: number;
+};
+
+function hexlifyData(data: any): `0x${string}` {
+  if (typeof data === 'string' && data.startsWith('0x')) return data as `0x${string}`;
+  if (typeof data === 'string') return (`0x${Buffer.from(data, 'utf8').toString('hex')}`) as `0x${string}`;
+  if (data instanceof Uint8Array) return (`0x${Buffer.from(data).toString('hex')}`) as `0x${string}`;
+  if (Array.isArray(data)) return (`0x${Buffer.from(Uint8Array.from(data)).toString('hex')}`) as `0x${string}`;
+  // fall back if your job uses job.bytes / job.dataHex
+  if (data?.bytes) return (`0x${Buffer.from(data.bytes).toString('hex')}`) as `0x${string}`;
+  if (data?.dataHex) return data.dataHex as `0x${string}`;
+  throw new Error('Unsupported job data type');
+}
+
+function serializeJob(job: any | null): ApiJob | null {
+  if (!job) return null;
+  return {
+    id: job.id,
+    jobId: job.id,
+    data: hexlifyData(job.dataHex ?? job.data ?? job.bytes),
+    target: job.target,
+    rule: job.rule,
+    difficultyBits: job.difficultyBits,
+    expiresAt: job.expiresAt,
+  };
+}
+
 // Structured error response helper
 function errorResponse(reply: any, status: number, code: string, message: string, details?: any) {
   return reply.code(status).send({ code, message, details });
@@ -232,12 +267,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
         return errorResponse(reply, 409, 'ownership_conflict', 'Failed to acquire ownership lock');
       }
       
-      // Bind miner ID to ownership lock
-      const openOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
-      if (openOwnershipLock && (!openOwnershipLock.minerId || openOwnershipLock.minerId === 'legacy-miner')) {
-        console.log('[session/open] Adopting miner ID for ownership lock:', { from: openOwnershipLock.minerId, to: minerId });
-        await SessionStore.setOwnershipMinerId(canonical.chainId, canonical.contract, canonical.tokenId, minerId);
-      }
+      // Ownership lock is wallet-scoped only (no minerId binding)
       
     } catch (error) {
       console.error('[OPEN] Lock acquisition failed:', error);
@@ -343,26 +373,12 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     console.log(`Created session ${sessionId} for wallet ${wallet} with token ${contract}:${tokenId}`);
     console.log('[OPEN_SESSION] Building response...');
     
-    // Build JSON-safe response
+    // Build JSON-safe response using serializer
     const response = {
       sessionId,
       ownershipTtlSec: Math.floor(3_600_000 / 1000), // 1 hour in seconds
       sessionTtlSec: Math.floor(60_000 / 1000),      // 60 seconds in seconds
-      job: {
-        id: job.jobId,
-        data: job.nonce,
-        nonce: job.nonce, // Add nonce field for debug modal
-        target: job.suffix,
-        suffix: job.suffix, // Add suffix field for debug modal
-        height: 1, // Default height value
-        difficulty: 6, // Default difficulty
-        expiresAt: job.expiresAt ? Number(job.expiresAt) : undefined,
-        ttlMs: job.ttlMs ? Number(job.ttlMs) : undefined,
-        epoch: job.epoch ? Number(job.epoch) : undefined,
-        rule: job.rule || 'suffix',
-        difficultyBits: 6, // Default difficulty bits
-        targetBits: undefined // Not available in Job type
-      },
+      job: serializeJob(job),
       policy: {
         heartbeatSec: 20,
         cooldownSec: 2
@@ -518,17 +534,17 @@ fastify.get('/v2/debug/lock', async (request, reply) => {
       return { error: 'Session not found' };
     }
     
-    const { contract, tokenId } = session.cartridge;
-    const lockKey = `mineboy:v2:lock:${contract.toLowerCase()}:${tokenId}`;
-    const lockOwner = await getRedis()?.get(lockKey);
+    const { chainId, contract, tokenId } = session.cartridge;
+    const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
     
     return {
       sessionId,
       cartridge: `${contract}:${tokenId}`,
-      ownerMinerId: lockOwner,
-      sessionMinerId: session.minerId,
-      match: lockOwner === session.minerId,
-      ttl: await getRedis()?.pttl(lockKey)
+      ownerWallet: ownershipLock?.wallet ?? null,
+      sessionWallet: session.wallet,
+      match: (ownershipLock?.wallet?.toLowerCase() ?? '') === (session.wallet?.toLowerCase() ?? ''),
+      sessionMinerId: session.minerId, // Keep for telemetry
+      ttl: ownershipLock ? Math.floor((ownershipLock.lastActive + 3_600_000 - Date.now()) / 1000) : 0
     };
   }
   
@@ -619,12 +635,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       }
     }
     
-    // Step 4: Adopt miner ID for ownership lock (for telemetry only, not validation)
-    const adoptOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    if (adoptOwnershipLock && (!adoptOwnershipLock.minerId || adoptOwnershipLock.minerId === 'legacy-miner')) {
-      console.log('[HB] Adopting miner ID for ownership lock (telemetry):', { from: adoptOwnershipLock.minerId, to: minerId });
-      await SessionStore.setOwnershipMinerId(canonical.chainId, canonical.contract, canonical.tokenId, minerId);
-    }
+    // Ownership lock is wallet-scoped only (no minerId adoption needed)
     
     // Validate session cartridge matches request using canonical keys
     const sessionCartKey = cartKey(session.cartridge);
