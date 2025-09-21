@@ -71,7 +71,7 @@ const fetchJSON = async (path: string, body: any) => {
 };
 
 export async function apiStart(req: StartReq): Promise<StartOk> {
-  return fetchJSON('/v2/session/open', req) as Promise<StartOk>;
+  return fetchJSON('/session/open', req) as Promise<StartOk>;
 }
 
 export async function apiHeartbeat(req: StartReq): Promise<{ sessionTtlSec: number }> {
