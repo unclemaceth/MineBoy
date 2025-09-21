@@ -6,20 +6,32 @@ interface Visualizer3x3Props {
   fullscreen?: boolean;
   hideHud?: boolean;
   hideHashLine?: boolean;
+  nibs?: number[];
 }
 
 export default function Visualizer3x3({ 
   fullscreen = true, 
   hideHud = true, 
-  hideHashLine = true 
+  hideHashLine = true,
+  nibs
 }: Visualizer3x3Props) {
   const { mining, lastFound, job } = useSession();
   const [currentHash, setCurrentHash] = useState('0x0000000000000000000000000000000000000000000000000000000000000000');
   const [containerSize, setContainerSize] = useState({ width: 300, height: 300 });
   
-  // Extract last 9 hex characters for the 3x3 grid
-  const getGridData = (hash: string) => {
-    const cleanHash = hash.replace('0x', '');
+  // Use real nibbles from worker or fallback to generated data
+  const getGridData = (nibs?: number[]) => {
+    if (nibs && nibs.length === 9) {
+      // Use real nibbles from worker
+      return nibs.map(nibble => {
+        // Map 0-15 to 0.25-1.0 brightness
+        const brightness = 0.25 + (nibble / 15) * 0.75;
+        return { nibble, brightness };
+      });
+    }
+    
+    // Fallback to generated data from current hash
+    const cleanHash = currentHash.replace('0x', '');
     const last9 = cleanHash.slice(-9);
     
     return Array.from(last9).map(char => {
@@ -30,7 +42,7 @@ export default function Visualizer3x3({
     });
   };
 
-  const gridData = getGridData(currentHash);
+  const gridData = getGridData(nibs);
   
   // Generate new hashes when mining
   useEffect(() => {

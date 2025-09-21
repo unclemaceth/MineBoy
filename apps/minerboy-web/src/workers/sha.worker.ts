@@ -22,7 +22,7 @@ type InStart = {
 type InStop = { type: 'STOP' };
 type InMsg = InStart | InStop;
 
-type OutTick = { type: 'TICK'; attempts: number; hr: number };
+type OutTick = { type: 'TICK'; attempts: number; hr: number; hash: string; nibs: number[] };
 type OutFound = {
   type: 'FOUND';
   hash: string;        // 0x...
@@ -53,6 +53,13 @@ function sha256HexAscii(s: string): string {
 function hrNow(): number {
   const dur = Math.max(1, performance.now() - startTs) / 1000;
   return Math.floor(attempts / dur);
+}
+
+function sampleNibs(hashHex: string): number[] {
+  const h = hashHex.startsWith('0x') ? hashHex.slice(2) : hashHex; // 64 hex chars (32 bytes)
+  // 9 evenly-spaced nibbles across the digest
+  const ix = [0, 8, 16, 24, 32, 40, 48, 56, 63];
+  return ix.map(i => parseInt(h[i] || '0', 16));
 }
 
 function hasTrailingZeroBitsHex(hash: string, nBits: number): boolean {
@@ -114,12 +121,18 @@ function mine({ nonce, rule, suffix, difficultyBits }: {
       return;
     }
 
-    // Send TICK every 256 attempts or every 500ms, whichever comes first
+    // Send TICK every 256 attempts or every 100ms, whichever comes first
     if (attempts % 256 === 0) {
       const now = performance.now();
-      if (now - lastTickTs > 100) { // Don't spam too fast
+      if (now - lastTickTs > 80) { // ~12 fps for smooth visualizer
         lastTickTs = now;
-        const out: OutTick = { type: 'TICK', attempts, hr: hrNow() };
+        const out: OutTick = { 
+          type: 'TICK', 
+          attempts, 
+          hr: hrNow(),
+          hash,
+          nibs: sampleNibs(hash)
+        };
         ctx.postMessage(out);
       }
     }

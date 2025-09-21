@@ -131,7 +131,15 @@ function Home() {
   
   // Miner worker
   const miner = useMinerWorker({
-    onTick: (a, hashRate) => setTelemetry(a, hashRate),
+    onTick: (a, hashRate, hash, nibs) => {
+      setTelemetry(a, hashRate);
+      if (hash) {
+        setCurrentDisplayHash(hash);
+      }
+      if (nibs && nibs.length === 9) {
+        setVisualizerNibs(nibs);
+      }
+    },
     onFound: ({ hash, preimage, attempts, hr }) => {
       // Check if job is still valid before processing found hash
       if (job && job.expiresAt && Date.now() > job.expiresAt) {
@@ -963,11 +971,13 @@ function Home() {
   
   // LCD display data from state
   const [currentDisplayHash, setCurrentDisplayHash] = useState('0x0000000000000000000000000000000000000000000000000000000000000000');
+  const [visualizerNibs, setVisualizerNibs] = useState<number[]>([0,0,0,0,0,0,0,0,0]);
   
   // Update hash display when mining
   useEffect(() => {
     if (!mining || !job) {
       setCurrentDisplayHash(hexFrom(job?.nonce, 64));
+      setVisualizerNibs([0,0,0,0,0,0,0,0,0]); // Reset visualizer
       return;
     }
 
@@ -1262,7 +1272,7 @@ function Home() {
             </div>
           ) : (
             // Visual mode - show 3x3 visualizer
-            <Visualizer3x3 />
+            <Visualizer3x3 nibs={visualizerNibs} />
           )}
           
           {/* Live telemetry when mining (only show in terminal mode) */}

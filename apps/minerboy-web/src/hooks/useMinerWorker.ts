@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MiningJob as Job } from '@/types/mining';
 
 type Events = {
-  onTick?: (attempts: number, hr: number) => void;
+  onTick?: (attempts: number, hr: number, hash?: string, nibs?: number[]) => void;
   onFound?: (payload: { hash: string; preimage: string; attempts: number; hr: number }) => void;
   onError?: (message: string) => void;
 };
@@ -17,7 +17,7 @@ export function useMinerWorker(events: Events = {}) {
     w.onmessage = (e: MessageEvent<unknown>) => {
       const msg = e.data as any;
       if (msg?.type === 'TICK') {
-        events.onTick?.(msg.attempts, msg.hr);
+        events.onTick?.(msg.attempts, msg.hr, msg.hash, msg.nibs);
       } else if (msg?.type === 'FOUND') {
         setRunning(false);
         events.onFound?.(msg);
