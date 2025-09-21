@@ -233,9 +233,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       }
       
       // Bind miner ID to ownership lock
-      const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
-      if (ownershipLock && (!ownershipLock.minerId || ownershipLock.minerId === 'legacy-miner')) {
-        console.log('[session/open] Adopting miner ID for ownership lock:', { from: ownershipLock.minerId, to: minerId });
+      const openOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
+      if (openOwnershipLock && (!openOwnershipLock.minerId || openOwnershipLock.minerId === 'legacy-miner')) {
+        console.log('[session/open] Adopting miner ID for ownership lock:', { from: openOwnershipLock.minerId, to: minerId });
         await SessionStore.setOwnershipMinerId(canonical.chainId, canonical.contract, canonical.tokenId, minerId);
       }
       
@@ -592,24 +592,37 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return errorResponse(reply, 404, 'session_not_found', 'Session expired - please restart mining');
     }
     
-    // Handle legacy miner ID migration for both session and ownership locks
+    // Step 1: Validate ownership lock (wallet-only validation)
+    const hbOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
+    if (!hbOwnershipLock || hbOwnershipLock.wallet !== session.wallet) {
+      console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet });
+      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over', { expectedWallet: hbOwnershipLock?.wallet, receivedWallet: session.wallet });
+    }
+    
+    // Step 2: Validate session lock (minerId + sessionId validation for multi-tab prevention)
+    const sessionLock = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
+    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
+      console.warn('[HB] 409 session lock lost:', { sessionId, sessionLock });
+      return errorResponse(reply, 409, 'session_conflict', 'Session lock lost - another session may be active', { expectedSessionId: sessionLock?.sessionId, receivedSessionId: sessionId });
+    }
+    
+    // Step 3: Check for miner ID mismatch (different tab from same wallet)
     if (session.minerId !== minerId) {
-      // If session was created with legacy-miner, migrate to the real miner ID
+      // Handle legacy miner ID migration
       if (session.minerId === 'legacy-miner' || !session.minerId) {
         console.log('[HB] Migrating legacy miner ID:', { from: session.minerId, to: minerId, sessionId });
         session.minerId = minerId;
-        // Update the session in Redis with the new miner ID
         await SessionStore.createSession(session);
       } else {
-        console.warn('[HB] 409 minerId mismatch:', { expect: session.minerId, got: minerId, sessionId });
-        return errorResponse(reply, 409, 'ownership_conflict', 'Miner ID mismatch', { expected: session.minerId, received: minerId });
+        console.warn('[HB] 409 session conflict - different tab:', { expect: session.minerId, got: minerId, sessionId });
+        return errorResponse(reply, 409, 'session_conflict', 'Different browser tab detected - only one tab can mine this cartridge', { expectedMinerId: session.minerId, receivedMinerId: minerId });
       }
     }
     
-    // Adopt miner ID for ownership lock if it's missing or legacy
-    const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    if (ownershipLock && (!ownershipLock.minerId || ownershipLock.minerId === 'legacy-miner')) {
-      console.log('[HB] Adopting miner ID for ownership lock:', { from: ownershipLock.minerId, to: minerId });
+    // Step 4: Adopt miner ID for ownership lock (for telemetry only, not validation)
+    const adoptOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
+    if (adoptOwnershipLock && (!adoptOwnershipLock.minerId || adoptOwnershipLock.minerId === 'legacy-miner')) {
+      console.log('[HB] Adopting miner ID for ownership lock (telemetry):', { from: adoptOwnershipLock.minerId, to: minerId });
       await SessionStore.setOwnershipMinerId(canonical.chainId, canonical.contract, canonical.tokenId, minerId);
     }
     
@@ -636,21 +649,7 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       });
     }
     
-    // Step 1: Validate ownership lock (must own the cartridge)
-    const ownershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    if (!ownershipLock || ownershipLock.wallet !== session.wallet) {
-      console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet });
-      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over');
-    }
-    
-    // Step 2: Validate session lock (must be the active session)
-    const sessionLock = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
-      console.warn('[HB] 409 session lock lost:', { sessionId, sessionLock });
-      return errorResponse(reply, 409, 'ownership_conflict', 'Session lock lost - another session may be active');
-    }
-    
-    // Step 3: Refresh both locks
+    // Step 5: Refresh both locks
     try {
       // Refresh ownership lock (update lastActive)
       const ownershipRefreshed = await SessionStore.refreshOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId, session.wallet);

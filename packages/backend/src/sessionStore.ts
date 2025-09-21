@@ -288,7 +288,7 @@ export const SessionStore = r
       // Fallback in-memory (dev only)
       kind: "memory" as const,
       _s: new Map<string, any>(),
-      _ownershipLocks: new Map<string, { wallet: string; issuedAt: number; lastActive: number; expires: number }>(),
+      _ownershipLocks: new Map<string, { wallet: string; issuedAt: number; lastActive: number; expires: number; minerId?: string }>(),
       _sessionLocks: new Map<string, { sessionId: string; wallet: string; updatedAt: number; expires: number }>(),
       _walletSessions: new Map<string, Set<string>>(), // wallet -> Set of session members
       _sessionMeta: new Map<string, { wallet: string; chainId: number; contract: string; tokenId: string; sessionId: string; createdAt: number }>(),
@@ -347,7 +347,18 @@ export const SessionStore = r
         const now = Date.now();
         
         if (!l || l.expires < now) return null;
-        return { wallet: l.wallet, issuedAt: l.issuedAt, lastActive: l.lastActive };
+        return { wallet: l.wallet, issuedAt: l.issuedAt, lastActive: l.lastActive, minerId: l.minerId };
+      },
+
+      async setOwnershipMinerId(chainId: number, contract: string, tokenId: string, minerId: string) {
+        const key = `${chainId}:${contract.toLowerCase()}:${tokenId}`;
+        const l = this._ownershipLocks.get(key);
+        const now = Date.now();
+        
+        if (!l || l.expires < now) return false;
+        
+        l.minerId = minerId;
+        return true;
       },
 
       async acquireSessionLock(chainId: number, contract: string, tokenId: string, sessionId: string, wallet: string) {
