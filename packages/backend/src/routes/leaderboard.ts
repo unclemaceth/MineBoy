@@ -58,12 +58,17 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         }
       }
 
+      const pollInterval = parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '3600000', 10);
+      const nextUpdate = new Date(Date.now() + pollInterval);
+      
+      console.log(`📊 Leaderboard: RECEIPT_POLL_INTERVAL_MS=${process.env.RECEIPT_POLL_INTERVAL_MS}, computed=${pollInterval}ms, nextUpdate=${nextUpdate.toISOString()}`);
+      
       reply.send({ 
         period, 
         entries, 
         me,
         lastUpdated: new Date().toISOString(),
-        nextUpdate: new Date(Date.now() + parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '3600000', 10)).toISOString()
+        nextUpdate: nextUpdate.toISOString()
       });
     }
   );

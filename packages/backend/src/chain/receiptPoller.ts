@@ -10,6 +10,8 @@ export function startReceiptPoller(rpcUrl: string) {
   const batchLimit = parseInt(process.env.RECEIPT_POLL_BATCH_LIMIT || '500', 10); // 500 per batch
   const runPoller = process.env.RUN_RECEIPT_POLLER !== 'false'; // default true
   
+  console.log(`📊 Receipt poller config: RECEIPT_POLL_INTERVAL_MS=${process.env.RECEIPT_POLL_INTERVAL_MS}, computed=${intervalMs}ms`);
+  
   if (!runPoller) {
     console.log('📊 Receipt poller disabled via RUN_RECEIPT_POLLER=false');
     return () => {}; // no-op cleanup
