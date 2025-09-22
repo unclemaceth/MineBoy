@@ -824,7 +824,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
   try {
     if (!requireDebugAuth(req, res)) return;
 
-    const { getDB } = await import('../db.js');
+    const { getDB } = await import('./db.js');
     const d = getDB();
     
     // Get all confirmed claims
