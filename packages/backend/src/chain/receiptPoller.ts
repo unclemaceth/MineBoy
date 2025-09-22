@@ -6,7 +6,7 @@ export function startReceiptPoller(rpcUrl: string) {
   const provider = new JsonRpcProvider(rpcUrl);
   
   // Read config from env with sensible defaults
-  const intervalMs = parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '3600000', 10); // 1 hour default
+  const intervalMs = parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '600000', 10); // 10 minutes default
   const batchLimit = parseInt(process.env.RECEIPT_POLL_BATCH_LIMIT || '500', 10); // 500 per batch
   const runPoller = process.env.RUN_RECEIPT_POLLER !== 'false'; // default true
   
@@ -18,10 +18,6 @@ export function startReceiptPoller(rpcUrl: string) {
   }
   
   console.log(`📊 Receipt poller starting: ${intervalMs}ms interval, ${batchLimit} batch limit`);
-  
-  // Add jitter to avoid thundering herd if multiple instances
-  const jitter = Math.random() * 0.1; // ±10%
-  const actualInterval = Math.floor(intervalMs * (1 + jitter));
   
   const checkPendingReceiptsInBatches = async () => {
     const now = Date.now();
@@ -85,15 +81,53 @@ export function startReceiptPoller(rpcUrl: string) {
     }
   };
   
-  // Run immediately on startup, then on interval
+  // Calculate next exact 10-minute mark
+  const getNextExactInterval = () => {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    const milliseconds = now.getMilliseconds();
+    
+    // Round up to next 10-minute mark
+    const nextMinute = Math.ceil(minutes / 10) * 10;
+    const nextTime = new Date(now);
+    
+    if (nextMinute >= 60) {
+      nextTime.setHours(nextTime.getHours() + 1);
+      nextTime.setMinutes(0);
+    } else {
+      nextTime.setMinutes(nextMinute);
+    }
+    nextTime.setSeconds(0);
+    nextTime.setMilliseconds(0);
+    
+    const delay = nextTime.getTime() - now.getTime();
+    return delay;
+  };
+  
+  // Run immediately on startup
   checkPendingReceiptsInBatches();
   
-  const handle = setInterval(checkPendingReceiptsInBatches, actualInterval);
+  // Schedule first run at exact 10-minute mark
+  const firstDelay = getNextExactInterval();
+  console.log(`📊 Receipt poller scheduled: first check in ${Math.round(firstDelay / 1000)}s (at exact 10-minute mark)`);
   
-  console.log(`📊 Receipt poller scheduled: next check in ${Math.round(actualInterval / 1000)}s`);
+  const firstTimeout = setTimeout(() => {
+    checkPendingReceiptsInBatches();
+    
+    // Then run every 10 minutes exactly
+    const handle = setInterval(checkPendingReceiptsInBatches, intervalMs);
+    console.log(`📊 Receipt poller now running every ${intervalMs / 1000}s exactly`);
+    
+    // Store handle for cleanup
+    (firstTimeout as any).intervalHandle = handle;
+  }, firstDelay);
   
   return () => {
-    clearInterval(handle);
+    clearTimeout(firstTimeout);
+    if ((firstTimeout as any).intervalHandle) {
+      clearInterval((firstTimeout as any).intervalHandle);
+    }
     console.log('📊 Receipt poller stopped');
   };
 }

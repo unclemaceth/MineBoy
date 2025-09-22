@@ -59,10 +59,24 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
       }
 
       const pollInterval = parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '600000', 10);
-      const nextUpdate = new Date(Date.now() + pollInterval);
       
-      // Calculate when the last receipt poller run was (approximate)
-      const lastReceiptPollerRun = new Date(Date.now() - pollInterval);
+      // Calculate next exact 10-minute mark
+      const now = new Date();
+      const minutes = now.getMinutes();
+      const nextMinute = Math.ceil(minutes / 10) * 10;
+      const nextUpdate = new Date(now);
+      
+      if (nextMinute >= 60) {
+        nextUpdate.setHours(nextUpdate.getHours() + 1);
+        nextUpdate.setMinutes(0);
+      } else {
+        nextUpdate.setMinutes(nextMinute);
+      }
+      nextUpdate.setSeconds(0);
+      nextUpdate.setMilliseconds(0);
+      
+      // Calculate when the last receipt poller run was (exact 10-minute mark)
+      const lastReceiptPollerRun = new Date(nextUpdate.getTime() - pollInterval);
       
       console.log(`📊 Leaderboard: RECEIPT_POLL_INTERVAL_MS=${process.env.RECEIPT_POLL_INTERVAL_MS}, computed=${pollInterval}ms, nextUpdate=${nextUpdate.toISOString()}`);
       
