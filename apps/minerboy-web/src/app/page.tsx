@@ -103,6 +103,21 @@ function Home() {
   const { open: openWalletModal } = useWalletModal();
   const { writeContract, data: hash } = useWriteContract();
   
+  // Handle transaction hash submission to backend
+  React.useEffect(() => {
+    if (hash && claimResponse?.claimId) {
+      api.claimTx({ 
+        claimId: claimResponse.claimId, 
+        txHash: hash 
+      }).then(() => {
+        pushLine('Transaction hash submitted to backend');
+      }).catch((error) => {
+        console.error('Failed to submit tx hash:', error);
+        pushLine('Warning: Transaction hash not submitted to backend');
+      });
+    }
+  }, [hash, claimResponse?.claimId, pushLine]);
+  
   // Session state
   const { 
     wallet,

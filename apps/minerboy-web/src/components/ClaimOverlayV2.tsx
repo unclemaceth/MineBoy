@@ -19,13 +19,24 @@ export default function ClaimOverlayV2() {
 
   // Handle transaction success
   React.useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && hash && claimData) {
+      // Submit transaction hash to backend
+      api.claimTx({ 
+        claimId: (claimData as any).claimId, 
+        txHash: hash 
+      }).then(() => {
+        pushLine('Transaction hash submitted to backend');
+      }).catch((error) => {
+        console.error('Failed to submit tx hash:', error);
+        pushLine('Warning: Transaction hash not submitted to backend');
+      });
+      
       pushLine('Claim successful! Tokens minted.');
       setFound(undefined);
       setClaiming(false);
       setClaimData(null);
     }
-  }, [isSuccess, pushLine, setFound]);
+  }, [isSuccess, hash, claimData, pushLine, setFound]);
 
   // Handle transaction error
   React.useEffect(() => {
