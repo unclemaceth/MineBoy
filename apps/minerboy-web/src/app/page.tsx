@@ -333,12 +333,15 @@ function Home() {
 
   // Watch for transaction hash and report to backend with retry
   useEffect(() => {
+    console.log('[TX_HASH_DEBUG]', { pendingClaimId, hash, hasBoth: !!(pendingClaimId && hash) });
+    
     if (!pendingClaimId || !hash) return;
 
     let cancelled = false;
 
     const submit = async (attempt = 0) => {
       try {
+        console.log('[TX_HASH_SUBMIT]', { claimId: pendingClaimId, txHash: hash, attempt });
         await api.claimTx({ claimId: pendingClaimId, txHash: hash });
         pushLine('Transaction tracked by backend');
         setPendingClaimId(null); // prevent repeats
