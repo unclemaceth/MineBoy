@@ -876,6 +876,41 @@ fastify.get('/v2/audit/claims', async (req, res) => {
   }
 });
 
+// Backfill endpoint to attach transaction hash to pending claims
+fastify.post('/v2/admin/attach-tx-by-hash', async (req, res) => {
+  try {
+    if (!requireDebugAuth(req, res)) return;
+
+    const { txHash } = req.body;
+    if (!txHash) {
+      return res.status(400).send({ error: 'txHash required' });
+    }
+
+    const db = require('./db.js');
+    const d = db.getDB();
+    
+    // Find pending claims that might match this transaction
+    // Look for claims created within the last 30 minutes
+    const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
+    const stmt = d.prepare(`
+      SELECT id, wallet, created_at
+      FROM claims
+      WHERE status='pending' AND created_at >= ?
+      ORDER BY created_at DESC
+    `);
+    const pendingClaims = stmt.all(thirtyMinutesAgo);
+    
+    return res.send({
+      message: 'Found pending claims',
+      txHash,
+      pendingClaims,
+      instructions: 'Use POST /v2/claim/tx with claimId and txHash to backfill'
+    });
+  } catch (e) {
+    return res.status(500).send({ code: 'backfill_error', message: 'Failed to find pending claims', details: String(e) });
+  }
+});
+
 // Debug endpoint to inspect claims database
 fastify.get('/v2/debug/claims', async (req, res) => {
   try {

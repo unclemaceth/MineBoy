@@ -17,24 +17,32 @@ export default function ClaimOverlayV2() {
     hash,
   });
 
-  // Handle transaction success
+  // Handle transaction success with retry
   React.useEffect(() => {
     if (isSuccess && hash && claimData) {
-      // Submit transaction hash to backend
-      api.claimTx({ 
-        claimId: (claimData as any).claimId, 
-        txHash: hash 
-      }).then(() => {
-        pushLine('Transaction hash submitted to backend');
-      }).catch((error) => {
-        console.error('Failed to submit tx hash:', error);
-        pushLine('Warning: Transaction hash not submitted to backend');
-      });
+      const claimId = (claimData as any).claimId;
+      let cancelled = false;
+
+      const submit = async (attempt = 0) => {
+        try {
+          await api.claimTx({ claimId, txHash: hash });
+          pushLine('Transaction hash submitted to backend');
+        } catch (e) {
+          if (cancelled) return;
+          const backoff = Math.min(30_000, 1000 * Math.pow(2, attempt)); // up to 30s
+          console.warn(`Failed to submit tx hash (attempt ${attempt + 1}), retrying in ${backoff}ms:`, e);
+          setTimeout(() => submit(attempt + 1), backoff);
+        }
+      };
+
+      submit();
       
       pushLine('Claim successful! Tokens minted.');
       setFound(undefined);
       setClaiming(false);
       setClaimData(null);
+
+      return () => { cancelled = true; };
     }
   }, [isSuccess, hash, claimData, pushLine, setFound]);
 

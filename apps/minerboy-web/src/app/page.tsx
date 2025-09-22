@@ -331,20 +331,28 @@ function Home() {
     };
   }, [sessionId]);
 
-  // Watch for transaction hash and report to backend
+  // Watch for transaction hash and report to backend with retry
   useEffect(() => {
-    if (hash && pendingClaimId) {
-      // Report transaction hash to backend for tracking
-      api.claimTx({ claimId: pendingClaimId, txHash: hash })
-        .then(() => {
-          pushLine('Transaction tracked by backend');
-          setPendingClaimId(null); // Clear after successful report
-        })
-        .catch((error) => {
-          console.warn('Failed to report tx hash to backend:', error);
-          // Don't fail the claim if this fails
-        });
-    }
+    if (!pendingClaimId || !hash) return;
+
+    let cancelled = false;
+
+    const submit = async (attempt = 0) => {
+      try {
+        await api.claimTx({ claimId: pendingClaimId, txHash: hash });
+        pushLine('Transaction tracked by backend');
+        setPendingClaimId(null); // prevent repeats
+      } catch (e) {
+        if (cancelled) return;
+        const backoff = Math.min(30_000, 1000 * Math.pow(2, attempt)); // up to 30s
+        console.warn(`Failed to submit tx hash (attempt ${attempt + 1}), retrying in ${backoff}ms:`, e);
+        setTimeout(() => submit(attempt + 1), backoff);
+      }
+    };
+
+    submit();
+
+    return () => { cancelled = true; };
   }, [hash, pendingClaimId, pushLine]);
 
   // Cleanup on page unload and visibility changes
