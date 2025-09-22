@@ -58,8 +58,11 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         }
       }
 
-      const pollInterval = parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '3600000', 10);
+      const pollInterval = parseInt(process.env.RECEIPT_POLL_INTERVAL_MS || '600000', 10);
       const nextUpdate = new Date(Date.now() + pollInterval);
+      
+      // Calculate when the last receipt poller run was (approximate)
+      const lastReceiptPollerRun = new Date(Date.now() - pollInterval);
       
       console.log(`📊 Leaderboard: RECEIPT_POLL_INTERVAL_MS=${process.env.RECEIPT_POLL_INTERVAL_MS}, computed=${pollInterval}ms, nextUpdate=${nextUpdate.toISOString()}`);
       
@@ -67,7 +70,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         period, 
         entries, 
         me,
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: lastReceiptPollerRun.toISOString(),
         nextUpdate: nextUpdate.toISOString()
       });
     }
