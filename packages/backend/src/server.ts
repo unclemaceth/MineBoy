@@ -824,8 +824,8 @@ fastify.get('/v2/audit/claims', async (req, res) => {
   try {
     if (!requireDebugAuth(req, res)) return;
 
-    const db = require('./db.js');
-    const d = db.getDB();
+    const { getDB } = await import('./db.js');
+    const d = getDB();
     
     // Get ALL claims (successful, failed, pending, expired)
     const allClaimsStmt = d.prepare(`
@@ -886,8 +886,8 @@ fastify.post('/v2/admin/attach-tx-by-hash', async (req, res) => {
       return res.status(400).send({ error: 'txHash required' });
     }
 
-    const db = require('./db.js');
-    const d = db.getDB();
+    const { getDB } = await import('./db.js');
+    const d = getDB();
     
     // Find pending claims that might match this transaction
     // Look for claims created within the last 30 minutes
@@ -916,8 +916,8 @@ fastify.get('/v2/debug/claims', async (req, res) => {
   try {
     if (!requireDebugAuth(req, res)) return;
 
-    const db = require('./db.js');
-    const d = db.getDB();
+    const { getDB } = await import('./db.js');
+    const d = getDB();
     
     // Get all confirmed claims
     const claimsStmt = d.prepare(`
