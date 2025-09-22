@@ -136,14 +136,18 @@ export function getLeaderboardTop(period: Period, limit = 25): LeaderboardEntry[
     claims: number;
     cartridges: Set<number>;
     last_confirmed_at: number;
+    canonicalWallet: string;
   }>();
   
   for (const claim of claims) {
-    const existing = walletTotals.get(claim.wallet) || {
+    // Use lowercase for consistent grouping
+    const walletKey = claim.wallet.toLowerCase();
+    const existing = walletTotals.get(walletKey) || {
       total_wei: 0n,
       claims: 0,
       cartridges: new Set<number>(),
-      last_confirmed_at: 0
+      last_confirmed_at: 0,
+      canonicalWallet: walletKey // Store canonical form
     };
     
     existing.total_wei += BigInt(claim.amount_wei);
@@ -151,12 +155,12 @@ export function getLeaderboardTop(period: Period, limit = 25): LeaderboardEntry[
     existing.cartridges.add(claim.cartridge_id);
     existing.last_confirmed_at = Math.max(existing.last_confirmed_at, claim.confirmed_at);
     
-    walletTotals.set(claim.wallet, existing);
+    walletTotals.set(walletKey, existing);
   }
   
   // Convert to array and sort
   const results = Array.from(walletTotals.entries()).map(([wallet, data]) => ({
-    wallet,
+    wallet: data.canonicalWallet,
     total_wei: data.total_wei.toString(),
     claims: data.claims,
     cartridges: data.cartridges.size,
