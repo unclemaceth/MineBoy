@@ -824,21 +824,40 @@ fastify.get('/v2/debug/claims', async (req, res) => {
   try {
     if (!requireDebugAuth(req, res)) return;
 
-    const d = require('../db.js').getDB();
+    const { getDB } = await import('../db.js');
+    const d = getDB();
     
     // Get all confirmed claims
     const claimsStmt = d.prepare(`
-      SELECT wallet, amount_wei, confirmed_at, cartridge_id, created_at
+      SELECT wallet, amount_wei, confirmed_at, cartridge_id, created_at, status
       FROM claims
       WHERE status='confirmed'
       ORDER BY confirmed_at DESC
       LIMIT 20
     `);
-    const claims = claimsStmt.all();
+    const confirmedClaims = claimsStmt.all();
     
-    // Group by wallet to see duplicates
+    // Get all pending claims
+    const pendingStmt = d.prepare(`
+      SELECT wallet, amount_wei, created_at, cartridge_id, status, pending_expires_at
+      FROM claims
+      WHERE status='pending'
+      ORDER BY created_at DESC
+      LIMIT 20
+    `);
+    const pendingClaims = pendingStmt.all();
+    
+    // Get all claims by status
+    const statusStmt = d.prepare(`
+      SELECT status, COUNT(*) as count
+      FROM claims
+      GROUP BY status
+    `);
+    const statusCounts = statusStmt.all();
+    
+    // Group confirmed claims by wallet to see duplicates
     const walletGroups = new Map();
-    for (const claim of claims) {
+    for (const claim of confirmedClaims) {
       const wallet = claim.wallet.toLowerCase();
       if (!walletGroups.has(wallet)) {
         walletGroups.set(wallet, []);
@@ -847,10 +866,17 @@ fastify.get('/v2/debug/claims', async (req, res) => {
     }
     
     return res.send({
-      totalClaims: claims.length,
-      uniqueWallets: walletGroups.size,
-      claimsByWallet: Object.fromEntries(walletGroups),
-      allClaims: claims,
+      statusCounts,
+      confirmedClaims: {
+        total: confirmedClaims.length,
+        uniqueWallets: walletGroups.size,
+        claimsByWallet: Object.fromEntries(walletGroups),
+        allClaims: confirmedClaims
+      },
+      pendingClaims: {
+        total: pendingClaims.length,
+        allClaims: pendingClaims
+      },
       timestamp: new Date().toISOString()
     });
   } catch (e) {
