@@ -819,6 +819,45 @@ fastify.get('/v2/debug/locks', async (req, res) => {
   }
 });
 
+// Debug endpoint to inspect claims database
+fastify.get('/v2/debug/claims', async (req, res) => {
+  try {
+    if (!requireDebugAuth(req, res)) return;
+
+    const d = require('../db.js').getDB();
+    
+    // Get all confirmed claims
+    const claimsStmt = d.prepare(`
+      SELECT wallet, amount_wei, confirmed_at, cartridge_id, created_at
+      FROM claims
+      WHERE status='confirmed'
+      ORDER BY confirmed_at DESC
+      LIMIT 20
+    `);
+    const claims = claimsStmt.all();
+    
+    // Group by wallet to see duplicates
+    const walletGroups = new Map();
+    for (const claim of claims) {
+      const wallet = claim.wallet.toLowerCase();
+      if (!walletGroups.has(wallet)) {
+        walletGroups.set(wallet, []);
+      }
+      walletGroups.get(wallet).push(claim);
+    }
+    
+    return res.send({
+      totalClaims: claims.length,
+      uniqueWallets: walletGroups.size,
+      claimsByWallet: Object.fromEntries(walletGroups),
+      allClaims: claims,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    return res.status(500).send({ code: 'debug_error', message: 'Failed to inspect claims', details: String(e) });
+  }
+});
+
 fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('/v2/debug/session/unlock', async (req, res) => {
   try {
     if (!requireDebugAuth(req, res)) return;
