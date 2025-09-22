@@ -49,10 +49,13 @@ export default function LeaderboardPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log('[LEADERBOARD] Fetching data for period:', period, 'wallet:', address);
       const resp = await api.getLeaderboard({ period, limit: 25, ...(address ? { wallet: address } : {}) });
+      console.log('[LEADERBOARD] Received response:', resp);
       setData(resp as ApiResp);
-    } catch {
-      // noop for now
+    } catch (error) {
+      console.error('[LEADERBOARD] Error fetching data:', error);
+      setData(null);
     } finally {
       setLoading(false);
     }
