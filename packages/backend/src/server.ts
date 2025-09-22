@@ -819,6 +819,63 @@ fastify.get('/v2/debug/locks', async (req, res) => {
   }
 });
 
+// Audit endpoint to export all claims for transparency
+fastify.get('/v2/audit/claims', async (req, res) => {
+  try {
+    if (!requireDebugAuth(req, res)) return;
+
+    const db = require('./db.js');
+    const d = db.getDB();
+    
+    // Get ALL claims (successful, failed, pending, expired)
+    const allClaimsStmt = d.prepare(`
+      SELECT 
+        id,
+        wallet,
+        cartridge_id,
+        hash,
+        amount_wei,
+        tx_hash,
+        status,
+        created_at,
+        confirmed_at,
+        pending_expires_at,
+        CASE 
+          WHEN status = 'confirmed' THEN 'SUCCESS'
+          WHEN status = 'failed' THEN 'FAILED'
+          WHEN status = 'expired' THEN 'EXPIRED'
+          WHEN status = 'pending' THEN 'PENDING'
+          ELSE 'UNKNOWN'
+        END as audit_status
+      FROM claims
+      ORDER BY created_at DESC
+    `);
+    const allClaims = allClaimsStmt.all();
+    
+    // Get summary statistics
+    const statsStmt = d.prepare(`
+      SELECT 
+        status,
+        COUNT(*) as count,
+        SUM(CASE WHEN status = 'confirmed' THEN CAST(amount_wei AS INTEGER) ELSE 0 END) as total_rewards_wei
+      FROM claims
+      GROUP BY status
+    `);
+    const stats = statsStmt.all();
+    
+    return res.send({
+      audit: {
+        totalClaims: allClaims.length,
+        generatedAt: new Date().toISOString(),
+        summary: stats,
+        allClaims: allClaims
+      }
+    });
+  } catch (e) {
+    return res.status(500).send({ code: 'audit_error', message: 'Failed to generate audit', details: String(e) });
+  }
+});
+
 // Debug endpoint to inspect claims database
 fastify.get('/v2/debug/claims', async (req, res) => {
   try {

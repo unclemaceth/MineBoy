@@ -795,19 +795,6 @@ function Home() {
           pushLine('Transaction submitted - waiting for hash...');
           pushLine('Waiting for confirmation...');
           
-          // Submit transaction hash to backend when available
-          if (hash) {
-            api.claimTx({ 
-              claimId: claimResponse.claimId, 
-              txHash: hash 
-            }).then(() => {
-              pushLine('Transaction hash submitted to backend');
-            }).catch((error) => {
-              console.error('Failed to submit tx hash:', error);
-              pushLine('Warning: Transaction hash not submitted to backend');
-            });
-          }
-          
           // Note: Transaction confirmation would be handled by wagmi hooks
           setStatus('claimed');
           pushLine('Claim successful!');
