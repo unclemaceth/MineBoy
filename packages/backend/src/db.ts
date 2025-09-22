@@ -41,7 +41,7 @@ export function initDb(dbUrl?: string) {
   db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
 }
 
-function getDB() {
+export function getDB() {
   if (!db) throw new Error('DB not initialized. Call initDb() in server boot.');
   return db;
 }
