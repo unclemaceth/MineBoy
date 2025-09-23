@@ -1,8 +1,14 @@
 import { useMinerStore } from '@/state/miner';
+import { useSession } from '@/state/useSession';
+import { api } from '@/lib/api';
+import { getJobId } from '@/utils/job';
+import { to0x } from '@/lib/hex';
+import { getMinerIdCached } from '@/utils/minerId';
 import { useState } from 'react';
 
 export default function ClaimOverlay() {
   const { foundHash, setFoundHash, pushLine, setMiningState } = useMinerStore();
+  const { sessionId, job, lastFound } = useSession();
   const [isSimulating, setIsSimulating] = useState(false);
 
   if (!foundHash) return null;
@@ -22,6 +28,30 @@ export default function ClaimOverlay() {
     
     await new Promise(resolve => setTimeout(resolve, 200));
     pushLine('Contract Simulation: ✅ SUCCESS');
+    
+    // ADD DATABASE API CALL HERE
+    try {
+      if (sessionId && job && lastFound) {
+        const minerId = getMinerIdCached();
+        const jobId = getJobId(job);
+        
+        if (jobId) {
+          pushLine('Creating claim record...');
+          await api.claim({
+            sessionId,
+            jobId,
+            preimage: lastFound.preimage,
+            hash: to0x(lastFound.hash),
+            steps: lastFound.attempts,
+            hr: lastFound.hr,
+            minerId,
+          });
+          pushLine('Claim record created!');
+        }
+      }
+    } catch (error) {
+      pushLine(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
     
     await new Promise(resolve => setTimeout(resolve, 200));
     pushLine('Tx confirmed (mock).');

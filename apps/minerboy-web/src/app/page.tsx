@@ -6,7 +6,7 @@ import ActionButton from "@/components/ui/ActionButton";
 import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
 import EnhancedShell from "@/components/art/EnhancedShell";
-import ClaimOverlayV2 from "@/components/ClaimOverlayV2";
+import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import { useWalletModal } from '@/state/walletModal';
@@ -1927,7 +1927,7 @@ function Home() {
 
       {/* Claim Overlay */}
       {lastFound && (
-        <ClaimOverlayV2 />
+        <ClaimOverlay />
       )}
 
       {/* Job Expired Popup */}
