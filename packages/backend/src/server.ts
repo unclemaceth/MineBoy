@@ -156,6 +156,17 @@ fastify.get('/health', async () => {
   };
 });
 
+// Get available cartridges
+fastify.get('/v2/cartridges', async () => {
+  return {
+    cartridges: config.ALLOWED_CARTRIDGES.map((contract, index) => ({
+      contract,
+      name: `ApeBit Cartridge ${index + 1}`,
+      chainId: config.CHAIN_ID
+    }))
+  };
+});
+
 // Test endpoint to verify BigInt serialization works
 fastify.get('/test-bigint', async () => {
   return {
