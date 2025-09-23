@@ -7,6 +7,7 @@ import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
+import MaintenanceOverlay from "@/components/MaintenanceOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import { useWalletModal } from '@/state/walletModal';
@@ -68,7 +69,26 @@ function Home() {
   const [booting, setBooting] = useState(true);
   const [mobileZoom, setMobileZoom] = useState(false);
   const [lockInfo, setLockInfo] = useState<any>(null);
-  
+  const [maint, setMaint] = useState<{ enabled: boolean; message?: string; untilIso?: string | null } | null>(null);
+
+  async function checkMaint() {
+    try {
+      const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL || 'https://mineboy-g5xo.onrender.com'}/v2/maintenance`, { cache: 'no-store' });
+      if (!r.ok) throw new Error(String(r.status));
+      const j = (await r.json()) as { enabled: boolean; message?: string; untilIso?: string | null };
+      setMaint(j);
+    } catch {
+      // If the endpoint is unreachable, *don't* randomly show maintenance.
+      // Safer choice: keep previous value; default to "not in maintenance".
+    }
+  }
+
+  React.useEffect(() => {
+    checkMaint();
+    const id = setInterval(checkMaint, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
   // Single-tab enforcement
   useEffect(() => {
     const bc = new BroadcastChannel('mineboy');
@@ -1070,6 +1090,8 @@ function Home() {
     ...btnGreen,
     background: 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
   };
+
+  // Render your app normally; overlay sits on top if enabled
 
   return (
     <Stage width={390} height={844}>
@@ -2417,6 +2439,7 @@ function Home() {
         }}
       /> */}
     </Stage>
+    {maint?.enabled && <MaintenanceOverlay message={maint.message} untilIso={maint.untilIso} />}
   );
 }
 
