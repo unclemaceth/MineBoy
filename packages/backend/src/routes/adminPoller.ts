@@ -166,13 +166,15 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
           
           // viem returns status as "success" | "reverted"
           if (receipt.status === "success") {
+            console.log(`📊 Attempting to confirm claim ${row.id} with tx ${tx}`);
             await confirmClaimById(row.id, tx, now);
             confirmed++;
-            console.log(`📊 Confirmed claim ${row.id}`);
+            console.log(`📊 ✅ Successfully confirmed claim ${row.id}`);
           } else {
+            console.log(`📊 Attempting to fail claim ${row.id} - status: ${receipt.status}`);
             await failClaim(row.id);
             failed++;
-            console.log(`📊 Failed claim ${row.id} - status: ${receipt.status}`);
+            console.log(`📊 ✅ Successfully failed claim ${row.id}`);
           }
         } catch (error: any) {
           if (error?.name === "TransactionNotFoundError") {
