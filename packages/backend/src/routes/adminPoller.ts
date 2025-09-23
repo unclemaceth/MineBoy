@@ -78,7 +78,14 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       
       try {
         if (tx) {
-          ping = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
+          const receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
+          // Convert BigInt values to strings for JSON serialization
+          ping = receipt ? {
+            status: receipt.status,
+            blockNumber: receipt.blockNumber?.toString(),
+            transactionHash: receipt.transactionHash,
+            found: true
+          } : { found: false };
         } else {
           ping = { error: 'Invalid tx_hash format' };
         }
