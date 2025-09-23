@@ -5,19 +5,19 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
   // Temporary debug endpoint to check admin token
   fastify.get('/v2/admin/debug-token', async (req, reply) => {
     return {
-      hasToken: !!process.env.ADMIN_TOKEN,
-      tokenLength: process.env.ADMIN_TOKEN?.length || 0,
-      tokenStart: process.env.ADMIN_TOKEN?.substring(0, 4) || 'none'
+      hasToken: !!process.env.ADMIN_KEY,
+      tokenLength: process.env.ADMIN_KEY?.length || 0,
+      tokenStart: process.env.ADMIN_KEY?.substring(0, 4) || 'none'
     };
   });
 
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
     console.log(`[ADMIN_AUTH] Received: "${auth}"`);
-    console.log(`[ADMIN_AUTH] Expected: "Bearer ${process.env.ADMIN_TOKEN}"`);
-    console.log(`[ADMIN_AUTH] ADMIN_TOKEN set: ${!!process.env.ADMIN_TOKEN}`);
+    console.log(`[ADMIN_AUTH] Expected: "Bearer ${process.env.ADMIN_KEY}"`);
+    console.log(`[ADMIN_AUTH] ADMIN_KEY set: ${!!process.env.ADMIN_KEY}`);
     
-    if (!process.env.ADMIN_TOKEN || auth !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+    if (!process.env.ADMIN_KEY || auth !== `Bearer ${process.env.ADMIN_KEY}`) {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
 
