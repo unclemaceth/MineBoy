@@ -154,7 +154,7 @@ class PostgreSQLAdapter {
     const paramMap: { [key: string]: number } = {
       'id': 1, 'wallet': 2, 'cartridge_id': 3, 'hash': 4, 'amount_wei': 5,
       'tx_hash': 6, 'status': 7, 'created_at': 8, 'confirmed_at': 9, 'pending_expires_at': 10,
-      'claimId': 1, 'txHash': 2, 'confirmedAt': 3, 'since': 4
+      'claimId': 1, 'txHash': 2, 'confirmedAt': 3, 'since': 1, 'now': 2
     };
     return paramMap[param] || 1;
   }

@@ -135,7 +135,6 @@ export const api = {
   claimTx(body: { claimId: string; txHash: string }): Promise<{ ok: true }> {
     return jfetch("/v2/claim/tx", { 
       method: "POST", 
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body) 
     }, () => ({ ok: true }));
   },
