@@ -46,6 +46,7 @@ export async function initDb(dbUrl?: string) {
             await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
             await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
             await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_claims_pending_tx ON claims (status, tx_hash) WHERE status IN ('pending','tx_submitted') AND tx_hash IS NOT NULL;`);
+            await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_claims_tx_hash_live ON claims (lower(tx_hash)) WHERE tx_hash IS NOT NULL AND status IN ('pending','confirmed');`);
   } else {
     // Use SQLite
     const file = url?.startsWith('file:') ? url.replace('file:', '') : (url || 'minerboy.db');
@@ -73,6 +74,7 @@ export async function initDb(dbUrl?: string) {
             db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
             db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
             db.exec(`CREATE INDEX IF NOT EXISTS idx_claims_pending_tx ON claims (status, tx_hash) WHERE status IN ('pending','tx_submitted') AND tx_hash IS NOT NULL;`);
+            db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_claims_tx_hash_live ON claims (tx_hash) WHERE tx_hash IS NOT NULL;`);
   }
 }
 
@@ -156,7 +158,6 @@ export function insertPendingClaim(row: ClaimRow) {
 
 export async function setClaimTxHash(claimId: string, txHash: string) {
   const d = getDB();
-  console.log(`[SET_TX_HASH] attempting to set tx_hash for claim ${claimId} to ${txHash}`);
   const stmt = d.prepare(`
     UPDATE claims
        SET tx_hash=@txHash
@@ -164,14 +165,7 @@ export async function setClaimTxHash(claimId: string, txHash: string) {
        AND status='pending'
        AND (tx_hash IS NULL OR tx_hash = @txHash)
   `);
-  try {
-    const result = await stmt.run({ claimId, txHash }); // ← await
-    console.log(`[SET_TX_HASH] success: updated ${result.changes} rows`);
-    return result;
-  } catch (error) {
-    console.error(`[SET_TX_HASH] error:`, error);
-    throw error;
-  }
+  return await stmt.run({ claimId, txHash });
 }
 
 export async function confirmClaimById(claimId: string, txHash: string, confirmedAt: number): Promise<boolean> {

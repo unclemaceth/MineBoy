@@ -80,13 +80,17 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
       
       console.log(`📊 Leaderboard: RECEIPT_POLL_INTERVAL_MS=${process.env.RECEIPT_POLL_INTERVAL_MS}, computed=${pollInterval}ms, nextUpdate=${nextUpdate.toISOString()}`);
       
-      reply.send({ 
+      const payload = { 
         period, 
         entries, 
         me,
         lastUpdated: lastReceiptPollerRun.toISOString(),
         nextUpdate: nextUpdate.toISOString()
-      });
+      };
+      
+      // Cache for 15 seconds with 60s stale-while-revalidate
+      reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+      reply.send(payload);
     }
   );
 }
