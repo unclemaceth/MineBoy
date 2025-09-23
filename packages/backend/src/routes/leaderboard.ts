@@ -34,7 +34,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         rank: i + 1,
         wallet: e.wallet,
         walletShort: shortAddrLast8(e.wallet),
-        totalAbit: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18))
+        totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18))
       }));
 
       let me: any = null;
@@ -46,14 +46,14 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
             rank: above + 1,
             wallet,
             walletShort: shortAddrLast8(wallet),
-            totalAbit: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18))
+            totalABIT: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18))
           };
         } else {
           me = {
             rank: null,
             wallet,
             walletShort: shortAddrLast8(wallet),
-            totalAbit: '0'
+            totalABIT: '0'
           };
         }
       }
