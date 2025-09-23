@@ -137,41 +137,46 @@ export function insertPendingClaim(row: ClaimRow) {
   stmt.run(row);
 }
 
-export function setClaimTxHash(claimId: string, txHash: string) {
+export async function setClaimTxHash(claimId: string, txHash: string) {
   const d = getDB();
   const stmt = d.prepare(`UPDATE claims SET tx_hash=@txHash WHERE id=@claimId AND status='pending'`);
-  stmt.run({ claimId, txHash });
+  await stmt.run({ claimId, txHash }); // ← await
 }
 
-export function confirmClaimById(claimId: string, txHash: string, confirmedAt: number) {
+export async function confirmClaimById(claimId: string, txHash: string, confirmedAt: number) {
   const d = getDB();
   const stmt = d.prepare(`
     UPDATE claims
        SET status='confirmed', tx_hash=COALESCE(tx_hash, @txHash), confirmed_at=@confirmedAt
      WHERE id=@claimId AND status='pending'
   `);
-  stmt.run({ claimId, txHash, confirmedAt });
+  await stmt.run({ claimId, txHash, confirmedAt }); // ← await
 }
 
-export function failClaim(claimId: string) {
+export async function failClaim(claimId: string) {
   const d = getDB();
   const stmt = d.prepare(`UPDATE claims SET status='failed' WHERE id=@claimId AND status='pending'`);
-  stmt.run({ claimId });
+  await stmt.run({ claimId }); // ← await
 }
 
-export function expireStalePending(now: number) {
+export async function expireStalePending(now: number) {
   const d = getDB();
   const stmt = d.prepare(`
     UPDATE claims SET status='expired'
-     WHERE status='pending' AND pending_expires_at IS NOT NULL AND pending_expires_at < @now
+    WHERE status='pending' AND pending_expires_at IS NOT NULL AND pending_expires_at < @now
   `);
-  stmt.run({ now });
+  await stmt.run({ now }); // ← await
 }
 
-export function listPendingWithTx() {
+export async function listPendingWithTx(): Promise<ClaimRow[]> {
   const d = getDB();
-  const stmt = d.prepare(`SELECT * FROM claims WHERE status='pending' AND tx_hash IS NOT NULL`);
-  return stmt.all({}) as ClaimRow[];
+  const stmt = d.prepare(`
+    SELECT *
+    FROM claims
+    WHERE status='pending' AND tx_hash IS NOT NULL
+  `);
+  const rows = await stmt.all({});  // ← await
+  return rows as ClaimRow[];
 }
 
 // ---- Aggregation for leaderboard ----

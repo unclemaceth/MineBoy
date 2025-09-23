@@ -25,6 +25,7 @@ import { initDb } from './db.js';
 import { startReceiptPoller } from './chain/receiptPoller.js';
 import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
+import { registerAdminPollerRoute } from './routes/adminPoller.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
@@ -141,6 +142,7 @@ await fastify.register(cors, {
 // Register new routes
 await registerClaimTxRoute(fastify);
 await registerLeaderboardRoute(fastify);
+await registerAdminPollerRoute(fastify);
 
 // Health check
 fastify.get('/health', async () => {

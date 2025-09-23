@@ -24,10 +24,10 @@ export function startReceiptPoller(rpcUrl: string) {
     
     try {
       // Expire old pending claims (24h+ old)
-      expireStalePending(now - 24 * 60 * 60 * 1000);
+      await expireStalePending(now - 24 * 60 * 60 * 1000);
       
       // Get pending claims with tx_hash, ordered by updated_at
-      const rows = listPendingWithTx();
+      const rows = await listPendingWithTx(); // ← await
       if (!rows.length) {
         console.log('📊 No pending claims to check');
         return;
@@ -54,10 +54,10 @@ export function startReceiptPoller(rpcUrl: string) {
             }
             
             if (receipt.status === 1n || receipt.status === 1) {
-              confirmClaimById(row.id, row.tx_hash!, now);
+              await confirmClaimById(row.id, row.tx_hash!, now); // ← await
               confirmed++;
             } else {
-              failClaim(row.id);
+              await failClaim(row.id); // ← await
               failed++;
             }
           } catch (error) {

@@ -13,9 +13,9 @@ function shortAddrLast8(addr: string) {
 }
 
 function toAbitString(totalWei: string, decimals = 18) {
-  // Convert wei to ABIT by dividing by 10^decimals
+  // Convert wei to ABIT by dividing by 10^decimals using pure BigInt math
   const wei = BigInt(totalWei);
-  const divisor = BigInt(10 ** decimals);
+  const divisor = 10n ** BigInt(decimals);   // ← exact BigInt math
   const abit = wei / divisor;
   return abit.toString();
 }
