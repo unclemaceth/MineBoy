@@ -12,7 +12,7 @@ type Entry = {
   rank: number;
   wallet: string;
   walletShort: string;
-  totalAbit: string;
+  totalABIT: string;
 };
 type ApiResp = {
   period: 'all'|'24h'|'7d';
@@ -21,7 +21,7 @@ type ApiResp = {
     rank: number|null;
     wallet: string;
     walletShort: string;
-    totalAbit: string;
+    totalABIT: string;
   };
   lastUpdated?: string;
   nextUpdate?: string;
@@ -266,7 +266,7 @@ export default function LeaderboardPage() {
                 }}>
                   {e.walletShort}
                 </div>
-                <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalAbit}</div>
+                <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalABIT}</div>
               </div>
             ))}
           </div>
@@ -306,7 +306,7 @@ export default function LeaderboardPage() {
             }}>
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
               <div>{data.me.walletShort}</div>
-              <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{data.me.totalAbit}</div>
+              <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{data.me.totalABIT}</div>
             </div>
           </div>
         )}
