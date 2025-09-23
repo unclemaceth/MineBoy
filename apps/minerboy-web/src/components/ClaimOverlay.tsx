@@ -13,7 +13,7 @@ export default function ClaimOverlay() {
   const { sessionId, job, lastFound } = useSession();
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
-  const [isSimulating, setIsSimulating] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
 
   // Watch for transaction hash and report to backend with retry
@@ -45,8 +45,8 @@ export default function ClaimOverlay() {
 
   if (!foundHash) return null;
 
-  const handleSimulate = async () => {
-    setIsSimulating(true);
+  const handleClaim = async () => {
+    setIsClaiming(true);
     setMiningState('claiming');
 
     try {
@@ -139,7 +139,7 @@ export default function ClaimOverlay() {
       pushLine(`❌ Claim failed: ${err instanceof Error ? err.message : String(err)}`);
       setPendingClaimId(null); // clear pending claim on error
     } finally {
-      setIsSimulating(false);
+      setIsClaiming(false);
       setFoundHash(null);
       setMiningState('idle');
     }
@@ -200,8 +200,8 @@ export default function ClaimOverlay() {
           justifyContent: 'center',
         }}>
           <button
-            onClick={handleSimulate}
-            disabled={isSimulating}
+            onClick={handleClaim}
+            disabled={isClaiming}
             style={{
               padding: '8px 16px',
               borderRadius: 8,
@@ -214,17 +214,17 @@ export default function ClaimOverlay() {
               color: '#64ff8a',
               fontSize: 12,
               fontWeight: 'bold',
-              cursor: isSimulating ? 'not-allowed' : 'pointer',
-              opacity: isSimulating ? 0.6 : 1,
+              cursor: isClaiming ? 'not-allowed' : 'pointer',
+              opacity: isClaiming ? 0.6 : 1,
               fontFamily: 'Menlo, monospace',
             }}
           >
-            {isSimulating ? 'Simulating...' : 'Simulate'}
+                    {isClaiming ? 'Claiming...' : 'Claim'}
           </button>
           
           <button
             onClick={handleDismiss}
-            disabled={isSimulating}
+            disabled={isClaiming}
             style={{
               padding: '8px 16px',
               borderRadius: 8,
@@ -237,8 +237,8 @@ export default function ClaimOverlay() {
               color: '#ccc',
               fontSize: 12,
               fontWeight: 'bold',
-              cursor: isSimulating ? 'not-allowed' : 'pointer',
-              opacity: isSimulating ? 0.6 : 1,
+              cursor: isClaiming ? 'not-allowed' : 'pointer',
+              opacity: isClaiming ? 0.6 : 1,
               fontFamily: 'Menlo, monospace',
             }}
           >
