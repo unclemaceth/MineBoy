@@ -87,17 +87,17 @@ class PostgreSQLAdapter {
     
     return {
       run: async (params: any) => {
-        const paramArray = Array.isArray(params) ? params : Object.values(params);
+        const paramArray = Array.isArray(params) ? params : (params ? Object.values(params) : []);
         await this.pool.query(pgQuery, paramArray);
         return { changes: 1 }; // Mock SQLite return value
       },
       get: async (params: any) => {
-        const paramArray = Array.isArray(params) ? params : Object.values(params);
+        const paramArray = Array.isArray(params) ? params : (params ? Object.values(params) : []);
         const result = await this.pool.query(pgQuery, paramArray);
         return result.rows[0] || null;
       },
       all: async (params: any) => {
-        const paramArray = Array.isArray(params) ? params : Object.values(params);
+        const paramArray = Array.isArray(params) ? params : (params ? Object.values(params) : []);
         const result = await this.pool.query(pgQuery, paramArray);
         return result.rows;
       }
@@ -171,7 +171,7 @@ export function expireStalePending(now: number) {
 export function listPendingWithTx() {
   const d = getDB();
   const stmt = d.prepare(`SELECT * FROM claims WHERE status='pending' AND tx_hash IS NOT NULL`);
-  return stmt.all() as ClaimRow[];
+  return stmt.all({}) as ClaimRow[];
 }
 
 // ---- Aggregation for leaderboard ----
