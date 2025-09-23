@@ -335,7 +335,7 @@ export async function getAggregateForWallet(period: Period, wallet: string): Pro
     FROM claims
     WHERE status='confirmed' AND lower(wallet)=lower(@wallet) AND (@since=0 OR confirmed_at >= @since)
   `);
-  const claims = await stmt.all({ since, wallet }) as Array<{
+  const claims = await stmt.all({ wallet, since }) as Array<{
     amount_wei: string;
     confirmed_at: number;
     cartridge_id: number;
