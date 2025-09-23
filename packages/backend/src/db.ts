@@ -41,10 +41,11 @@ export async function initDb(dbUrl?: string) {
         pending_expires_at BIGINT
       );
     `);
-    await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
-    await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
-    await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
-    await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
+            await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_claims_pending_tx ON claims (status, tx_hash) WHERE status IN ('pending','tx_submitted') AND tx_hash IS NOT NULL;`);
   } else {
     // Use SQLite
     const file = url?.startsWith('file:') ? url.replace('file:', '') : (url || 'minerboy.db');
@@ -67,10 +68,11 @@ export async function initDb(dbUrl?: string) {
         pending_expires_at INTEGER
       );
     `);
-    db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
-    db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
-    db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
-    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+            db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
+            db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
+            db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
+            db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+            db.exec(`CREATE INDEX IF NOT EXISTS idx_claims_pending_tx ON claims (status, tx_hash) WHERE status IN ('pending','tx_submitted') AND tx_hash IS NOT NULL;`);
   }
 }
 
