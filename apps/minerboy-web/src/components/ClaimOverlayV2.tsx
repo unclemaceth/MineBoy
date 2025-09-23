@@ -91,10 +91,42 @@ export default function ClaimOverlayV2() {
       // Submit transaction to blockchain
       writeContract({
         address: contracts.miningClaimRouter as `0x${string}`,
-        abi: MINING_CLAIM_ROUTER_ABI,
-        functionName: 'claimRewards',
+        abi: [
+          {
+            name: 'claim',
+            type: 'function',
+            stateMutability: 'nonpayable',
+            inputs: [
+              { name: 'claimData', type: 'tuple', components: [
+                { name: 'wallet', type: 'address' },
+                { name: 'cartridge', type: 'address' },
+                { name: 'tokenId', type: 'uint256' },
+                { name: 'rewardToken', type: 'address' },
+                { name: 'rewardAmount', type: 'uint256' },
+                { name: 'workHash', type: 'bytes32' },
+                { name: 'attempts', type: 'uint64' },
+                { name: 'nonce', type: 'bytes32' },
+                { name: 'expiry', type: 'uint64' }
+              ]},
+              { name: 'signature', type: 'bytes' }
+            ],
+            outputs: []
+          }
+        ],
+        functionName: 'claim',
         args: [
-          [BigInt(result.claimId)], // Claim ID as array of token IDs
+          {
+            wallet: result.claim.wallet,
+            cartridge: result.claim.cartridge,
+            tokenId: BigInt(result.claim.tokenId),
+            rewardToken: result.claim.rewardToken,
+            rewardAmount: BigInt(result.claim.rewardAmount),
+            workHash: result.claim.workHash,
+            attempts: BigInt(result.claim.attempts),
+            nonce: result.claim.nonce,
+            expiry: BigInt(result.claim.expiry)
+          },
+          result.signature
         ],
       });
       
