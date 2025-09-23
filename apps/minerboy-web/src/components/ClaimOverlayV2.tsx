@@ -89,6 +89,10 @@ export default function ClaimOverlayV2() {
       pushLine('Backend approved! Submitting to blockchain...');
       
       // Submit transaction to blockchain
+      if (!result.claim || !result.signature) {
+        throw new Error('Missing claim data or signature');
+      }
+      
       writeContract({
         address: contracts.miningClaimRouter as `0x${string}`,
         abi: [
@@ -116,17 +120,17 @@ export default function ClaimOverlayV2() {
         functionName: 'claim',
         args: [
           {
-            wallet: result.claim.wallet,
-            cartridge: result.claim.cartridge,
+            wallet: to0x(result.claim.wallet),
+            cartridge: to0x(result.claim.cartridge),
             tokenId: BigInt(result.claim.tokenId),
-            rewardToken: result.claim.rewardToken,
+            rewardToken: to0x(result.claim.rewardToken),
             rewardAmount: BigInt(result.claim.rewardAmount),
-            workHash: result.claim.workHash,
+            workHash: to0x(result.claim.workHash),
             attempts: BigInt(result.claim.attempts),
-            nonce: result.claim.nonce,
+            nonce: to0x(result.claim.nonce),
             expiry: BigInt(result.claim.expiry)
           },
-          result.signature
+          to0x(result.signature)
         ],
       });
       
