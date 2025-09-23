@@ -6,7 +6,7 @@ import { to0x } from '@/lib/hex';
 import { getMinerIdCached } from '@/utils/minerId';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/contracts';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function ClaimOverlay() {
   const { foundHash, setFoundHash, pushLine, setMiningState } = useMinerStore();
@@ -14,6 +14,34 @@ export default function ClaimOverlay() {
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
   const [isSimulating, setIsSimulating] = useState(false);
+  const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
+
+  // Watch for transaction hash and report to backend with retry
+  useEffect(() => {
+    console.log('[TX_HASH_DEBUG]', { pendingClaimId, hash, hasBoth: !!(pendingClaimId && hash) });
+    
+    if (!pendingClaimId || !hash) return;
+
+    let cancelled = false;
+
+    const submit = async (attempt = 0) => {
+      try {
+        console.log('[TX_HASH_SUBMIT]', { claimId: pendingClaimId, txHash: hash, attempt });
+        await api.claimTx({ claimId: pendingClaimId, txHash: hash });
+        pushLine('Transaction tracked by backend');
+        setPendingClaimId(null); // prevent repeats
+      } catch (e) {
+        if (cancelled) return;
+        const backoff = Math.min(30_000, 1000 * Math.pow(2, attempt)); // up to 30s
+        console.warn(`Failed to submit tx hash (attempt ${attempt + 1}), retrying in ${backoff}ms:`, e);
+        setTimeout(() => submit(attempt + 1), backoff);
+      }
+    };
+
+    submit();
+
+    return () => { cancelled = true; };
+  }, [hash, pendingClaimId, pushLine]);
 
   if (!foundHash) return null;
 
@@ -53,10 +81,13 @@ export default function ClaimOverlay() {
 
       // normalizeClaimRes() already ran in api.claim()
       const packed = createRes?.claim;
-      const sig    = createRes?.signature;
-      if (!packed || !sig) throw new Error("Backend didn't return claim payload/signature");
+              const sig    = createRes?.signature;
+              if (!packed || !sig) throw new Error("Backend didn't return claim payload/signature");
 
-      pushLine('Broadcasting wallet transaction…');
+              // Store the claim ID for transaction hash submission
+              setPendingClaimId(createRes.claimId);
+
+              pushLine('Broadcasting wallet transaction…');
 
       // 2) EXACT SAME on-chain function the ORIGINAL overlay used
       writeContract({
@@ -100,29 +131,13 @@ export default function ClaimOverlay() {
         ],
       });
 
-      // Wait for transaction hash
-      let txHash: string;
-      const checkHash = () => {
-        if (hash) {
-          txHash = hash;
-          pushLine(`Tx sent: ${txHash.slice(0,10)}…${txHash.slice(-6)}`);
-          
-          // 3) Tell backend the tx hash so the poller can confirm & score later
-          api.claimTx({ claimId: createRes.claimId, txHash }).then(() => {
-            pushLine('Tx hash stored. Waiting for confirmation…');
-          }).catch(err => {
-            console.error('Failed to store tx hash:', err);
-          });
-        } else {
-          setTimeout(checkHash, 100);
-        }
-      };
-      checkHash();
+      // Transaction hash will be captured by useEffect above
 
       pushLine('✅ Claim submitted!');
     } catch (err) {
       console.error(err);
       pushLine(`❌ Claim failed: ${err instanceof Error ? err.message : String(err)}`);
+      setPendingClaimId(null); // clear pending claim on error
     } finally {
       setIsSimulating(false);
       setFoundHash(null);
