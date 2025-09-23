@@ -911,7 +911,7 @@ fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async 
       WHERE created_at >= @thirtyMinutesAgo
       ORDER BY created_at DESC
     `);
-    const pendingClaims = stmt.all({ thirtyMinutesAgo });
+    const pendingClaims = await stmt.all({ thirtyMinutesAgo }); // ← await
     
     return res.send({
       message: 'Found pending claims',
@@ -940,7 +940,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
       ORDER BY confirmed_at DESC
       LIMIT 20
     `);
-    const confirmedClaims = claimsStmt.all();
+    const confirmedClaims = await claimsStmt.all(); // ← await
     
     // Get all pending claims
     const pendingStmt = d.prepare(`
@@ -950,7 +950,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
       ORDER BY created_at DESC
       LIMIT 20
     `);
-    const pendingClaims = pendingStmt.all();
+    const pendingClaims = await pendingStmt.all(); // ← await
     
     // Get all claims by status
     const statusStmt = d.prepare(`
@@ -958,7 +958,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
       FROM claims
       GROUP BY status
     `);
-    const statusCounts = statusStmt.all();
+    const statusCounts = await statusStmt.all(); // ← await
     
     // Group confirmed claims by wallet to see duplicates
     const walletGroups = new Map();
