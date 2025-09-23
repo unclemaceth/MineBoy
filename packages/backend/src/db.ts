@@ -116,7 +116,7 @@ class PostgreSQLAdapter {
     const paramMap: { [key: string]: number } = {
       'id': 1, 'wallet': 2, 'cartridge_id': 3, 'hash': 4, 'amount_wei': 5,
       'tx_hash': 6, 'status': 7, 'created_at': 8, 'confirmed_at': 9, 'pending_expires_at': 10,
-      'claimId': 1, 'txHash': 2, 'confirmedAt': 3
+      'claimId': 1, 'txHash': 2, 'confirmedAt': 3, 'since': 4
     };
     return paramMap[param] || 1;
   }
@@ -141,8 +141,16 @@ export function insertPendingClaim(row: ClaimRow) {
 
 export async function setClaimTxHash(claimId: string, txHash: string) {
   const d = getDB();
+  console.log(`[SET_TX_HASH] attempting to set tx_hash for claim ${claimId} to ${txHash}`);
   const stmt = d.prepare(`UPDATE claims SET tx_hash=@txHash WHERE id=@claimId AND status='pending'`);
-  await stmt.run({ claimId, txHash }); // ← await
+  try {
+    const result = await stmt.run({ claimId, txHash }); // ← await
+    console.log(`[SET_TX_HASH] success: updated ${result.changes} rows`);
+    return result;
+  } catch (error) {
+    console.error(`[SET_TX_HASH] error:`, error);
+    throw error;
+  }
 }
 
 export async function confirmClaimById(claimId: string, txHash: string, confirmedAt: number): Promise<boolean> {
