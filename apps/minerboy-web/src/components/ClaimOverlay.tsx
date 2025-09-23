@@ -4,11 +4,15 @@ import { api } from '@/lib/api';
 import { getJobId } from '@/utils/job';
 import { to0x } from '@/lib/hex';
 import { getMinerIdCached } from '@/utils/minerId';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { contracts, MINING_CLAIM_ROUTER_ABI } from '@/lib/contracts';
 import { useState } from 'react';
 
 export default function ClaimOverlay() {
   const { foundHash, setFoundHash, pushLine, setMiningState } = useMinerStore();
   const { sessionId, job, lastFound } = useSession();
+  const { writeContract, data: hash } = useWriteContract();
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
   const [isSimulating, setIsSimulating] = useState(false);
 
   if (!foundHash) return null;
@@ -16,49 +20,114 @@ export default function ClaimOverlay() {
   const handleSimulate = async () => {
     setIsSimulating(true);
     setMiningState('claiming');
-    
-    // Mock verification steps
-    pushLine('Starting claim verification...');
-    
-    await new Promise(resolve => setTimeout(resolve, 200));
-    pushLine('Wallet Match: ✅ YES');
-    
-    await new Promise(resolve => setTimeout(resolve, 200));
-    pushLine('PrevHash Match: ✅ YES');
-    
-    await new Promise(resolve => setTimeout(resolve, 200));
-    pushLine('Contract Simulation: ✅ SUCCESS');
-    
-    // ADD DATABASE API CALL HERE
+
     try {
-      if (sessionId && job && lastFound) {
-        const minerId = getMinerIdCached();
-        const jobId = getJobId(job);
-        
-        if (jobId) {
-          pushLine('Creating claim record...');
-          await api.claim({
-            sessionId,
-            jobId,
-            preimage: lastFound.preimage,
-            hash: to0x(lastFound.hash),
-            steps: lastFound.attempts,
-            hr: lastFound.hr,
-            minerId,
+      // Preserve your "retro" lines
+      pushLine('Starting claim verification...');
+      await new Promise(r => setTimeout(r, 150));
+      pushLine('Wallet Match: ✅ YES');
+      await new Promise(r => setTimeout(r, 150));
+      pushLine('PrevHash Match: ✅ YES');
+      await new Promise(r => setTimeout(r, 150));
+      pushLine('Contract Simulation: ✅ SUCCESS');
+
+      // --- ADDED: real DB claim + on-chain call + tx-hash attach ---
+      if (!sessionId || !job || !lastFound) throw new Error("Missing session/job/found hash");
+
+      const minerId = getMinerIdCached();
+      const jobId = getJobId(job);
+      if (!jobId) throw new Error("Missing jobId");
+
+      pushLine('Creating claim record in DB…');
+
+      // 1) Create pending claim + get EIP-712 payload & sig from backend
+      const createRes = await api.claim({
+        sessionId,
+        jobId,
+        preimage: lastFound.preimage,
+        hash: to0x(lastFound.hash),
+        steps: lastFound.attempts,
+        hr: lastFound.hr,
+        minerId,
+      });
+
+      // normalizeClaimRes() already ran in api.claim()
+      const packed = createRes?.claim;
+      const sig    = createRes?.signature;
+      if (!packed || !sig) throw new Error("Backend didn't return claim payload/signature");
+
+      pushLine('Broadcasting wallet transaction…');
+
+      // 2) EXACT SAME on-chain function the ORIGINAL overlay used
+      writeContract({
+        address: contracts.miningClaimRouter as `0x${string}`,
+        abi: [
+          {
+            name: 'claim',
+            type: 'function',
+            stateMutability: 'nonpayable',
+            inputs: [
+              { name: 'claimData', type: 'tuple', components: [
+                { name: 'wallet', type: 'address' },
+                { name: 'cartridge', type: 'address' },
+                { name: 'tokenId', type: 'uint256' },
+                { name: 'rewardToken', type: 'address' },
+                { name: 'rewardAmount', type: 'uint256' },
+                { name: 'workHash', type: 'bytes32' },
+                { name: 'attempts', type: 'uint64' },
+                { name: 'nonce', type: 'bytes32' },
+                { name: 'expiry', type: 'uint64' }
+              ]},
+              { name: 'signature', type: 'bytes' }
+            ],
+            outputs: []
+          }
+        ],
+        functionName: "claim", // ← keep the working function
+        args: [ 
+          {
+            wallet: to0x(packed.wallet),
+            cartridge: to0x(packed.cartridge),
+            tokenId: BigInt(packed.tokenId),
+            rewardToken: to0x(packed.rewardToken),
+            rewardAmount: BigInt(packed.rewardAmount),
+            workHash: to0x(packed.workHash),
+            attempts: BigInt(packed.attempts),
+            nonce: to0x(packed.nonce),
+            expiry: BigInt(packed.expiry)
+          },
+          to0x(sig)
+        ],
+      });
+
+      // Wait for transaction hash
+      let txHash: string;
+      const checkHash = () => {
+        if (hash) {
+          txHash = hash;
+          pushLine(`Tx sent: ${txHash.slice(0,10)}…${txHash.slice(-6)}`);
+          
+          // 3) Tell backend the tx hash so the poller can confirm & score later
+          api.claimTx({ claimId: createRes.claimId, txHash }).then(() => {
+            pushLine('Tx hash stored. Waiting for confirmation…');
+          }).catch(err => {
+            console.error('Failed to store tx hash:', err);
           });
-          pushLine('Claim record created!');
+        } else {
+          setTimeout(checkHash, 100);
         }
-      }
-    } catch (error) {
-      pushLine(`Database error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      };
+      checkHash();
+
+      pushLine('✅ Claim submitted!');
+    } catch (err) {
+      console.error(err);
+      pushLine(`❌ Claim failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setIsSimulating(false);
+      setFoundHash(null);
+      setMiningState('idle');
     }
-    
-    await new Promise(resolve => setTimeout(resolve, 200));
-    pushLine('Tx confirmed (mock).');
-    
-    setIsSimulating(false);
-    setFoundHash(null);
-    setMiningState('idle'); // Return to idle, user must press A to resume
   };
 
   const handleDismiss = () => {
