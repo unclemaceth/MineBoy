@@ -54,7 +54,7 @@ async function jfetch<T>(path: string, init?: RequestInit, map?: (x: any) => T):
 
 export const api = {
   cartridges(): Promise<CartridgeConfig[]> {
-    return jfetch("/v2/cartridges", undefined, (j) => j as CartridgeConfig[]);
+    return jfetch("/v2/cartridges", undefined, (j) => j.cartridges as CartridgeConfig[]);
   },
   
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
