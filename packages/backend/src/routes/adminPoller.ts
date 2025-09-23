@@ -80,8 +80,14 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
 
       for (const row of pending) {
         try {
-          const receipt = await provider.getTransactionReceipt(row.tx_hash!);
+          console.log(`📊 Checking claim ${row.id} with tx_hash: ${row.tx_hash}`);
+          if (!row.tx_hash) {
+            console.log(`📊 Skipping claim ${row.id} - no tx_hash`);
+            continue;
+          }
+          const receipt = await provider.getTransactionReceipt(row.tx_hash);
           if (!receipt) {
+            console.log(`📊 No receipt found for tx ${row.tx_hash}`);
             continue; // Still pending
           }
           
