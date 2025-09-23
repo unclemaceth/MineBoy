@@ -944,7 +944,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
     
     // Get all pending claims
     const pendingStmt = d.prepare(`
-      SELECT wallet, amount_wei, created_at, cartridge_id, status, pending_expires_at
+      SELECT wallet, amount_wei, created_at, cartridge_id, status, pending_expires_at, tx_hash
       FROM claims
       WHERE status='pending'
       ORDER BY created_at DESC
