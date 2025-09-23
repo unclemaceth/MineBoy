@@ -10,7 +10,7 @@ export async function registerClaimTxRoute(fastify: FastifyInstance) {
       if (!claimId || !txHash) {
         return reply.code(400).send({ error: 'Missing claimId or txHash' });
       }
-      setClaimTxHash(claimId, txHash);
+      await setClaimTxHash(claimId, txHash);
       return { ok: true };
     }
   );
