@@ -90,17 +90,25 @@ class PostgreSQLAdapter {
     return {
       run: async (params: any) => {
         const paramArray = this.convertParamsToArray(params, query);
-        await this.pool.query(pgQuery, paramArray);
+        if (paramArray.length > 0) {
+          await this.pool.query(pgQuery, paramArray);
+        } else {
+          await this.pool.query(pgQuery);
+        }
         return { changes: 1 }; // Mock SQLite return value
       },
       get: async (params: any) => {
         const paramArray = this.convertParamsToArray(params, query);
-        const result = await this.pool.query(pgQuery, paramArray);
+        const result = paramArray.length > 0 
+          ? await this.pool.query(pgQuery, paramArray)
+          : await this.pool.query(pgQuery);
         return result.rows[0] || null;
       },
       all: async (params: any) => {
         const paramArray = this.convertParamsToArray(params, query);
-        const result = await this.pool.query(pgQuery, paramArray);
+        const result = paramArray.length > 0 
+          ? await this.pool.query(pgQuery, paramArray)
+          : await this.pool.query(pgQuery);
         return result.rows;
       }
     };
@@ -122,8 +130,18 @@ class PostgreSQLAdapter {
       }
     }
     
-    // Build array in the correct order
-    return paramNames.map(name => params[name]);
+    // If no parameters found in query, return empty array
+    if (paramNames.length === 0) return [];
+    
+    // Build array in the correct order, filtering out undefined values
+    const result = paramNames.map(name => params[name]).filter(val => val !== undefined);
+    
+    // If we have fewer results than expected parameters, pad with nulls
+    while (result.length < paramNames.length) {
+      result.push(null);
+    }
+    
+    return result;
   }
   
   exec(query: string) {
