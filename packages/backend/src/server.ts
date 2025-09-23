@@ -130,8 +130,6 @@ fastify.addHook('onSend', (req, reply, payload, done) => {
   }
 });
 
-// Start receipt poller
-const stopPoller = startReceiptPoller(process.env.RPC_URL!);
 
 // Register CORS
 await fastify.register(cors, {
@@ -201,10 +199,6 @@ fastify.post('/admin/clear-locks', async (request, reply) => {
   }
 });
 
-// Get available cartridges
-fastify.get('/v2/cartridges', async () => {
-  return cartridgeRegistry.getAllCartridges();
-});
 
 // Open a mining session
 fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
@@ -737,11 +731,17 @@ setInterval(() => {
   jobManager.cleanupExpiredJobs();
 }, 60000); // Every minute
 
+// Declare stopPoller outside start function for signal handler access
+let stopPoller: (() => void) | null = null;
+
 // Start server
 const start = async () => {
   try {
     // Initialize database
     await initDb(process.env.DATABASE_URL);
+    
+    // Start receipt poller after database is initialized
+    stopPoller = startReceiptPoller(process.env.RPC_URL!);
     
     await fastify.listen({ 
       port: config.PORT, 
@@ -888,7 +888,7 @@ fastify.get('/v2/audit/claims', async (req, res) => {
 });
 
 // Backfill endpoint to attach transaction hash to pending claims
-fastify.post('/v2/admin/attach-tx-by-hash', async (req, res) => {
+fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async (req, res) => {
   try {
     if (!requireDebugAuth(req, res)) return;
 
@@ -1008,7 +1008,7 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 // Graceful shutdown
 process.on('SIGINT', async () => {
   console.log('Shutting down gracefully...');
-  stopPoller();
+  if (stopPoller) stopPoller();
   await fastify.close();
   process.exit(0);
 });
