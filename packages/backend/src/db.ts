@@ -154,7 +154,9 @@ class PostgreSQLAdapter {
     const paramMap: { [key: string]: number } = {
       'id': 1, 'wallet': 2, 'cartridge_id': 3, 'hash': 4, 'amount_wei': 5,
       'tx_hash': 6, 'status': 7, 'created_at': 8, 'confirmed_at': 9, 'pending_expires_at': 10,
-      'claimId': 1, 'txHash': 2, 'confirmedAt': 3, 'since': 1, 'now': 2
+      'claimId': 1, 'txHash': 2, 'confirmedAt': 3, 'since': 1, 'now': 2, 'total_wei': 1,
+      // For getAggregateForWallet: @wallet=1, @since=2 (query order)
+      // But params passed as {since, wallet} so we need: since=1, wallet=2
     };
     return paramMap[param] || 1;
   }
