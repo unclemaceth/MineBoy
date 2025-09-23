@@ -906,10 +906,10 @@ fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async 
     const stmt = d.prepare(`
       SELECT id, wallet, created_at
       FROM claims
-      WHERE status='pending' AND created_at >= ?
+      WHERE status='pending' AND created_at >= @thirtyMinutesAgo
       ORDER BY created_at DESC
     `);
-    const pendingClaims = stmt.all(thirtyMinutesAgo);
+    const pendingClaims = stmt.all({ thirtyMinutesAgo });
     
     return res.send({
       message: 'Found pending claims',
