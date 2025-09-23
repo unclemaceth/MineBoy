@@ -11,6 +11,36 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     };
   });
 
+  // Test RPC connection
+  fastify.get('/v2/admin/test-rpc', async (req, reply) => {
+    try {
+      const { createPublicClient, http } = await import('viem');
+      const { base } = await import('viem/chains');
+      
+      const provider = createPublicClient({
+        chain: base,
+        transport: http(process.env.RPC_URL!)
+      });
+
+      // Test with a known confirmed transaction
+      const receipt = await provider.getTransactionReceipt('0x624f71e436219c875ebf38a1da12f57cd1a7db48124f198b04dc6dac567acff1');
+      
+      return {
+        rpcUrl: process.env.RPC_URL,
+        receipt: receipt ? {
+          status: receipt.status,
+          blockNumber: receipt.blockNumber,
+          found: true
+        } : { found: false }
+      };
+    } catch (error) {
+      return {
+        rpcUrl: process.env.RPC_URL,
+        error: String(error)
+      };
+    }
+  });
+
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
     console.log(`[ADMIN_AUTH] Received: "${auth}"`);
