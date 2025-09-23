@@ -143,14 +143,22 @@ export async function setClaimTxHash(claimId: string, txHash: string) {
   await stmt.run({ claimId, txHash }); // ← await
 }
 
-export async function confirmClaimById(claimId: string, txHash: string, confirmedAt: number) {
+export async function confirmClaimById(claimId: string, txHash: string, confirmedAt: number): Promise<boolean> {
   const d = getDB();
   const stmt = d.prepare(`
     UPDATE claims
        SET status='confirmed', tx_hash=COALESCE(tx_hash, @txHash), confirmed_at=@confirmedAt
      WHERE id=@claimId AND status='pending'
   `);
-  await stmt.run({ claimId, txHash, confirmedAt }); // ← await
+  const result = await stmt.run({ claimId, txHash, confirmedAt }); // ← await
+  
+  if (result.changes === 0) {
+    console.warn(`[CONFIRM] no row updated (status mismatch?)`, { claimId });
+    return false;
+  }
+  
+  console.log(`[CONFIRM] updated claim`, { claimId, changes: result.changes });
+  return true;
 }
 
 export async function failClaim(claimId: string) {

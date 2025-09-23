@@ -104,6 +104,26 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     return { ok: true, sample: out };
   });
 
+  // Single claim confirmation endpoint for testing
+  fastify.post('/v2/admin/claim/:id/confirm', async (req, reply) => {
+    const auth = req.headers.authorization || '';
+    if (!process.env.ADMIN_TOKEN || auth !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    const { id } = req.params as { id: string };
+    const { tx } = req.body as { tx?: string } || {};
+    
+    try {
+      console.log(`📊 [ADMIN] Single confirm attempt`, { id, tx });
+      const ok = await confirmClaimById(id, tx || '', Date.now());
+      return { ok };
+    } catch (e) {
+      console.error(`📊 [ADMIN] Single confirm error`, { id, error: String(e) });
+      return reply.code(500).send({ ok: false, error: String(e) });
+    }
+  });
+
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
     console.log(`[ADMIN_AUTH] Received: "${auth}"`);
@@ -131,6 +151,9 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       
       let confirmed = 0;
       let failed = 0;
+      let stillPending = 0;
+      let notFound = 0;
+      let confirmErrors = 0;
       
       // Create client for chain 33111 (Curtis)
       const { createPublicClient, http, defineChain } = await import('viem');
@@ -161,15 +184,28 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
           const receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
           if (!receipt) {
             console.log(`📊 No receipt found for tx ${tx}`);
+            stillPending++;
             continue; // Still pending
           }
           
           // viem returns status as "success" | "reverted"
           if (receipt.status === "success") {
-            console.log(`📊 Attempting to confirm claim ${row.id} with tx ${tx}`);
-            await confirmClaimById(row.id, tx, now);
-            confirmed++;
-            console.log(`📊 ✅ Successfully confirmed claim ${row.id}`);
+            console.log(`📊 [POLLER] will confirm`, {
+              id: row.id,
+              tx,
+              statusBefore: row.status,
+              chain: 33111,
+            });
+            
+            try {
+              const ok = await confirmClaimById(row.id, tx, now);
+              console.log(`📊 [POLLER] confirm result`, { id: row.id, ok });
+              if (ok) confirmed++;
+              else confirmErrors++;
+            } catch (e) {
+              confirmErrors++;
+              console.error(`📊 [POLLER] confirm error`, { id: row.id, err: String(e) });
+            }
           } else {
             console.log(`📊 Attempting to fail claim ${row.id} - status: ${receipt.status}`);
             await failClaim(row.id);
@@ -179,18 +215,31 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         } catch (error: any) {
           if (error?.name === "TransactionNotFoundError") {
             console.log(`📊 Transaction not found: ${row.tx_hash}`);
+            notFound++;
             continue; // Still pending
           }
           console.warn(`📊 RPC error checking tx ${row.tx_hash}:`, error);
         }
       }
+      
+      console.log(`📊 [POLLER] batch done`, { 
+        confirmed, 
+        failed, 
+        stillPending, 
+        notFound, 
+        confirmErrors,
+        total: pending.length 
+      });
 
       return { 
         ok: true, 
         message: `Processed ${pending.length} claims`,
-        pending: pending.length,
+        total: pending.length,
         confirmed,
-        failed
+        failed,
+        stillPending,
+        notFound,
+        confirmErrors
       };
     } catch (error) {
       console.error('Manual poller error:', error);
