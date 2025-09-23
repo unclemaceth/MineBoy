@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
 import GlobalWalletModal from "./GlobalWalletModal";
+import MaintenanceGate from "@/components/MaintenanceGate";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,6 +54,8 @@ export default function RootLayout({
           {children}
           {/* mounted once globally */}
           <GlobalWalletModal />
+          {/* Sits on top when maintenance is enabled */}
+          <MaintenanceGate />
         </Providers>
       </body>
     </html>
