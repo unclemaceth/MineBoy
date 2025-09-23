@@ -43,7 +43,7 @@ export const config = {
   HOST: process.env.HOST || '0.0.0.0',
   
   // Admin
-  ADMIN_TOKEN: process.env.ADMIN_TOKEN || '',
+  ADMIN_TOKEN: process.env.ADMIN_KEY || '',
   EPOCH_OVERRIDE: process.env.EPOCH_OVERRIDE
 };
 
