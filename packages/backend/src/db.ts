@@ -193,7 +193,7 @@ export type LeaderboardEntry = {
   last_confirmed_at: number | null;
 };
 
-export function getLeaderboardTop(period: Period, limit = 25): LeaderboardEntry[] {
+export async function getLeaderboardTop(period: Period, limit = 25): Promise<LeaderboardEntry[]> {
   const d = getDB();
   const since = sinceForPeriod(period);
   
@@ -203,7 +203,7 @@ export function getLeaderboardTop(period: Period, limit = 25): LeaderboardEntry[
     FROM claims
     WHERE status='confirmed' AND (@since=0 OR confirmed_at >= @since)
   `);
-  const claims = claimsStmt.all({ since }) as Array<{
+  const claims = await claimsStmt.all({ since }) as Array<{
     wallet: string;
     amount_wei: string;
     confirmed_at: number;
@@ -259,7 +259,7 @@ export function getLeaderboardTop(period: Period, limit = 25): LeaderboardEntry[
   return results.slice(0, limit);
 }
 
-export function getAggregateForWallet(period: Period, wallet: string): LeaderboardEntry | null {
+export async function getAggregateForWallet(period: Period, wallet: string): Promise<LeaderboardEntry | null> {
   const d = getDB();
   const since = sinceForPeriod(period);
   const stmt = d.prepare(`
@@ -267,7 +267,7 @@ export function getAggregateForWallet(period: Period, wallet: string): Leaderboa
     FROM claims
     WHERE status='confirmed' AND lower(wallet)=lower(@wallet) AND (@since=0 OR confirmed_at >= @since)
   `);
-  const claims = stmt.all({ since, wallet }) as Array<{
+  const claims = await stmt.all({ since, wallet }) as Array<{
     amount_wei: string;
     confirmed_at: number;
     cartridge_id: number;
@@ -294,7 +294,7 @@ export function getAggregateForWallet(period: Period, wallet: string): Leaderboa
   };
 }
 
-export function countWalletsAbove(period: Period, totalWei: string): number {
+export async function countWalletsAbove(period: Period, totalWei: string): Promise<number> {
   const d = getDB();
   const since = sinceForPeriod(period);
   
@@ -304,7 +304,7 @@ export function countWalletsAbove(period: Period, totalWei: string): number {
     FROM claims
     WHERE status='confirmed' AND (@since=0 OR confirmed_at >= @since)
   `);
-  const claims = claimsStmt.all({ since }) as Array<{
+  const claims = await claimsStmt.all({ since }) as Array<{
     wallet: string;
     amount_wei: string;
   }>;

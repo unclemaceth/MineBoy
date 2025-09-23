@@ -29,7 +29,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
       const limit = Math.min(parseInt(q.limit || '25', 10), 100);
       const wallet = (q.wallet as string | undefined) || undefined;
 
-      const entriesRaw = getLeaderboardTop(period, limit);
+      const entriesRaw = await getLeaderboardTop(period, limit);
       const entries = entriesRaw.map((e, i) => ({
         rank: i + 1,
         wallet: e.wallet,
@@ -39,9 +39,9 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
 
       let me: any = null;
       if (wallet) {
-        const agg = getAggregateForWallet(period, wallet);
+        const agg = await getAggregateForWallet(period, wallet);
         if (agg) {
-          const above = countWalletsAbove(period, agg.total_wei);
+          const above = await countWalletsAbove(period, agg.total_wei);
           me = {
             rank: above + 1,
             wallet,
