@@ -10,7 +10,9 @@ export function startReceiptPoller(rpcUrl: string) {
   const batchLimit = parseInt(process.env.RECEIPT_POLL_BATCH_LIMIT || '500', 10); // 500 per batch
   const runPoller = process.env.RUN_RECEIPT_POLLER !== 'false'; // default true
   
+  console.log(`📊 Receipt poller config: RUN_RECEIPT_POLLER=${process.env.RUN_RECEIPT_POLLER}, runPoller=${runPoller}`);
   console.log(`📊 Receipt poller config: RECEIPT_POLL_INTERVAL_MS=${process.env.RECEIPT_POLL_INTERVAL_MS}, computed=${intervalMs}ms`);
+  console.log(`📊 Receipt poller config: RPC_URL=${rpcUrl ? 'SET' : 'NOT SET'}`);
   
   if (!runPoller) {
     console.log('📊 Receipt poller disabled via RUN_RECEIPT_POLLER=false');
@@ -21,6 +23,7 @@ export function startReceiptPoller(rpcUrl: string) {
   
   const checkPendingReceiptsInBatches = async () => {
     const now = Date.now();
+    console.log(`📊 [POLLER_TICK] Starting check at ${new Date(now).toISOString()}`);
     
     try {
       // Expire old pending claims (24h+ old)
@@ -28,6 +31,8 @@ export function startReceiptPoller(rpcUrl: string) {
       
       // Get pending claims with tx_hash, ordered by updated_at
       const rows = await listPendingWithTx(); // ← await
+      console.log(`📊 [POLLER_TICK] Found ${rows.length} pending claims with tx_hash`);
+      
       if (!rows.length) {
         console.log('📊 No pending claims to check');
         return;
