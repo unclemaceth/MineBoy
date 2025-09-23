@@ -79,79 +79,61 @@ export async function initDb(dbUrl?: string) {
 // Create a PostgreSQL adapter that mimics SQLite interface
 class PostgreSQLAdapter {
   constructor(private pool: Pool) {}
-  
+
   prepare(query: string) {
-    // Convert SQLite syntax to PostgreSQL
-    let pgQuery = query
+    // 1) Collect parameter names in first-occurrence order from the ORIGINAL query
+    const paramNames: string[] = [];
+    const seen = new Set<string>();
+    const paramRegex = /@(\w+)/g;
+    let m: RegExpExecArray | null;
+    while ((m = paramRegex.exec(query)) !== null) {
+      const name = m[1];
+      if (!seen.has(name)) {
+        seen.add(name);
+        paramNames.push(name);
+      }
+    }
+
+    // 2) Rewrite the SQL by replacing @name with $<position> consistent with paramNames
+    const nameToIndex = new Map<string, number>();
+    paramNames.forEach((n, i) => nameToIndex.set(n, i + 1));
+    const pgQuery = query
       .replace(/INSERT OR IGNORE/g, 'INSERT')
-      .replace(/@(\w+)/g, (match, param) => `$${this.getParamIndex(param)}`)
+      .replace(/@(\w+)/g, (_match, name) => {
+        const idx = nameToIndex.get(name);
+        if (!idx) throw new Error(`Unknown SQL param @${name} in query`);
+        return `$${idx}`;
+      })
       .replace(/ON CONFLICT \(id\) DO NOTHING/g, 'ON CONFLICT (id) DO NOTHING');
-    
+
+    const paramsToArray = (params: any): any[] => {
+      if (Array.isArray(params)) return params;
+      if (!params) return [];
+      return paramNames.map((name) => params[name]);
+    };
+
     return {
-      run: async (params: any) => {
-        const paramArray = this.convertParamsToArray(params, query);
-        if (paramArray.length > 0) {
-          await this.pool.query(pgQuery, paramArray);
-        } else {
-          await this.pool.query(pgQuery);
-        }
-        return { changes: 1 }; // Mock SQLite return value
+      run: async (params?: any) => {
+        const arr = paramsToArray(params);
+        await this.pool.query(pgQuery, arr);
+        return { changes: 1 }; // mimic better-sqlite3
       },
-      get: async (params: any) => {
-        const paramArray = this.convertParamsToArray(params, query);
-        const result = paramArray.length > 0 
-          ? await this.pool.query(pgQuery, paramArray)
-          : await this.pool.query(pgQuery);
+      get: async (params?: any) => {
+        const arr = paramsToArray(params);
+        const result = await this.pool.query(pgQuery, arr);
         return result.rows[0] || null;
       },
-      all: async (params: any) => {
-        const paramArray = this.convertParamsToArray(params, query);
-        const result = paramArray.length > 0 
-          ? await this.pool.query(pgQuery, paramArray)
-          : await this.pool.query(pgQuery);
+      all: async (params?: any) => {
+        const arr = paramsToArray(params);
+        const result = await this.pool.query(pgQuery, arr);
         return result.rows;
       }
     };
   }
-  
-  private convertParamsToArray(params: any, query: string): any[] {
-    if (Array.isArray(params)) return params;
-    if (!params) return [];
-    
-    // Extract parameter names from the original SQLite query in order
-    const paramNames = [];
-    const matches = query.match(/@(\w+)/g);
-    if (matches) {
-      for (const match of matches) {
-        const paramName = match.substring(1); // Remove @
-        if (!paramNames.includes(paramName)) {
-          paramNames.push(paramName);
-        }
-      }
-    }
-    
-    // If no parameters found in query, return empty array
-    if (paramNames.length === 0) return [];
-    
-    // Build array in the correct order based on query parameter order
-    return paramNames.map(name => params[name]);
-  }
-  
+
   exec(query: string) {
-    // For CREATE TABLE statements, just run them
+    // fire-and-forget is fine for DDL in your boot flow
     this.pool.query(query);
-  }
-  
-  private getParamIndex(param: string): number {
-    // Simple mapping - in practice you'd want a more sophisticated approach
-    const paramMap: { [key: string]: number } = {
-      'id': 1, 'wallet': 2, 'cartridge_id': 3, 'hash': 4, 'amount_wei': 5,
-      'tx_hash': 6, 'status': 7, 'created_at': 8, 'confirmed_at': 9, 'pending_expires_at': 10,
-      'claimId': 1, 'txHash': 2, 'confirmedAt': 3, 'since': 1, 'now': 2, 'total_wei': 1,
-      // For getAggregateForWallet: @wallet=1, @since=2 (query order)
-      // But params passed as {since, wallet} so we need: since=1, wallet=2
-    };
-    return paramMap[param] || 1;
   }
 }
 
@@ -175,7 +157,13 @@ export function insertPendingClaim(row: ClaimRow) {
 export async function setClaimTxHash(claimId: string, txHash: string) {
   const d = getDB();
   console.log(`[SET_TX_HASH] attempting to set tx_hash for claim ${claimId} to ${txHash}`);
-  const stmt = d.prepare(`UPDATE claims SET tx_hash=@txHash WHERE id=@claimId AND status='pending'`);
+  const stmt = d.prepare(`
+    UPDATE claims
+       SET tx_hash=@txHash
+     WHERE id=@claimId
+       AND status='pending'
+       AND (tx_hash IS NULL OR tx_hash = @txHash)
+  `);
   try {
     const result = await stmt.run({ claimId, txHash }); // ← await
     console.log(`[SET_TX_HASH] success: updated ${result.changes} rows`);
