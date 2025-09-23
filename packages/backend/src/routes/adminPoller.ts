@@ -4,6 +4,10 @@ import { listPendingWithTx, confirmClaimById, failClaim, expireStalePending } fr
 export async function registerAdminPollerRoute(fastify: FastifyInstance) {
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
+    console.log(`[ADMIN_AUTH] Received: "${auth}"`);
+    console.log(`[ADMIN_AUTH] Expected: "Bearer ${process.env.ADMIN_TOKEN}"`);
+    console.log(`[ADMIN_AUTH] ADMIN_TOKEN set: ${!!process.env.ADMIN_TOKEN}`);
+    
     if (!process.env.ADMIN_TOKEN || auth !== `Bearer ${process.env.ADMIN_TOKEN}`) {
       return reply.code(401).send({ error: 'Unauthorized' });
     }
