@@ -74,8 +74,54 @@ export async function initDb(dbUrl?: string) {
   }
 }
 
+// Create a PostgreSQL adapter that mimics SQLite interface
+class PostgreSQLAdapter {
+  constructor(private pool: Pool) {}
+  
+  prepare(query: string) {
+    // Convert SQLite syntax to PostgreSQL
+    let pgQuery = query
+      .replace(/INSERT OR IGNORE/g, 'INSERT')
+      .replace(/@(\w+)/g, (match, param) => `$${this.getParamIndex(param)}`)
+      .replace(/ON CONFLICT \(id\) DO NOTHING/g, 'ON CONFLICT (id) DO NOTHING');
+    
+    return {
+      run: async (params: any) => {
+        const paramArray = Array.isArray(params) ? params : Object.values(params);
+        await this.pool.query(pgQuery, paramArray);
+        return { changes: 1 }; // Mock SQLite return value
+      },
+      get: async (params: any) => {
+        const paramArray = Array.isArray(params) ? params : Object.values(params);
+        const result = await this.pool.query(pgQuery, paramArray);
+        return result.rows[0] || null;
+      },
+      all: async (params: any) => {
+        const paramArray = Array.isArray(params) ? params : Object.values(params);
+        const result = await this.pool.query(pgQuery, paramArray);
+        return result.rows;
+      }
+    };
+  }
+  
+  exec(query: string) {
+    // For CREATE TABLE statements, just run them
+    this.pool.query(query);
+  }
+  
+  private getParamIndex(param: string): number {
+    // Simple mapping - in practice you'd want a more sophisticated approach
+    const paramMap: { [key: string]: number } = {
+      'id': 1, 'wallet': 2, 'cartridge_id': 3, 'hash': 4, 'amount_wei': 5,
+      'tx_hash': 6, 'status': 7, 'created_at': 8, 'confirmed_at': 9, 'pending_expires_at': 10,
+      'claimId': 1, 'txHash': 2
+    };
+    return paramMap[param] || 1;
+  }
+}
+
 export function getDB() {
-  if (pgPool) return pgPool;
+  if (pgPool) return new PostgreSQLAdapter(pgPool);
   if (!db) throw new Error('DB not initialized. Call initDb() in server boot.');
   return db;
 }
