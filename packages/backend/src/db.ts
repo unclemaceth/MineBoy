@@ -89,21 +89,41 @@ class PostgreSQLAdapter {
     
     return {
       run: async (params: any) => {
-        const paramArray = Array.isArray(params) ? params : (params ? Object.values(params) : []);
+        const paramArray = this.convertParamsToArray(params, query);
         await this.pool.query(pgQuery, paramArray);
         return { changes: 1 }; // Mock SQLite return value
       },
       get: async (params: any) => {
-        const paramArray = Array.isArray(params) ? params : (params ? Object.values(params) : []);
+        const paramArray = this.convertParamsToArray(params, query);
         const result = await this.pool.query(pgQuery, paramArray);
         return result.rows[0] || null;
       },
       all: async (params: any) => {
-        const paramArray = Array.isArray(params) ? params : (params ? Object.values(params) : []);
+        const paramArray = this.convertParamsToArray(params, query);
         const result = await this.pool.query(pgQuery, paramArray);
         return result.rows;
       }
     };
+  }
+  
+  private convertParamsToArray(params: any, query: string): any[] {
+    if (Array.isArray(params)) return params;
+    if (!params) return [];
+    
+    // Extract parameter names from the original SQLite query in order
+    const paramNames = [];
+    const matches = query.match(/@(\w+)/g);
+    if (matches) {
+      for (const match of matches) {
+        const paramName = match.substring(1); // Remove @
+        if (!paramNames.includes(paramName)) {
+          paramNames.push(paramName);
+        }
+      }
+    }
+    
+    // Build array in the correct order
+    return paramNames.map(name => params[name]);
   }
   
   exec(query: string) {
