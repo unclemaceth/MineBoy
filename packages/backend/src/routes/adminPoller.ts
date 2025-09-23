@@ -2,6 +2,15 @@ import { FastifyInstance } from 'fastify';
 import { listPendingWithTx, confirmClaimById, failClaim, expireStalePending } from '../db.js';
 
 export async function registerAdminPollerRoute(fastify: FastifyInstance) {
+  // Temporary debug endpoint to check admin token
+  fastify.get('/v2/admin/debug-token', async (req, reply) => {
+    return {
+      hasToken: !!process.env.ADMIN_TOKEN,
+      tokenLength: process.env.ADMIN_TOKEN?.length || 0,
+      tokenStart: process.env.ADMIN_TOKEN?.substring(0, 4) || 'none'
+    };
+  });
+
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
     console.log(`[ADMIN_AUTH] Received: "${auth}"`);
