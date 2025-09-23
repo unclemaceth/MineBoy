@@ -114,7 +114,7 @@ class PostgreSQLAdapter {
     const paramMap: { [key: string]: number } = {
       'id': 1, 'wallet': 2, 'cartridge_id': 3, 'hash': 4, 'amount_wei': 5,
       'tx_hash': 6, 'status': 7, 'created_at': 8, 'confirmed_at': 9, 'pending_expires_at': 10,
-      'claimId': 1, 'txHash': 2
+      'claimId': 1, 'txHash': 2, 'confirmedAt': 3
     };
     return paramMap[param] || 1;
   }
@@ -150,7 +150,7 @@ export async function confirmClaimById(claimId: string, txHash: string, confirme
        SET status='confirmed', tx_hash=COALESCE(tx_hash, @txHash), confirmed_at=@confirmedAt
      WHERE id=@claimId AND status='pending'
   `);
-  const result = await stmt.run({ claimId, txHash, confirmedAt: BigInt(confirmedAt) }); // ← await
+  const result = await stmt.run({ claimId, txHash, confirmedAt: confirmedAt }); // ← await
   
   if (result.changes === 0) {
     console.warn(`[CONFIRM] no row updated (status mismatch?)`, { claimId });
