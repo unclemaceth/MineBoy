@@ -1,6 +1,15 @@
 import { FastifyInstance } from 'fastify';
 import { listPendingWithTx, confirmClaimById, failClaim, expireStalePending } from '../db.js';
 
+// Validation and normalization for transaction hashes
+function normalizeTx(h: string | null | undefined): string | null {
+  if (!h) return null;
+  const tx = h.trim().toLowerCase();
+  // Validate 0x + 64 hex chars
+  if (!/^0x[0-9a-f]{64}$/.test(tx)) return null;
+  return tx;
+}
+
 export async function registerAdminPollerRoute(fastify: FastifyInstance) {
   // Temporary debug endpoint to check admin token
   fastify.get('/v2/admin/debug-token', async (req, reply) => {
@@ -41,6 +50,53 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     }
   });
 
+  // Dry run endpoint to debug poller behavior
+  fastify.get('/v2/admin/poller/dry-run', async (req, reply) => {
+    const limit = parseInt((req.query as any).limit || '10');
+    const pending = await listPendingWithTx();
+    const sample = pending.slice(0, limit);
+    
+    const { createPublicClient, http, defineChain } = await import('viem');
+    
+    const CURTIS_CHAIN = defineChain({
+      id: 33111,
+      name: "Curtis",
+      nativeCurrency: { name: "ABIT", symbol: "ABIT", decimals: 18 },
+      rpcUrls: { default: { http: [process.env.RPC_URL!] } },
+    });
+    
+    const provider = createPublicClient({
+      chain: CURTIS_CHAIN,
+      transport: http(process.env.RPC_URL!)
+    });
+    
+    const out = [];
+    
+    for (const r of sample) {
+      const tx = normalizeTx(r.tx_hash);
+      let ping: any = null;
+      
+      try {
+        if (tx) {
+          ping = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
+        } else {
+          ping = { error: 'Invalid tx_hash format' };
+        }
+      } catch (e: any) {
+        ping = { error: String(e) };
+      }
+      
+      out.push({ 
+        id: r.id, 
+        raw: r.tx_hash, 
+        tx_normalized: tx, 
+        ping 
+      });
+    }
+    
+    return { ok: true, sample: out };
+  });
+
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
     console.log(`[ADMIN_AUTH] Received: "${auth}"`);
@@ -69,38 +125,53 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       let confirmed = 0;
       let failed = 0;
       
-      // Simple RPC check (you might want to use the same provider as the main poller)
-      const { createPublicClient, http } = await import('viem');
-      const { base } = await import('viem/chains');
+      // Create client for chain 33111 (Curtis)
+      const { createPublicClient, http, defineChain } = await import('viem');
+      
+      const CURTIS_CHAIN = defineChain({
+        id: 33111,
+        name: "Curtis",
+        nativeCurrency: { name: "ABIT", symbol: "ABIT", decimals: 18 },
+        rpcUrls: { default: { http: [process.env.RPC_URL!] } },
+      });
       
       const provider = createPublicClient({
-        chain: base,
+        chain: CURTIS_CHAIN,
         transport: http(process.env.RPC_URL!)
       });
 
       for (const row of pending) {
         try {
-          console.log(`📊 Checking claim ${row.id} with tx_hash: ${row.tx_hash}`);
-          if (!row.tx_hash) {
-            console.log(`📊 Skipping claim ${row.id} - no tx_hash`);
+          // Normalize and validate tx_hash
+          const tx = normalizeTx(row.tx_hash);
+          if (!tx) {
+            console.warn(`📊 Skip row with invalid tx_hash`, { id: row.id, raw: row.tx_hash });
             continue;
           }
-          const receipt = await provider.getTransactionReceipt(row.tx_hash);
+          
+          console.log(`📊 Checking claim ${row.id} with normalized tx: ${tx}`);
+          
+          const receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
           if (!receipt) {
-            console.log(`📊 No receipt found for tx ${row.tx_hash}`);
+            console.log(`📊 No receipt found for tx ${tx}`);
             continue; // Still pending
           }
           
-          if (receipt.status === 1n || receipt.status === 1) {
-            await confirmClaimById(row.id, row.tx_hash!, now);
+          // viem returns status as "success" | "reverted"
+          if (receipt.status === "success") {
+            await confirmClaimById(row.id, tx, now);
             confirmed++;
             console.log(`📊 Confirmed claim ${row.id}`);
           } else {
             await failClaim(row.id);
             failed++;
-            console.log(`📊 Failed claim ${row.id}`);
+            console.log(`📊 Failed claim ${row.id} - status: ${receipt.status}`);
           }
-        } catch (error) {
+        } catch (error: any) {
+          if (error?.name === "TransactionNotFoundError") {
+            console.log(`📊 Transaction not found: ${row.tx_hash}`);
+            continue; // Still pending
+          }
           console.warn(`📊 RPC error checking tx ${row.tx_hash}:`, error);
         }
       }

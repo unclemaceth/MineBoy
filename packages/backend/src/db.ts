@@ -173,7 +173,10 @@ export async function listPendingWithTx(): Promise<ClaimRow[]> {
   const stmt = d.prepare(`
     SELECT *
     FROM claims
-    WHERE status='pending' AND tx_hash IS NOT NULL
+    WHERE status='pending' 
+      AND tx_hash IS NOT NULL 
+      AND length(tx_hash) = 66
+      AND tx_hash LIKE '0x%'
   `);
   const rows = await stmt.all({});  // ← await
   return rows as ClaimRow[];
