@@ -220,7 +220,7 @@ export default function LeaderboardPage() {
           </div>
 
           {/* Table Body */}
-          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+          <div style={{ maxHeight: '300px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
             {loading && (
               <div style={{
                 padding: '20px',
