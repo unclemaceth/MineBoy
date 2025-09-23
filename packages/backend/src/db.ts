@@ -150,7 +150,7 @@ export async function confirmClaimById(claimId: string, txHash: string, confirme
        SET status='confirmed', tx_hash=COALESCE(tx_hash, @txHash), confirmed_at=@confirmedAt
      WHERE id=@claimId AND status='pending'
   `);
-  const result = await stmt.run({ claimId, txHash, confirmedAt }); // ← await
+  const result = await stmt.run({ claimId, txHash, confirmedAt: BigInt(confirmedAt) }); // ← await
   
   if (result.changes === 0) {
     console.warn(`[CONFIRM] no row updated (status mismatch?)`, { claimId });
