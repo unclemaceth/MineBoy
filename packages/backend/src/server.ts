@@ -904,9 +904,9 @@ fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async 
     // Look for claims created within the last 30 minutes
     const thirtyMinutesAgo = Date.now() - 30 * 60 * 1000;
     const stmt = d.prepare(`
-      SELECT id, wallet, created_at
+      SELECT id, wallet, created_at, status
       FROM claims
-      WHERE status='pending' AND created_at >= @thirtyMinutesAgo
+      WHERE created_at >= @thirtyMinutesAgo
       ORDER BY created_at DESC
     `);
     const pendingClaims = stmt.all({ thirtyMinutesAgo });
