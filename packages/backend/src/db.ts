@@ -1,5 +1,6 @@
 // packages/backend/src/db.ts
 import Database from 'better-sqlite3';
+import { Pool, Client } from 'pg';
 
 export type ClaimRow = {
   id: string;                 // e.g. `${sessionId}:${jobId}` or ULID
@@ -15,33 +16,66 @@ export type ClaimRow = {
 };
 
 let db: Database.Database | null = null;
+let pgPool: Pool | null = null;
 
-export function initDb(dbUrl?: string) {
-  const file = dbUrl?.startsWith('file:') ? dbUrl.replace('file:', '') : (dbUrl || 'minerboy.db');
-  db = new Database(file);
-  db.pragma('journal_mode = WAL');
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS claims (
-      id TEXT PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      cartridge_id INTEGER NOT NULL,
-      hash TEXT NOT NULL,
-      amount_wei TEXT NOT NULL,
-      tx_hash TEXT,
-      status TEXT NOT NULL CHECK(status IN ('pending','confirmed','failed','expired')),
-      created_at INTEGER NOT NULL,
-      confirmed_at INTEGER,
-      pending_expires_at INTEGER
-    );
-  `);
-  db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
-  db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
-  db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
-  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+export async function initDb(dbUrl?: string) {
+  const url = dbUrl || process.env.DATABASE_URL;
+  
+  if (url && url.startsWith('postgresql://')) {
+    // Use PostgreSQL
+    pgPool = new Pool({ connectionString: url });
+    console.log('📊 Using PostgreSQL database');
+    
+    // PostgreSQL table creation
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS claims (
+        id TEXT PRIMARY KEY,
+        wallet TEXT NOT NULL,
+        cartridge_id INTEGER NOT NULL,
+        hash TEXT NOT NULL,
+        amount_wei TEXT NOT NULL,
+        tx_hash TEXT,
+        status TEXT NOT NULL CHECK(status IN ('pending','confirmed','failed','expired')),
+        created_at BIGINT NOT NULL,
+        confirmed_at BIGINT,
+        pending_expires_at BIGINT
+      );
+    `);
+    await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
+    await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
+    await pgPool.query(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
+    await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+  } else {
+    // Use SQLite
+    const file = url?.startsWith('file:') ? url.replace('file:', '') : (url || 'minerboy.db');
+    db = new Database(file);
+    db.pragma('journal_mode = WAL');
+    console.log('📊 Using SQLite database:', file);
+    
+    // SQLite table creation
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS claims (
+        id TEXT PRIMARY KEY,
+        wallet TEXT NOT NULL,
+        cartridge_id INTEGER NOT NULL,
+        hash TEXT NOT NULL,
+        amount_wei TEXT NOT NULL,
+        tx_hash TEXT,
+        status TEXT NOT NULL CHECK(status IN ('pending','confirmed','failed','expired')),
+        created_at INTEGER NOT NULL,
+        confirmed_at INTEGER,
+        pending_expires_at INTEGER
+      );
+    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_wallet ON claims(wallet);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_status ON claims(status);`);
+    db.exec(`CREATE INDEX IF NOT EXISTS ix_claims_created ON claims(created_at);`);
+    db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
+  }
 }
 
 export function getDB() {
+  if (pgPool) return pgPool;
   if (!db) throw new Error('DB not initialized. Call initDb() in server boot.');
   return db;
 }

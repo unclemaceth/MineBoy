@@ -130,9 +130,6 @@ fastify.addHook('onSend', (req, reply, payload, done) => {
   }
 });
 
-// Initialize database
-initDb(process.env.DATABASE_URL);
-
 // Start receipt poller
 const stopPoller = startReceiptPoller(process.env.RPC_URL!);
 
@@ -732,6 +729,9 @@ setInterval(() => {
 // Start server
 const start = async () => {
   try {
+    // Initialize database
+    await initDb(process.env.DATABASE_URL);
+    
     await fastify.listen({ 
       port: config.PORT, 
       host: config.HOST 
