@@ -39,7 +39,9 @@ export async function registerClaimTxRoute(fastify: FastifyInstance) {
         }
 
         // Attach hash
+        console.log(`[CLAIM_TX] about to call setClaimTxHash with claimId=${claimId}, hash=${hash}`);
         await setClaimTxHash(claimId, hash);
+        console.log(`[CLAIM_TX] setClaimTxHash completed successfully`);
 
         return reply.send({ ok: true, claimId, txHash: hash });
       } catch (err: any) {
