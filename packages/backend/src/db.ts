@@ -133,13 +133,15 @@ class PostgreSQLAdapter {
     // If no parameters found in query, return empty array
     if (paramNames.length === 0) return [];
     
-    // Build array in the correct order, filtering out undefined values
-    const result = paramNames.map(name => params[name]).filter(val => val !== undefined);
+    // Build array in the correct order
+    const result = paramNames.map(name => {
+      const value = params[name];
+      console.log(`[POSTGRES_PARAM] ${name} = ${value} (type: ${typeof value})`);
+      return value;
+    });
     
-    // If we have fewer results than expected parameters, pad with nulls
-    while (result.length < paramNames.length) {
-      result.push(null);
-    }
+    console.log(`[POSTGRES_QUERY] ${query}`);
+    console.log(`[POSTGRES_PARAMS] ${JSON.stringify(result)}`);
     
     return result;
   }
