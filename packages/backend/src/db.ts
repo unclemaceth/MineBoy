@@ -303,44 +303,56 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   
   // Get team data for the top wallets
   const topWallets = results.slice(0, limit).map(r => r.wallet);
-  const seasonId = await getCurrentSeasonId(d);
   
-  // Fetch team data for these wallets
-  const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
-  
-  if (topWallets.length > 0) {
-    const placeholders = topWallets.map((_, i) => `$${i + 1}`).join(',');
-    const teamStmt = await d.pool.query(
-      `SELECT ut.wallet, t.slug, t.name, t.emoji, t.color
-       FROM user_teams ut
-       JOIN teams t ON t.id = ut.team_id
-       WHERE ut.wallet IN (${placeholders}) AND ut.season_id = $${topWallets.length + 1}`,
-      [...topWallets, seasonId]
-    );
+  try {
+    const seasonId = await getCurrentSeasonId(d);
+    console.log('[getLeaderboardTop] seasonId:', seasonId);
     
-    for (const row of teamStmt.rows) {
-      teamData.set(row.wallet.toLowerCase(), {
-        slug: row.slug,
-        name: row.name,
-        emoji: row.emoji,
-        color: row.color
-      });
+    // Fetch team data for these wallets
+    const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
+    
+    if (topWallets.length > 0) {
+      const placeholders = topWallets.map((_, i) => `$${i + 1}`).join(',');
+      const teamStmt = await d.pool.query(
+        `SELECT ut.wallet, t.slug, t.name, t.emoji, t.color
+         FROM user_teams ut
+         JOIN teams t ON t.id = ut.team_id
+         WHERE ut.wallet IN (${placeholders}) AND ut.season_id = $${topWallets.length + 1}`,
+        [...topWallets, seasonId]
+      );
+      
+      console.log('[getLeaderboardTop] team query result:', teamStmt.rows.length, 'teams found');
+      
+      for (const row of teamStmt.rows) {
+        teamData.set(row.wallet.toLowerCase(), {
+          slug: row.slug,
+          name: row.name,
+          emoji: row.emoji,
+          color: row.color
+        });
+      }
     }
+    
+    // Add team data to results
+    const resultsWithTeams = results.slice(0, limit).map(result => {
+      const team = teamData.get(result.wallet.toLowerCase());
+      return {
+        ...result,
+        team_slug: team?.slug,
+        team_name: team?.name,
+        team_emoji: team?.emoji,
+        team_color: team?.color
+      };
+    });
+    
+    console.log('[getLeaderboardTop] returning', resultsWithTeams.length, 'entries with team data');
+    return resultsWithTeams;
+    
+  } catch (error) {
+    console.error('[getLeaderboardTop] Error fetching team data:', error);
+    // Return results without team data if there's an error
+    return results.slice(0, limit);
   }
-  
-  // Add team data to results
-  const resultsWithTeams = results.slice(0, limit).map(result => {
-    const team = teamData.get(result.wallet.toLowerCase());
-    return {
-      ...result,
-      team_slug: team?.slug,
-      team_name: team?.name,
-      team_emoji: team?.emoji,
-      team_color: team?.color
-    };
-  });
-  
-  return resultsWithTeams;
 }
 
 export async function getAggregateForWallet(period: Period, wallet: string): Promise<LeaderboardEntry | null> {
