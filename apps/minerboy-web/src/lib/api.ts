@@ -158,20 +158,22 @@ export const api = {
 // Teams API helpers
 export type Team = { slug: string; name: string; emoji?: string; color?: string; };
 
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? '';
+
 export async function apiListTeams(): Promise<Team[]> {
-  const r = await fetch('/v2/teams', { cache: 'no-store' });
+  const r = await fetch(`${API_BASE}/v2/teams`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch teams');
   return r.json();
 }
 
 export async function apiGetUserTeam(wallet: `0x${string}`): Promise<{ team: Team | null }> {
-  const r = await fetch(`/v2/user/team?wallet=${wallet}`, { cache: 'no-store' });
+  const r = await fetch(`${API_BASE}/v2/user/team?wallet=${wallet}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch user team');
   return r.json();
 }
 
 export async function apiPickTeam(wallet: `0x${string}`, teamSlug: string) {
-  const r = await fetch('/v2/user/team', {
+  const r = await fetch(`${API_BASE}/v2/user/team`, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({ wallet, teamSlug })
@@ -181,7 +183,7 @@ export async function apiPickTeam(wallet: `0x${string}`, teamSlug: string) {
 }
 
 export async function apiLeaderboardTeams() {
-  const r = await fetch('/v2/leaderboard/teams', { cache: 'no-store' });
+  const r = await fetch(`${API_BASE}/v2/leaderboard/teams`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch team standings');
   return r.json() as Promise<Array<Team & { members: number; total_score: string }>>;
 }
