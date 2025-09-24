@@ -4,6 +4,7 @@ import {
   getLeaderboardTop,
   getAggregateForWallet,
   countWalletsAbove,
+  getTeamStandings,
   type Period
 } from '../db.js';
 
@@ -91,6 +92,37 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
       // Cache for 15 seconds with 60s stale-while-revalidate
       reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
       reply.send(payload);
+    }
+  );
+
+  // Team standings endpoint
+  fastify.get(
+    '/v2/leaderboard/teams',
+    async (req, reply) => {
+      try {
+        const q: any = req.query || {};
+        const period = (q.period || 'all') as Period;
+        
+        const { getDB } = await import('../db.js');
+        const db = getDB();
+        const standings = await getTeamStandings(db, period);
+        
+        // Convert scores to ABIT strings
+        const standingsWithABIT = standings.map(standing => ({
+          ...standing,
+          total_score: toAbitString(standing.total_score.toString(), Number(process.env.TOKEN_DECIMALS || 18))
+        }));
+        
+        // Cache for 15 seconds with 60s stale-while-revalidate
+        reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
+        reply.send({
+          period,
+          standings: standingsWithABIT
+        });
+      } catch (error) {
+        fastify.log.error('Failed to get team standings:', error);
+        return reply.code(500).send({ error: 'Failed to fetch team standings' });
+      }
     }
   );
 }

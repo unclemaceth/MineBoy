@@ -232,6 +232,10 @@ export type LeaderboardEntry = {
   claims: number;
   cartridges: number;
   last_confirmed_at: number | null;
+  team_slug?: string;
+  team_name?: string;
+  team_emoji?: string;
+  team_color?: string;
 };
 
 export async function getLeaderboardTop(period: Period, limit = 25): Promise<LeaderboardEntry[]> {
@@ -297,7 +301,46 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     return a.last_confirmed_at - b.last_confirmed_at;
   });
   
-  return results.slice(0, limit);
+  // Get team data for the top wallets
+  const topWallets = results.slice(0, limit).map(r => r.wallet);
+  const seasonId = await getCurrentSeasonId(d);
+  
+  // Fetch team data for these wallets
+  const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
+  
+  if (topWallets.length > 0) {
+    const placeholders = topWallets.map((_, i) => `$${i + 1}`).join(',');
+    const teamStmt = await d.pool.query(
+      `SELECT ut.wallet, t.slug, t.name, t.emoji, t.color
+       FROM user_teams ut
+       JOIN teams t ON t.id = ut.team_id
+       WHERE ut.wallet IN (${placeholders}) AND ut.season_id = $${topWallets.length + 1}`,
+      [...topWallets, seasonId]
+    );
+    
+    for (const row of teamStmt.rows) {
+      teamData.set(row.wallet.toLowerCase(), {
+        slug: row.slug,
+        name: row.name,
+        emoji: row.emoji,
+        color: row.color
+      });
+    }
+  }
+  
+  // Add team data to results
+  const resultsWithTeams = results.slice(0, limit).map(result => {
+    const team = teamData.get(result.wallet.toLowerCase());
+    return {
+      ...result,
+      team_slug: team?.slug,
+      team_name: team?.name,
+      team_emoji: team?.emoji,
+      team_color: team?.color
+    };
+  });
+  
+  return resultsWithTeams;
 }
 
 export async function getAggregateForWallet(period: Period, wallet: string): Promise<LeaderboardEntry | null> {
@@ -423,4 +466,49 @@ export async function setUserTeam(db: any, wallet: string, seasonId: number, tea
        SET team_id = CASE WHEN $4=true THEN EXCLUDED.team_id ELSE user_teams.team_id END`,
     [wallet, seasonId, teamId, editable]
   );
+}
+
+// Team standings for leaderboard
+export type TeamStanding = {
+  slug: string;
+  name: string;
+  emoji?: string;
+  color?: string;
+  members: number;
+  total_score: number;
+};
+
+export async function getTeamStandings(db: any, period: Period): Promise<TeamStanding[]> {
+  const seasonId = await getCurrentSeasonId(db);
+  const since = sinceForPeriod(period);
+  
+  const result = await db.pool.query(
+    `SELECT
+       t.slug, t.name, t.emoji, t.color,
+       COUNT(DISTINCT ut.wallet) AS members,
+       COALESCE(SUM(lb.total_wei::bigint), 0) AS total_score
+     FROM teams t
+     LEFT JOIN user_teams ut ON ut.team_id=t.id AND ut.season_id=$1
+     LEFT JOIN (
+       SELECT 
+         wallet,
+         SUM(amount_wei::bigint) as total_wei
+       FROM claims 
+       WHERE status='confirmed' AND ($2=0 OR confirmed_at >= $2)
+       GROUP BY wallet
+     ) lb ON lb.wallet=ut.wallet
+     WHERE t.is_active=true
+     GROUP BY t.id, t.slug, t.name, t.emoji, t.color
+     ORDER BY total_score DESC`,
+    [seasonId, since]
+  );
+  
+  return result.rows.map(row => ({
+    slug: row.slug,
+    name: row.name,
+    emoji: row.emoji,
+    color: row.color,
+    members: parseInt(row.members),
+    total_score: parseInt(row.total_score.toString())
+  }));
 }
