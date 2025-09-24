@@ -413,14 +413,12 @@ export async function countWalletsAbove(period: Period, totalWei: string): Promi
 // Teams helper functions
 export async function getCurrentSeasonId(db: any): Promise<number> {
   const slug = process.env.SEASON_SLUG;
-  console.log('[getCurrentSeasonId] SEASON_SLUG:', slug);
   
   if (!slug) {
     throw new Error('SEASON_SLUG environment variable not set');
   }
   
   const row = await db.pool.query('SELECT id FROM seasons WHERE slug=$1', [slug]);
-  console.log('[getCurrentSeasonId] Query result:', row.rows);
   
   if (!row.rows[0]) {
     throw new Error(`Season with slug '${slug}' not found`);
@@ -494,13 +492,13 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
     `SELECT
        t.slug, t.name, t.emoji, t.color,
        COUNT(DISTINCT ut.wallet) AS members,
-       COALESCE(SUM(lb.total_wei), 0) AS total_score
+       COALESCE(SUM(lb.total_wei::numeric), 0) AS total_score
      FROM teams t
      LEFT JOIN user_teams ut ON ut.team_id=t.id AND ut.season_id=$1
      LEFT JOIN (
        SELECT 
          wallet,
-         SUM(amount_wei::bigint) as total_wei
+         SUM(amount_wei::numeric) as total_wei
        FROM claims 
        WHERE status='confirmed' AND ($2=0 OR confirmed_at >= $2)
        GROUP BY wallet

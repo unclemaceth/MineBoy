@@ -107,15 +107,9 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         const q: any = req.query || {};
         const period = (q.period || 'all') as Period;
         
-        // Add debug logging
-        console.log('[TEAM_STANDINGS] Starting query with period:', period);
-        console.log('[TEAM_STANDINGS] SEASON_SLUG env var:', process.env.SEASON_SLUG);
-        
         const { getDB } = await import('../db.js');
         const db = getDB();
         const standings = await getTeamStandings(db, period);
-        
-        console.log('[TEAM_STANDINGS] Query result:', standings.length, 'teams');
         
         // Convert scores to ABIT strings
         const standingsWithABIT = standings.map(standing => ({
@@ -127,13 +121,8 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
         reply.send(standingsWithABIT);
       } catch (error) {
-        console.error('[TEAM_STANDINGS] Error details:', error);
         fastify.log.error('Failed to get team standings:', error);
-        return reply.code(500).send({ 
-          error: 'Failed to fetch team standings',
-          details: error.message,
-          seasonSlug: process.env.SEASON_SLUG
-        });
+        return reply.code(500).send({ error: 'Failed to fetch team standings' });
       }
     }
   );
