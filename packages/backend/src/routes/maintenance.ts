@@ -22,6 +22,8 @@ const BYPASS = [
   '/v2/admin', // prefix match
   // debugging (if you keep them)
   '/v2/debug',
+  // maintenance status (needed for frontend)
+  '/v2/maintenance',
 ];
 
 function isBypassed(path: string) {
