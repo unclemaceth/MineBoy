@@ -9,12 +9,23 @@ export default function MaintenanceGate() {
   const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
 
   const check = React.useCallback(async () => {
-    if (!backend) return;
+    if (!backend) {
+      console.log('[MAINTENANCE_GATE] No backend URL configured');
+      return;
+    }
     try {
+      console.log('[MAINTENANCE_GATE] Checking maintenance status...');
       const r = await fetch(`${backend}/v2/maintenance`, { cache: 'no-store' });
-      if (!r.ok) return; // keep previous state
-      setMaint(await r.json());
-    } catch {
+      console.log('[MAINTENANCE_GATE] Response status:', r.status);
+      if (!r.ok) {
+        console.log('[MAINTENANCE_GATE] Response not ok, keeping previous state');
+        return; // keep previous state
+      }
+      const data = await r.json();
+      console.log('[MAINTENANCE_GATE] Maintenance data:', data);
+      setMaint(data);
+    } catch (error) {
+      console.error('[MAINTENANCE_GATE] Network error:', error);
       // network error: keep previous state
     }
   }, [backend]);
@@ -25,6 +36,13 @@ export default function MaintenanceGate() {
     return () => clearInterval(id);
   }, [check]);
 
-  if (!maint?.enabled) return null;
+  console.log('[MAINTENANCE_GATE] Render check:', { maint, enabled: maint?.enabled });
+  
+  if (!maint?.enabled) {
+    console.log('[MAINTENANCE_GATE] Maintenance not enabled, not showing overlay');
+    return null;
+  }
+  
+  console.log('[MAINTENANCE_GATE] Showing maintenance overlay');
   return <MaintenanceOverlay message={maint.message} untilIso={maint.untilIso ?? null} />;
 }
