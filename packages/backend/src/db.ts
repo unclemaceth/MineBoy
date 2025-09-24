@@ -304,6 +304,8 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   // Get team data for the top wallets
   try {
     const seasonId = await getCurrentSeasonId(d);
+    console.log('[getLeaderboardTop] results.length:', results.length, 'limit:', limit);
+    console.log('[getLeaderboardTop] results.slice(0, limit).length:', results.slice(0, limit).length);
     const topWallets = results.slice(0, limit).map(r => r.wallet.toLowerCase());
     
     console.log('[getLeaderboardTop] seasonId:', seasonId);
