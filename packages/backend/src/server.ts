@@ -27,6 +27,7 @@ import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
 import { registerAdminPollerRoute } from './routes/adminPoller.js';
 import { registerHealthRoute } from './routes/health.js';
+import teamsRoutes from './routes/teams.js';
 import { registerMaintenance } from './routes/maintenance.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
@@ -147,6 +148,7 @@ await registerClaimTxRoute(fastify);
 await registerLeaderboardRoute(fastify);
 await registerAdminPollerRoute(fastify);
 await registerHealthRoute(fastify);
+await fastify.register(teamsRoutes);
 
 // Health check
 fastify.get('/health', async () => {
