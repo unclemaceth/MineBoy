@@ -304,23 +304,22 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   // Get team data for the top wallets
   try {
     const seasonId = await getCurrentSeasonId(d);
-    const topWallets = results.slice(0, limit).map(r => r.wallet);
+    const topWallets = results.slice(0, limit).map(r => r.wallet.toLowerCase());
     
-    // Fetch team data for these wallets
-    const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
+    let teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
     
     if (topWallets.length > 0) {
-      const placeholders = topWallets.map((_, i) => `$${i + 1}`).join(',');
-      const teamStmt = await d.pool.query(
+      const { rows } = await d.pool.query(
         `SELECT ut.wallet, t.slug, t.name, t.emoji, t.color
          FROM user_teams ut
          JOIN teams t ON t.id = ut.team_id
-         WHERE ut.wallet IN (${placeholders}) AND ut.season_id = $${topWallets.length + 1}`,
-        [...topWallets, seasonId]
+         WHERE ut.season_id = $1
+           AND ut.wallet = ANY($2::text[])`,
+        [seasonId, topWallets]
       );
       
-      for (const row of teamStmt.rows) {
-        teamData.set(row.wallet.toLowerCase(), {
+      for (const row of rows) {
+        teamData.set(String(row.wallet).toLowerCase(), {
           slug: row.slug,
           name: row.name,
           emoji: row.emoji,
@@ -329,7 +328,6 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
       }
     }
     
-    // Add team data to results
     return results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
       return {
