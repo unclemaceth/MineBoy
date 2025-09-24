@@ -333,7 +333,7 @@ export default function TeamSelector() {
             }}>
               Are you sure you want to join{' '}
               <span style={{ fontWeight: 'bold', color: '#64ff8a' }}>
-                {selectedTeam.emoji ? `${selectedTeam.emoji} ` : ''}{selectedTeam.name}
+                {selectedTeam?.emoji ? `${selectedTeam.emoji} ` : ''}{selectedTeam?.name || 'Unknown Team'}
               </span>?
               <br />
               <br />
