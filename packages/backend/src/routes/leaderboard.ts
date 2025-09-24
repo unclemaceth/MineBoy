@@ -126,4 +126,42 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
       }
     }
   );
+
+  // Debug endpoint to test team data fetching
+  fastify.get(
+    '/v2/debug/leaderboard-teams',
+    async (req, reply) => {
+      try {
+        const { getDB } = await import('../db.js');
+        const db = getDB();
+        
+        // Test getCurrentSeasonId
+        const { getCurrentSeasonId } = await import('../db.js');
+        const seasonId = await getCurrentSeasonId(db);
+        
+        // Test team query for a specific wallet
+        const testWallet = '0x909102dbf4a1bc248bc5f9eedad589e7552ad164';
+        const teamStmt = await db.pool.query(
+          `SELECT ut.wallet, t.slug, t.name, t.emoji, t.color
+           FROM user_teams ut
+           JOIN teams t ON t.id = ut.team_id
+           WHERE ut.wallet = $1 AND ut.season_id = $2`,
+          [testWallet, seasonId]
+        );
+        
+        return reply.send({
+          seasonId,
+          testWallet,
+          teamQueryResult: teamStmt.rows,
+          seasonSlug: process.env.SEASON_SLUG
+        });
+      } catch (error) {
+        fastify.log.error('Debug endpoint error:', error);
+        return reply.code(500).send({ 
+          error: 'Debug endpoint failed',
+          details: error.message
+        });
+      }
+    }
+  );
 }
