@@ -1,26 +1,26 @@
 import { Pool } from 'pg';
 
 const TEAMS = [
-  { slug: 'geez', name: 'Geez', emoji: '😤', color: '#FF6B6B' },
-  { slug: 'zards', name: 'Zards', emoji: '🦎', color: '#4ECDC4' },
-  { slug: 'goobaloos', name: 'Goobaloos', emoji: '👻', color: '#45B7D1' },
-  { slug: 'clutch-puppies', name: 'Clutch Puppies', emoji: '🐶', color: '#96CEB4' },
-  { slug: 'foxy-fam', name: 'Foxy Fam', emoji: '🦊', color: '#FFEAA7' },
-  { slug: 'monos', name: 'Monos', emoji: '🐵', color: '#DDA0DD' },
-  { slug: 'alpha-dogs', name: 'Alpha Dogs', emoji: '🐕', color: '#98D8C8' },
-  { slug: 'gobs', name: 'Gobs', emoji: '👹', color: '#F7DC6F' },
-  { slug: 'typical-tigers', name: 'Typical Tigers', emoji: '🐅', color: '#BB8FCE' },
-  { slug: 'flingers', name: 'Flingers', emoji: '💫', color: '#85C1E9' },
-  { slug: 'dengs', name: 'Dengs', emoji: '🤔', color: '#F8C471' },
-  { slug: 'chumps', name: 'Chumps', emoji: '😅', color: '#82E0AA' },
-  { slug: 'pixl-pals', name: 'Pixl Pals', emoji: '🎮', color: '#F1948A' },
-  { slug: 'doruzu-rugdollz', name: 'Doruzu/RugDollz', emoji: '🧸', color: '#D7BDE2' },
-  { slug: 'froglings', name: 'Froglings', emoji: '🐸', color: '#A9DFBF' },
-  { slug: 'apegames', name: 'ApeGames', emoji: '🦍', color: '#F9E79F' },
-  { slug: 'eyeverse', name: 'Eyeverse', emoji: '👁️', color: '#AED6F1' },
-  { slug: 'mutant-records', name: 'Mutant Records', emoji: '🎵', color: '#D5DBDB' },
-  { slug: 'ovi-ovisaurs', name: 'Ovi (Ovisaurs)', emoji: '🦕', color: '#A3E4D7' },
-  { slug: 'mutant-shiba-club', name: 'Mutant Shiba Club', emoji: '🐕‍🦺', color: '#FADBD8' },
+  { slug: 'geez', name: 'Geez', emoji: null, color: '#FF6B6B' },
+  { slug: 'zards', name: 'Zards', emoji: null, color: '#4ECDC4' },
+  { slug: 'goobaloos', name: 'Goobaloos', emoji: null, color: '#45B7D1' },
+  { slug: 'clutch-puppies', name: 'Clutch Puppies', emoji: null, color: '#96CEB4' },
+  { slug: 'foxy-fam', name: 'Foxy Fam', emoji: null, color: '#FFEAA7' },
+  { slug: 'monos', name: 'Monos', emoji: null, color: '#DDA0DD' },
+  { slug: 'alpha-dogs', name: 'Alpha Dogs', emoji: null, color: '#98D8C8' },
+  { slug: 'gobs', name: 'Gobs', emoji: null, color: '#F7DC6F' },
+  { slug: 'typical-tigers', name: 'Typical Tigers', emoji: null, color: '#BB8FCE' },
+  { slug: 'flingers', name: 'Flingers', emoji: null, color: '#85C1E9' },
+  { slug: 'dengs', name: 'Dengs', emoji: null, color: '#F8C471' },
+  { slug: 'chumps', name: 'Chumps', emoji: null, color: '#82E0AA' },
+  { slug: 'pixl-pals', name: 'Pixl Pals', emoji: null, color: '#F1948A' },
+  { slug: 'doruzu-rugdollz', name: 'Doruzu/RugDollz', emoji: null, color: '#D7BDE2' },
+  { slug: 'froglings', name: 'Froglings', emoji: null, color: '#A9DFBF' },
+  { slug: 'apegames', name: 'ApeGames', emoji: null, color: '#F9E79F' },
+  { slug: 'eyeverse', name: 'Eyeverse', emoji: null, color: '#AED6F1' },
+  { slug: 'mutant-records', name: 'Mutant Records', emoji: null, color: '#D5DBDB' },
+  { slug: 'ovi-ovisaurs', name: 'Ovi (Ovisaurs)', emoji: null, color: '#A3E4D7' },
+  { slug: 'mutant-shiba-club', name: 'Mutant Shiba Club', emoji: null, color: '#FADBD8' },
 ];
 
 async function main() {
@@ -39,7 +39,7 @@ async function main() {
          ON CONFLICT (slug) DO UPDATE SET name=EXCLUDED.name, emoji=EXCLUDED.emoji, color=EXCLUDED.color`,
         [t.slug, t.name, t.emoji, t.color]
       );
-      console.log(`✅ Seeded team: ${t.emoji} ${t.name}`);
+      console.log(`✅ Seeded team: ${t.name}`);
     }
     
     await pool.end();

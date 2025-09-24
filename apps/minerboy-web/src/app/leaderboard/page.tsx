@@ -322,7 +322,9 @@ export default function LeaderboardPage() {
         )}
 
         {/* Team Selector */}
-        <TeamSelector />
+        <div style={{ marginTop: 24 }}>
+          <TeamSelector />
+        </div>
 
         {/* Team Standings */}
         <TeamStandings period={period} />
