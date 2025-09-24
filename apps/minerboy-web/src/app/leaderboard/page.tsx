@@ -7,6 +7,7 @@ import { api } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import Link from 'next/link';
 import Stage from '@/components/Stage';
+import TeamSelector from '@/components/TeamSelector';
 
 type Entry = {
   rank: number;
@@ -310,6 +311,9 @@ export default function LeaderboardPage() {
             </div>
           </div>
         )}
+
+        {/* Team Selector */}
+        <TeamSelector />
       </div>
     </Stage>
   );
