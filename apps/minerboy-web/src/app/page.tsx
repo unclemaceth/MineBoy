@@ -18,6 +18,8 @@ import { useTypewriter } from "@/hooks/useTypewriter";
 import { useJobTtl } from "@/hooks/useJobTtl";
 import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
+import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
+import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 import { getMinerIdCached } from "@/utils/minerId";
 import { getJobId, assertString } from "@/utils/job";
 import { getOrCreateSessionId } from '@/lib/miningSession';
@@ -68,6 +70,7 @@ function Home() {
   const [booting, setBooting] = useState(true);
   const [mobileZoom, setMobileZoom] = useState(false);
   const [lockInfo, setLockInfo] = useState<any>(null);
+  const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
 
   // Single-tab enforcement
   useEffect(() => {
@@ -449,6 +452,49 @@ function Home() {
     }
   };
   
+  const handleAlchemyCartridgeSelect = async (ownedCartridge: OwnedCartridge) => {
+    if (!address) return;
+    
+    setShowAlchemyCartridges(false);
+    pushLine(`Opening session with Cartridge #${ownedCartridge.tokenId}...`);
+    
+    try {
+      // Clear any existing session state first
+      clear();
+      
+      // Create a CartridgeConfig from the owned cartridge
+      const cartridgeInfo: CartridgeConfig = {
+        name: `Cartridge #${ownedCartridge.tokenId}`,
+        contract: ownedCartridge.contractAddress,
+        chainId: ownedCartridge.chainId
+      };
+      
+      // Use the new two-tier locking system
+      const result = await apiStart({
+        minerId: getMinerIdCached(),
+        chainId: ownedCartridge.chainId,
+        contract: ownedCartridge.contractAddress,
+        tokenId: ownedCartridge.tokenId,
+        wallet: address
+      });
+
+      if (result.ok) {
+        setWallet(address);
+        setJob(normalizeJob(result.job!));
+        setMining(false);
+        setMode('idle');
+        pushLine(`✅ Session opened with ${cartridgeInfo.name}`);
+        pushLine(`Job ID: ${getJobId(normalizeJob(result.job!))}`);
+        pushLine(`Press A to start mining`);
+      } else {
+        pushLine(`❌ Failed to open session: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Cartridge selection error:', error);
+      pushLine(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
   const handleCartridgeSelect = async (cartridgeInfo: CartridgeConfig, tokenId: string) => {
     if (!address) return;
     
@@ -1643,6 +1689,30 @@ function Home() {
             <h3 style={{ color: '#64ff8a', marginBottom: 8, textAlign: 'center' }}>
               Select Cartridge
             </h3>
+            
+            {/* Load My Cartridges Button */}
+            <div style={{ textAlign: 'center', marginBottom: 16 }}>
+              <button
+                onClick={() => {
+                  playButtonSound();
+                  setShowAlchemyCartridges(true);
+                }}
+                style={{
+                  backgroundColor: '#4a7d5f',
+                  border: '2px solid #64ff8a',
+                  borderRadius: 6,
+                  color: '#64ff8a',
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  fontFamily: 'Menlo, monospace',
+                  fontWeight: 'bold',
+                }}
+              >
+                🎮 Load My Cartridges
+              </button>
+            </div>
+            
             <div style={{ 
               color: '#888', 
               fontSize: '12px', 
@@ -2416,6 +2486,13 @@ function Home() {
           `;
         }}
       /> */}
+      
+      {/* Alchemy Cartridge Selection Modal */}
+      <CartridgeSelectionModal
+        isOpen={showAlchemyCartridges}
+        onClose={() => setShowAlchemyCartridges(false)}
+        onSelectCartridge={handleAlchemyCartridgeSelect}
+      />
     </Stage>
   );
 }
