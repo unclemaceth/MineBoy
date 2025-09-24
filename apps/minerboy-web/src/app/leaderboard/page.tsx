@@ -27,6 +27,10 @@ type ApiResp = {
     wallet: string;
     walletShort: string;
     totalABIT: string;
+    team_slug?: string;
+    team_name?: string;
+    team_emoji?: string;
+    team_color?: string;
   };
   lastUpdated?: string;
   nextUpdate?: string;
