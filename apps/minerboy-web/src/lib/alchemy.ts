@@ -36,9 +36,14 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
     const list = data.ownedNfts ?? data.ownedNfts ?? [];
     console.log('Alchemy NFT list:', list);
 
-    const result = list.map((nft: any) => {
-      const normalizedTokenId = hexToDecString(nft.tokenId);
-      console.log(`NFT tokenId: ${nft.tokenId} -> normalized: ${normalizedTokenId}`);
+    const result = list.map((nft: any, index: number) => {
+      console.log(`NFT ${index}:`, nft);
+      console.log(`NFT ${index} keys:`, Object.keys(nft));
+      
+      // Alchemy might use different field names for tokenId
+      const tokenIdValue = nft.tokenId || nft.token_id || nft.id;
+      const normalizedTokenId = hexToDecString(tokenIdValue);
+      console.log(`NFT ${index} tokenId: ${tokenIdValue} -> normalized: ${normalizedTokenId}`);
       
       return {
         tokenId: normalizedTokenId,
