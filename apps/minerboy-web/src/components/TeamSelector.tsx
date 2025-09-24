@@ -219,6 +219,8 @@ export default function TeamSelector() {
 
   // Confirmation Modal
   if (showConfirm && selectedTeam) {
+    const teamDisplayName = `${selectedTeam.emoji || ''} ${selectedTeam.name}`;
+    
     return (
       <>
         <div style={{ 
@@ -333,7 +335,7 @@ export default function TeamSelector() {
             }}>
               Are you sure you want to join{' '}
               <span style={{ fontWeight: 'bold', color: '#64ff8a' }}>
-                {selectedTeam ? `${selectedTeam.emoji || ''} ${selectedTeam.name}` : 'Unknown Team'}
+                {teamDisplayName}
               </span>?
               <br />
               <br />
