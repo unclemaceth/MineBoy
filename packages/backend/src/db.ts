@@ -366,3 +366,61 @@ export async function countWalletsAbove(period: Period, totalWei: string): Promi
   
   return count;
 }
+
+// Teams helper functions
+export async function getCurrentSeasonId(db: any): Promise<number> {
+  const slug = process.env.SEASON_SLUG!;
+  const row = await db.pool.query('SELECT id FROM seasons WHERE slug=$1', [slug]);
+  if (!row.rows[0]) {
+    throw new Error(`Season with slug '${slug}' not found`);
+  }
+  return row.rows[0].id;
+}
+
+export type TeamRow = { id: number; slug: string; name: string; emoji?: string; color?: string; };
+
+export async function listTeams(db: any): Promise<TeamRow[]> {
+  const result = await db.pool.query(
+    'SELECT id, slug, name, emoji, color FROM teams WHERE is_active=true ORDER BY id'
+  );
+  return result.rows;
+}
+
+export async function getUserTeam(db: any, wallet: string, seasonId: number): Promise<TeamRow | null> {
+  const result = await db.pool.query(
+    `SELECT t.id, t.slug, t.name, t.emoji, t.color
+     FROM user_teams ut
+     JOIN teams t ON t.id = ut.team_id
+     WHERE ut.wallet=$1 AND ut.season_id=$2`,
+    [wallet, seasonId]
+  );
+  return result.rows[0] || null;
+}
+
+export async function setUserTeam(db: any, wallet: string, seasonId: number, teamSlug: string): Promise<void> {
+  const teamResult = await db.pool.query('SELECT id FROM teams WHERE slug=$1 AND is_active=true', [teamSlug]);
+  if (!teamResult.rows[0]) {
+    throw new Error(`Team with slug '${teamSlug}' not found or inactive`);
+  }
+  
+  const teamId = teamResult.rows[0].id;
+  const editable = process.env.TEAMS_EDITABLE === 'true';
+
+  if (!editable) {
+    const existing = await db.pool.query(
+      'SELECT 1 FROM user_teams WHERE wallet=$1 AND season_id=$2',
+      [wallet, seasonId]
+    );
+    if (existing.rows[0]) {
+      return; // Team already set and editing disabled
+    }
+  }
+
+  await db.pool.query(
+    `INSERT INTO user_teams (wallet, season_id, team_id)
+     VALUES ($1,$2,$3)
+     ON CONFLICT (wallet,season_id) DO UPDATE
+       SET team_id = CASE WHEN $4=true THEN EXCLUDED.team_id ELSE user_teams.team_id END`,
+    [wallet, seasonId, teamId, editable]
+  );
+}

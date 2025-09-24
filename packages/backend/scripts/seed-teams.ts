@@ -1,9 +1,26 @@
 import { Pool } from 'pg';
 
 const TEAMS = [
-  { slug: 'red-rockets', name: 'Red Rockets', emoji: '🚀', color: '#FF5555' },
-  { slug: 'green-miners', name: 'Green Miners', emoji: '⛏️', color: '#64ff8a' },
-  { slug: 'blue-bytes',   name: 'Blue Bytes',   emoji: '🔷', color: '#5E8BFF' },
+  { slug: 'geez', name: 'Geez', emoji: '😤', color: '#FF6B6B' },
+  { slug: 'zards', name: 'Zards', emoji: '🦎', color: '#4ECDC4' },
+  { slug: 'goobaloos', name: 'Goobaloos', emoji: '👻', color: '#45B7D1' },
+  { slug: 'clutch-puppies', name: 'Clutch Puppies', emoji: '🐶', color: '#96CEB4' },
+  { slug: 'foxy-fam', name: 'Foxy Fam', emoji: '🦊', color: '#FFEAA7' },
+  { slug: 'monos', name: 'Monos', emoji: '🐵', color: '#DDA0DD' },
+  { slug: 'alpha-dogs', name: 'Alpha Dogs', emoji: '🐕', color: '#98D8C8' },
+  { slug: 'gobs', name: 'Gobs', emoji: '👹', color: '#F7DC6F' },
+  { slug: 'typical-tigers', name: 'Typical Tigers', emoji: '🐅', color: '#BB8FCE' },
+  { slug: 'flingers', name: 'Flingers', emoji: '💫', color: '#85C1E9' },
+  { slug: 'dengs', name: 'Dengs', emoji: '🤔', color: '#F8C471' },
+  { slug: 'chumps', name: 'Chumps', emoji: '😅', color: '#82E0AA' },
+  { slug: 'pixl-pals', name: 'Pixl Pals', emoji: '🎮', color: '#F1948A' },
+  { slug: 'doruzu-rugdollz', name: 'Doruzu/RugDollz', emoji: '🧸', color: '#D7BDE2' },
+  { slug: 'froglings', name: 'Froglings', emoji: '🐸', color: '#A9DFBF' },
+  { slug: 'apegames', name: 'ApeGames', emoji: '🦍', color: '#F9E79F' },
+  { slug: 'eyeverse', name: 'Eyeverse', emoji: '👁️', color: '#AED6F1' },
+  { slug: 'mutant-records', name: 'Mutant Records', emoji: '🎵', color: '#D5DBDB' },
+  { slug: 'ovi-ovisaurs', name: 'Ovi (Ovisaurs)', emoji: '🦕', color: '#A3E4D7' },
+  { slug: 'mutant-shiba-club', name: 'Mutant Shiba Club', emoji: '🐕‍🦺', color: '#FADBD8' },
 ];
 
 async function main() {
