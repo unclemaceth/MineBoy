@@ -485,7 +485,12 @@ function Home() {
         // Cast the job data to proper types for normalizeJob
         const normalizedJob = normalizeJob({
           ...result.job!,
-          data: result.job!.data as `0x${string}`
+          data: result.job!.data as `0x${string}`,
+          difficulty: {
+            rule: 'suffix' as const,
+            bits: result.job!.difficulty,
+            targetBits: result.job!.targetBits
+          }
         });
         setJob(normalizedJob);
         setMining(false);
