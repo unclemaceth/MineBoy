@@ -4,8 +4,7 @@ import { CARTRIDGE_ADDRESSES, CURTIS_CHAIN_ID } from './contracts';
 // Alchemy configuration for Curtis chain
 const alchemy = new Alchemy({
   apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '',
-  network: Network.ETH_MAINNET,
-  url: 'https://curtis.rpc.caldera.xyz/http'
+  url: 'https://apechain-curtis.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs'
 });
 
 export interface OwnedCartridge {
@@ -21,16 +20,29 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
       return [];
     }
 
-    // Get owned NFTs for the cartridge contract
-    const nfts = await alchemy.nft.getNftsForOwner(walletAddress, {
-      contractAddresses: [CARTRIDGE_ADDRESSES[CURTIS_CHAIN_ID]]
+    console.log('Fetching cartridges for:', walletAddress);
+    console.log('Contract address:', CARTRIDGE_ADDRESSES[CURTIS_CHAIN_ID]);
+
+    // Use direct REST API for Curtis chain
+    const url = `https://apechain-curtis.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs/getNFTsForOwner?owner=${walletAddress}&contractAddresses[]=${CARTRIDGE_ADDRESSES[CURTIS_CHAIN_ID]}&withMetadata=true&pageSize=100`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: { accept: 'application/json' }
     });
 
-    return nfts.ownedNfts.map(nft => ({
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('Alchemy response:', data);
+
+    return data.ownedNfts?.map((nft: any) => ({
       tokenId: nft.tokenId,
       contractAddress: nft.contract.address,
       chainId: CURTIS_CHAIN_ID
-    }));
+    })) || [];
   } catch (error) {
     console.error('Error fetching owned cartridges:', error);
     return [];
