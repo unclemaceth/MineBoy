@@ -11,7 +11,7 @@ async function main() {
     }
     
     const pool = new Pool({ connectionString: url });
-    const file = path.resolve(process.cwd(), 'packages/backend/migrations/2025-teams.sql');
+    const file = path.resolve(process.cwd(), 'migrations/2025-teams.sql');
     const sql = fs.readFileSync(file, 'utf8');
     
     // For PostgreSQL, we need to execute each statement separately
