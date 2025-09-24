@@ -456,55 +456,16 @@ function Home() {
     if (!address) return;
     
     setShowAlchemyCartridges(false);
-    pushLine(`Opening session with Cartridge #${ownedCartridge.tokenId}...`);
     
-    try {
-      // Clear any existing session state first
-      clear();
-      
-      // Create a CartridgeConfig from the owned cartridge
-      const cartridgeInfo: CartridgeConfig = {
-        name: `Cartridge #${ownedCartridge.tokenId}`,
-        contract: ownedCartridge.contractAddress,
-        chainId: ownedCartridge.chainId
-      };
-      
-      // Use the new two-tier locking system
-      const sessionId = getOrCreateSessionId(parseInt(ownedCartridge.tokenId));
-      const result = await apiStart({
-        minerId: getMinerIdCached(),
-        chainId: ownedCartridge.chainId,
-        contract: ownedCartridge.contractAddress as `0x${string}`,
-        tokenId: parseInt(ownedCartridge.tokenId),
-        wallet: address,
-        sessionId
-      });
-
-      if (result.sessionId) {
-        setWallet(address);
-        // Cast the job data to proper types for normalizeJob
-        const normalizedJob = normalizeJob({
-          ...result.job!,
-          data: result.job!.data as `0x${string}`,
-          difficulty: {
-            rule: 'suffix' as const,
-            bits: result.job!.difficulty,
-            targetBits: result.job!.targetBits
-          }
-        });
-        setJob(normalizedJob);
-        setMining(false);
-        setMode('terminal');
-        pushLine(`✅ Session opened with ${cartridgeInfo.name}`);
-        pushLine(`Job ID: ${getJobId(normalizedJob)}`);
-        pushLine(`Press A to start mining`);
-      } else {
-        pushLine(`❌ Failed to open session`);
-      }
-    } catch (error) {
-      console.error('Cartridge selection error:', error);
-      pushLine(`❌ Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
+    // Create a CartridgeConfig from the owned cartridge
+    const cartridgeInfo: CartridgeConfig = {
+      name: `Cartridge #${ownedCartridge.tokenId}`,
+      contract: ownedCartridge.contractAddress,
+      chainId: ownedCartridge.chainId
+    };
+    
+    // Use the same flow as the keypad - call handleCartridgeSelect
+    await handleCartridgeSelect(cartridgeInfo, ownedCartridge.tokenId);
   };
 
   const handleCartridgeSelect = async (cartridgeInfo: CartridgeConfig, tokenId: string) => {
