@@ -470,21 +470,28 @@ function Home() {
       };
       
       // Use the new two-tier locking system
+      const sessionId = getOrCreateSessionId(parseInt(ownedCartridge.tokenId));
       const result = await apiStart({
         minerId: getMinerIdCached(),
         chainId: ownedCartridge.chainId,
         contract: ownedCartridge.contractAddress as `0x${string}`,
         tokenId: parseInt(ownedCartridge.tokenId),
-        wallet: address
+        wallet: address,
+        sessionId
       });
 
       if (result.sessionId) {
         setWallet(address);
-        setJob(normalizeJob(result.job!));
+        // Cast the job data to proper types for normalizeJob
+        const normalizedJob = normalizeJob({
+          ...result.job!,
+          data: result.job!.data as `0x${string}`
+        });
+        setJob(normalizedJob);
         setMining(false);
         setMode('terminal');
         pushLine(`✅ Session opened with ${cartridgeInfo.name}`);
-        pushLine(`Job ID: ${getJobId(normalizeJob(result.job!))}`);
+        pushLine(`Job ID: ${getJobId(normalizedJob)}`);
         pushLine(`Press A to start mining`);
       } else {
         pushLine(`❌ Failed to open session`);
