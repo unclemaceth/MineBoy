@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
-import { getOwnedCartridges, getCartridgeMetadata, type OwnedCartridge } from '@/lib/alchemy';
+import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 
 interface CartridgeSelectionModalProps {
   isOpen: boolean;
@@ -9,12 +9,24 @@ interface CartridgeSelectionModalProps {
   onSelectCartridge: (cartridge: OwnedCartridge) => void;
 }
 
-export default function CartridgeSelectionModal({ 
-  isOpen, 
-  onClose, 
-  onSelectCartridge 
+const toDecString = (id: string) => {
+  try {
+    // already decimal?
+    if (/^\d+$/.test(id)) return id;
+    // hex or other → normalize
+    const hex = id.startsWith('0x') ? id : `0x${id}`;
+    return BigInt(hex).toString(10);
+  } catch {
+    return id; // last resort: pass through
+  }
+};
+
+export default function CartridgeSelectionModal({
+  isOpen,
+  onClose,
+  onSelectCartridge,
 }: CartridgeSelectionModalProps) {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const [ownedCartridges, setOwnedCartridges] = useState<OwnedCartridge[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,21 +34,26 @@ export default function CartridgeSelectionModal({
   useEffect(() => {
     if (isOpen && address) {
       loadOwnedCartridges();
+    } else if (isOpen && !address) {
+      // Clear stale list if user disconnected
+      setOwnedCartridges([]);
     }
   }, [isOpen, address]);
 
   const loadOwnedCartridges = async () => {
     if (!address) return;
-    
     setLoading(true);
     setError(null);
-    
     try {
       const cartridges = await getOwnedCartridges(address);
       setOwnedCartridges(cartridges);
+      if (!cartridges?.length) {
+        // Helpful console for debugging contracts/filters
+        console.log('[Alchemy] No cartridges found for', address);
+      }
     } catch (err) {
-      setError('Failed to load cartridges');
       console.error('Error loading cartridges:', err);
+      setError('Failed to load cartridges');
     } finally {
       setLoading(false);
     }
@@ -74,103 +91,84 @@ export default function CartridgeSelectionModal({
           fontWeight: 'bold',
           marginBottom: 16,
           fontFamily: 'Menlo, monospace',
-          textAlign: 'center',
+          textAlign: 'center'
         }}>
           SELECT CARTRIDGE
         </div>
 
+        {!isConnected && (
+          <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
+            Connect a wallet to load your cartridges.
+          </div>
+        )}
+
         {loading && (
-          <div style={{
-            color: '#64ff8a',
-            fontSize: 14,
-            fontFamily: 'Menlo, monospace',
-            textAlign: 'center',
-            padding: 20,
-          }}>
+          <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
             Loading your cartridges...
           </div>
         )}
 
         {error && (
-          <div style={{
-            color: '#ff6b6b',
-            fontSize: 14,
-            fontFamily: 'Menlo, monospace',
-            textAlign: 'center',
-            padding: 20,
-          }}>
+          <div style={{ color: '#ff6b6b', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
             {error}
           </div>
         )}
 
-        {!loading && !error && ownedCartridges.length === 0 && (
-          <div style={{
-            color: '#64ff8a',
-            fontSize: 14,
-            fontFamily: 'Menlo, monospace',
-            textAlign: 'center',
-            padding: 20,
-          }}>
+        {!loading && !error && isConnected && ownedCartridges.length === 0 && (
+          <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
             No cartridges found in your wallet
+            <div style={{ marginTop: 10 }}>
+              <button
+                onClick={loadOwnedCartridges}
+                style={{ padding: '6px 10px', borderRadius: 6, border: '2px solid #4a7d5f',
+                  background: 'transparent', color: '#64ff8a', cursor: 'pointer', fontFamily: 'Menlo, monospace' }}>
+                Reload
+              </button>
+            </div>
           </div>
         )}
 
         {!loading && !error && ownedCartridges.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {ownedCartridges.map((cartridge) => (
-              <button
-                key={cartridge.tokenId}
-                onClick={() => {
-                  onSelectCartridge(cartridge);
-                  onClose();
-                }}
-                style={{
-                  padding: 12,
-                  backgroundColor: '#1a2e1f',
-                  border: '2px solid #4a7d5f',
-                  borderRadius: 8,
-                  color: '#64ff8a',
-                  fontFamily: 'Menlo, monospace',
-                  fontSize: 14,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = '#4a7d5f';
-                  e.currentTarget.style.borderColor = '#64ff8a';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = '#1a2e1f';
-                  e.currentTarget.style.borderColor = '#4a7d5f';
-                }}
-              >
-                <div style={{ fontWeight: 'bold' }}>
-                  Cartridge #{cartridge.tokenId}
-                </div>
-                <div style={{ fontSize: 12, opacity: 0.8 }}>
-                  Chain: {cartridge.chainId}
-                </div>
-              </button>
-            ))}
+            {ownedCartridges.map((c) => {
+              const decId = toDecString(c.tokenId);
+              return (
+                <button
+                  key={`${c.contractAddress}-${decId}`}
+                  onClick={() => onSelectCartridge({ ...c, tokenId: decId })}
+                  style={{
+                    padding: 12, backgroundColor: '#1a2e1f', border: '2px solid #4a7d5f',
+                    borderRadius: 8, color: '#64ff8a', fontFamily: 'Menlo, monospace',
+                    fontSize: 14, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#4a7d5f';
+                    e.currentTarget.style.borderColor = '#64ff8a';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#1a2e1f';
+                    e.currentTarget.style.borderColor = '#4a7d5f';
+                  }}
+                >
+                  <div style={{ fontWeight: 'bold' }}>
+                    Cartridge #{decId}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.8 }}>
+                    {c.contractAddress.slice(0, 6)}…{c.contractAddress.slice(-4)} • Chain {c.chainId}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: 20,
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: 20 }}>
           <button
             onClick={onClose}
             style={{
-              padding: '8px 16px',
-              borderRadius: 8,
-              border: '2px solid #4a7d5f',
-              backgroundColor: 'transparent',
-              color: '#64ff8a',
-              cursor: 'pointer',
-              fontFamily: 'Menlo, monospace',
+              padding: '8px 16px', borderRadius: 8, border: '2px solid #4a7d5f',
+              backgroundColor: 'transparent', color: '#64ff8a', cursor: 'pointer',
+              fontFamily: 'Menlo, monospace'
             }}
           >
             Cancel
