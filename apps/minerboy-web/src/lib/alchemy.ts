@@ -9,11 +9,25 @@ export interface OwnedCartridge {
 const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY!;
 const CURTIS_BASE = `https://apechain-curtis.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 
-function hexToDecString(id: string) {
-  // Handles "1", "0x1", or big hex strings
+function hexToDecString(id: any) {
+  // Handles "1", "0x1", or big hex strings, or objects
   if (!id) return '';
-  const clean = id.startsWith('0x') ? id : `0x${id}`;
-  return BigInt(clean).toString(10);
+  
+  // Convert to string first
+  const idStr = String(id);
+  
+  // Skip if it's already a decimal number
+  if (/^\d+$/.test(idStr)) return idStr;
+  
+  // Handle hex strings
+  const clean = idStr.startsWith('0x') ? idStr : `0x${idStr}`;
+  
+  try {
+    return BigInt(clean).toString(10);
+  } catch (e) {
+    console.warn('Failed to convert tokenId to decimal:', id, e);
+    return idStr; // fallback to original string
+  }
 }
 
 export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCartridge[]> {
