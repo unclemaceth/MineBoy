@@ -7,7 +7,10 @@
     "dev": "tsx watch src/server.ts",
     "start": "tsx src/server.ts",
     "build": "tsc -p tsconfig.json",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "migrate": "tsx ./scripts/run-migrations.ts",
+    "seed:teams": "tsx ./scripts/seed-teams.ts",
+    "seed:season": "tsx ./scripts/seed-season.ts"
   },
   "keywords": [
     "mining",
