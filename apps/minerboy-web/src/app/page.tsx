@@ -473,21 +473,21 @@ function Home() {
       const result = await apiStart({
         minerId: getMinerIdCached(),
         chainId: ownedCartridge.chainId,
-        contract: ownedCartridge.contractAddress,
-        tokenId: ownedCartridge.tokenId,
+        contract: ownedCartridge.contractAddress as `0x${string}`,
+        tokenId: parseInt(ownedCartridge.tokenId),
         wallet: address
       });
 
-      if (result.ok) {
+      if (result.sessionId) {
         setWallet(address);
         setJob(normalizeJob(result.job!));
         setMining(false);
-        setMode('idle');
+        setMode('terminal');
         pushLine(`✅ Session opened with ${cartridgeInfo.name}`);
         pushLine(`Job ID: ${getJobId(normalizeJob(result.job!))}`);
         pushLine(`Press A to start mining`);
       } else {
-        pushLine(`❌ Failed to open session: ${result.error}`);
+        pushLine(`❌ Failed to open session`);
       }
     } catch (error) {
       console.error('Cartridge selection error:', error);

@@ -2,14 +2,9 @@ import { Alchemy, Network, AlchemyConfig } from 'alchemy-sdk';
 import { CARTRIDGE_ADDRESSES, CURTIS_CHAIN_ID } from './contracts';
 
 // Alchemy configuration for Curtis chain
-const config: AlchemyConfig = {
-  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '',
-  network: Network.ETH_MAINNET, // We'll override the RPC URL for Curtis
-};
-
-// Override the RPC URL for Curtis chain
 const alchemy = new Alchemy({
-  ...config,
+  apiKey: process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || '',
+  network: Network.ETH_MAINNET,
   url: 'https://curtis.rpc.caldera.xyz/http'
 });
 
@@ -58,7 +53,7 @@ export async function getCartridgeMetadata(tokenId: string): Promise<{
       tokenId
     );
 
-    return metadata.raw?.metadata ? JSON.parse(metadata.raw.metadata as string) : null;
+    return metadata.raw?.metadata ? JSON.parse(metadata.raw.metadata as unknown as string) : null;
   } catch (error) {
     console.error('Error fetching cartridge metadata:', error);
     return null;
