@@ -47,11 +47,35 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         const agg = await getAggregateForWallet(period, wallet);
         if (agg) {
           const above = await countWalletsAbove(period, agg.total_wei);
+          
+          // Look up team for "me"
+          let meTeam: any = null;
+          try {
+            const { getDB, getCurrentSeasonId } = await import('../db.js');
+            const db = getDB();
+            const seasonId = await getCurrentSeasonId(db);
+            const { rows } = await db.pool.query(
+              `SELECT t.slug, t.name, t.emoji, t.color
+               FROM user_teams ut
+               JOIN teams t ON t.id = ut.team_id
+              WHERE ut.season_id=$1 AND LOWER(ut.wallet)=LOWER($2)
+              LIMIT 1`,
+              [seasonId, wallet]
+            );
+            meTeam = rows[0] || null;
+          } catch (error) {
+            console.error('[leaderboard] Error fetching user team:', error);
+          }
+
           me = {
             rank: above + 1,
             wallet,
             walletShort: shortAddrLast8(wallet),
-            totalABIT: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18))
+            totalABIT: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+            team_slug: meTeam?.slug,
+            team_name: meTeam?.name,
+            team_emoji: meTeam?.emoji,
+            team_color: meTeam?.color,
           };
         } else {
           me = {

@@ -315,7 +315,9 @@ export default function LeaderboardPage() {
             }}>
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
               <div>{data.me.walletShort}</div>
-              <div style={{ fontSize: '9px', color: '#8a8a8a' }}>—</div>
+              <div style={{ fontSize: '9px', color: '#8a8a8a' }}>
+                {data.me.team_emoji ? `${data.me.team_emoji} ${data.me.team_name}` : '—'}
+              </div>
               <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{data.me.totalABIT}</div>
             </div>
           </div>
