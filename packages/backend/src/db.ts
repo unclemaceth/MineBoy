@@ -306,6 +306,9 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     const seasonId = await getCurrentSeasonId(d);
     const topWallets = results.slice(0, limit).map(r => r.wallet.toLowerCase());
     
+    console.log('[getLeaderboardTop] seasonId:', seasonId);
+    console.log('[getLeaderboardTop] topWallets:', topWallets.slice(0, 3));
+    
     let teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
     
     if (topWallets.length > 0) {
@@ -318,6 +321,8 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
         [seasonId, topWallets]
       );
       
+      console.log('[getLeaderboardTop] team query result:', rows.length, 'teams found');
+      
       for (const row of rows) {
         teamData.set(String(row.wallet).toLowerCase(), {
           slug: row.slug,
@@ -328,7 +333,7 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
       }
     }
     
-    return results.slice(0, limit).map(result => {
+    const finalResults = results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
       return {
         ...result,
@@ -338,6 +343,9 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
         team_color: team?.color
       };
     });
+    
+    console.log('[getLeaderboardTop] returning', finalResults.length, 'entries, first has team:', !!finalResults[0]?.team_slug);
+    return finalResults;
     
   } catch (error) {
     console.error('[getLeaderboardTop] Error fetching team data:', error);
