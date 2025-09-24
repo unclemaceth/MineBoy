@@ -35,7 +35,11 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         rank: i + 1,
         wallet: e.wallet,
         walletShort: shortAddrLast8(e.wallet),
-        totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18))
+        totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+        team_slug: e.team_slug ?? undefined,
+        team_name: e.team_name ?? undefined,
+        team_emoji: e.team_emoji ?? undefined,
+        team_color: e.team_color ?? undefined,
       }));
 
       let me: any = null;
@@ -115,10 +119,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         
         // Cache for 15 seconds with 60s stale-while-revalidate
         reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
-        reply.send({
-          period,
-          standings: standingsWithABIT
-        });
+        reply.send(standingsWithABIT);
       } catch (error) {
         fastify.log.error('Failed to get team standings:', error);
         return reply.code(500).send({ error: 'Failed to fetch team standings' });

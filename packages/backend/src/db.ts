@@ -509,6 +509,6 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
     emoji: row.emoji,
     color: row.color,
     members: parseInt(row.members),
-    total_score: parseInt(row.total_score.toString())
+    total_score: row.total_score.toString()
   }));
 }
