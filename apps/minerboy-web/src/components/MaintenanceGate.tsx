@@ -6,7 +6,7 @@ type Maint = { enabled: boolean; message?: string; untilIso?: string | null };
 
 export default function MaintenanceGate() {
   const [maint, setMaint] = React.useState<Maint | null>(null);
-  const backend = process.env.NEXT_PUBLIC_BACKEND_URL;
+  const backend = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
 
   const check = React.useCallback(async () => {
     if (!backend) {
