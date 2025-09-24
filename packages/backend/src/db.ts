@@ -302,11 +302,9 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   });
   
   // Get team data for the top wallets
-  const topWallets = results.slice(0, limit).map(r => r.wallet);
-  
   try {
     const seasonId = await getCurrentSeasonId(d);
-    console.log('[getLeaderboardTop] seasonId:', seasonId);
+    const topWallets = results.slice(0, limit).map(r => r.wallet);
     
     // Fetch team data for these wallets
     const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
@@ -321,8 +319,6 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
         [...topWallets, seasonId]
       );
       
-      console.log('[getLeaderboardTop] team query result:', teamStmt.rows.length, 'teams found');
-      
       for (const row of teamStmt.rows) {
         teamData.set(row.wallet.toLowerCase(), {
           slug: row.slug,
@@ -334,7 +330,7 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     }
     
     // Add team data to results
-    const resultsWithTeams = results.slice(0, limit).map(result => {
+    return results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
       return {
         ...result,
@@ -344,9 +340,6 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
         team_color: team?.color
       };
     });
-    
-    console.log('[getLeaderboardTop] returning', resultsWithTeams.length, 'entries with team data');
-    return resultsWithTeams;
     
   } catch (error) {
     console.error('[getLeaderboardTop] Error fetching team data:', error);
@@ -452,7 +445,7 @@ export async function getUserTeam(db: any, wallet: string, seasonId: number): Pr
     `SELECT t.id, t.slug, t.name, t.emoji, t.color
      FROM user_teams ut
      JOIN teams t ON t.id = ut.team_id
-     WHERE ut.wallet=$1 AND ut.season_id=$2`,
+     WHERE LOWER(ut.wallet)=LOWER($1) AND ut.season_id=$2`,
     [wallet, seasonId]
   );
   return result.rows[0] || null;
@@ -469,7 +462,7 @@ export async function setUserTeam(db: any, wallet: string, seasonId: number, tea
 
   if (!editable) {
     const existing = await db.pool.query(
-      'SELECT 1 FROM user_teams WHERE wallet=$1 AND season_id=$2',
+      'SELECT 1 FROM user_teams WHERE LOWER(wallet)=LOWER($1) AND season_id=$2',
       [wallet, seasonId]
     );
     if (existing.rows[0]) {
@@ -479,8 +472,8 @@ export async function setUserTeam(db: any, wallet: string, seasonId: number, tea
 
   await db.pool.query(
     `INSERT INTO user_teams (wallet, season_id, team_id)
-     VALUES ($1,$2,$3)
-     ON CONFLICT (wallet,season_id) DO UPDATE
+     VALUES (LOWER($1),$2,$3)
+     ON CONFLICT (season_id, wallet) DO UPDATE
        SET team_id = CASE WHEN $4=true THEN EXCLUDED.team_id ELSE user_teams.team_id END`,
     [wallet, seasonId, teamId, editable]
   );
@@ -504,7 +497,7 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
     `SELECT
        t.slug, t.name, t.emoji, t.color,
        COUNT(DISTINCT ut.wallet) AS members,
-       COALESCE(SUM(lb.total_wei::numeric), 0) AS total_score
+       COALESCE(SUM(lb.total_wei::numeric), 0)::text AS total_score
      FROM teams t
      LEFT JOIN user_teams ut ON ut.team_id=t.id AND ut.season_id=$1
      LEFT JOIN (
@@ -514,10 +507,10 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
        FROM claims 
        WHERE status='confirmed' AND ($2=0 OR confirmed_at >= $2)
        GROUP BY wallet
-     ) lb ON lb.wallet=ut.wallet
+     ) lb ON LOWER(lb.wallet) = LOWER(ut.wallet)
      WHERE t.is_active=true
      GROUP BY t.id, t.slug, t.name, t.emoji, t.color
-     ORDER BY total_score DESC`,
+     ORDER BY COALESCE(SUM(lb.total_wei::numeric), 0) DESC`,
     [seasonId, since]
   );
   
@@ -527,6 +520,6 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
     emoji: row.emoji,
     color: row.color,
     members: parseInt(row.members),
-    total_score: row.total_score.toString()
+    total_score: row.total_score
   }));
 }
