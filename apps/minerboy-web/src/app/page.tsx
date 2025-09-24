@@ -457,6 +457,10 @@ function Home() {
     
     setShowAlchemyCartridges(false);
     
+    console.log('[ALCHEMY_SELECT] Received cartridge:', ownedCartridge);
+    console.log('[ALCHEMY_SELECT] tokenId type:', typeof ownedCartridge.tokenId, 'value:', ownedCartridge.tokenId);
+    console.log('[ALCHEMY_SELECT] parseInt result:', parseInt(ownedCartridge.tokenId));
+    
     // Create a CartridgeConfig from the owned cartridge
     const cartridgeInfo: CartridgeConfig = {
       name: `Cartridge #${ownedCartridge.tokenId}`,

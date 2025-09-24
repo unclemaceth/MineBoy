@@ -34,12 +34,21 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
 
     // Alchemy may use ownedNfts / ownedNfts[]; guard for both
     const list = data.ownedNfts ?? data.ownedNfts ?? [];
+    console.log('Alchemy NFT list:', list);
 
-    return list.map((nft: any) => ({
-      tokenId: hexToDecString(nft.tokenId),
-      contractAddress: (nft.contract?.address ?? contract) as `0x${string}`,
-      chainId: CURTIS_CHAIN_ID,
-    }));
+    const result = list.map((nft: any) => {
+      const normalizedTokenId = hexToDecString(nft.tokenId);
+      console.log(`NFT tokenId: ${nft.tokenId} -> normalized: ${normalizedTokenId}`);
+      
+      return {
+        tokenId: normalizedTokenId,
+        contractAddress: (nft.contract?.address ?? contract) as `0x${string}`,
+        chainId: CURTIS_CHAIN_ID,
+      };
+    });
+    
+    console.log('Final Alchemy result:', result);
+    return result;
   } catch (e) {
     console.error('Error fetching owned cartridges:', e);
     return [];
