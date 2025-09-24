@@ -412,8 +412,16 @@ export async function countWalletsAbove(period: Period, totalWei: string): Promi
 
 // Teams helper functions
 export async function getCurrentSeasonId(db: any): Promise<number> {
-  const slug = process.env.SEASON_SLUG!;
+  const slug = process.env.SEASON_SLUG;
+  console.log('[getCurrentSeasonId] SEASON_SLUG:', slug);
+  
+  if (!slug) {
+    throw new Error('SEASON_SLUG environment variable not set');
+  }
+  
   const row = await db.pool.query('SELECT id FROM seasons WHERE slug=$1', [slug]);
+  console.log('[getCurrentSeasonId] Query result:', row.rows);
+  
   if (!row.rows[0]) {
     throw new Error(`Season with slug '${slug}' not found`);
   }
