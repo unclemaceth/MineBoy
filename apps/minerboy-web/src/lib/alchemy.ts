@@ -40,10 +40,16 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
       console.log(`NFT ${index}:`, nft);
       console.log(`NFT ${index} keys:`, Object.keys(nft));
       
-      // Alchemy might use different field names for tokenId
-      const tokenIdValue = nft.tokenId || nft.token_id || nft.id;
-      const normalizedTokenId = hexToDecString(tokenIdValue);
-      console.log(`NFT ${index} tokenId: ${tokenIdValue} -> normalized: ${normalizedTokenId}`);
+      // Alchemy uses id object with tokenId property
+      const tokenIdValue = nft.id?.tokenId || nft.tokenId || nft.token_id || nft.id;
+      console.log(`NFT ${index} raw tokenId:`, tokenIdValue);
+      
+      // Convert to string if it's an object
+      const tokenIdStr = typeof tokenIdValue === 'object' ? tokenIdValue?.tokenId || tokenIdValue?.hex || String(tokenIdValue) : String(tokenIdValue);
+      console.log(`NFT ${index} tokenId string:`, tokenIdStr);
+      
+      const normalizedTokenId = hexToDecString(tokenIdStr);
+      console.log(`NFT ${index} tokenId: ${tokenIdStr} -> normalized: ${normalizedTokenId}`);
       
       return {
         tokenId: normalizedTokenId,
