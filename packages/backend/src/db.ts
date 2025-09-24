@@ -486,7 +486,7 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
     `SELECT
        t.slug, t.name, t.emoji, t.color,
        COUNT(DISTINCT ut.wallet) AS members,
-       COALESCE(SUM(lb.total_wei::bigint), 0) AS total_score
+       COALESCE(SUM(lb.total_wei), 0) AS total_score
      FROM teams t
      LEFT JOIN user_teams ut ON ut.team_id=t.id AND ut.season_id=$1
      LEFT JOIN (
