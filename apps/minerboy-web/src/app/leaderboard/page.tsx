@@ -344,6 +344,8 @@ function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
       setTeamData(data);
     } catch (error) {
       console.error('Failed to fetch team standings:', error);
+      // If team standings endpoint is not available (404), show empty array
+      setTeamData([]);
     } finally {
       setLoading(false);
     }
@@ -398,7 +400,18 @@ function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
           </div>
         )}
         
-        {!loading && teamData?.map((team, index) => (
+        {!loading && teamData && teamData.length === 0 && (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#8a8a8a',
+            fontSize: '12px'
+          }}>
+            Team standings coming soon...
+          </div>
+        )}
+        
+        {!loading && teamData && teamData.length > 0 && teamData.map((team, index) => (
           <div 
             key={team.slug} 
             style={{
