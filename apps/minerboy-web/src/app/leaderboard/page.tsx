@@ -14,6 +14,10 @@ type Entry = {
   wallet: string;
   walletShort: string;
   totalABIT: string;
+  team_slug?: string;
+  team_name?: string;
+  team_emoji?: string;
+  team_color?: string;
 };
 type ApiResp = {
   period: 'all'|'24h'|'7d';
@@ -209,7 +213,7 @@ export default function LeaderboardPage() {
             padding: '8px 12px',
             borderBottom: '1px solid #3a8a4d',
             display: 'grid',
-            gridTemplateColumns: '40px 1fr 100px',
+            gridTemplateColumns: '40px 1fr 80px 100px',
             gap: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
@@ -217,6 +221,7 @@ export default function LeaderboardPage() {
           }}>
             <div>#</div>
             <div>MINER</div>
+            <div>TEAM</div>
             <div style={{ textAlign: 'right' }}>ABIT</div>
           </div>
 
@@ -251,7 +256,7 @@ export default function LeaderboardPage() {
                   padding: '8px 12px',
                   borderBottom: index < data.entries.length - 1 ? '1px solid #1a4d2a' : 'none',
                   display: 'grid',
-                  gridTemplateColumns: '40px 1fr 100px',
+                  gridTemplateColumns: '40px 1fr 80px 100px',
                   gap: '8px',
                   fontSize: '10px',
                   color: '#c8ffc8',
@@ -266,6 +271,9 @@ export default function LeaderboardPage() {
                   whiteSpace: 'nowrap'
                 }}>
                   {e.walletShort}
+                </div>
+                <div style={{ fontSize: '9px', color: '#8a8a8a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {e.team_emoji ? `${e.team_emoji} ${e.team_name}` : '—'}
                 </div>
                 <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalABIT}</div>
               </div>
@@ -299,7 +307,7 @@ export default function LeaderboardPage() {
             </div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '40px 1fr 100px',
+              gridTemplateColumns: '40px 1fr 80px 100px',
               gap: '8px',
               fontSize: '10px',
               color: '#c8ffc8',
@@ -307,6 +315,7 @@ export default function LeaderboardPage() {
             }}>
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
               <div>{data.me.walletShort}</div>
+              <div style={{ fontSize: '9px', color: '#8a8a8a' }}>—</div>
               <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{data.me.totalABIT}</div>
             </div>
           </div>
@@ -314,7 +323,112 @@ export default function LeaderboardPage() {
 
         {/* Team Selector */}
         <TeamSelector />
+
+        {/* Team Standings */}
+        <TeamStandings period={period} />
       </div>
     </Stage>
+  );
+}
+
+// Team Standings Component
+function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
+  const [teamData, setTeamData] = useState<Array<{ slug: string; name: string; emoji?: string; color?: string; members: number; total_score: string }> | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTeamData = async () => {
+    try {
+      setLoading(true);
+      const { apiLeaderboardTeams } = await import('@/lib/api');
+      const data = await apiLeaderboardTeams();
+      setTeamData(data);
+    } catch (error) {
+      console.error('Failed to fetch team standings:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamData();
+  }, [period]);
+
+  return (
+    <div style={{
+      background: '#0f2c1b',
+      border: '2px solid',
+      borderTopColor: '#1a4d2a',
+      borderLeftColor: '#1a4d2a',
+      borderRightColor: '#3a8a4d',
+      borderBottomColor: '#3a8a4d',
+      borderRadius: '6px',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.1)',
+      width: '100%',
+      maxWidth: '400px',
+      overflow: 'hidden',
+      marginTop: '16px'
+    }}>
+      {/* Team Standings Header */}
+      <div style={{
+        background: 'linear-gradient(145deg, #1a4d2a, #2d5a3d)',
+        padding: '8px 12px',
+        borderBottom: '1px solid #3a8a4d',
+        display: 'grid',
+        gridTemplateColumns: '1fr 60px 80px',
+        gap: '8px',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        color: '#c8ffc8'
+      }}>
+        <div>TEAM</div>
+        <div style={{ textAlign: 'center' }}>MEMBERS</div>
+        <div style={{ textAlign: 'right' }}>TOTAL</div>
+      </div>
+
+      {/* Team Standings Body */}
+      <div style={{ maxHeight: '200px', overflowY: 'auto', scrollbarWidth: 'none', msOverflowStyle: 'none' }} className="hide-scrollbar">
+        {loading && (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#8a8a8a',
+            fontSize: '12px'
+          }}>
+            LOADING TEAM STANDINGS...
+          </div>
+        )}
+        
+        {!loading && teamData?.map((team, index) => (
+          <div 
+            key={team.slug} 
+            style={{
+              padding: '8px 12px',
+              borderBottom: index < (teamData?.length || 0) - 1 ? '1px solid #1a4d2a' : 'none',
+              display: 'grid',
+              gridTemplateColumns: '1fr 60px 80px',
+              gap: '8px',
+              fontSize: '10px',
+              color: '#c8ffc8',
+              background: index % 2 === 0 ? 'transparent' : 'rgba(26, 77, 42, 0.2)',
+              fontFamily: 'monospace'
+            }}
+          >
+            <div style={{ 
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>{team.emoji || '⚪'}</span>
+              <span>{team.name}</span>
+            </div>
+            <div style={{ textAlign: 'center', fontWeight: 'bold' }}>{team.members}</div>
+            <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{team.total_score}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
