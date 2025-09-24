@@ -243,12 +243,12 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   const since = sinceForPeriod(period);
   
   // Get all confirmed claims for the period
-  const claimsStmt = d.prepare(`
+  const claimsResult = await d.pool.query(`
     SELECT wallet, amount_wei, confirmed_at, cartridge_id
     FROM claims
-    WHERE status='confirmed' AND (@since=0 OR confirmed_at >= @since)
-  `);
-  const claims = await claimsStmt.all({ since }) as Array<{
+    WHERE status='confirmed' AND ($1=0 OR confirmed_at >= $1)
+  `, [since]);
+  const claims = claimsResult.rows as Array<{
     wallet: string;
     amount_wei: string;
     confirmed_at: number;
@@ -383,12 +383,12 @@ export async function countWalletsAbove(period: Period, totalWei: string): Promi
   const since = sinceForPeriod(period);
   
   // Get all wallet totals using the same logic as getLeaderboardTop
-  const claimsStmt = d.prepare(`
+  const claimsResult = await d.pool.query(`
     SELECT wallet, amount_wei
     FROM claims
-    WHERE status='confirmed' AND (@since=0 OR confirmed_at >= @since)
-  `);
-  const claims = await claimsStmt.all({ since }) as Array<{
+    WHERE status='confirmed' AND ($1=0 OR confirmed_at >= $1)
+  `, [since]);
+  const claims = claimsResult.rows as Array<{
     wallet: string;
     amount_wei: string;
   }>;
