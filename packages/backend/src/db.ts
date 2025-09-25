@@ -331,7 +331,6 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     console.log('[getLeaderboardTop] team query result:', teamRows.rows.length, 'teams found');
     console.log('[getLeaderboardTop] team query rows:', teamRows.rows);
 
-    const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
     for (const row of teamRows.rows) {
       teamData.set(row.wallet, {
         slug: row.slug,
