@@ -29,6 +29,7 @@ import { to0x, hexFrom } from "@/lib/hex";
 import { playButtonSound, playConfirmSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
 import SoundSettings from '@/components/SoundSettings';
 import NavigationModal from '@/components/NavigationModal';
+import StatisticsSection from '@/components/StatisticsSection';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
 
@@ -2148,6 +2149,10 @@ function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Sound Settings - moved to top */}
               <SoundSettings />
+
+              {/* Statistics Section */}
+              <StatisticsSection />
+
               <div style={{
                 padding: '12px',
                 background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
@@ -2300,23 +2305,6 @@ function Home() {
               </div>
             </div>
 
-            {/* Lock System Info */}
-            <div style={{
-              padding: '12px',
-              background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-              border: '2px solid #4a7d5f',
-              borderRadius: '8px'
-            }}>
-              <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
-                LOCK SYSTEM EXPLAINED
-              </div>
-              <div style={{ fontSize: '11px', lineHeight: '1.4', color: '#a0c8a0' }}>
-                <div><strong>Ownership Lock (1h):</strong> Prevents cart flipping. New owner must wait 1h after transfer.</div>
-                <div><strong>Session Lock (60s):</strong> One session per cartridge. Refreshed by heartbeats.</div>
-                <div><strong>Wallet Limit:</strong> Max concurrent sessions per wallet (default: 10).</div>
-                <div><strong>Graceful Recovery:</strong> Same wallet can resume after tab closure.</div>
-              </div>
-            </div>
 
 
             {/* Footer */}

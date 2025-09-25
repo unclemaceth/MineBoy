@@ -608,6 +608,23 @@ function InstructionsContent() {
           <p>• Join a team for competitive mining seasons</p>
         </div>
       </div>
+
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        border: '2px solid #4a7d5f',
+        borderRadius: '8px'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
+          🔒 LOCK SYSTEM EXPLAINED
+        </h3>
+        <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
+          <p><strong>Ownership Lock (1h):</strong> Prevents cart flipping. New owner must wait 1h after transfer.</p>
+          <p><strong>Session Lock (60s):</strong> One session per cartridge. Refreshed by heartbeats.</p>
+          <p><strong>Wallet Limit:</strong> Max concurrent sessions per wallet (default: 10).</p>
+          <p><strong>Graceful Recovery:</strong> Same wallet can resume after tab closure.</p>
+        </div>
+      </div>
     </div>
   );
 }

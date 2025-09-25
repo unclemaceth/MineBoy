@@ -10,7 +10,7 @@ import {
 
 function shortAddrLast8(addr: string) {
   const a = addr ?? '';
-  return a.length > 10 ? `…${a.slice(-8).toUpperCase()}` : a.toUpperCase();
+  return a.length > 10 ? `…${a.slice(-5).toUpperCase()}` : a.toUpperCase();
 }
 
 function toAbitString(totalWei: string, decimals = 18) {
