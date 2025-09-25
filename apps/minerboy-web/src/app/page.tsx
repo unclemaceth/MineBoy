@@ -1714,7 +1714,7 @@ function Home() {
               marginBottom: 16,
               fontFamily: 'Menlo, monospace'
             }}>
-              Lock expires in 45s if inactive
+              Lock expires in 60s if inactive
             </div>
             {cartridges.map((cart) => (
               <div key={cart.contract} style={{ marginBottom: 12 }}>
@@ -1744,7 +1744,8 @@ function Home() {
                   }}
                 />
                 
-                {/* Number Input Buttons */}
+                {/* Number Input Buttons - COMMENTED OUT (Alchemy integration active) */}
+                {/* 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginBottom: 8 }}>
                   {[1,2,3,4,5,6,7,8,9].map(num => (
                     <button
@@ -1775,7 +1776,6 @@ function Home() {
                   ))}
                 </div>
                 
-                {/* Bottom row: Submit, 0, Delete */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 8 }}>
                   <button
                     onClick={() => {
@@ -1847,6 +1847,7 @@ function Home() {
                     DEL
                   </button>
                 </div>
+                */}
               </div>
             ))}
             
