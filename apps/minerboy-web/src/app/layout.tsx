@@ -4,6 +4,7 @@ import Providers from "./providers";
 import "./globals.css";
 import GlobalWalletModal from "./GlobalWalletModal";
 import MaintenanceGate from "@/components/MaintenanceGate";
+import ClosedOverlay from "@/components/ClosedOverlay";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +57,8 @@ export default function RootLayout({
           <GlobalWalletModal />
           {/* Sits on top when maintenance is enabled */}
           <MaintenanceGate />
+          {/* CLOSED overlay for main branch */}
+          <ClosedOverlay />
         </Providers>
       </body>
     </html>
