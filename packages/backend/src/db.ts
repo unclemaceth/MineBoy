@@ -47,6 +47,19 @@ export async function initDb(dbUrl?: string) {
             await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
             await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_claims_pending_tx ON claims (status, tx_hash) WHERE status IN ('pending','tx_submitted') AND tx_hash IS NOT NULL;`);
             await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_claims_tx_hash_live ON claims (lower(tx_hash)) WHERE tx_hash IS NOT NULL AND status IN ('pending','confirmed');`);
+            
+            // Daily stats table
+            await pgPool.query(`
+              CREATE TABLE IF NOT EXISTS daily_stats (
+                day_utc        DATE PRIMARY KEY,
+                total_miners   INTEGER NOT NULL,
+                total_carts    INTEGER NOT NULL,
+                total_wei_text TEXT    NOT NULL,
+                total_claims   INTEGER NOT NULL,
+                computed_at_ms BIGINT NOT NULL
+              );
+            `);
+            await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_daily_stats_day ON daily_stats(day_utc DESC);`);
   } else {
     // Use SQLite
     const file = url?.startsWith('file:') ? url.replace('file:', '') : (url || 'minerboy.db');
