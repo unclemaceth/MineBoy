@@ -2,7 +2,6 @@
 
 import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
-import { mainnet } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
@@ -27,7 +26,7 @@ export const apechain = {
   blockExplorers: { default: { name: 'ApeScan', url: 'https://apescan.io' } }
 } as const satisfies Chain;
 
-export const chains = [mainnet, apechain, curtis] as const;
+export const chains = [apechain, curtis] as const;
 
 // Single wagmi config used everywhere
 export const wagmiConfig = defaultWagmiConfig({
@@ -40,7 +39,6 @@ export const wagmiConfig = defaultWagmiConfig({
     icons: [`${siteUrl}/icon.png`]
   },
   transports: {
-    [mainnet.id]: http(),
     [apechain.id]: http('https://apechain.rpc.thirdweb.com'),
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
   }
