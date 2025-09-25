@@ -1,22 +1,66 @@
+# Exported from Render on 2025-09-25T13:19:41Z
+version: "1"
 services:
-  - type: web
-    name: mineboy-backend
-    env: node
-    plan: free
-    buildCommand: cd packages/backend && npm install
-    startCommand: cd packages/backend && npm start
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: PORT
-        value: 10000
-      - key: RPC_URL
-        sync: false
-      - key: DATABASE_URL
-        value: postgres://user:password@host:port/database
-      - key: RECEIPT_POLL_INTERVAL_MS
-        value: 3600000
-      - key: RECEIPT_POLL_BATCH_LIMIT
-        value: 500
-      - key: RUN_RECEIPT_POLLER
-        value: true
+- type: web
+  name: MineBoy-Staging
+  runtime: node
+  repo: https://github.com/unclemaceth/MineBoy
+  branch: B
+  plan: starter
+  envVars:
+  - key: TEAMS_EDITABLE
+    sync: false
+  - key: SEASON_SLUG
+    sync: false
+  - key: NEXT_PUBLIC_ALCHEMY_API_KEY
+    sync: false
+  - key: RUN_RECEIPT_POLLER
+    sync: false
+  - key: PORT
+    sync: false
+  - key: ALLOWED_CARTRIDGES
+    sync: false
+  - key: ADMIN_TOKEN
+    sync: false
+  - key: RECEIPT_POLL_BATCH_LIMIT
+    sync: false
+  - key: DATABASE_URL
+    sync: false
+  - key: RECEIPT_POLL_INTERVAL_MS
+    sync: false
+  - key: LOCK_TTL_MS
+    sync: false
+  - key: SESSION_TTL_MS
+    sync: false
+  - key: HEARTBEAT_MS
+    sync: false
+  - key: REDIS_URL
+    sync: false
+  - key: private-key.txt
+    sync: false
+  - key: ROUTER_ADDRESS
+    sync: false
+  - key: REWARD_TOKEN_ADDRESS
+    sync: false
+  - key: HOST
+    sync: false
+  - key: CHAIN_ID
+    sync: false
+  - key: RPC_URL
+    sync: false
+  region: frankfurt
+  buildCommand: npm install
+  startCommand: npm start
+  healthCheckPath: /health
+  autoDeployTrigger: commit
+  buildFilter:
+    paths:
+    - packages/backend/**
+    ignoredPaths:
+    - apps/**
+    - contracts/**
+    - packages/shared/**
+    - .git/**
+    - node_modules/**
+    - '*.md'
+  rootDir: packages/backend
