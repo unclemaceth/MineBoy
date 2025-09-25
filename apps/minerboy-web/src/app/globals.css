@@ -8,9 +8,20 @@
   --safe-right: env(safe-area-inset-right, 0px);
 }
 
-/* Hide scrollbar for leaderboard */
-.hide-scrollbar::-webkit-scrollbar {
+/* Hide all scrollbars across the application */
+.hide-scrollbar::-webkit-scrollbar,
+::-webkit-scrollbar {
   display: none;
+}
+
+/* Firefox */
+html {
+  scrollbar-width: none;
+}
+
+/* IE and Edge */
+body {
+  -ms-overflow-style: none;
 }
 
 html, body, #__next { height: 100%; overflow: hidden; background: #0a0a0a; }

@@ -89,13 +89,16 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
         </div>
 
         {/* Content */}
-        <div style={{
-          padding: '20px',
-          overflowY: 'auto',
-          maxHeight: 'calc(90vh - 80px)',
-          fontFamily: 'monospace',
-          color: '#c8ffc8'
-        }}>
+        <div 
+          className="hide-scrollbar"
+          style={{
+            padding: '20px',
+            overflowY: 'auto',
+            maxHeight: 'calc(90vh - 80px)',
+            fontFamily: 'monospace',
+            color: '#c8ffc8'
+          }}
+        >
           {page === 'leaderboard' && <LeaderboardContent />}
           {page === 'mint' && <MintContent />}
           {page === 'instructions' && <InstructionsContent />}
@@ -208,7 +211,7 @@ function LeaderboardContent() {
         </div>
 
         {/* Table Body */}
-        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+        <div className="hide-scrollbar" style={{ maxHeight: '300px', overflowY: 'auto' }}>
           {loading && (
             <div style={{
               padding: '20px',
@@ -335,7 +338,7 @@ function MintContent() {
   const { writeContract, isPending: isMinting, data: hash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
   
-  const [count, setCount] = useState(1);
+  const [count] = useState(1); // Fixed to 1 cartridge
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -383,32 +386,10 @@ function MintContent() {
       ) : (
         <div style={{ marginBottom: '20px' }}>
           <p style={{ color: '#c8ffc8', fontSize: '14px' }}>
-            Price: {mintPrice ? formatEther(mintPrice) : '0'} ETH each
-          </p>
-          <p style={{ color: '#8a8a8a', fontSize: '12px' }}>
-            Total for {count}: {estTotal} ETH
+            Price: {mintPrice ? formatEther(mintPrice) : '0'} ETH
           </p>
         </div>
       )}
-
-      <div style={{ marginBottom: '20px' }}>
-        <label style={{ color: '#c8ffc8', marginRight: '10px' }}>Quantity:</label>
-        <input
-          type="number"
-          min="1"
-          max="10"
-          value={count}
-          onChange={(e) => setCount(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
-          style={{
-            padding: '8px',
-            borderRadius: '4px',
-            border: '1px solid #4a7d5f',
-            backgroundColor: '#1a3d24',
-            color: '#c8ffc8',
-            width: '60px'
-          }}
-        />
-      </div>
 
       <button
         onClick={mint}
