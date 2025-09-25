@@ -337,6 +337,7 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     
     const finalResults = results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
+      console.log(`[getLeaderboardTop] wallet: ${result.wallet.toLowerCase()}, team:`, team);
       return {
         ...result,
         team_slug: team?.slug,
@@ -347,6 +348,7 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     });
     
     console.log('[getLeaderboardTop] returning', finalResults.length, 'entries, first has team:', !!finalResults[0]?.team_slug);
+    console.log('[getLeaderboardTop] sample entry:', JSON.stringify(finalResults[0], null, 2));
     return finalResults;
     
   } catch (error) {
