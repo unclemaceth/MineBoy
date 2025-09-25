@@ -324,6 +324,7 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
       );
       
       console.log('[getLeaderboardTop] team query result:', rows.length, 'teams found');
+      console.log('[getLeaderboardTop] team query rows:', rows);
       
       for (const row of rows) {
         teamData.set(String(row.wallet).toLowerCase(), {
