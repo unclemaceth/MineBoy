@@ -313,29 +313,34 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     
     let teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
     
-    if (topWallets.length > 0) {
-      const { rows } = await d.pool.query(
-        `SELECT ut.wallet, t.slug, t.name, t.emoji, t.color
-         FROM user_teams ut
-         JOIN teams t ON t.id = ut.team_id
-         WHERE ut.season_id = $1
-           AND LOWER(ut.wallet) = ANY($2::text[])`,
-        [seasonId, topWallets]
-      );
-      
-      console.log('[getLeaderboardTop] team query result:', rows.length, 'teams found');
-      console.log('[getLeaderboardTop] team query rows:', rows);
-      
-      for (const row of rows) {
-        teamData.set(String(row.wallet).toLowerCase(), {
-          slug: row.slug,
-          name: row.name,
-          emoji: row.emoji,
-          color: row.color
-        });
-      }
+    const topWalletsLc = topWallets.map(w => w.toLowerCase());
+
+    const teamRows = topWalletsLc.length
+      ? await d.pool.query(
+          `
+          SELECT LOWER(ut.wallet) AS wallet, t.slug, t.name, t.emoji, t.color
+          FROM user_teams ut
+          JOIN teams t ON t.id = ut.team_id
+          WHERE LOWER(ut.wallet) = ANY ($1::text[])
+            AND ut.season_id = $2
+          `,
+          [topWalletsLc, seasonId]
+        )
+      : { rows: [] };
+
+    console.log('[getLeaderboardTop] team query result:', teamRows.rows.length, 'teams found');
+    console.log('[getLeaderboardTop] team query rows:', teamRows.rows);
+
+    const teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
+    for (const row of teamRows.rows) {
+      teamData.set(row.wallet, {
+        slug: row.slug,
+        name: row.name,
+        emoji: row.emoji,
+        color: row.color,
+      });
     }
-    
+
     const finalResults = results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
       console.log(`[getLeaderboardTop] wallet: ${result.wallet.toLowerCase()}, team:`, team);

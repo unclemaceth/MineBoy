@@ -271,14 +271,14 @@ export default function LeaderboardPage() {
                 }}>
                   {e.walletShort}
                 </div>
-                        <div style={{ 
-                          fontSize: '10px', 
-                          color: '#64ff8a', 
-                          fontWeight: 'bold',
-                          overflow: 'hidden', 
-                          textOverflow: 'ellipsis',
+                        <div style={{
+                          fontSize: '12px',
+                          fontWeight: '700',
+                          color: '#64FF8A',
+                          maxWidth: '100px',
                           whiteSpace: 'nowrap',
-                          maxWidth: '80px'
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
                         }}>
                           {e.team_name ?? '—'}
                         </div>
@@ -322,14 +322,13 @@ export default function LeaderboardPage() {
             }}>
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
               <div>{data.me.walletShort}</div>
-              <div style={{ 
-                fontSize: '10px', 
-                color: '#64ff8a', 
-                fontWeight: 'bold',
-                overflow: 'hidden', 
-                textOverflow: 'ellipsis',
+              <div style={{
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#64FF8A',
                 whiteSpace: 'nowrap',
-                maxWidth: '80px'
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}>
                 {data.me.team_name ?? '—'}
               </div>
