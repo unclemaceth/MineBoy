@@ -319,7 +319,7 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
          FROM user_teams ut
          JOIN teams t ON t.id = ut.team_id
          WHERE ut.season_id = $1
-           AND ut.wallet = ANY($2::text[])`,
+           AND LOWER(ut.wallet) = ANY($2::text[])`,
         [seasonId, topWallets]
       );
       
