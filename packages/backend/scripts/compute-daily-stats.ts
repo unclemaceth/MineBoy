@@ -72,7 +72,7 @@ async function computeDailyStats() {
 }
 
 // Run if called directly
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   computeDailyStats()
     .then(() => {
       console.log('🎉 Daily stats computation completed');

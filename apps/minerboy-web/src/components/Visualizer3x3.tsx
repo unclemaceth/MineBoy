@@ -1,6 +1,7 @@
 import { useSession } from '@/state/useSession';
 import { useEffect, useState } from 'react';
 import { hexFrom } from '@/lib/hex';
+import { getTierInfo } from '@/lib/rewards';
 
 interface Visualizer3x3Props {
   fullscreen?: boolean;
@@ -15,7 +16,7 @@ export default function Visualizer3x3({
   hideHashLine = true,
   nibs
 }: Visualizer3x3Props) {
-  const { mining, lastFound, job } = useSession();
+  const { mining, lastFound, job, claimState, setClaimState } = useSession();
   const [currentHash, setCurrentHash] = useState('0x0000000000000000000000000000000000000000000000000000000000000000');
   const [containerSize, setContainerSize] = useState({ width: 300, height: 300 });
   
@@ -174,25 +175,38 @@ export default function Visualizer3x3({
         </div>
       )}
 
-      {/* Claim badge when hash found */}
-      {lastFound && (
-        <div style={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          backgroundColor: 'rgba(100, 255, 138, 0.9)',
-          color: '#000',
-          padding: `${Math.max(8, tileSize * 0.15)}px ${Math.max(16, tileSize * 0.3)}px`,
-          borderRadius: Math.max(8, tileSize * 0.15),
-          fontSize: Math.max(14, tileSize * 0.25),
-          fontWeight: 'bold',
-          fontFamily: 'Menlo, monospace',
-          animation: 'claimPulse 1s ease-in-out infinite',
-          boxShadow: '0 0 20px rgba(100, 255, 138, 0.5)',
-          zIndex: 10,
-        }}>
-          CLAIM
+      {/* Claim badge when hash found and ready to claim */}
+      {lastFound && claimState === 'ready' && (
+        <div 
+          onClick={() => setClaimState('overlay')}
+          role="button"
+          aria-label="Open claim overlay"
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(100, 255, 138, 0.92)',
+            color: '#000',
+            padding: `${Math.max(8, tileSize * 0.15)}px ${Math.max(16, tileSize * 0.3)}px`,
+            borderRadius: Math.max(8, tileSize * 0.15),
+            fontSize: Math.max(14, tileSize * 0.24),
+            fontWeight: 'bold',
+            fontFamily: 'Menlo, monospace',
+            animation: 'claimPulse 1s ease-in-out infinite',
+            boxShadow: '0 0 20px rgba(100, 255, 138, 0.5)',
+            zIndex: 10,
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+            cursor: 'pointer',
+          }}
+        >
+          <span>CLAIM</span>
+          <span style={{ opacity: 0.8 }}>•</span>
+          <span>{lastFound.tierName || getTierInfo(lastFound.hash).name}</span>
+          <span style={{ opacity: 0.8 }}>•</span>
+          <span>{lastFound.amountLabel || 'Calculating...'}</span>
         </div>
       )}
 

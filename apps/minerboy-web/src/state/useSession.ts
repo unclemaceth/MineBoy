@@ -16,7 +16,18 @@ export function getOrCreateMinerId(): string {
   return id;
 }
 
-type FoundPayload = { hash: `0x${string}`; preimage: string; attempts: number; hr: number };
+type FoundPayload = { 
+  hash: `0x${string}`; 
+  preimage: string; 
+  attempts: number; 
+  hr: number;
+  // Tier information (added by backend)
+  tier?: number;
+  tierName?: string;
+  amountLabel?: string;
+};
+
+type ClaimState = 'idle' | 'ready' | 'overlay' | 'submitting' | 'success' | 'error';
 
 type SessionState = {
   // Connection state
@@ -30,6 +41,7 @@ type SessionState = {
   attempts: number;
   hr: number;
   lastFound?: FoundPayload;
+  claimState: ClaimState;
   
   // Terminal state (keep for UI compatibility)
   terminal: string[];
@@ -40,6 +52,7 @@ type SessionState = {
   setMining(on: boolean): void;
   setTelemetry(a: number, hr: number): void;
   setFound(p: FoundPayload | undefined): void;
+  setClaimState(state: ClaimState): void;
   pushLine(line: string): void;
   setMode(mode: 'terminal' | 'visual'): void;
   setJob(job: Job): void;
@@ -55,6 +68,7 @@ export const useSession = create<SessionState>()(
       mining: false,
       attempts: 0,
       hr: 0,
+      claimState: 'idle',
       terminal: [],
       mode: 'terminal',
       
@@ -62,7 +76,8 @@ export const useSession = create<SessionState>()(
       setWallet: (wallet) => set({ wallet }),
       setMining: (mining) => set({ mining }),
       setTelemetry: (attempts, hr) => set({ attempts, hr }),
-      setFound: (p) => set({ lastFound: p }),
+      setFound: (p) => set({ lastFound: p, claimState: p ? 'ready' : 'idle' }),
+      setClaimState: (claimState) => set({ claimState }),
       setJob: (job) => set({ job }),
       
       pushLine: (line: string) => {
@@ -104,6 +119,7 @@ export const useSession = create<SessionState>()(
         attempts: 0, 
         hr: 0, 
         lastFound: undefined,
+        claimState: 'idle',
         terminal: [],
         mode: 'terminal'
       }),

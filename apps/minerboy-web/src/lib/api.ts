@@ -114,6 +114,41 @@ export const api = {
       throw e;
     }
   },
+
+  async claimV2(body: ClaimReq): Promise<ClaimRes & { tier: number; tierName: string; amountLabel: string }> {
+    try {
+      const { json, headers } = await jfetchEx("/v2/claim/v2", { 
+        method: "POST", 
+        body: JSON.stringify(body) 
+      });
+      
+      console.log('[CLAIM_V2_OK]', { 
+        xInstance: headers['x-instance'], 
+        lockOwner: headers['x-lock-owner'],
+        tier: json.tier,
+        tierName: json.tierName,
+        amountLabel: json.amountLabel
+      });
+      
+      const res = normalizeClaimRes(json);
+      if (res.nextJob) {
+        res.nextJob = normalizeJob(res.nextJob as ApiJob);
+      }
+      return {
+        ...res,
+        tier: json.tier,
+        tierName: json.tierName,
+        amountLabel: json.amountLabel
+      };
+    } catch (e: any) {
+      console.log('[CLAIM_V2_ERR]', e.status, { 
+        xInstance: e.headers?.['x-instance'], 
+        lockOwner: e.headers?.['x-lock-owner'], 
+        server: e.info 
+      });
+      throw e;
+    }
+  },
   
   close(sessionId: string): Promise<{ ok: true }> {
     return jfetch(`/v2/session/close`, { 

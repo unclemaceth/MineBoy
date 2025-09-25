@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react';
 
 export default function ClaimOverlay() {
   const { foundHash, setFoundHash, pushLine, setMiningState } = useMinerStore();
-  const { sessionId, job, lastFound } = useSession();
+  const { sessionId, job, lastFound, claimState, setClaimState, setFound } = useSession();
   const { writeContract, data: hash } = useWriteContract();
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({ hash });
   const [isClaiming, setIsClaiming] = useState(false);
@@ -43,11 +43,12 @@ export default function ClaimOverlay() {
     return () => { cancelled = true; };
   }, [hash, pendingClaimId, pushLine]);
 
-  if (!foundHash) return null;
+  if (!foundHash || claimState !== 'overlay') return null;
 
   const handleClaim = async () => {
     setIsClaiming(true);
     setMiningState('claiming');
+    setClaimState('submitting');
 
     try {
       // Preserve your "retro" lines
@@ -68,8 +69,8 @@ export default function ClaimOverlay() {
 
       pushLine('Creating claim record in DB…');
 
-      // 1) Create pending claim + get EIP-712 payload & sig from backend
-      const createRes = await api.claim({
+      // 1) Create pending claim + get EIP-712 payload & sig from backend (V2)
+      const createRes = await api.claimV2({
         sessionId,
         jobId,
         preimage: lastFound.preimage,
@@ -79,22 +80,32 @@ export default function ClaimOverlay() {
         minerId,
       });
 
-      // normalizeClaimRes() already ran in api.claim()
+      // normalizeClaimRes() already ran in api.claimV2()
       const packed = createRes?.claim;
-              const sig    = createRes?.signature;
-              if (!packed || !sig) throw new Error("Backend didn't return claim payload/signature");
+      const sig    = createRes?.signature;
+      if (!packed || !sig) throw new Error("Backend didn't return claim payload/signature");
 
-              // Store the claim ID for transaction hash submission
-              setPendingClaimId(createRes.claimId);
+      // Update session with tier information
+      if (createRes.tier !== undefined && createRes.tierName && createRes.amountLabel) {
+        setFound({
+          ...lastFound,
+          tier: createRes.tier,
+          tierName: createRes.tierName,
+          amountLabel: createRes.amountLabel
+        });
+      }
+
+      // Store the claim ID for transaction hash submission
+      setPendingClaimId(createRes.claimId);
 
               pushLine('Broadcasting wallet transaction…');
 
-      // 2) EXACT SAME on-chain function the ORIGINAL overlay used
+      // 2) Use claimV2 on-chain function (no rewardAmount in signature)
       writeContract({
         address: contracts.miningClaimRouter as `0x${string}`,
         abi: [
           {
-            name: 'claim',
+            name: 'claimV2',
             type: 'function',
             stateMutability: 'nonpayable',
             inputs: [
@@ -103,7 +114,6 @@ export default function ClaimOverlay() {
                 { name: 'cartridge', type: 'address' },
                 { name: 'tokenId', type: 'uint256' },
                 { name: 'rewardToken', type: 'address' },
-                { name: 'rewardAmount', type: 'uint256' },
                 { name: 'workHash', type: 'bytes32' },
                 { name: 'attempts', type: 'uint64' },
                 { name: 'nonce', type: 'bytes32' },
@@ -114,14 +124,13 @@ export default function ClaimOverlay() {
             outputs: []
           }
         ],
-        functionName: "claim", // ← keep the working function
+        functionName: "claimV2", // ← use the new V2 function
         args: [ 
           {
             wallet: to0x(packed.wallet),
             cartridge: to0x(packed.cartridge),
             tokenId: BigInt(packed.tokenId),
             rewardToken: to0x(packed.rewardToken),
-            rewardAmount: BigInt(packed.rewardAmount),
             workHash: to0x(packed.workHash),
             attempts: BigInt(packed.attempts),
             nonce: to0x(packed.nonce),
@@ -142,12 +151,16 @@ export default function ClaimOverlay() {
       setIsClaiming(false);
       setFoundHash(null);
       setMiningState('idle');
+      setClaimState('idle');
+      setFound(undefined);
     }
   };
 
   const handleDismiss = () => {
     setFoundHash(null);
     setMiningState('idle'); // Return to idle, user must press A to resume
+    setClaimState('idle');
+    setFound(undefined);
   };
 
   return (

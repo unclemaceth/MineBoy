@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 // Robust interop-safe import
-import * as Mining from '../../shared/src/mining';
+import * as Mining from '../../shared/src/mining.js';
+import * as Rewards from '../../shared/src/rewards.js';
 
 const getDifficultyForEpoch =
   (Mining as any).getDifficultyForEpoch ??
@@ -9,7 +10,7 @@ const getDifficultyForEpoch =
 if (typeof getDifficultyForEpoch !== 'function') {
   throw new Error('shared/mining is missing getDifficultyForEpoch');
 }
-import { getDifficultyOverride } from './difficulty';
+import { getDifficultyOverride } from './difficulty.js';
 import type { Job } from '../../shared/src/mining.js';
 import { config } from './config.js';
 import { cartridgeRegistry } from './registry.js';
@@ -28,6 +29,32 @@ export class JobManager {
   constructor() {
     this.signer = new ethers.Wallet(config.SIGNER_PRIVATE_KEY);
     this.provider = new ethers.JsonRpcProvider(config.RPC_URL);
+  }
+
+  /**
+   * Get active miners count from database
+   */
+  private async getActiveMinersCount(): Promise<number> {
+    try {
+      // Import getDB here to avoid circular dependency
+      const { getDB } = await import('./db.js');
+      const db = getDB();
+      
+      const now = Date.now();
+      const activeWindowMs = 10 * 60 * 1000; // 10 minutes
+      
+      const result = await db.pool.query(`
+        SELECT COUNT(DISTINCT wallet) AS active_miners
+        FROM claims
+        WHERE status='confirmed' 
+          AND confirmed_at >= $1
+      `, [now - activeWindowMs]);
+      
+      return parseInt(result.rows[0]?.active_miners || '0');
+    } catch (error) {
+      console.error('Error getting active miners count:', error);
+      return 0; // Default to 0 if query fails
+    }
   }
   
   /**
@@ -57,15 +84,17 @@ export class JobManager {
   }
 
   /**
-   * Issue a job with current difficulty settings
+   * Issue a job with dynamic difficulty based on active miners
    */
   async issueJob(nonce: string): Promise<Job> {
-    const epoch = await this.getCurrentEpoch();
-    const diff = getDifficultyForEpoch(epoch);
     const now = Date.now();
     
+    // Get active miners count for dynamic difficulty
+    const activeMiners = await this.getActiveMinersCount();
+    const diff = Rewards.getDifficultyForActiveMiners(activeMiners);
+    
     // Debug logging
-    console.log('[jobs] epoch=%s zeros=%d suffix=%s', epoch, diff.zeros, diff.suffix);
+    console.log('[jobs] activeMiners=%d zeros=%d suffix=%s', activeMiners, diff.zeros, diff.suffix);
     
     const job: Job = {
       jobId: `job_${now}_${Math.random().toString(36).slice(2)}`,
@@ -75,8 +104,7 @@ export class JobManager {
       expiresAt: now + diff.ttlMs,
       rule: 'suffix',
       suffix: diff.suffix,
-      difficultyBits: diff.zeros,
-      epoch,
+      epoch: 0, // Not used in dynamic difficulty mode
       ttlMs: diff.ttlMs,
     };
     return job;

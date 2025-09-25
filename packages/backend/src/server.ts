@@ -12,6 +12,7 @@ import { setDifficultyOverride, getDifficultyOverride } from './difficulty.js';
 import { canonicalizeCartridge, cartKey, normalizeAddress, sameAddr } from './canonical.js';
 // Robust interop-safe import
 import * as Mining from '../../shared/src/mining.js';
+import * as Rewards from '../../shared/src/rewards.js';
 
 const getDifficultyForEpoch =
   (Mining as any).getDifficultyForEpoch ??
@@ -451,6 +452,75 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
   }
 });
 
+// Process claimV2 (tier-based rewards, no rewardAmount in signature)
+fastify.post<{ Body: ClaimReq }>('/v2/claim/v2', async (request, reply) => {
+  try {
+    const { sessionId, minerId } = request.body as any;
+    
+    // Validate minerId
+    if (!minerId) {
+      return reply.code(400).send({ error: 'minerId required' });
+    }
+    
+    // Check session and refresh lock
+    const session = await SessionStore.getSession(sessionId);
+    if (!session) {
+      return reply.code(404).send({ error: 'Session not found' });
+    }
+    
+    const { chainId, contract, tokenId } = session.cartridge;
+    console.log(`[CLAIM_V2_DEBUG] Session minerId: ${session.minerId}, Claim minerId: ${minerId}, Lock key: ${chainId}:${contract}:${tokenId}`);
+    
+    // Validate both locks for claim
+    const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
+    const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+    
+    if (!ownershipLock || !sameAddr(ownershipLock.ownerAtAcquire, session.wallet)) {
+      console.log(`[CLAIM_V2_DEBUG] Ownership lock lost for ${contract}:${tokenId}`);
+      
+      return reply.code(409).send({ 
+        error: 'ownership_lock_lost',
+        details: 'Cartridge ownership changed during mining session'
+      });
+    }
+    
+    if (!sessionLock || sessionLock.minerId !== minerId) {
+      console.log(`[CLAIM_V2_DEBUG] Session lock lost for ${contract}:${tokenId}`);
+      
+      return reply.code(409).send({ 
+        error: 'session_lock_lost',
+        details: 'Another miner is using this cartridge'
+      });
+    }
+    
+    // Refresh both locks
+    try {
+      await SessionStore.refreshOwnershipLock(chainId, contract, tokenId, Date.now(), 3_600_000);
+      await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+    } catch (error) {
+      console.error('[CLAIM_V2_DEBUG] Lock refresh failed:', error);
+      return reply.code(500).send({ error: 'lock_refresh_failed' });
+    }
+    
+    const result = await claimProcessor.processClaimV2(request.body);
+    if (!result) {
+      return reply.code(400).send({ error: 'Failed to process claimV2' });
+    }
+    
+    // Add success headers
+    reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
+    reply.header('X-Lock-Owner', minerId);
+    reply.header('X-Lock-Session', sessionId);
+    reply.header('X-Lock-Expires', Date.now() + 45000);
+    
+    return result;
+    
+  } catch (error: any) {
+    fastify.log.error('Error processing claimV2:', error);
+    return reply.code(400).send({ error: error instanceof Error ? error.message : 'ClaimV2 processing failed' });
+  }
+});
+
 // Close session
 fastify.post<{ Body: { sessionId: string } }>('/v2/session/close', async (request, reply) => {
   const { sessionId } = request.body;
@@ -518,10 +588,29 @@ fastify.get('/v2/debug/lock', async (request, reply) => {
 // Get current difficulty info
 fastify.get('/v2/difficulty', async () => {
   const epoch = await jobManager.getCurrentEpoch();
-  const diff = getDifficultyForEpoch(epoch);
+  const epochDiff = getDifficultyForEpoch(epoch);
+  
+  // Get dynamic difficulty based on active miners
+  const { getDB } = await import('./db.js');
+  const db = getDB();
+  const now = Date.now();
+  const activeWindowMs = 10 * 60 * 1000; // 10 minutes
+  
+  const result = await db.pool.query(`
+    SELECT COUNT(DISTINCT wallet) AS active_miners
+    FROM claims
+    WHERE status='confirmed' 
+      AND confirmed_at >= $1
+  `, [now - activeWindowMs]);
+  
+  const activeMiners = parseInt(result.rows[0]?.active_miners || '0');
+  const dynamicDiff = Rewards.getDifficultyForActiveMiners(activeMiners);
+  
   return {
     epoch,
-    difficulty: diff,
+    epochDifficulty: epochDiff,
+    activeMiners,
+    dynamicDifficulty: dynamicDiff,
     override: getDifficultyOverride()
   };
 });

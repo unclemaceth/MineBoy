@@ -33,22 +33,31 @@ contract Deploy is Script {
         ApeBitToken token = new ApeBitToken(ADMIN);
         console.log("ApeBitToken deployed at:", address(token));
         
-        // 2. Deploy MiningClaimRouter
-        console.log("\n2. Deploying MiningClaimRouter...");
+        // 2. Prepare reward table (linear 8..128 ABIT with 18 decimals)
+        console.log("\n2. Preparing reward table...");
+        uint256[16] memory rewardTable;
+        for (uint8 i = 0; i < 16; i++) {
+            rewardTable[i] = (i + 1) * 8 * 10**18; // 8, 16, 24, ..., 128 ABIT
+        }
+        console.log("Reward table prepared: 8-128 ABIT across 16 tiers");
+        
+        // 3. Deploy MiningClaimRouter
+        console.log("\n3. Deploying MiningClaimRouter...");
         MiningClaimRouter router = new MiningClaimRouter(
             address(token),
             BACKEND_SIGNER,
-            ADMIN
+            ADMIN,
+            rewardTable
         );
         console.log("MiningClaimRouter deployed at:", address(router));
         
-        // 3. Grant MINTER_ROLE to router
-        console.log("\n3. Granting MINTER_ROLE to router...");
+        // 4. Grant MINTER_ROLE to router
+        console.log("\n4. Granting MINTER_ROLE to router...");
         token.grantRole(token.MINTER_ROLE(), address(router));
         console.log("MINTER_ROLE granted to router");
         
-        // 4. Deploy ApeBitCartridge
-        console.log("\n4. Deploying ApeBitCartridge...");
+        // 5. Deploy ApeBitCartridge
+        console.log("\n5. Deploying ApeBitCartridge...");
         ApeBitCartridge cartridge = new ApeBitCartridge(
             ADMIN,
             CARTRIDGE_MAX_SUPPLY,
@@ -57,13 +66,13 @@ contract Deploy is Script {
         );
         console.log("ApeBitCartridge deployed at:", address(cartridge));
         
-        // 5. Allow cartridge in router
-        console.log("\n5. Allowing cartridge in router...");
+        // 6. Allow cartridge in router
+        console.log("\n6. Allowing cartridge in router...");
         router.setCartridgeAllowed(address(cartridge), true);
         console.log("Cartridge allowed in router");
         
-        // 6. Mint a test cartridge to admin
-        console.log("\n6. Minting test cartridge to admin...");
+        // 7. Mint a test cartridge to admin
+        console.log("\n7. Minting test cartridge to admin...");
         cartridge.adminMint(ADMIN, 1);
         console.log("Test cartridge minted to admin");
         

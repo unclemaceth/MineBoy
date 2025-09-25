@@ -1,6 +1,7 @@
 import { ethers } from 'ethers';
 // Robust interop-safe import
-import * as Mining from '../../shared/src/mining';
+import * as Mining from '../../shared/src/mining.js';
+import * as Rewards from '../../shared/src/rewards.js';
 
 const hashMeetsDifficulty =
   (Mining as any).hashMeetsDifficulty ??
@@ -10,7 +11,7 @@ if (typeof hashMeetsDifficulty !== 'function') {
   throw new Error('shared/mining is missing hashMeetsDifficulty');
 }
 
-import { ClaimReq, ClaimRes, ClaimStruct } from '../../shared/src/mining';
+import { ClaimReq, ClaimRes, ClaimStruct } from '../../shared/src/mining.js';
 import { config } from './config.js';
 import { SessionStore } from './sessionStore.js';
 import { jobManager } from './jobs.js';
@@ -74,7 +75,20 @@ const EIP712_TYPES = {
     { name: 'nonce',         type: 'bytes32' },
     { name: 'expiry',        type: 'uint64'  },
   ],
-} as const;
+};
+
+const EIP712_TYPES_V2 = {
+  ClaimV2: [
+    { name: 'wallet',        type: 'address' },
+    { name: 'cartridge',     type: 'address' },
+    { name: 'tokenId',       type: 'uint256' },
+    { name: 'rewardToken',   type: 'address' },
+    { name: 'workHash',      type: 'bytes32' },
+    { name: 'attempts',      type: 'uint64'  },
+    { name: 'nonce',         type: 'bytes32' },
+    { name: 'expiry',        type: 'uint64'  },
+  ],
+};
 
 const EIP712_DOMAIN_LOCAL = {
   name: 'MinerBoyClaim',
@@ -154,8 +168,9 @@ export class ClaimProcessor {
       throw new Error('Cartridge not found');
     }
     
-    // Calculate reward using halving logic
-    const rewardAmount = this.calculateReward();
+    // Calculate reward using tier-based system
+    const rewardAmount = this.calculateTierReward(claimReq.hash as `0x${string}`);
+    const tierInfo = Rewards.getTierInfo(claimReq.hash as `0x${string}`);
     
     // Create claim struct
     const claimStruct: ClaimStruct = {
@@ -203,35 +218,140 @@ export class ClaimProcessor {
       confirmed_at: null
     });
     
-    console.log(`Processed claim for ${session.wallet}: ${ethers.formatEther(rewardAmount)} ABIT`);
+    console.log(`Processed claim for ${session.wallet}: ${ethers.formatEther(rewardAmount)} ABIT (Tier ${tierInfo.tier}: ${tierInfo.name})`);
     if (nextJob) {
-      console.log(`Issued next job (height ${nextJob.height}) with nonce ${nextJob.nonce.slice(0, 10)}...`);
+      console.log(`Issued next job (epoch ${nextJob.epoch}) with nonce ${nextJob.nonce.slice(0, 10)}...`);
     }
     
     // Return claim data for client to submit
     return {
-      ok: true,
+      success: true,
       claimId,
       claim: claimStruct,
       signature,
-      nextJob: serializeJob(nextJob)
-    } as ClaimRes & { claimId: string; claim: ClaimStruct; signature: string };
+      nextJob: serializeJob(nextJob),
+      tier: tierInfo.tier,
+      tierName: tierInfo.name,
+      amountLabel: Rewards.createRewardLabel(claimReq.hash as `0x${string}`, rewardAmount)
+    } as ClaimRes & { 
+      claimId: string; 
+      claim: ClaimStruct; 
+      signature: string;
+      tier: number;
+      tierName: string;
+      amountLabel: string;
+    };
+  }
+
+  /**
+   * Process claim using ClaimV2 (no rewardAmount in signature)
+   */
+  async processClaimV2(claimReq: ClaimReq): Promise<ClaimRes | null> {
+    // Validate session
+    const session = await SessionStore.getSession(claimReq.sessionId);
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    // Validate job
+    const job = jobManager.getJob(claimReq.jobId);
+    if (!job) {
+      throw new Error('Job not found');
+    }
+
+    // Validate hash meets difficulty
+    if (!hashMeetsDifficulty(claimReq.hash, job)) {
+      throw new Error('Hash does not meet difficulty requirements');
+    }
+
+    // Get cartridge config
+    const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
+    if (!cartridge) {
+      throw new Error('Cartridge not found');
+    }
+
+    // Calculate reward using tier-based system
+    const rewardAmount = this.calculateTierReward(claimReq.hash as `0x${string}`);
+    const tierInfo = Rewards.getTierInfo(claimReq.hash as `0x${string}`);
+
+    // Create claimV2 struct (no rewardAmount)
+    const claimStructV2 = {
+      wallet: session.wallet,
+      cartridge: session.cartridge.contract,
+      tokenId: session.cartridge.tokenId,
+      rewardToken: config.REWARD_TOKEN_ADDRESS,
+      workHash: claimReq.hash,
+      attempts: claimReq.steps.toString(),
+      nonce: ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`,
+      expiry: (Date.now() + 300000).toString(), // 5 minutes from now
+    };
+
+    // Check nonce uniqueness
+    if (this.usedNonces.has(claimStructV2.nonce)) {
+      throw new Error('Nonce already used');
+    }
+
+    // Sign the claimV2 with EIP-712
+    const signature = await this.signClaimV2(claimStructV2);
+
+    // Mark nonce as used
+    this.usedNonces.add(claimStructV2.nonce);
+
+    // Generate next job
+    const nextJob = await jobManager.createNextJob(claimReq.sessionId, claimReq.hash, job);
+
+    // Store claim in database
+    const claimId = randomUUID();
+    await insertPendingClaim({
+      id: claimId,
+      wallet: session.wallet,
+      cartridge_id: parseInt(session.cartridge.tokenId),
+      hash: claimReq.hash,
+      amount_wei: rewardAmount.toString(),
+      tx_hash: null,
+      status: 'pending',
+      created_at: Date.now(),
+      confirmed_at: null,
+      pending_expires_at: Date.now() + 15 * 60_000 // 15 min to broadcast
+    });
+
+    console.log(`Processed claimV2 for ${session.wallet}: ${ethers.formatEther(rewardAmount)} ABIT (Tier ${tierInfo.tier}: ${tierInfo.name})`);
+    if (nextJob) {
+      console.log(`Issued next job (epoch ${nextJob.epoch}) with nonce ${nextJob.nonce.slice(0, 10)}...`);
+    }
+
+    // Return claimV2 data for client to submit
+    return {
+      success: true,
+      claimId,
+      claim: claimStructV2,
+      signature,
+      nextJob: serializeJob(nextJob),
+      tier: tierInfo.tier,
+      tierName: tierInfo.name,
+      amountLabel: Rewards.createRewardLabel(claimReq.hash as `0x${string}`, rewardAmount)
+    } as ClaimRes & { 
+      claimId: string; 
+      claim: Omit<ClaimStruct, 'rewardAmount'>; 
+      signature: string;
+      tier: number;
+      tierName: string;
+      amountLabel: string;
+    };
   }
   
   /**
-   * Calculate reward using halving logic
+   * Calculate reward using tier-based system
    */
-  private calculateReward(): bigint {
-    const initialReward = BigInt(config.INITIAL_REWARD_WEI);
-    const claimsPerEpoch = config.CLAIMS_PER_EPOCH;
+  private calculateTierReward(workHash: `0x${string}`): bigint {
+    const tier = Rewards.tierFromHash(workHash);
+    const tierName = Rewards.getTierName(tier);
     
-    // Calculate current epoch
-    const epoch = Math.floor(this.totalSuccessfulClaims / claimsPerEpoch);
+    // Linear reward table: 8, 16, 24, ..., 128 ABIT (with 18 decimals)
+    const baseAmount = (tier + 1) * 8; // 8, 16, 24, ..., 128
+    const reward = BigInt(baseAmount) * BigInt(10 ** 18);
     
-    // Apply halving: reward = initialReward >> epoch
-    const reward = initialReward >> BigInt(epoch);
-    
-    console.log(`Reward calculation: epoch=${epoch}, claims=${this.totalSuccessfulClaims}, reward=${ethers.formatEther(reward)} ABIT`);
+    console.log(`Tier reward calculation: tier=${tier} (${tierName}), amount=${baseAmount} ABIT, reward=${ethers.formatEther(reward)} ABIT`);
     
     return reward;
   }
@@ -314,12 +434,22 @@ export class ClaimProcessor {
   }
   
   /**
-   * Sign claim with EIP-712
+   * Sign claim with EIP-712 (V1 - legacy)
    */
   private async signClaim(claim: ClaimStruct): Promise<string> {
     const domain = EIP712_DOMAIN_LOCAL;
     
     const signature = await this.signer.signTypedData(domain, EIP712_TYPES, claim);
+    return signature;
+  }
+
+  /**
+   * Sign claimV2 with EIP-712 (V2 - no rewardAmount)
+   */
+  private async signClaimV2(claim: Omit<ClaimStruct, 'rewardAmount'>): Promise<string> {
+    const domain = EIP712_DOMAIN_LOCAL;
+    
+    const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V2, claim);
     return signature;
   }
   

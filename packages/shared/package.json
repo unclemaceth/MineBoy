@@ -12,6 +12,7 @@
     "typescript": "^5.0.0"
   },
   "exports": {
-    "./mining": "./src/mining.ts"
+    "./mining": "./src/mining.ts",
+    "./rewards": "./src/rewards.ts"
   }
 }
