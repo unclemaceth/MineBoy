@@ -316,12 +316,22 @@ export default function LeaderboardPage() {
               display: 'grid',
               gridTemplateColumns: '40px 1fr 80px 100px',
               gap: '8px',
+              padding: '8px 12px',
               fontSize: '10px',
               color: '#c8ffc8',
-              fontFamily: 'monospace'
+              fontFamily: 'monospace',
+              backgroundColor: 'rgba(45, 26, 15, 0.3)',
+              borderRadius: '4px'
             }}>
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
-              <div>{data.me.walletShort}</div>
+              <div style={{
+                fontFamily: 'monospace',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
+              }}>
+                {data.me.walletShort}
+              </div>
               <div style={{
                 fontSize: '12px',
                 fontWeight: '700',
@@ -329,6 +339,7 @@ export default function LeaderboardPage() {
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
+                maxWidth: '80px'
               }}>
                 {data.me.team_name ?? '—'}
               </div>

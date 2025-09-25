@@ -302,12 +302,22 @@ function LeaderboardContent() {
             display: 'grid',
             gridTemplateColumns: '40px 1fr 80px 100px',
             gap: '8px',
+            padding: '8px 12px',
             fontSize: '10px',
             color: '#c8ffc8',
-            fontFamily: 'monospace'
+            fontFamily: 'monospace',
+            backgroundColor: 'rgba(45, 26, 15, 0.3)',
+            borderRadius: '4px'
           }}>
             <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
-            <div>{data.me.walletShort}</div>
+            <div style={{
+              fontFamily: 'monospace',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {data.me.walletShort}
+            </div>
             <div style={{ 
               fontSize: '12px', 
               color: '#64FF8A', 
@@ -327,6 +337,123 @@ function LeaderboardContent() {
       {/* Team Selector */}
       <div style={{ marginTop: 24, width: '100%' }}>
         <TeamSelector />
+      </div>
+
+      {/* Team Standings */}
+      <TeamStandings period={period} />
+    </div>
+  );
+}
+
+// Team Standings Component
+function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
+  const [teamData, setTeamData] = useState<Array<any>>([]);
+  const [loading, setLoading] = useState(false);
+
+  const fetchTeamData = async () => {
+    try {
+      setLoading(true);
+      const { apiLeaderboardTeams } = await import('@/lib/api');
+      const data = await apiLeaderboardTeams();
+      setTeamData(data);
+    } catch (error) {
+      console.error('Failed to fetch team standings:', error);
+      // If team standings endpoint is not available (404), show empty array
+      setTeamData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTeamData();
+  }, [period]);
+
+  return (
+    <div style={{
+      background: '#0f2c1b',
+      border: '2px solid',
+      borderTopColor: '#1a4d2a',
+      borderLeftColor: '#1a4d2a',
+      borderRightColor: '#3a8a4d',
+      borderBottomColor: '#3a8a4d',
+      borderRadius: '6px',
+      boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.1)',
+      width: '100%',
+      overflow: 'hidden',
+      marginTop: '16px'
+    }}>
+      {/* Team Standings Header */}
+      <div style={{
+        background: 'linear-gradient(145deg, #1a4d2a, #2d5a3d)',
+        padding: '8px 12px',
+        borderBottom: '1px solid #3a8a4d',
+        display: 'grid',
+        gridTemplateColumns: '1fr 60px 80px',
+        gap: '8px',
+        fontSize: '10px',
+        fontWeight: 'bold',
+        color: '#c8ffc8'
+      }}>
+        <div>TEAM</div>
+        <div style={{ textAlign: 'center' }}>MEMBERS</div>
+        <div style={{ textAlign: 'right' }}>TOTAL</div>
+      </div>
+
+      {/* Team Standings Body */}
+      <div className="hide-scrollbar" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+        {loading && (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#8a8a8a',
+            fontSize: '12px'
+          }}>
+            LOADING TEAM STANDINGS...
+          </div>
+        )}
+        
+        {!loading && teamData && teamData.length === 0 && (
+          <div style={{
+            padding: '20px',
+            textAlign: 'center',
+            color: '#8a8a8a',
+            fontSize: '12px'
+          }}>
+            Team standings coming soon...
+          </div>
+        )}
+        
+        {!loading && teamData && teamData.length > 0 && teamData.map((team, index) => (
+          <div 
+            key={team.slug} 
+            style={{
+              padding: '8px 12px',
+              borderBottom: index < (teamData?.length || 0) - 1 ? '1px solid #1a4d2a' : 'none',
+              display: 'grid',
+              gridTemplateColumns: '1fr 60px 80px',
+              gap: '8px',
+              fontSize: '10px',
+              color: '#c8ffc8',
+              background: index % 2 === 0 ? 'transparent' : 'rgba(26, 77, 42, 0.2)',
+              fontFamily: 'monospace'
+            }}
+          >
+            <div style={{ 
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}>
+              <span>{team.emoji || '⚪'}</span>
+              <span>{team.name}</span>
+            </div>
+            <div style={{ textAlign: 'center', fontWeight: 'bold' }}>{team.members}</div>
+            <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{team.total_score}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -386,7 +513,7 @@ function MintContent() {
       ) : (
         <div style={{ marginBottom: '20px' }}>
           <p style={{ color: '#c8ffc8', fontSize: '14px' }}>
-            Price: {mintPrice ? formatEther(mintPrice) : '0'} ETH
+            Price: {mintPrice ? formatEther(mintPrice) : '0'} APE
           </p>
         </div>
       )}
