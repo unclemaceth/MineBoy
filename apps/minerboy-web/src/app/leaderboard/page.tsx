@@ -271,7 +271,15 @@ export default function LeaderboardPage() {
                 }}>
                   {e.walletShort}
                 </div>
-                        <div style={{ fontSize: '9px', color: '#8a8a8a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <div style={{ 
+                          fontSize: '10px', 
+                          color: '#64ff8a', 
+                          fontWeight: 'bold',
+                          overflow: 'hidden', 
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          maxWidth: '80px'
+                        }}>
                           {e.team_name ?? '—'}
                         </div>
                 <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalABIT}</div>

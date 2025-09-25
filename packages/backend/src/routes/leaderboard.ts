@@ -46,7 +46,8 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
       if (wallet) {
         const agg = await getAggregateForWallet(period, wallet);
         if (agg) {
-          const above = await countWalletsAbove(period, agg.total_wei);
+          // Find rank in the main leaderboard entries (consistent with displayed ranking)
+          const myRank = entriesRaw.findIndex(e => sameAddr(e.wallet, wallet));
           
           // Look up team for "me"
           let meTeam: any = null;
@@ -68,7 +69,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
           }
 
           me = {
-            rank: above + 1,
+            rank: myRank !== -1 ? myRank + 1 : await countWalletsAbove(period, agg.total_wei) + 1,
             wallet,
             walletShort: shortAddrLast8(wallet),
             totalABIT: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
