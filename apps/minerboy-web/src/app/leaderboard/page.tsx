@@ -82,11 +82,6 @@ export default function LeaderboardPage() {
     return () => clearInterval(interval);
   }, [period, address]);
 
-  const meNotInTop = useMemo(() => {
-    if (!data?.me) return false;
-    if (data.entries.some(e => e.wallet.toLowerCase() === data.me!.wallet.toLowerCase())) return false;
-    return true;
-  }, [data]);
 
   return (
     <Stage>
@@ -276,9 +271,9 @@ export default function LeaderboardPage() {
                 }}>
                   {e.walletShort}
                 </div>
-                <div style={{ fontSize: '9px', color: '#8a8a8a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {e.team_emoji ? `${e.team_emoji} ${e.team_name}` : '—'}
-                </div>
+                        <div style={{ fontSize: '9px', color: '#8a8a8a', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {e.team_name ?? '—'}
+                        </div>
                 <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalABIT}</div>
               </div>
             ))}
@@ -286,7 +281,7 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Your Rank Section */}
-        {data?.me && meNotInTop && (
+        {data?.me && (
           <div style={{
             background: '#2d1a0f',
             border: '2px solid',
@@ -307,7 +302,7 @@ export default function LeaderboardPage() {
               marginBottom: '8px',
               fontWeight: 'bold'
             }}>
-              YOUR RANK (NOT IN TOP 25)
+              YOUR RANK
             </div>
             <div style={{
               display: 'grid',
@@ -320,7 +315,7 @@ export default function LeaderboardPage() {
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
               <div>{data.me.walletShort}</div>
               <div style={{ fontSize: '9px', color: '#8a8a8a' }}>
-                {data.me.team_emoji ? `${data.me.team_emoji} ${data.me.team_name}` : '—'}
+                {data.me.team_name ?? '—'}
               </div>
               <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{data.me.totalABIT}</div>
             </div>
