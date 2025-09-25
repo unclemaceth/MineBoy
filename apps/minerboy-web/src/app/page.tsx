@@ -28,6 +28,7 @@ import { normalizeJob } from '@/lib/normalizeJob';
 import { to0x, hexFrom } from "@/lib/hex";
 import { playButtonSound, playConfirmSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
 import SoundSettings from '@/components/SoundSettings';
+import NavigationModal from '@/components/NavigationModal';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
 
@@ -71,6 +72,21 @@ function Home() {
   const [mobileZoom, setMobileZoom] = useState(false);
   const [lockInfo, setLockInfo] = useState<any>(null);
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
+  const [showNavigationModal, setShowNavigationModal] = useState(false);
+  const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | null>(null);
+
+  // Navigation helpers
+  const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions') => {
+    setNavigationPage(page);
+    setShowNavigationModal(true);
+    playButtonSound();
+  };
+
+  const closeNavigationModal = () => {
+    setShowNavigationModal(false);
+    setNavigationPage(null);
+    playButtonSound();
+  };
 
   // Single-tab enforcement
   useEffect(() => {
@@ -1105,15 +1121,14 @@ function Home() {
         display: 'flex',
         gap: '8px'
       }}>
-            <a 
-              href="/mint" 
+            <button 
+              onClick={() => openNavigationPage('mint')}
               style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
                 background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                 color: '#c8ffc8',
-                textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: 'bold',
                 border: '2px solid #8a8a8a',
@@ -1121,7 +1136,8 @@ function Home() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                transition: 'all 0.1s ease'
+                transition: 'all 0.1s ease',
+                cursor: 'pointer'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(145deg, #1a3d24, #4a7d5f)';
@@ -1133,16 +1149,15 @@ function Home() {
               }}
             >
               M
-            </a>
-            <a 
-              href="/instructions" 
+            </button>
+            <button 
+              onClick={() => openNavigationPage('instructions')}
               style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
                 background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                 color: '#c8ffc8',
-                textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: 'bold',
                 border: '2px solid #8a8a8a',
@@ -1150,7 +1165,8 @@ function Home() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                transition: 'all 0.1s ease'
+                transition: 'all 0.1s ease',
+                cursor: 'pointer'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(145deg, #1a3d24, #4a7d5f)';
@@ -1162,16 +1178,15 @@ function Home() {
               }}
             >
               I
-            </a>
-            <a 
-              href="/leaderboard" 
+            </button>
+            <button 
+              onClick={() => openNavigationPage('leaderboard')}
               style={{
                 width: '28px',
                 height: '28px',
                 borderRadius: '50%',
                 background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                 color: '#c8ffc8',
-                textDecoration: 'none',
                 fontSize: '14px',
                 fontWeight: 'bold',
                 border: '2px solid #8a8a8a',
@@ -1179,7 +1194,8 @@ function Home() {
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                transition: 'all 0.1s ease'
+                transition: 'all 0.1s ease',
+                cursor: 'pointer'
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.background = 'linear-gradient(145deg, #1a3d24, #4a7d5f)';
@@ -1191,7 +1207,7 @@ function Home() {
               }}
             >
               L
-            </a>
+            </button>
       </div>
 
       {/* Hash Found Overlay - only show in visual mode when found */}
@@ -2469,6 +2485,13 @@ function Home() {
         isOpen={showAlchemyCartridges}
         onClose={() => setShowAlchemyCartridges(false)}
         onSelectCartridge={handleAlchemyCartridgeSelect}
+      />
+
+      {/* Navigation Modal */}
+      <NavigationModal
+        isOpen={showNavigationModal}
+        page={navigationPage}
+        onClose={closeNavigationModal}
       />
     </Stage>
   );
