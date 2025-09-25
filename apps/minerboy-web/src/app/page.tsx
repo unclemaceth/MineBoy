@@ -1410,7 +1410,7 @@ function Home() {
         </div>
       </div>
 
-      {/* SELECT Button: small button in top right */}
+      {/* MENU Button: small button in top right */}
       <button
         onClick={() => { playButtonSound(); setShowDebugModal(true); }}
         onPointerDown={(e) => {
@@ -1463,7 +1463,7 @@ function Home() {
           justifyContent: "center"
         }}
       >
-        SELECT
+        MENU
       </button>
 
       {/* Difficulty LCD: top 66%, left 7%, width 200px */}
@@ -2130,6 +2130,8 @@ function Home() {
 
             {/* Debug Content */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Sound Settings - moved to top */}
+              <SoundSettings />
               <div style={{
                 padding: '12px',
                 background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
@@ -2300,8 +2302,6 @@ function Home() {
               </div>
             </div>
 
-            {/* Sound Settings */}
-            <SoundSettings />
 
             {/* Footer */}
             <div style={{

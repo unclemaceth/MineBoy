@@ -4,6 +4,9 @@
 export class SoundManager {
   private static instance: SoundManager;
   private enabled: boolean = true;
+  private buttonSoundsEnabled: boolean = true;
+  private claimSoundsEnabled: boolean = true;
+  private miningSoundsEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   
   // Audio elements
@@ -19,6 +22,7 @@ export class SoundManager {
   
   private constructor() {
     if (typeof window !== 'undefined') {
+      this.loadSettings();
       this.initializeSounds();
     }
   }
@@ -28,6 +32,22 @@ export class SoundManager {
       SoundManager.instance = new SoundManager();
     }
     return SoundManager.instance;
+  }
+  
+  private loadSettings() {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('mineboy-sound-enabled');
+      this.enabled = stored ? stored === 'true' : true;
+      
+      const buttonStored = localStorage.getItem('mineboy-button-sounds-enabled');
+      this.buttonSoundsEnabled = buttonStored ? buttonStored === 'true' : true;
+      
+      const claimStored = localStorage.getItem('mineboy-claim-sounds-enabled');
+      this.claimSoundsEnabled = claimStored ? claimStored === 'true' : true;
+      
+      const miningStored = localStorage.getItem('mineboy-mining-sounds-enabled');
+      this.miningSoundsEnabled = miningStored ? miningStored === 'true' : true;
+    }
   }
   
   private initializeSounds() {
@@ -93,8 +113,35 @@ export class SoundManager {
     return this.enabled;
   }
   
+  public setButtonSoundsEnabled(enabled: boolean) {
+    this.buttonSoundsEnabled = enabled;
+    localStorage.setItem('mineboy-button-sounds-enabled', enabled.toString());
+  }
+  
+  public isButtonSoundsEnabled(): boolean {
+    return this.buttonSoundsEnabled;
+  }
+  
+  public setClaimSoundsEnabled(enabled: boolean) {
+    this.claimSoundsEnabled = enabled;
+    localStorage.setItem('mineboy-claim-sounds-enabled', enabled.toString());
+  }
+  
+  public isClaimSoundsEnabled(): boolean {
+    return this.claimSoundsEnabled;
+  }
+  
+  public setMiningSoundsEnabled(enabled: boolean) {
+    this.miningSoundsEnabled = enabled;
+    localStorage.setItem('mineboy-mining-sounds-enabled', enabled.toString());
+  }
+  
+  public isMiningSoundsEnabled(): boolean {
+    return this.miningSoundsEnabled;
+  }
+  
   public playButtonSound() {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.buttonSoundsEnabled) return;
     
     try {
       // Use pre-loaded audio from pool
@@ -120,7 +167,7 @@ export class SoundManager {
   }
   
   public playConfirmSound() {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.claimSoundsEnabled) return;
     
     try {
       // Use pre-loaded audio from pool
@@ -146,7 +193,7 @@ export class SoundManager {
   }
   
   public startMiningSound() {
-    if (!this.enabled || !this.miningSound) return;
+    if (!this.enabled || !this.miningSoundsEnabled || !this.miningSound) return;
     
     try {
       this.miningSound.currentTime = 0;
