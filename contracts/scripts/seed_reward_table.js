@@ -21,7 +21,7 @@ async function main() {
     const amount = (i + 1) * 8; // 8, 16, 24, ..., 128
     const amountWei = hre.ethers.parseUnits(amount.toString(), 18);
     rewardTable.push(amountWei);
-    console.log(`Tier ${i} (0x${i.toString(16)}): ${amount} ABIT`);
+    console.log(`Tier ${i} (0x${i.toString(16)}): ${amount} APEBIT`);
   }
 
   // Set the reward table
@@ -37,7 +37,7 @@ async function main() {
   for (let i = 0; i < 16; i++) {
     const amount = await router.rewardPerTier(i);
     const amountFormatted = hre.ethers.formatUnits(amount, 18);
-    console.log(`Tier ${i} (0x${i.toString(16)}): ${amountFormatted} ABIT`);
+    console.log(`Tier ${i} (0x${i.toString(16)}): ${amountFormatted} APEBIT`);
   }
 }
 
@@ -47,3 +47,4 @@ main()
     console.error("❌ Seeding failed:", error);
     process.exit(1);
   });
+

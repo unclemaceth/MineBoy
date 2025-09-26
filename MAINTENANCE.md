@@ -19,7 +19,36 @@ curl -X POST "https://mineboy-g5xo.onrender.com/v2/admin/maintenance/on" \
 ### Turn OFF Maintenance Mode
 ```bash
 curl -X POST "https://mineboy-g5xo.onrender.com/v2/admin/maintenance/off" \
-  -H "x-admin-token: YOUR_ADMIN_TOKEN"
+  -H "x-admin-token: doChain
+ApeChain
+ApeChain
+Network
+ApeChain Curtis
+Curtis
+Method
+getNFTs - Get NFTs owned by an address
+Language
+
+JavaScript
+SDK
+fetch
+Network URL
+URL
+https://apechain-curtis.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs
+
+Copy
+Copy the code below into your code editor
+Request
+
+Copy
+const options = {method: 'GET', headers: {accept: 'application/json'}};
+
+fetch('https://apechain-curtis.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs/getNFTsForOwner?owner=0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045&withMetadata=true&pageSize=100', options)
+  .then(response => response.json())
+  .then(response => console.log(response))
+  .catch(err => console.error(err));
+Docs
+"
 ```
 
 ### Check Status

@@ -108,3 +108,4 @@ export function decorateFoundHash(powHash: `0x${string}`, amountWei: bigint | st
     amountWei: typeof amountWei === 'string' ? amountWei : amountWei.toString()
   };
 }
+

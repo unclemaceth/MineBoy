@@ -17,7 +17,7 @@ contract ApeBitToken is ERC20, ERC20Burnable, AccessControl {
      * @dev Constructor sets up the token with name, symbol, and grants admin role
      * @param admin Address that will have DEFAULT_ADMIN_ROLE
      */
-    constructor(address admin) ERC20("ApeBit", "ABIT") {
+    constructor(address admin) ERC20("ApeBit", "APEBIT") {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(MINTER_ROLE, admin); // Admin can mint initially
     }

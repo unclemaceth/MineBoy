@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/Pausable.sol";
 
 interface IApeBitMintable {
     function mint(address to, uint256 amount) external;
@@ -19,6 +19,9 @@ interface IApeBitMintable {
 contract MiningClaimRouter is AccessControl, EIP712, Pausable {
     using ECDSA for bytes32;
     
+    // Roles
+    bytes32 public constant SIGNER_ROLE = keccak256("SIGNER_ROLE");
+    
     // EIP-712 type hash for Claim struct (V1 - legacy)
     bytes32 private constant CLAIM_TYPEHASH = keccak256(
         "Claim(address wallet,address cartridge,uint256 tokenId,address rewardToken,uint256 rewardAmount,bytes32 workHash,uint64 attempts,bytes32 nonce,uint64 expiry)"
@@ -31,7 +34,10 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
     
     // State variables
     address public immutable rewardToken;
-    address public signer;
+    
+    // Mine fee configuration
+    uint256 public constant MINE_FEE = 0.001 ether; // 0.001 APE per claim
+    address public feeRecipient;
     
     // Reward tier system (0-15 based on first nibble of workHash)
     uint256[16] public rewardPerTier;
@@ -62,6 +68,8 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
     event RewardTierUpdated(uint8 indexed tier, uint256 amount);
     event SignerUpdated(address indexed oldSigner, address indexed newSigner);
     event CartridgeAllowedUpdated(address indexed cartridge, bool allowed);
+    event FeeRecipientUpdated(address indexed oldRecipient, address indexed newRecipient);
+    event MineFeePaid(address indexed wallet, uint256 amount);
     
     // Structs
     struct Claim {
@@ -101,9 +109,10 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
         uint256[16] memory initialRewardTable
     ) EIP712("MinerBoyClaim", "1") {
         rewardToken = _rewardToken;
-        signer = _signer;
         rewardPerTier = initialRewardTable;
+        feeRecipient = admin; // Default fee recipient is admin
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(SIGNER_ROLE, _signer);
     }
     
     /**
@@ -113,6 +122,13 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
      */
     function _tierFromHash(bytes32 workHash) internal pure returns (uint8) {
         return uint8(uint256(workHash) >> 252) & 0x0f; // 256-4 = 252
+    }
+    
+    /**
+     * @dev Public function to get tier from hash (for testing)
+     */
+    function getTierFromHash(bytes32 workHash) external pure returns (uint8) {
+        return _tierFromHash(workHash);
     }
     
     /**
@@ -150,7 +166,7 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
         
         bytes32 hash = _hashTypedDataV4(structHash);
         address recoveredSigner = hash.recover(signature);
-        require(recoveredSigner == signer, "Invalid signature");
+        require(hasRole(SIGNER_ROLE, recoveredSigner), "Invalid signature");
         
         // Mark nonce as used
         nonceUsed[claimData.nonce] = true;
@@ -175,13 +191,14 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
      * @param claimData The claim data struct (without rewardAmount)
      * @param signature EIP-712 signature from authorized signer
      */
-    function claimV2(ClaimV2 calldata claimData, bytes calldata signature) external whenNotPaused {
+    function claimV2(ClaimV2 calldata claimData, bytes calldata signature) external payable whenNotPaused {
         // Basic validations
         require(block.timestamp <= claimData.expiry, "Claim expired");
         require(msg.sender == claimData.wallet, "Invalid caller");
         require(allowedCartridge[claimData.cartridge], "Cartridge not allowed");
         require(claimData.rewardToken == rewardToken, "Invalid reward token");
         require(!nonceUsed[claimData.nonce], "Nonce already used");
+        require(msg.value >= MINE_FEE, "Insufficient mine fee");
         
         // Verify cartridge ownership
         require(
@@ -204,7 +221,7 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
         
         bytes32 hash = _hashTypedDataV4(structHash);
         address recoveredSigner = hash.recover(signature);
-        require(recoveredSigner == signer, "Invalid signature");
+        require(hasRole(SIGNER_ROLE, recoveredSigner), "Invalid signature");
         
         // Mark nonce as used
         nonceUsed[claimData.nonce] = true;
@@ -216,6 +233,13 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
         
         // Mint reward tokens
         IApeBitMintable(rewardToken).mint(claimData.wallet, amount);
+        
+        // Transfer mine fee to fee recipient
+        if (msg.value > 0) {
+            (bool success, ) = feeRecipient.call{value: msg.value}("");
+            require(success, "Fee transfer failed");
+            emit MineFeePaid(claimData.wallet, msg.value);
+        }
         
         // Emit events
         emit Claimed(
@@ -232,14 +256,33 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
     }
     
     /**
-     * @dev Updates the authorized signer address
+     * @dev Grants SIGNER_ROLE to a new address (replaces old signer)
      * @param newSigner New signer address
      */
     function setSigner(address newSigner) external onlyRole(DEFAULT_ADMIN_ROLE) {
         require(newSigner != address(0), "Invalid signer");
-        address oldSigner = signer;
-        signer = newSigner;
-        emit SignerUpdated(oldSigner, newSigner);
+        
+        // Grant new signer role (old signer will be revoked manually if needed)
+        _grantRole(SIGNER_ROLE, newSigner);
+        emit SignerUpdated(address(0), newSigner); // Simplified for now
+    }
+    
+    /**
+     * @dev Revokes SIGNER_ROLE from an address
+     * @param oldSigner Address to revoke signer role from
+     */
+    function revokeSigner(address oldSigner) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _revokeRole(SIGNER_ROLE, oldSigner);
+        emit SignerUpdated(oldSigner, address(0));
+    }
+    
+    /**
+     * @dev Checks if an address has SIGNER_ROLE
+     * @param signer Address to check
+     * @return bool True if address has signer role
+     */
+    function isSigner(address signer) external view returns (bool) {
+        return hasRole(SIGNER_ROLE, signer);
     }
     
     /**
@@ -305,5 +348,34 @@ contract MiningClaimRouter is AccessControl, EIP712, Pausable {
      */
     function getClaimV2TypeHash() external pure returns (bytes32) {
         return CLAIM_V2_TYPEHASH;
+    }
+    
+    /**
+     * @dev Updates the fee recipient address
+     * @param newRecipient New fee recipient address
+     */
+    function setFeeRecipient(address newRecipient) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(newRecipient != address(0), "Invalid fee recipient");
+        address oldRecipient = feeRecipient;
+        feeRecipient = newRecipient;
+        emit FeeRecipientUpdated(oldRecipient, newRecipient);
+    }
+    
+    /**
+     * @dev Returns the current mine fee amount
+     */
+    function getMineFee() external pure returns (uint256) {
+        return MINE_FEE;
+    }
+    
+    /**
+     * @dev Allows admin to withdraw any excess ETH (emergency function)
+     */
+    function withdrawExcessETH() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        uint256 balance = address(this).balance;
+        require(balance > 0, "No ETH to withdraw");
+        
+        (bool success, ) = feeRecipient.call{value: balance}("");
+        require(success, "Withdrawal failed");
     }
 }

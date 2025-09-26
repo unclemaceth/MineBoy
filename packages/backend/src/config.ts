@@ -44,7 +44,11 @@ export const config = {
   
   // Admin
   ADMIN_TOKEN: process.env.ADMIN_TOKEN || '',
-  EPOCH_OVERRIDE: process.env.EPOCH_OVERRIDE
+  EPOCH_OVERRIDE: process.env.EPOCH_OVERRIDE,
+  
+  // Feature flags
+  CLAIM_LEGACY_ENABLED: process.env.CLAIM_LEGACY_ENABLED === 'true',
+  REPLAY_CHECK_ONCHAIN: process.env.REPLAY_CHECK_ONCHAIN === 'true'
 };
 
 // Validate required config

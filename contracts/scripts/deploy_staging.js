@@ -31,7 +31,7 @@ async function main() {
     const amountWei = hre.ethers.parseUnits(amount.toString(), 18);
     rewardTable.push(amountWei);
   }
-  console.log("✅ Reward table prepared: 8-128 ABIT across 16 tiers");
+  console.log("✅ Reward table prepared: 8-128 APEBIT across 16 tiers");
 
   // 3. Deploy MiningClaimRouter
   console.log("\n3. Deploying MiningClaimRouter...");
@@ -99,7 +99,7 @@ async function main() {
   for (let i = 0; i < 16; i++) {
     const amount = await router.rewardPerTier(i);
     const amountFormatted = hre.ethers.formatUnits(amount, 18);
-    console.log(`Tier ${i} (0x${i.toString(16)}): ${amountFormatted} ABIT`);
+    console.log(`Tier ${i} (0x${i.toString(16)}): ${amountFormatted} APEBIT`);
   }
 
   console.log("\n=== NEXT STEPS ===");
@@ -116,3 +116,4 @@ main()
     console.error("❌ Staging deployment failed:", error);
     process.exit(1);
   });
+

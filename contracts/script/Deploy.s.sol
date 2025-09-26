@@ -12,8 +12,8 @@ import "../src/ApeBitCartridge.sol";
  */
 contract Deploy is Script {
     // Deployment configuration
-    address constant ADMIN = 0x909102DbF4A1bC248BC5F9eedaD589e7552Ad164; // Your wallet address
-    address constant BACKEND_SIGNER = 0x909102DbF4A1bC248BC5F9eedaD589e7552Ad164; // Backend signer
+    address constant ADMIN = 0x2f85A7eF3947A257211E04ccEd0EFDed94f76E98; // Deployer wallet address
+    address constant BACKEND_SIGNER = 0x2f85A7eF3947A257211E04ccEd0EFDed94f76E98; // Backend signer (same as deployer for now)
     
     // Cartridge configuration
     uint256 constant CARTRIDGE_MAX_SUPPLY = 10000;
@@ -33,13 +33,26 @@ contract Deploy is Script {
         ApeBitToken token = new ApeBitToken(ADMIN);
         console.log("ApeBitToken deployed at:", address(token));
         
-        // 2. Prepare reward table (linear 8..128 ABIT with 18 decimals)
+        // 2. Prepare reward table (linear 8..128 APEBIT with 18 decimals)
         console.log("\n2. Preparing reward table...");
         uint256[16] memory rewardTable;
-        for (uint8 i = 0; i < 16; i++) {
-            rewardTable[i] = (i + 1) * 8 * 10**18; // 8, 16, 24, ..., 128 ABIT
-        }
-        console.log("Reward table prepared: 8-128 ABIT across 16 tiers");
+        rewardTable[0] = 8 * 10**18;   // 8 APEBIT
+        rewardTable[1] = 16 * 10**18;  // 16 APEBIT
+        rewardTable[2] = 24 * 10**18;  // 24 APEBIT
+        rewardTable[3] = 32 * 10**18;  // 32 APEBIT
+        rewardTable[4] = 40 * 10**18;  // 40 APEBIT
+        rewardTable[5] = 48 * 10**18;  // 48 APEBIT
+        rewardTable[6] = 56 * 10**18;  // 56 APEBIT
+        rewardTable[7] = 64 * 10**18;  // 64 APEBIT
+        rewardTable[8] = 72 * 10**18;  // 72 APEBIT
+        rewardTable[9] = 80 * 10**18;  // 80 APEBIT
+        rewardTable[10] = 88 * 10**18; // 88 APEBIT
+        rewardTable[11] = 96 * 10**18; // 96 APEBIT
+        rewardTable[12] = 104 * 10**18; // 104 APEBIT
+        rewardTable[13] = 112 * 10**18; // 112 APEBIT
+        rewardTable[14] = 120 * 10**18; // 120 APEBIT
+        rewardTable[15] = 128 * 10**18; // 128 APEBIT
+        console.log("Reward table prepared: 8-128 APEBIT across 16 tiers");
         
         // 3. Deploy MiningClaimRouter
         console.log("\n3. Deploying MiningClaimRouter...");

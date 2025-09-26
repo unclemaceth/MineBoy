@@ -10,8 +10,11 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^6.1.0",
     "dotenv": "^17.2.2",
     "ethers": "^5.8.0",
+    "hardhat": "^3.0.6",
     "solc": "^0.8.30"
-  }
+  },
+  "type": "module"
 }
