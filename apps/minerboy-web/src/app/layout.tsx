@@ -57,8 +57,8 @@ export default function RootLayout({
           <GlobalWalletModal />
           {/* Sits on top when maintenance is enabled */}
           <MaintenanceGate />
-          {/* CLOSED overlay for main branch */}
-          <ClosedOverlay />
+          {/* CLOSED overlay for main branch - commented out for B branch */}
+          {/* <ClosedOverlay /> */}
         </Providers>
       </body>
     </html>
