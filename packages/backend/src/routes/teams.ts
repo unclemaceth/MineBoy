@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getDB } from '../db.js';
-import { getCurrentSeasonId, listTeams, getUserTeam, setUserTeam, getArcadeName, setArcadeName } from '../db.js';
+import { getCurrentSeasonId, listTeams, getUserTeam, setUserTeam, getArcadeName, setArcadeName, generateNameNonce, verifyAndConsumeNameNonce } from '../db.js';
+import { verifyMessage, getAddress } from 'ethers';
 
 export default async function routes(app: FastifyInstance) {
   app.get('/v2/teams', async (_, reply) => {
@@ -74,14 +75,64 @@ export default async function routes(app: FastifyInstance) {
     }
   });
 
+  app.get('/v2/user/name/nonce', async (req, reply) => {
+    try {
+      const wallet = (req.query as any).wallet as string;
+      if (!wallet) {
+        return reply.code(400).send({ error: 'wallet required' });
+      }
+      
+      const db = getDB();
+      const nonce = await generateNameNonce(db, wallet);
+      
+      return reply.send({ nonce });
+    } catch (error) {
+      app.log.error('Failed to generate nonce:', error);
+      return reply.code(500).send({ error: 'Failed to generate nonce' });
+    }
+  });
+
   app.post('/v2/user/name', async (req, reply) => {
     try {
-      const { wallet, name } = req.body as { wallet?: string; name?: string };
-      if (!wallet || !name) {
-        return reply.code(400).send({ error: 'wallet and name required' });
+      const { wallet, name, nonce, expiry, sig } = req.body as { 
+        wallet?: string; 
+        name?: string; 
+        nonce?: string; 
+        expiry?: string; 
+        sig?: string; 
+      };
+      
+      if (!wallet || !name || !nonce || !expiry || !sig) {
+        return reply.code(400).send({ error: 'wallet, name, nonce, expiry, and sig required' });
       }
 
       const db = getDB();
+      
+      // Verify nonce
+      const nonceValid = await verifyAndConsumeNameNonce(db, wallet, nonce);
+      if (!nonceValid) {
+        return reply.code(400).send({ error: 'invalid_nonce' });
+      }
+      
+      // Check expiry
+      const now = Date.now();
+      if (Date.parse(expiry) < now) {
+        return reply.code(400).send({ error: 'expired' });
+      }
+      
+      // Build message and verify signature
+      const message = `MineBoy: set arcade name
+Wallet: ${getAddress(wallet)}
+Name: ${name}
+Nonce: ${nonce}
+Expires: ${expiry}`;
+      
+      const recovered = await verifyMessage(message, sig);
+      if (getAddress(recovered) !== getAddress(wallet)) {
+        return reply.code(400).send({ error: 'bad_sig' });
+      }
+      
+      // Set the name
       await setArcadeName(db, wallet, name);
       return reply.code(201).send({ ok: true, name: name.toUpperCase() });
     } catch (e: any) {

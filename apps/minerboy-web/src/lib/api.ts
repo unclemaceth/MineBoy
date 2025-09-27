@@ -227,11 +227,17 @@ export async function apiGetArcadeName(wallet: string) {
   return r.json() as Promise<{ wallet: string; name: string | null }>;
 }
 
-export async function apiSetArcadeName(wallet: string, name: string) {
+export async function apiGetNameNonce(wallet: string) {
+  const r = await fetch(`${BASE}/v2/user/name/nonce?wallet=${wallet}`);
+  if (!r.ok) throw new Error('failed');
+  return r.json() as Promise<{ nonce: string }>;
+}
+
+export async function apiSetArcadeName(wallet: string, name: string, nonce: string, expiry: string, sig: string) {
   const r = await fetch(`${BASE}/v2/user/name`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wallet, name }),
+    body: JSON.stringify({ wallet, name, nonce, expiry, sig }),
   });
   if (r.status === 409) {
     const { error } = await r.json();

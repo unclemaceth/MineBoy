@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
-import { apiGetArcadeName, apiSetArcadeName } from '@/lib/api';
+import { useAccount, useSignMessage } from 'wagmi';
+import { apiGetArcadeName, apiGetNameNonce, apiSetArcadeName } from '@/lib/api';
 
 export default function ArcadeNameSelector() {
   const { address } = useAccount();
@@ -49,7 +49,27 @@ export default function ArcadeNameSelector() {
     setError('');
 
     try {
-      await apiSetArcadeName(address, name);
+      // Get nonce from backend
+      const { nonce } = await apiGetNameNonce(address);
+      
+      // Create expiry (10 minutes from now)
+      const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      
+      // Build message for signing
+      const message = `MineBoy: set arcade name
+Wallet: ${address}
+Name: ${name}
+Nonce: ${nonce}
+Expires: ${expiry}`;
+      
+      // Sign the message
+      const sig = await window.ethereum.request({
+        method: 'personal_sign',
+        params: [message, address],
+      });
+      
+      // Submit to backend
+      await apiSetArcadeName(address, name, nonce, expiry, sig);
       setArcadeName(name);
       setInputValue('');
     } catch (e: any) {
@@ -57,6 +77,8 @@ export default function ArcadeNameSelector() {
         setError('Name already taken');
       } else if (e.message === 'locked') {
         setError('You\'ve already set a name');
+      } else if (e.message === 'User rejected the request') {
+        setError('Signature cancelled');
       } else {
         setError('Failed to save name');
       }
@@ -181,7 +203,7 @@ export default function ArcadeNameSelector() {
             fontFamily: 'monospace',
             marginBottom: 4
           }}>
-            8 chars max • Letters & numbers only • Permanent once set
+            8 chars max • Letters & numbers only • Permanent once set • Requires wallet signature
           </div>
           
           {error && (

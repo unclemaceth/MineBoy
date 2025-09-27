@@ -70,6 +70,15 @@ export async function initDb(dbUrl?: string) {
               );
             `);
             await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_user_names_name_lower ON user_names (LOWER(name));`);
+            
+            // Name nonces table
+            await pgPool.query(`
+              CREATE TABLE IF NOT EXISTS name_nonces (
+                wallet TEXT PRIMARY KEY,
+                nonce  TEXT NOT NULL,
+                issued_at BIGINT NOT NULL
+              );
+            `);
   } else {
     // Use SQLite
     const file = url?.startsWith('file:') ? url.replace('file:', '') : (url || 'minerboy.db');
@@ -108,6 +117,15 @@ export async function initDb(dbUrl?: string) {
               );
             `);
             db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_user_names_name_nocase ON user_names (name COLLATE NOCASE);`);
+            
+            // Name nonces table
+            db.exec(`
+              CREATE TABLE IF NOT EXISTS name_nonces (
+                wallet TEXT PRIMARY KEY,
+                nonce  TEXT NOT NULL,
+                issued_at INTEGER NOT NULL
+              );
+            `);
   }
 }
 
@@ -628,4 +646,47 @@ export async function setArcadeName(db: any, wallet: string, nameRaw: string): P
     `INSERT INTO user_names (wallet, name, set_at) VALUES (LOWER($1), $2, $3)`,
     [wallet, name, now]
   );
+}
+
+// Nonce functions for arcade name verification
+export async function generateNameNonce(db: any, wallet: string): Promise<string> {
+  const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  const now = Date.now();
+  
+  await db.pool.query(
+    `INSERT INTO name_nonces (wallet, nonce, issued_at) VALUES (LOWER($1), $2, $3)
+     ON CONFLICT (wallet) DO UPDATE SET nonce = $2, issued_at = $3`,
+    [wallet, nonce, now]
+  );
+  
+  return nonce;
+}
+
+export async function verifyAndConsumeNameNonce(db: any, wallet: string, nonce: string): Promise<boolean> {
+  const row = await db.pool.query(
+    `SELECT nonce, issued_at FROM name_nonces WHERE wallet = LOWER($1)`,
+    [wallet]
+  );
+  
+  if (!row.rows[0] || row.rows[0].nonce !== nonce) {
+    return false;
+  }
+  
+  // Check if nonce is expired (10 minutes)
+  const issuedAt = row.rows[0].issued_at;
+  const now = Date.now();
+  if (now - issuedAt > 10 * 60 * 1000) {
+    return false;
+  }
+  
+  // Consume the nonce
+  await db.pool.query(
+    `DELETE FROM name_nonces WHERE wallet = LOWER($1)`,
+    [wallet]
+  );
+  
+  return true;
 }
