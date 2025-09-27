@@ -63,7 +63,10 @@ Nonce: ${nonce}
 Expires: ${expiry}`;
       
       // Sign the message
-      const sig = await window.ethereum.request({
+      if (!window.ethereum) {
+        throw new Error('No wallet connected');
+      }
+      const sig = await (window.ethereum as any).request({
         method: 'personal_sign',
         params: [message, address],
       });
