@@ -215,7 +215,7 @@ export default function LeaderboardPage() {
             padding: '8px 12px',
             borderBottom: '1px solid #3a8a4d',
             display: 'grid',
-            gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
+            gridTemplateColumns: '40px 1.8fr 0.6fr 100px',
             gap: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
@@ -258,7 +258,7 @@ export default function LeaderboardPage() {
                   padding: '8px 12px',
                   borderBottom: index < data.entries.length - 1 ? '1px solid #1a4d2a' : 'none',
                   display: 'grid',
-                  gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
+                  gridTemplateColumns: '40px 1.8fr 0.6fr 100px',
                   gap: '8px',
                   fontSize: '10px',
                   color: '#c8ffc8',
@@ -268,8 +268,8 @@ export default function LeaderboardPage() {
                 <div style={{ fontWeight: 'bold' }}>{e.rank}</div>
                 <div style={{ 
                   fontFamily: 'monospace',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
+                  overflow: e.arcade_name ? 'visible' : 'hidden',
+                  textOverflow: e.arcade_name ? 'unset' : 'ellipsis',
                   whiteSpace: 'nowrap'
                 }}>
                   {e.arcade_name ?? e.walletShort}

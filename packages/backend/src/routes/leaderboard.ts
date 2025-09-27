@@ -40,6 +40,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         team_name: e.team_name ?? undefined,
         team_emoji: e.team_emoji ?? undefined,
         team_color: e.team_color ?? undefined,
+        arcade_name: e.arcade_name ?? undefined,
       }));
 
       let me: any = null;
@@ -77,6 +78,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
             team_name: meTeam?.name,
             team_emoji: meTeam?.emoji,
             team_color: meTeam?.color,
+            arcade_name: agg.arcade_name ?? undefined,
           };
         } else {
           me = {
