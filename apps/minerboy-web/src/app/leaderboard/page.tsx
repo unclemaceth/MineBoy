@@ -3,44 +3,15 @@ import { useEffect, useMemo, useState } from 'react';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
-import { api, apiGetIndividualLeaderboard, apiGetTeamLeaderboard, apiGetSeasons, SeasonLeaderboardResponse, TeamLeaderboardResponse } from '@/lib/api';
+import { apiGetIndividualLeaderboard, apiGetTeamLeaderboard, SeasonLeaderboardResponse, TeamLeaderboardResponse } from '@/lib/api';
 import { useAccount } from 'wagmi';
 import Link from 'next/link';
 import Stage from '@/components/Stage';
 import TeamSelector from '@/components/TeamSelector';
 import ArcadeNameSelector from '@/components/ArcadeNameSelector';
 
-type Entry = {
-  rank: number;
-  wallet: string;
-  walletShort: string;
-  totalABIT: string;
-  team_slug?: string;
-  team_name?: string;
-  team_emoji?: string;
-  team_color?: string;
-  arcade_name?: string;
-};
-type ApiResp = {
-  period: 'all'|'24h'|'7d';
-  entries: Entry[];
-  me?: {
-    rank: number|null;
-    wallet: string;
-    walletShort: string;
-    totalABIT: string;
-    team_slug?: string;
-    team_name?: string;
-    team_emoji?: string;
-    team_color?: string;
-    arcade_name?: string;
-  };
-  lastUpdated?: string;
-  nextUpdate?: string;
-};
 
 
-const PERIODS: Array<'all'|'24h'|'7d'> = ['all','24h','7d'];
 const LEADERBOARD_TYPES = ['individual', 'team'] as const;
 type LeaderboardType = typeof LEADERBOARD_TYPES[number];
 
@@ -59,40 +30,27 @@ const GRID_COLS = '40px 1.7fr 0.9fr minmax(72px,100px)';
 
 export default function LeaderboardPage() {
   const { address } = useAccount();
-  const [period, setPeriod] = useState<'all'|'24h'|'7d'>('all');
   const [leaderboardType, setLeaderboardType] = useState<LeaderboardType>('individual');
-  const [data, setData] = useState<ApiResp | null>(null);
   const [seasonData, setSeasonData] = useState<SeasonLeaderboardResponse | TeamLeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [useSeasons, setUseSeasons] = useState(false);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      console.log('[LEADERBOARD] Fetching data for type:', leaderboardType, 'period:', period, 'wallet:', address);
+      console.log('[LEADERBOARD] Fetching season data for type:', leaderboardType, 'wallet:', address);
       
-      if (useSeasons) {
-        // Use season-based APIs
-        if (leaderboardType === 'individual') {
-          const resp = await apiGetIndividualLeaderboard('active', 25, 0, address);
-          console.log('[LEADERBOARD] Received season individual response:', resp);
-          setSeasonData(resp);
-        } else {
-          const resp = await apiGetTeamLeaderboard('active');
-          console.log('[LEADERBOARD] Received season team response:', resp);
-          setSeasonData(resp);
-        }
-        setData(null); // Clear legacy data
+      // Always use season-based APIs
+      if (leaderboardType === 'individual') {
+        const resp = await apiGetIndividualLeaderboard('active', 25, 0, address);
+        console.log('[LEADERBOARD] Received season individual response:', resp);
+        setSeasonData(resp);
       } else {
-        // Use legacy API
-        const resp = await api.getLeaderboard({ period, limit: 25, ...(address ? { wallet: address } : {}) });
-        console.log('[LEADERBOARD] Received legacy response:', resp);
-        setData(resp as ApiResp);
-        setSeasonData(null); // Clear season data
+        const resp = await apiGetTeamLeaderboard('active');
+        console.log('[LEADERBOARD] Received season team response:', resp);
+        setSeasonData(resp);
       }
     } catch (error) {
-      console.error('[LEADERBOARD] Error fetching data:', error);
-      setData(null);
+      console.error('[LEADERBOARD] Error fetching season data:', error);
       setSeasonData(null);
     } finally {
       setLoading(false);
@@ -103,13 +61,13 @@ export default function LeaderboardPage() {
     let cancelled = false;
     fetchData();
     return () => { cancelled = true; };
-  }, [period, leaderboardType, useSeasons, address]);
+  }, [leaderboardType, address]);
 
   // Auto-refresh every 30 seconds to catch new confirmations
   useEffect(() => {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [period, leaderboardType, useSeasons, address]);
+  }, [leaderboardType, address]);
 
 
   return (
@@ -167,13 +125,13 @@ export default function LeaderboardPage() {
             }}>
               LEADERBOARD
             </h1>
-            {data?.lastUpdated && (
+            {seasonData?.lastUpdated && (
               <div style={{
                 fontSize: '10px',
                 color: '#666',
                 marginTop: '4px'
               }}>
-                Updated {formatUpdateTime(data.lastUpdated)} • next update ~{formatUpdateTime(data.nextUpdate)}
+                Updated {formatUpdateTime(seasonData?.lastUpdated)} • next update ~{formatUpdateTime(seasonData?.nextUpdate)}
               </div>
             )}
           </div>
@@ -212,88 +170,9 @@ export default function LeaderboardPage() {
           ))}
         </div>
 
-        {/* Season Mode Toggle */}
-        <div style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '16px',
-          alignItems: 'center'
-        }}>
-          <button
-            onClick={() => setUseSeasons(!useSeasons)}
-            style={{
-              background: useSeasons 
-                ? 'linear-gradient(145deg, #1a3d24, #4a7d5f)' 
-                : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-              border: '2px solid #8a8a8a',
-              borderRadius: '6px',
-              color: '#c8ffc8',
-              padding: '8px 16px',
-              fontSize: '12px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              cursor: 'pointer',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-              transition: 'all 0.1s ease'
-            }}
-          >
-            {useSeasons ? 'Season Mode' : 'Legacy Mode'}
-          </button>
-          <span style={{
-            color: '#8a8a8a',
-            fontSize: '12px',
-            fontFamily: 'monospace'
-          }}>
-            {useSeasons ? 'Using active seasons' : 'Using time periods'}
-          </span>
-        </div>
 
-        {/* Period Selector (only show for legacy mode) */}
-        {!useSeasons && (
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '20px'
-          }}>
-            {PERIODS.map(p => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              style={{
-                background: period === p 
-                  ? 'linear-gradient(145deg, #1a3d24, #4a7d5f)' 
-                  : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                border: '2px solid #8a8a8a',
-                borderRadius: '6px',
-                color: '#c8ffc8',
-                padding: '8px 16px',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
-                transition: 'all 0.1s ease'
-              }}
-              onMouseEnter={(e) => {
-                if (period !== p) {
-                  e.currentTarget.style.background = 'linear-gradient(145deg, #1a3d24, #4a7d5f)';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (period !== p) {
-                  e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #1a3d24)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                }
-              }}
-            >
-              {p === 'all' ? 'ALL-TIME' : p.toUpperCase()}
-            </button>
-          ))}
-          </div>
-        )}
-
-        {/* Season Info (when using season mode) */}
-        {useSeasons && seasonData && (
+        {/* Season Info */}
+        {seasonData && (
           <div style={{
             background: '#1a2e1f',
             border: '2px solid #4a7d5f',
@@ -371,7 +250,7 @@ export default function LeaderboardPage() {
               </div>
             )}
             
-            {!loading && data?.entries?.length === 0 && (
+            {!loading && seasonData?.entries?.length === 0 && (
               <div style={{
                 padding: '20px',
                 textAlign: 'center',
@@ -382,10 +261,10 @@ export default function LeaderboardPage() {
               </div>
             )}
             
-            {!loading && (useSeasons ? seasonData?.entries : data?.entries)?.map((e, index) => {
-              // Handle both legacy and season data formats
-              const entry = useSeasons ? e as any : e as Entry;
-              const entries = useSeasons ? (seasonData as any)?.entries : data?.entries;
+            {!loading && seasonData?.entries?.map((e, index) => {
+              // Handle season data format
+              const entry = e as any;
+              const entries = (seasonData as any)?.entries;
               
               return (
               <div 
@@ -436,12 +315,7 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Your Rank Section */}
-        {(() => {
-          const meData = useSeasons 
-            ? (leaderboardType === 'individual' && seasonData && 'me' in seasonData ? seasonData.me : null)
-            : data?.me;
-          return meData;
-        })() && (
+        {(leaderboardType === 'individual' && seasonData && 'me' in seasonData ? seasonData.me : null) && (
           <div style={{
             background: '#2d1a0f',
             border: '2px solid',
@@ -476,9 +350,7 @@ export default function LeaderboardPage() {
               borderRadius: '4px'
             }}>
               {(() => {
-                const meData = useSeasons 
-                  ? (leaderboardType === 'individual' && seasonData && 'me' in seasonData ? seasonData.me : null)
-                  : data?.me;
+                const meData = leaderboardType === 'individual' && seasonData && 'me' in seasonData ? seasonData.me : null;
                 return (
                   <>
                     <div style={{ fontWeight: 'bold' }}>#{meData?.rank ?? '—'}</div>
@@ -527,14 +399,14 @@ export default function LeaderboardPage() {
         </div>
 
         {/* Team Standings */}
-        <TeamStandings period={period} />
+        <TeamStandings />
       </div>
     </Stage>
   );
 }
 
 // Team Standings Component
-function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
+function TeamStandings() {
   const [teamData, setTeamData] = useState<Array<{ slug: string; name: string; emoji?: string; color?: string; members: number; total_score: string }> | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -555,7 +427,7 @@ function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
 
   useEffect(() => {
     fetchTeamData();
-  }, [period]);
+  }, []);
 
   return (
     <div style={{
