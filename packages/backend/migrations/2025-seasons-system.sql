@@ -33,7 +33,7 @@ CREATE INDEX IF NOT EXISTS user_teams_wallet_idx ON user_teams(wallet);
 
 -- per-claim team attribution (immutable once set)
 CREATE TABLE IF NOT EXISTS claim_team_attributions (
-  claim_id     BIGINT  PRIMARY KEY REFERENCES claims(id) ON DELETE CASCADE,
+  claim_id     TEXT    PRIMARY KEY REFERENCES claims(id) ON DELETE CASCADE,
   team_slug    TEXT    NOT NULL,
   season_id    INTEGER NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
   wallet       TEXT    NOT NULL,
