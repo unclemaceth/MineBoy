@@ -8,6 +8,7 @@ import { useAccount } from 'wagmi';
 import Link from 'next/link';
 import Stage from '@/components/Stage';
 import TeamSelector from '@/components/TeamSelector';
+import ArcadeNameSelector from '@/components/ArcadeNameSelector';
 
 type Entry = {
   rank: number;
@@ -353,6 +354,11 @@ export default function LeaderboardPage() {
         {/* Team Selector */}
         <div style={{ marginTop: 24 }}>
           <TeamSelector />
+        </div>
+
+        {/* Arcade Name Selector */}
+        <div style={{ marginTop: 16 }}>
+          <ArcadeNameSelector />
         </div>
 
         {/* Team Standings */}

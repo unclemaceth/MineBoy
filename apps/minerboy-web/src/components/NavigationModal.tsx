@@ -5,6 +5,7 @@ import { useAccount } from 'wagmi';
 import { api } from '@/lib/api';
 import { apiLeaderboardTeams } from '@/lib/api';
 import TeamSelector from '@/components/TeamSelector';
+import ArcadeNameSelector from '@/components/ArcadeNameSelector';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useMintPrice } from '@/hooks/useMintPrice';
 import { useSafeMint } from '@/hooks/useSafeMint';
@@ -337,6 +338,11 @@ function LeaderboardContent() {
       {/* Team Selector */}
       <div style={{ marginTop: 24, width: '100%' }}>
         <TeamSelector />
+      </div>
+
+      {/* Arcade Name Selector */}
+      <div style={{ marginTop: 16, width: '100%' }}>
+        <ArcadeNameSelector />
       </div>
 
       {/* Team Standings */}
