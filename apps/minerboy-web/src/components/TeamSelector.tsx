@@ -183,13 +183,12 @@ Expires: ${expiry}`;
       // Choose team with signature
       const res = await apiChooseTeam(address as `0x${string}`, confirmTeam.slug, nonce, expiry, sig);
       
-      // Update local state to reflect the team choice
-      setMyTeamChoice({
-        chosen: true,
-        team_slug: res.team_slug,
-        season: { slug: res.season_slug, id: res.season_id }
-      });
       console.log(`Successfully joined team ${res.team_slug}, attributed ${res.attributed_claims} claims`);
+      
+      // Refresh team choice state from server to ensure consistency
+      const teamChoice = await apiGetUserTeamChoice(address as `0x${string}`);
+      setMyTeamChoice(teamChoice);
+      setHasActiveTeamSeason(!!teamChoice.season);
     } catch (e: any) {
       console.error('Failed to join team:', e);
       if (e.message === 'User rejected the request') {
