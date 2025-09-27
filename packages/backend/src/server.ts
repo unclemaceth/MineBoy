@@ -26,9 +26,11 @@ import { initDb } from './db.js';
 import { startReceiptPoller } from './chain/receiptPoller.js';
 import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
+import { registerSeasonLeaderboardRoute } from './routes/leaderboardSeasons.js';
 import { registerAdminPollerRoute } from './routes/adminPoller.js';
 import { registerHealthRoute } from './routes/health.js';
 import teamsRoutes from './routes/teams.js';
+import adminSeasonsRoutes from './routes/adminSeasons.js';
 import statsRoutes from './routes/stats.js';
 import { registerMaintenance } from './routes/maintenance.js';
 import { SessionStore } from './sessionStore.js';
@@ -148,9 +150,11 @@ await fastify.register(cors, {
 await registerMaintenance(fastify);   // <-- register BEFORE other routes
 await registerClaimTxRoute(fastify);
 await registerLeaderboardRoute(fastify);
+await registerSeasonLeaderboardRoute(fastify);
 await registerAdminPollerRoute(fastify);
 await registerHealthRoute(fastify);
 await fastify.register(teamsRoutes);
+await fastify.register(adminSeasonsRoutes);
 await fastify.register(statsRoutes);
 
 // Health check

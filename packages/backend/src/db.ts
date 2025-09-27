@@ -221,6 +221,13 @@ export async function setClaimTxHash(claimId: string, txHash: string) {
 
 export async function confirmClaimById(claimId: string, txHash: string, confirmedAt: number): Promise<boolean> {
   const d = getDB();
+  
+  // First, get the claim details before updating
+  const claimStmt = d.prepare(`
+    SELECT wallet, amount_wei FROM claims WHERE id = @claimId
+  `);
+  const claim = claimStmt.get({ claimId }) as { wallet: string; amount_wei: string } | undefined;
+  
   const stmt = d.prepare(`
     UPDATE claims
        SET status='confirmed', tx_hash=COALESCE(tx_hash, @txHash), confirmed_at=@confirmedAt
@@ -231,6 +238,17 @@ export async function confirmClaimById(claimId: string, txHash: string, confirme
   if (result.changes === 0) {
     console.warn(`[CONFIRM] no row updated (status mismatch?)`, { claimId });
     return false;
+  }
+  
+  // Attribute to team if in active TEAM season
+  if (claim) {
+    try {
+      const { attributeClaimToTeam } = await import('./seasons.js');
+      await attributeClaimToTeam(d, claimId, claim.wallet, claim.amount_wei, new Date(confirmedAt));
+    } catch (error) {
+      console.error(`[CONFIRM] Failed to attribute claim to team:`, error);
+      // Don't fail the confirmation if attribution fails
+    }
   }
   
   console.log(`[CONFIRM] updated claim`, { claimId, changes: result.changes });

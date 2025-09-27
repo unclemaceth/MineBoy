@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { getDB } from '../db.js';
-import { getCurrentSeasonId, listTeams, getUserTeam, setUserTeam, getArcadeName, setArcadeName, generateNameNonce, verifyAndConsumeNameNonce } from '../db.js';
+import { listTeams, getArcadeName, setArcadeName, generateNameNonce, verifyAndConsumeNameNonce } from '../db.js';
+import { chooseTeam, getUserTeamChoice, getActiveSeason, getSeasonBySlug } from '../seasons.js';
 import { verifyMessage, getAddress } from 'ethers';
 
 export default async function routes(app: FastifyInstance) {
@@ -15,24 +16,65 @@ export default async function routes(app: FastifyInstance) {
     }
   });
 
+  // Get user's team choice for a season
   app.get('/v2/user/team', async (req, reply) => {
     try {
       const wallet = (req.query as any).wallet as string;
+      const season = (req.query as any).season as string;
+      
       if (!wallet) {
         return reply.code(400).send({ error: 'wallet query parameter required' });
       }
       
       const db = getDB();
-      const seasonId = await getCurrentSeasonId(db);
-      const team = await getUserTeam(db, wallet, seasonId);
+      const teamChoice = await getUserTeamChoice(db, wallet, season);
       
-      return reply.send({ team });
+      return reply.send({
+        chosen: teamChoice.chosen,
+        team_slug: teamChoice.team_slug,
+        season_slug: teamChoice.season?.slug,
+        season_id: teamChoice.season?.id,
+        season: teamChoice.season
+      });
     } catch (error) {
       app.log.error('Failed to get user team:', error);
       return reply.code(500).send({ error: 'Failed to fetch user team' });
     }
   });
 
+  // Choose a team for the active TEAM season
+  app.post('/v2/teams/choose', async (req, reply) => {
+    try {
+      const { wallet, team_slug } = req.body as { wallet?: string; team_slug?: string };
+      
+      if (!wallet || !team_slug) {
+        return reply.code(400).send({ error: 'wallet and team_slug required in request body' });
+      }
+      
+      const db = getDB();
+      const result = await chooseTeam(db, wallet, team_slug);
+      
+      return reply.send({ 
+        ok: true, 
+        season_id: result.season.id,
+        season_slug: result.season.slug,
+        team_slug,
+        attributed_claims: result.attributedClaims
+      });
+    } catch (error: any) {
+      if (error.code === '23505') { // Unique constraint violation
+        return reply.code(409).send({ error: 'already_chosen', message: 'Team already chosen for this season' });
+      }
+      if (error.message === 'No active TEAM season') {
+        return reply.code(400).send({ error: 'no_active_team_season', message: 'No active TEAM season' });
+      }
+      
+      app.log.error('Failed to choose team:', error);
+      return reply.code(500).send({ error: 'Failed to choose team', message: error.message });
+    }
+  });
+
+  // Legacy endpoint for backwards compatibility
   app.post('/v2/user/team', async (req, reply) => {
     try {
       const { wallet, teamSlug } = req.body as { wallet?: string; teamSlug?: string };
@@ -42,18 +84,24 @@ export default async function routes(app: FastifyInstance) {
       }
       
       const db = getDB();
-      const seasonId = await getCurrentSeasonId(db);
+      const result = await chooseTeam(db, wallet, teamSlug);
       
-      await setUserTeam(db, wallet, seasonId, teamSlug);
-      const team = await getUserTeam(db, wallet, seasonId);
-      
-      return reply.send({ ok: true, team });
-    } catch (error) {
-      app.log.error('Failed to set user team:', error);
-      if (error instanceof Error && error.message.includes('not found')) {
-        return reply.code(404).send({ error: error.message });
+      return reply.send({ 
+        ok: true, 
+        season_id: result.season.id,
+        team_slug: teamSlug,
+        attributed_claims: result.attributedClaims
+      });
+    } catch (error: any) {
+      if (error.code === '23505') { // Unique constraint violation
+        return reply.code(409).send({ error: 'already_chosen', message: 'Team already chosen for this season' });
       }
-      return reply.code(500).send({ error: 'Failed to set user team' });
+      if (error.message === 'No active TEAM season') {
+        return reply.code(400).send({ error: 'no_active_team_season', message: 'No active TEAM season' });
+      }
+      
+      app.log.error('Failed to set user team:', error);
+      return reply.code(500).send({ error: 'Failed to set user team', message: error.message });
     }
   });
 

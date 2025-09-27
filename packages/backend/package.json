@@ -9,6 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "test": "echo \"Error: no test specified\" && exit 1",
     "migrate": "tsx ./scripts/run-migrations.ts",
+    "migrate:seasons": "tsx ./scripts/run-seasons-migration.ts",
     "seed:teams": "tsx ./scripts/seed-teams.ts",
     "seed:season": "tsx ./scripts/seed-season.ts",
     "stats:compute": "tsx ./scripts/compute-daily-stats.ts"
