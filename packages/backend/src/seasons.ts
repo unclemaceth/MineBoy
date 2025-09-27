@@ -106,21 +106,19 @@ export async function chooseTeam(
     [season.id, wallet.toLowerCase(), teamSlug]
   );
 
-  // Retro-attribute existing confirmed claims in the TEAM season window
+  // Retro-attribute ALL existing confirmed claims (regardless of when they were made)
   const attributionResult = await db.pool.query(
     `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
-     SELECT c.id, $3, $1, LOWER(c.wallet), c.amount_wei, to_timestamp(c.confirmed_at / 1000)
+     SELECT c.id, $2, $1, LOWER(c.wallet), c.amount_wei, to_timestamp(c.confirmed_at / 1000)
      FROM claims c
      WHERE c.status='confirmed'
-       AND c.confirmed_at >= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
-       AND (SELECT COALESCE(ends_at, NOW()) FROM seasons WHERE id=$1) >= to_timestamp(c.confirmed_at / 1000)
-       AND LOWER(c.wallet) = LOWER($4)
+       AND LOWER(c.wallet) = LOWER($3)
        AND NOT EXISTS (
          SELECT 1 FROM claim_team_attributions x
          WHERE x.claim_id = c.id AND x.season_id = $1
        )
      RETURNING claim_id`,
-    [season.id, season.starts_at, teamSlug, wallet]
+    [season.id, teamSlug, wallet]
   );
 
   return {
