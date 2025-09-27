@@ -7,19 +7,19 @@ export const TIER_NAMES = [
   "Trash Hash",      // 0
   "Meh Hash",        // 1
   "Basic Batch",     // 2
-  "Decent Drip",     // 3
-  "Solid Shard",     // 4
+  "Noice Hash",      // 3
+  "Solid Sha",       // 4
   "Great Hash",      // 5
   "Mega Hash",       // 6
-  "Juicy Jolt",      // 7
+  "Juicy!",          // 7
   "Hashtastic",      // 8
   "Epic Hash",       // 9
   "Mythical Hash",   // 10 (a)
-  "Zesty Zap",       // 11 (b)
-  "Magic Mix",       // 12 (c)
-  "Monster Mash",    // 13 (d)
+  "Toight Hash",     // 11 (b)
+  "Golden Hash",     // 12 (c)
+  "Monster Hash",    // 13 (d)
   "Hashtalavista, Baby", // 14 (e)
-  "Hashalicious"     // 15 (f)
+  "HASHALICIOUS!"    // 15 (f)
 ];
 
 /**
