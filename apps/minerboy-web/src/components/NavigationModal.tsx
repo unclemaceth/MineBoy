@@ -159,13 +159,34 @@ function LeaderboardContent() {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
+  const getNextPollerTime = () => {
+    const now = new Date();
+    const minutes = now.getMinutes();
+    const nextPollerMinute = Math.ceil(minutes / 10) * 10;
+    const nextPoller = new Date(now);
+    nextPoller.setMinutes(nextPollerMinute % 60);
+    nextPoller.setSeconds(0);
+    nextPoller.setMilliseconds(0);
+    
+    if (nextPollerMinute >= 60) {
+      nextPoller.setHours(nextPoller.getHours() + 1);
+      nextPoller.setMinutes(0);
+    }
+    
+    return nextPoller.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: false 
+    });
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* Header */}
       <div style={{ marginBottom: 16, textAlign: 'center' }}>
         <h2 style={{ fontSize: 24, fontWeight: 'bold', color: '#64ff8a', marginBottom: 4 }}>LEADERBOARD</h2>
         <div style={{ fontSize: 10, color: '#8a8a8a' }}>
-          Updated {formatUpdateTime(seasonData?.lastUpdated)} • next update ~{formatUpdateTime(seasonData?.nextUpdate)}
+          Next update ~{getNextPollerTime()}
         </div>
       </div>
 

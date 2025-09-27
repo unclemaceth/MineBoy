@@ -25,6 +25,27 @@ function formatUpdateTime(isoString?: string) {
   });
 }
 
+function getNextPollerTime(): string {
+  const now = new Date();
+  const minutes = now.getMinutes();
+  const nextPollerMinute = Math.ceil(minutes / 10) * 10;
+  const nextPoller = new Date(now);
+  nextPoller.setMinutes(nextPollerMinute % 60);
+  nextPoller.setSeconds(0);
+  nextPoller.setMilliseconds(0);
+  
+  if (nextPollerMinute >= 60) {
+    nextPoller.setHours(nextPoller.getHours() + 1);
+    nextPoller.setMinutes(0);
+  }
+  
+  return nextPoller.toLocaleTimeString('en-US', { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: false 
+  });
+}
+
 // Consistent grid template for all leaderboard rows
 const GRID_COLS = '40px 1.7fr 0.9fr minmax(72px,100px)';
 
@@ -125,15 +146,13 @@ export default function LeaderboardPage() {
             }}>
               LEADERBOARD
             </h1>
-            {seasonData?.lastUpdated && (
-              <div style={{
-                fontSize: '10px',
-                color: '#666',
-                marginTop: '4px'
-              }}>
-                Updated {formatUpdateTime(seasonData?.lastUpdated)} • next update ~{formatUpdateTime(seasonData?.nextUpdate)}
-              </div>
-            )}
+            <div style={{
+              fontSize: '10px',
+              color: '#666',
+              marginTop: '4px'
+            }}>
+              Next update ~{getNextPollerTime()}
+            </div>
           </div>
         </div>
 
