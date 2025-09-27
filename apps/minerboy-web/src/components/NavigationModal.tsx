@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { api } from '@/lib/api';
+import { apiGetIndividualLeaderboard, apiGetTeamLeaderboard, SeasonLeaderboardResponse, TeamLeaderboardResponse } from '@/lib/api';
 import { apiLeaderboardTeams } from '@/lib/api';
 import TeamSelector from '@/components/TeamSelector';
 import ArcadeNameSelector from '@/components/ArcadeNameSelector';
@@ -120,18 +120,28 @@ function LeaderboardContent() {
   useEffect(() => {
     console.log('[NavigationModal] LeaderboardContent rendering with address:', address?.slice(0, 8) + '...' + address?.slice(-6));
   }, [address]);
-  const [period, setPeriod] = useState<'all'|'24h'|'7d'>('all');
-  const [data, setData] = useState<any>(null);
+  
+  const [leaderboardType, setLeaderboardType] = useState<'individual' | 'team'>('individual');
+  const [seasonData, setSeasonData] = useState<SeasonLeaderboardResponse | TeamLeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await api.getLeaderboard({ period, limit: 25, ...(address ? { wallet: address } : {}) });
-      setData(response);
+      console.log('[NavigationModal] Fetching season data for type:', leaderboardType, 'wallet:', address);
+      
+      if (leaderboardType === 'individual') {
+        const resp = await apiGetIndividualLeaderboard('active', 25, 0, address);
+        console.log('[NavigationModal] Received season individual response:', resp);
+        setSeasonData(resp);
+      } else {
+        const resp = await apiGetTeamLeaderboard('active');
+        console.log('[NavigationModal] Received season team response:', resp);
+        setSeasonData(resp);
+      }
     } catch (error) {
-      console.error('Error fetching leaderboard:', error);
-      setData(null);
+      console.error('[NavigationModal] Error fetching season data:', error);
+      setSeasonData(null);
     } finally {
       setLoading(false);
     }
@@ -141,7 +151,7 @@ function LeaderboardContent() {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [period, address]);
+  }, [leaderboardType, address]);
 
   const formatUpdateTime = (isoString?: string) => {
     if (!isoString) return '—';
@@ -149,24 +159,22 @@ function LeaderboardContent() {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
-  const PERIODS: Array<'all'|'24h'|'7d'> = ['all','24h','7d'];
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {/* Header */}
       <div style={{ marginBottom: 16, textAlign: 'center' }}>
         <h2 style={{ fontSize: 24, fontWeight: 'bold', color: '#64ff8a', marginBottom: 4 }}>LEADERBOARD</h2>
         <div style={{ fontSize: 10, color: '#8a8a8a' }}>
-          Updated {formatUpdateTime(data?.lastUpdated)} • next update ~{formatUpdateTime(data?.nextUpdate)}
+          Updated {formatUpdateTime(seasonData?.lastUpdated)} • next update ~{formatUpdateTime(seasonData?.nextUpdate)}
         </div>
       </div>
 
-      {/* Period Selector */}
+      {/* Leaderboard Type Selector */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-        {PERIODS.map(p => (
+        {(['individual', 'team'] as const).map(type => (
           <button
-            key={p}
-            onClick={() => setPeriod(p)}
+            key={type}
+            onClick={() => setLeaderboardType(type)}
             style={{
               padding: '8px 16px',
               borderRadius: 6,
@@ -174,16 +182,17 @@ function LeaderboardContent() {
               fontSize: 12,
               fontFamily: 'monospace',
               cursor: 'pointer',
-              background: period === p
+              background: leaderboardType === type
                 ? 'linear-gradient(145deg, #1a4d2a, #2d5a3d)'
                 : 'linear-gradient(145deg, #0f2c1b, #1a3d24)',
-              border: period === p ? '2px solid #64ff8a' : '2px solid #4a7d5f',
-              color: period === p ? '#c8ffc8' : '#8a8a8a',
-              boxShadow: period === p ? '0 2px 4px rgba(0,0,0,0.5)' : 'none',
-              transition: 'all 0.1s ease'
+              border: leaderboardType === type ? '2px solid #64ff8a' : '2px solid #4a7d5f',
+              color: leaderboardType === type ? '#c8ffc8' : '#8a8a8a',
+              boxShadow: leaderboardType === type ? '0 2px 4px rgba(0,0,0,0.5)' : 'none',
+              transition: 'all 0.1s ease',
+              textTransform: 'capitalize'
             }}
           >
-            {p.toUpperCase().replace('H', 'H')}
+            {type}
           </button>
         ))}
       </div>
@@ -214,8 +223,8 @@ function LeaderboardContent() {
           color: '#c8ffc8'
         }}>
           <div>#</div>
-          <div>MINER</div>
-          <div>TEAM</div>
+          <div>{leaderboardType === 'individual' ? 'MINER' : 'TEAM'}</div>
+          <div>{leaderboardType === 'individual' ? 'TEAM' : 'MEMBERS'}</div>
           <div style={{ textAlign: 'right' }}>ABIT</div>
         </div>
 
@@ -232,7 +241,7 @@ function LeaderboardContent() {
             </div>
           )}
 
-          {!loading && (!data?.entries || data.entries.length === 0) && (
+          {!loading && (!seasonData?.entries || seasonData.entries.length === 0) && (
             <div style={{
               padding: '20px',
               textAlign: 'center',
@@ -243,22 +252,25 @@ function LeaderboardContent() {
             </div>
           )}
           
-          {!loading && data?.entries?.map((e: any, index: number) => (
+          {!loading && seasonData?.entries?.map((e: any, index: number) => {
+            const entry = e;
+            const entries = (seasonData as any)?.entries;
+            return (
             <div 
-              key={e.wallet} 
+              key={entry.wallet || entry.team_slug} 
               style={{
                 display: 'grid',
                 gridTemplateColumns: GRID_COLS,
                 gap: '8px',
                 padding: '8px 12px',
-                borderBottom: index === (data.entries?.length || 0) - 1 ? 'none' : '1px solid #1a3d24',
+                borderBottom: index === (entries?.length || 0) - 1 ? 'none' : '1px solid #1a3d24',
                 backgroundColor: index % 2 === 0 ? '#0f2c1b' : '#1a3d24',
                 fontSize: '10px',
                 color: '#c8ffc8',
                 fontFamily: 'monospace'
               }}
             >
-              <div style={{ fontWeight: 'bold' }}>{e.rank}</div>
+              <div style={{ fontWeight: 'bold' }}>{entry.rank}</div>
               <div style={{
                 minWidth: 0,
                 overflow: 'hidden',
@@ -266,7 +278,10 @@ function LeaderboardContent() {
                 whiteSpace: 'nowrap',
                 fontFamily: 'monospace'
               }}>
-                {e.arcade_name ?? e.walletShort}
+                {leaderboardType === 'individual' 
+                  ? (entry.arcade_name ?? entry.walletShort ?? entry.wallet)
+                  : (entry.name ?? entry.team_slug)
+                }
               </div>
               <div style={{ 
                 minWidth: 0,
@@ -277,16 +292,20 @@ function LeaderboardContent() {
                 color: '#64FF8A',
                 fontWeight: '700'
               }}>
-                {e.team_name ?? '—'}
+                {leaderboardType === 'individual' 
+                  ? (entry.team_name ?? '—')
+                  : (entry.members ? `${entry.members} members` : '—')
+                }
               </div>
-              <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalABIT}</div>
+              <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{entry.totalABIT}</div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Your Rank Section */}
-      {data?.me && (
+      {(leaderboardType === 'individual' && seasonData && 'me' in seasonData ? seasonData.me : null) && (
         <div style={{
           background: '#2d1a0f',
           border: '2px solid',
@@ -319,28 +338,41 @@ function LeaderboardContent() {
             backgroundColor: 'rgba(45, 26, 15, 0.3)',
             borderRadius: '4px'
           }}>
-            <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
-            <div style={{
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontFamily: 'monospace'
-            }}>
-              {data.me.arcade_name ?? data.me.walletShort}
-            </div>
-            <div style={{ 
-              minWidth: 0,
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontSize: '12px',
-              color: '#64FF8A',
-              fontWeight: '700'
-            }}>
-              {data.me.team_name ?? '—'}
-            </div>
-            <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{data.me.totalABIT}</div>
+            {(() => {
+              const meData = leaderboardType === 'individual' && seasonData && 'me' in seasonData ? seasonData.me : null;
+              return (
+                <>
+                  <div style={{ fontWeight: 'bold' }}>#{meData?.rank ?? '—'}</div>
+                  <div style={{
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontFamily: 'monospace'
+                  }}>
+                    {leaderboardType === 'individual' 
+                      ? (meData?.arcade_name ?? meData?.walletShort)
+                      : '—'
+                    }
+                  </div>
+                  <div style={{ 
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    fontSize: '12px',
+                    color: '#64FF8A',
+                    fontWeight: '700'
+                  }}>
+                    {leaderboardType === 'individual' 
+                      ? ((meData as any)?.team_name ?? '—')
+                      : '—'
+                    }
+                  </div>
+                  <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{meData?.totalABIT}</div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
@@ -356,13 +388,13 @@ function LeaderboardContent() {
       </div>
 
       {/* Team Standings */}
-      <TeamStandings period={period} />
+      <TeamStandings />
     </div>
   );
 }
 
 // Team Standings Component
-function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
+function TeamStandings() {
   const [teamData, setTeamData] = useState<Array<any>>([]);
   const [loading, setLoading] = useState(false);
 
@@ -383,7 +415,7 @@ function TeamStandings({ period }: { period: 'all' | '24h' | '7d' }) {
 
   useEffect(() => {
     fetchTeamData();
-  }, [period]);
+  }, []);
 
   return (
     <div style={{
