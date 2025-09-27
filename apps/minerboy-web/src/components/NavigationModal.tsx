@@ -112,6 +112,11 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
 // Leaderboard Content Component
 function LeaderboardContent() {
   const { address } = useAccount();
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('[NavigationModal] LeaderboardContent rendering with address:', address?.slice(0, 8) + '...' + address?.slice(-6));
+  }, [address]);
   const [period, setPeriod] = useState<'all'|'24h'|'7d'>('all');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -342,7 +347,6 @@ function LeaderboardContent() {
 
       {/* Arcade Name Selector */}
       <div style={{ marginTop: 16, width: '100%' }}>
-        {console.log('[NavigationModal] Rendering ArcadeNameSelector')}
         <ArcadeNameSelector />
       </div>
 
