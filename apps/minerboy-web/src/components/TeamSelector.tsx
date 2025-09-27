@@ -189,6 +189,10 @@ Expires: ${expiry}`;
       const teamChoice = await apiGetUserTeamChoice(address as `0x${string}`);
       setMyTeamChoice(teamChoice);
       setHasActiveTeamSeason(!!teamChoice.season);
+      
+      // Close modal after successful team selection
+      setShowConfirm(false);
+      setConfirmTeam(null);
     } catch (e: any) {
       console.error('Failed to join team:', e);
       if (e.message === 'User rejected the request') {
@@ -205,8 +209,6 @@ Expires: ${expiry}`;
       }
     } finally {
       setLoading(false);
-      setShowConfirm(false);
-      setConfirmTeam(null);
     }
   };
 
