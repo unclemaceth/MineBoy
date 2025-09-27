@@ -269,8 +269,11 @@ function Home() {
         setFound(undefined); // Clear lastFound from session
         pushLine('Job expired - stopping mining');
         
-        // Show job expired popup
-        setShowJobExpired(true);
+        // Auto-unload cartridge and return to terminal mode  
+        clear(); // Clear session data (unloads cartridge)
+        setShowCartridgeSelect(true); // Show cartridge selection
+        setMode('terminal'); // Return to terminal view
+        pushLine('Cartridge ejected - please re-insert');
         
         hapticFeedback();
       }
