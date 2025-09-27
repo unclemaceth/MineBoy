@@ -185,10 +185,13 @@ Expires: ${expiry}`;
       
       console.log(`Successfully joined team ${res.team_slug}, attributed ${res.attributed_claims} claims`);
       
-      // Refresh team choice state from server to ensure consistency
-      const teamChoice = await apiGetUserTeamChoice(address as `0x${string}`);
-      setMyTeamChoice(teamChoice);
-      setHasActiveTeamSeason(!!teamChoice.season);
+      // Update local state directly (like ArcadeNameSelector does)
+      setMyTeamChoice({
+        chosen: true,
+        team_slug: res.team_slug,
+        season: { slug: res.season_slug, id: res.season_id }
+      });
+      setHasActiveTeamSeason(true);
       
       // Close modal after successful team selection
       setShowConfirm(false);
