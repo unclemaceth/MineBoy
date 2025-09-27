@@ -95,12 +95,8 @@ Expires: ${expiry}`;
     }
   };
 
-  if (!address || !isConnected) {
-    console.log('[ArcadeNameSelector] No address or not connected, not rendering. State:', { isConnected, address: address?.slice(0, 8) + '...' + address?.slice(-6) });
-    return null;
-  }
-
-  console.log('[ArcadeNameSelector] Rendering with address:', address);
+  console.log('[ArcadeNameSelector] Rendering with state:', { isConnected, address: address?.slice(0, 8) + '...' + address?.slice(-6), arcadeName });
+  
   return (
     <div style={{
       padding: '12px 16px',
@@ -114,16 +110,6 @@ Expires: ${expiry}`;
       boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.1)',
       marginTop: 16
     }}>
-      <div style={{
-        fontSize: 12,
-        fontWeight: 'bold',
-        color: '#c8ffc8',
-        marginBottom: 8,
-        fontFamily: 'monospace'
-      }}>
-        ARCADE NAME
-      </div>
-      
       {arcadeName ? (
         // Show current name
         <div style={{
@@ -152,8 +138,8 @@ Expires: ${expiry}`;
             (PERMANENT)
           </span>
         </div>
-      ) : (
-        // Show input form
+      ) : isConnected && address ? (
+        // Show input form for connected wallet
         <div>
           <div style={{
             display: 'flex',
@@ -228,6 +214,61 @@ Expires: ${expiry}`;
               {error}
             </div>
           )}
+        </div>
+      ) : (
+        // Show disabled input for disconnected wallet
+        <div>
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            marginBottom: 8
+          }}>
+            <input
+              disabled
+              placeholder="CONNECT WALLET TO SET NAME"
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                backgroundColor: '#1a2e1f',
+                border: '2px solid #4a7d5f',
+                borderRadius: 4,
+                color: '#6a6a6a',
+                fontSize: 12,
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                letterSpacing: '1px',
+                outline: 'none',
+                opacity: 0.6,
+                cursor: 'not-allowed'
+              }}
+            />
+            <button
+              disabled
+              style={{
+                padding: '8px 16px',
+                backgroundColor: '#2a3d2f',
+                border: '2px solid #3a4d3f',
+                borderRadius: 4,
+                color: '#6a6a6a',
+                fontSize: 10,
+                fontFamily: 'monospace',
+                fontWeight: 'bold',
+                cursor: 'not-allowed',
+                opacity: 0.6
+              }}
+            >
+              SET
+            </button>
+          </div>
+          
+          <div style={{
+            fontSize: 10,
+            color: '#8a8a8a',
+            fontFamily: 'monospace',
+            marginBottom: 4
+          }}>
+            8 chars max • Letters & numbers only • Permanent once set • Requires wallet signature
+          </div>
         </div>
       )}
     </div>
