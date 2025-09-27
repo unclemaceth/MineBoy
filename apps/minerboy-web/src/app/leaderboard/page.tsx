@@ -18,6 +18,7 @@ type Entry = {
   team_name?: string;
   team_emoji?: string;
   team_color?: string;
+  arcade_name?: string;
 };
 type ApiResp = {
   period: 'all'|'24h'|'7d';
@@ -31,6 +32,7 @@ type ApiResp = {
     team_name?: string;
     team_emoji?: string;
     team_color?: string;
+    arcade_name?: string;
   };
   lastUpdated?: string;
   nextUpdate?: string;
@@ -212,7 +214,7 @@ export default function LeaderboardPage() {
             padding: '8px 12px',
             borderBottom: '1px solid #3a8a4d',
             display: 'grid',
-            gridTemplateColumns: '40px 1fr 80px 100px',
+            gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
             gap: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
@@ -255,7 +257,7 @@ export default function LeaderboardPage() {
                   padding: '8px 12px',
                   borderBottom: index < data.entries.length - 1 ? '1px solid #1a4d2a' : 'none',
                   display: 'grid',
-                  gridTemplateColumns: '40px 1fr 80px 100px',
+                  gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
                   gap: '8px',
                   fontSize: '10px',
                   color: '#c8ffc8',
@@ -269,7 +271,7 @@ export default function LeaderboardPage() {
                   textOverflow: 'ellipsis',
                   whiteSpace: 'nowrap'
                 }}>
-                  {e.walletShort}
+                  {e.arcade_name ?? e.walletShort}
                 </div>
                         <div style={{
                           fontSize: '12px',
@@ -314,7 +316,7 @@ export default function LeaderboardPage() {
             </div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '40px 1fr 80px 100px',
+              gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
               gap: '8px',
               padding: '8px 12px',
               fontSize: '10px',
@@ -330,7 +332,7 @@ export default function LeaderboardPage() {
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {data.me.walletShort}
+                {data.me.arcade_name ?? data.me.walletShort}
               </div>
               <div style={{
                 fontSize: '12px',

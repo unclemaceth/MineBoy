@@ -198,7 +198,7 @@ function LeaderboardContent() {
           padding: '8px 12px',
           borderBottom: '1px solid #3a8a4d',
           display: 'grid',
-          gridTemplateColumns: '40px 1fr 80px 100px',
+          gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
           gap: '8px',
           fontSize: '10px',
           fontWeight: 'bold',
@@ -239,7 +239,7 @@ function LeaderboardContent() {
               key={e.wallet} 
               style={{
                 display: 'grid',
-                gridTemplateColumns: '40px 1fr 80px 100px',
+                gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
                 gap: '8px',
                 padding: '8px 12px',
                 borderBottom: index === (data.entries?.length || 0) - 1 ? 'none' : '1px solid #1a3d24',
@@ -256,7 +256,7 @@ function LeaderboardContent() {
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap'
               }}>
-                {e.walletShort}
+                {e.arcade_name ?? e.walletShort}
               </div>
               <div style={{ 
                 fontSize: '12px', 
@@ -300,7 +300,7 @@ function LeaderboardContent() {
           </div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '40px 1fr 80px 100px',
+            gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
             gap: '8px',
             padding: '8px 12px',
             fontSize: '10px',
@@ -316,7 +316,7 @@ function LeaderboardContent() {
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
             }}>
-              {data.me.walletShort}
+              {data.me.arcade_name ?? data.me.walletShort}
             </div>
             <div style={{ 
               fontSize: '12px', 

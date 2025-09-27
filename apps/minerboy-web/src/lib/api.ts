@@ -220,3 +220,23 @@ export async function apiLeaderboardTeams() {
   if (!r.ok) throw new Error('Failed to fetch team standings');
   return r.json() as Promise<Array<Team & { members: number; total_score: string }>>;
 }
+
+export async function apiGetArcadeName(wallet: string) {
+  const r = await fetch(`${BASE}/v2/user/name?wallet=${wallet}`);
+  if (!r.ok) throw new Error('failed');
+  return r.json() as Promise<{ wallet: string; name: string | null }>;
+}
+
+export async function apiSetArcadeName(wallet: string, name: string) {
+  const r = await fetch(`${BASE}/v2/user/name`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wallet, name }),
+  });
+  if (r.status === 409) {
+    const { error } = await r.json();
+    throw new Error(error); // 'taken' | 'locked'
+  }
+  if (!r.ok) throw new Error('server');
+  return r.json() as Promise<{ ok: true; name: string }>;
+}

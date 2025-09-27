@@ -60,6 +60,16 @@ export async function initDb(dbUrl?: string) {
               );
             `);
             await pgPool.query(`CREATE INDEX IF NOT EXISTS idx_daily_stats_day ON daily_stats(day_utc DESC);`);
+            
+            // User names table
+            await pgPool.query(`
+              CREATE TABLE IF NOT EXISTS user_names (
+                wallet TEXT PRIMARY KEY,
+                name   TEXT NOT NULL,
+                set_at BIGINT NOT NULL
+              );
+            `);
+            await pgPool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_user_names_name_lower ON user_names (LOWER(name));`);
   } else {
     // Use SQLite
     const file = url?.startsWith('file:') ? url.replace('file:', '') : (url || 'minerboy.db');
@@ -88,6 +98,16 @@ export async function initDb(dbUrl?: string) {
             db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_wallet_hash ON claims(wallet, hash);`);
             db.exec(`CREATE INDEX IF NOT EXISTS idx_claims_pending_tx ON claims (status, tx_hash) WHERE status IN ('pending','tx_submitted') AND tx_hash IS NOT NULL;`);
             db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_claims_tx_hash_live ON claims (tx_hash) WHERE tx_hash IS NOT NULL;`);
+            
+            // User names table
+            db.exec(`
+              CREATE TABLE IF NOT EXISTS user_names (
+                wallet TEXT PRIMARY KEY,
+                name   TEXT NOT NULL COLLATE NOCASE,
+                set_at INTEGER NOT NULL
+              );
+            `);
+            db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS uq_user_names_name_nocase ON user_names (name COLLATE NOCASE);`);
   }
 }
 
@@ -249,6 +269,7 @@ export type LeaderboardEntry = {
   team_name?: string;
   team_emoji?: string;
   team_color?: string;
+  arcade_name?: string;
 };
 
 export async function getLeaderboardTop(period: Period, limit = 25): Promise<LeaderboardEntry[]> {
@@ -353,15 +374,25 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
       });
     }
 
+    // Get arcade names for the top wallets
+    const nameRows = topWalletsLc.length
+      ? await d.pool.query(`SELECT wallet, name FROM user_names WHERE wallet = ANY($1::text[])`, [topWalletsLc])
+      : { rows: [] };
+
+    const nameMap = new Map<string, string>();
+    for (const r of nameRows.rows) nameMap.set(r.wallet.toLowerCase(), r.name);
+
     const finalResults = results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
-      console.log(`[getLeaderboardTop] wallet: ${result.wallet.toLowerCase()}, team:`, team);
+      const arcadeName = nameMap.get(result.wallet.toLowerCase());
+      console.log(`[getLeaderboardTop] wallet: ${result.wallet.toLowerCase()}, team:`, team, 'arcadeName:', arcadeName);
       return {
         ...result,
         team_slug: team?.slug,
         team_name: team?.name,
         team_emoji: team?.emoji,
-        team_color: team?.color
+        team_color: team?.color,
+        arcade_name: arcadeName
       };
     });
     
@@ -402,12 +433,17 @@ export async function getAggregateForWallet(period: Period, wallet: string): Pro
     last_confirmed_at = Math.max(last_confirmed_at, claim.confirmed_at);
   }
   
+  // Get arcade name for this wallet
+  const arcadeRow = await d.pool.query(`SELECT name FROM user_names WHERE wallet=LOWER($1)`, [wallet]);
+  const arcadeName = arcadeRow.rows?.[0]?.name ?? null;
+
   return {
     wallet,
     total_wei: total_wei.toString(),
     claims: claims.length,
     cartridges: cartridges.size,
-    last_confirmed_at
+    last_confirmed_at,
+    arcade_name: arcadeName
   };
 }
 
@@ -550,4 +586,46 @@ export async function getTeamStandings(db: any, period: Period): Promise<TeamSta
     members: parseInt(row.members),
     total_score: row.total_score
   }));
+}
+
+// Arcade name functions
+export function sanitizeArcadeName(raw: string): string {
+  const up = raw.trim().toUpperCase();
+  if (up.length < 1 || up.length > 8) throw new Error('Name must be 1–8 chars');
+  if (!/^[A-Z0-9_]+$/.test(up)) throw new Error('Only A–Z, 0–9, _ allowed');
+  return up;
+}
+
+export async function getArcadeName(db: any, wallet: string): Promise<string | null> {
+  const row = await db.pool.query(
+    `SELECT name FROM user_names WHERE wallet = LOWER($1)`, [wallet]
+  );
+  return row.rows?.[0]?.name ?? null;
+}
+
+// once-only: if wallet already has a name, 409
+export async function setArcadeName(db: any, wallet: string, nameRaw: string): Promise<void> {
+  const name = sanitizeArcadeName(nameRaw);
+  const now = Date.now();
+
+  // conflict if wallet already set
+  const existing = await db.pool.query(`SELECT 1 FROM user_names WHERE wallet=LOWER($1)`, [wallet]);
+  if (existing.rows[0]) {
+    const err: any = new Error('Name already set for this wallet');
+    err.code = 'WALLET_ALREADY_NAMED';
+    throw err;
+  }
+
+  // conflict if name taken (case-insensitive)
+  const taken = await db.pool.query(`SELECT 1 FROM user_names WHERE LOWER(name)=LOWER($1)`, [name]);
+  if (taken.rows[0]) {
+    const err: any = new Error('Name already taken');
+    err.code = 'NAME_TAKEN';
+    throw err;
+  }
+
+  await db.pool.query(
+    `INSERT INTO user_names (wallet, name, set_at) VALUES (LOWER($1), $2, $3)`,
+    [wallet, name, now]
+  );
 }
