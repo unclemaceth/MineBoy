@@ -4,11 +4,16 @@ import { useAccount, useSignMessage } from 'wagmi';
 import { apiGetArcadeName, apiGetNameNonce, apiSetArcadeName } from '@/lib/api';
 
 export default function ArcadeNameSelector() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const [arcadeName, setArcadeName] = useState<string>('');
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+
+  // Debug wallet connection state
+  useEffect(() => {
+    console.log('[ArcadeNameSelector] Wallet state:', { isConnected, address: address?.slice(0, 8) + '...' + address?.slice(-6) });
+  }, [isConnected, address]);
 
   useEffect(() => {
     if (!address) return;
@@ -90,8 +95,12 @@ Expires: ${expiry}`;
     }
   };
 
-  if (!address) return null;
+  if (!address || !isConnected) {
+    console.log('[ArcadeNameSelector] No address or not connected, not rendering. State:', { isConnected, address: address?.slice(0, 8) + '...' + address?.slice(-6) });
+    return null;
+  }
 
+  console.log('[ArcadeNameSelector] Rendering with address:', address);
   return (
     <div style={{
       padding: '12px 16px',

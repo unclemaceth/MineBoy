@@ -342,6 +342,7 @@ function LeaderboardContent() {
 
       {/* Arcade Name Selector */}
       <div style={{ marginTop: 16, width: '100%' }}>
+        {console.log('[NavigationModal] Rendering ArcadeNameSelector')}
         <ArcadeNameSelector />
       </div>
 
