@@ -1082,12 +1082,12 @@ function Home() {
     const suffix = job.target;
     const bits = job.bits ?? (suffix?.length ?? 0) * 4;
     
-    let level = 'EASY';
-    if (suffix?.length >= 8) level = 'HARD';
-    else if (suffix?.length >= 7) level = 'MED';
-    else if (suffix?.length >= 6) level = 'EASY';
-    else if (suffix?.length >= 4) level = 'EASY';
-    else level = 'EASY';
+    let level = 'CASUAL';
+    if (suffix?.length >= 8) level = 'BRUTAL';
+    else if (suffix?.length >= 7) level = 'SERIOUS';
+    else if (suffix?.length >= 6) level = 'TRICKY';
+    else if (suffix?.length >= 5) level = 'CASUAL';
+    else level = 'CASUAL';
     
     setDifficultyText(`D: ${level} | T: ${ttlSec != null ? `${ttlSec}s` : '--'}`);
   }, [job, ttlSec]);
