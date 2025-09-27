@@ -71,8 +71,8 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
                ROW_NUMBER() OVER (ORDER BY SUM(amount_wei::numeric) DESC) AS rank
              FROM claims
              WHERE status='confirmed'
-               AND confirmed_at >= $1::timestamptz
-               AND confirmed_at <= $2::timestamptz
+               AND confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
+               AND confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
                AND LOWER(wallet) = LOWER($3)
              GROUP BY LOWER(wallet)`,
             [season.starts_at, season.ends_at || new Date().toISOString(), wallet]

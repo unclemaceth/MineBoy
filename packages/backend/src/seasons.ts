@@ -109,11 +109,11 @@ export async function chooseTeam(
   // Retro-attribute existing confirmed claims in the TEAM season window
   const attributionResult = await db.pool.query(
     `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
-     SELECT c.id, $3, $1, LOWER(c.wallet), c.amount_wei, c.confirmed_at
+     SELECT c.id, $3, $1, LOWER(c.wallet), c.amount_wei, to_timestamp(c.confirmed_at / 1000)
      FROM claims c
      WHERE c.status='confirmed'
-       AND c.confirmed_at >= $2::timestamptz
-       AND (SELECT COALESCE(ends_at, NOW()) FROM seasons WHERE id=$1) >= c.confirmed_at
+       AND c.confirmed_at >= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
+       AND (SELECT COALESCE(ends_at, NOW()) FROM seasons WHERE id=$1) >= to_timestamp(c.confirmed_at / 1000)
        AND LOWER(c.wallet) = LOWER($4)
        AND NOT EXISTS (
          SELECT 1 FROM claim_team_attributions x
@@ -207,8 +207,8 @@ export async function getIndividualLeaderboard(
        ROW_NUMBER() OVER (ORDER BY SUM(amount_wei::numeric) DESC) AS rank
      FROM claims
      WHERE status='confirmed'
-       AND confirmed_at >= $1::timestamptz
-       AND confirmed_at <= $2::timestamptz
+       AND confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
+       AND confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
      GROUP BY LOWER(wallet)
      ORDER BY total_wei DESC
      LIMIT $3 OFFSET $4`,
