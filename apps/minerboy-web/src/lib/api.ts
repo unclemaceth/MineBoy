@@ -246,3 +246,117 @@ export async function apiSetArcadeName(wallet: string, name: string, nonce: stri
   if (!r.ok) throw new Error('server');
   return r.json() as Promise<{ ok: true; name: string }>;
 }
+
+// Season-based API functions
+export type Season = {
+  id: number;
+  slug: string;
+  scope: 'TEAM' | 'INDIVIDUAL';
+  starts_at: string;
+  ends_at?: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+export type SeasonLeaderboardEntry = {
+  rank: number;
+  wallet: string;
+  walletShort: string;
+  totalABIT: string;
+  arcade_name?: string;
+};
+
+export type SeasonLeaderboardResponse = {
+  season: Season;
+  entries: SeasonLeaderboardEntry[];
+  me?: {
+    rank: number;
+    wallet: string;
+    walletShort: string;
+    totalABIT: string;
+    arcade_name?: string;
+  };
+  lastUpdated: string;
+  nextUpdate: string;
+};
+
+export type TeamLeaderboardEntry = {
+  rank: number;
+  team_slug: string;
+  name: string;
+  emoji?: string;
+  color?: string;
+  members: number;
+  totalABIT: string;
+};
+
+export type TeamLeaderboardResponse = {
+  season: Season;
+  entries: TeamLeaderboardEntry[];
+  lastUpdated: string;
+  nextUpdate: string;
+};
+
+export type TeamChoiceResponse = {
+  chosen: boolean;
+  team_slug?: string;
+  season_slug?: string;
+  season_id?: number;
+  season?: Season;
+};
+
+export async function apiGetSeasons(scope?: 'TEAM' | 'INDIVIDUAL'): Promise<{ seasons: Season[] }> {
+  const params = scope ? `?scope=${scope}` : '';
+  const r = await fetch(`${BASE}/v2/seasons${params}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('Failed to fetch seasons');
+  return r.json();
+}
+
+export async function apiGetUserTeamChoice(wallet: `0x${string}`, season?: string): Promise<TeamChoiceResponse> {
+  const seasonParam = season ? `&season=${season}` : '&season=active';
+  const r = await fetch(`${BASE}/v2/user/team?wallet=${wallet}${seasonParam}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('Failed to fetch user team choice');
+  return r.json();
+}
+
+export async function apiChooseTeam(wallet: `0x${string}`, teamSlug: string): Promise<{
+  ok: boolean;
+  season_id: number;
+  season_slug: string;
+  team_slug: string;
+  attributed_claims: number;
+}> {
+  const r = await fetch(`${BASE}/v2/teams/choose`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ wallet, team_slug: teamSlug }),
+  });
+  if (r.status === 409) {
+    const { error } = await r.json();
+    throw new Error(error); // 'already_chosen'
+  }
+  if (r.status === 400) {
+    const { error } = await r.json();
+    throw new Error(error); // 'no_active_team_season'
+  }
+  if (!r.ok) throw new Error('Failed to choose team');
+  return r.json();
+}
+
+export async function apiGetIndividualLeaderboard(season: string = 'active', limit?: number, offset?: number, wallet?: string): Promise<SeasonLeaderboardResponse> {
+  const params = new URLSearchParams();
+  params.set('season', season);
+  if (limit) params.set('limit', String(limit));
+  if (offset) params.set('offset', String(offset));
+  if (wallet) params.set('wallet', wallet);
+  
+  const r = await fetch(`${BASE}/v2/leaderboard/individual?${params.toString()}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('Failed to fetch individual leaderboard');
+  return r.json();
+}
+
+export async function apiGetTeamLeaderboard(season: string = 'active'): Promise<TeamLeaderboardResponse> {
+  const r = await fetch(`${BASE}/v2/leaderboard/team?season=${season}`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('Failed to fetch team leaderboard');
+  return r.json();
+}

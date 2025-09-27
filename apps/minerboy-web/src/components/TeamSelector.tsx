@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { apiListTeams, apiGetUserTeam, apiPickTeam, Team } from '@/lib/api';
+import { apiListTeams, apiGetUserTeamChoice, apiChooseTeam, Team } from '@/lib/api';
 
 function ConfirmJoinModal({
   team,
@@ -109,9 +109,10 @@ function ConfirmJoinModal({
 export default function TeamSelector() {
   const { address } = useAccount();
   const [teams, setTeams] = useState<Team[]>([]);
-  const [mine, setMine] = useState<Team | null>(null);
+  const [myTeamChoice, setMyTeamChoice] = useState<{ chosen: boolean; team_slug?: string; season?: any } | null>(null);
   const [pick, setPick] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [hasActiveTeamSeason, setHasActiveTeamSeason] = useState(false);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [confirmTeam, setConfirmTeam] = useState<Team | null>(null);
@@ -121,17 +122,23 @@ export default function TeamSelector() {
 
     const fetchData = async () => {
       try {
-        const [ts, me] = await Promise.all([
+        const [ts, teamChoice] = await Promise.all([
           apiListTeams(),
-          apiGetUserTeam(address as `0x${string}`)
+          apiGetUserTeamChoice(address as `0x${string}`)
         ]);
         setTeams(ts ?? []);
-        setMine(me.team ?? null);
-        if (!me.team && ts && ts.length > 0) setPick(ts[0].slug);
+        setMyTeamChoice(teamChoice);
+        setHasActiveTeamSeason(!!teamChoice.season);
+        
+        // If no team chosen and teams available, select first one
+        if (!teamChoice.chosen && ts && ts.length > 0) {
+          setPick(ts[0].slug);
+        }
       } catch (error) {
         console.error('Failed to fetch team data:', error);
         // Graceful fallback if backend routes aren't deployed yet
         setTeams([]);
+        setHasActiveTeamSeason(false);
       }
     };
 
@@ -151,10 +158,25 @@ export default function TeamSelector() {
     if (!confirmTeam || !address) return;
     setLoading(true);
     try {
-      const res = await apiPickTeam(address as `0x${string}`, confirmTeam.slug);
-      setMine(res.team);
-    } catch (e) {
+      const res = await apiChooseTeam(address as `0x${string}`, confirmTeam.slug);
+      // Update local state to reflect the team choice
+      setMyTeamChoice({
+        chosen: true,
+        team_slug: res.team_slug,
+        season: { slug: res.season_slug, id: res.season_id }
+      });
+      console.log(`Successfully joined team ${res.team_slug}, attributed ${res.attributed_claims} claims`);
+    } catch (e: any) {
       console.error('Failed to join team:', e);
+      if (e.message === 'already_chosen') {
+        // Refresh team choice state
+        try {
+          const teamChoice = await apiGetUserTeamChoice(address as `0x${string}`);
+          setMyTeamChoice(teamChoice);
+        } catch (refreshError) {
+          console.error('Failed to refresh team choice:', refreshError);
+        }
+      }
     } finally {
       setLoading(false);
       setShowConfirm(false);
@@ -170,10 +192,15 @@ export default function TeamSelector() {
 
   if (!address) return null;
 
+  // Get the chosen team info
+  const myTeam = myTeamChoice?.chosen && myTeamChoice?.team_slug 
+    ? teams.find(t => t.slug === myTeamChoice.team_slug)
+    : null;
+
   return (
     <>
-      {/* Fallback banner when teams aren't available */}
-      {teams.length === 0 ? (
+      {/* Fallback banner when teams aren't available or no active team season */}
+      {teams.length === 0 || !hasActiveTeamSeason ? (
         <div style={{
           display: 'flex', gap: 12, alignItems: 'center',
           padding: '12px 16px',
@@ -191,10 +218,10 @@ export default function TeamSelector() {
             fontWeight: 800, color: '#8a8a8a',
             fontSize: 12, fontFamily: 'monospace'
           }}>
-            Teams feature coming soon...
+            {!hasActiveTeamSeason ? 'No active team season' : 'Teams feature coming soon...'}
           </span>
         </div>
-      ) : mine ? (
+      ) : myTeam ? (
         // "Your Team" chip/banner
         <div style={{
           display: 'flex', gap: 12, alignItems: 'center',
@@ -225,7 +252,7 @@ export default function TeamSelector() {
             fontFamily: 'monospace',
             fontWeight: 'bold'
           }}>
-            {mine.emoji ? `${mine.emoji} ` : ''}{mine.name}
+            {myTeam.emoji ? `${myTeam.emoji} ` : ''}{myTeam.name}
           </span>
         </div>
       ) : (
