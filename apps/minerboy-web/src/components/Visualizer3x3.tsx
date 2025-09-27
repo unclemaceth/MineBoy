@@ -202,11 +202,32 @@ export default function Visualizer3x3({
             cursor: 'pointer',
           }}
         >
-          <span>CLAIM</span>
-          <span style={{ opacity: 0.8 }}>•</span>
           <span>{lastFound.tierName || getTierInfo(lastFound.hash).name}</span>
-          <span style={{ opacity: 0.8 }}>•</span>
-          <span>{lastFound.amountLabel || 'Calculating...'}</span>
+        </div>
+      )}
+
+      {/* Banner after claim completion */}
+      {!lastFound && claimState === 'idle' && (
+        <div 
+          style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            backgroundColor: 'rgba(100, 255, 138, 0.92)',
+            color: '#000',
+            padding: `${Math.max(8, tileSize * 0.15)}px ${Math.max(16, tileSize * 0.3)}px`,
+            borderRadius: Math.max(8, tileSize * 0.15),
+            fontSize: Math.max(14, tileSize * 0.24),
+            fontWeight: 'bold',
+            fontFamily: 'Menlo, monospace',
+            zIndex: 10,
+            display: 'flex',
+            gap: 12,
+            alignItems: 'center',
+          }}
+        >
+          <span>READY TO MINE</span>
         </div>
       )}
 

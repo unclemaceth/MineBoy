@@ -1064,6 +1064,8 @@ function Home() {
   const hashLcdText = formatHashForDisplay(currentDisplayHash);
   const statusLcdText = !isConnected ? 'DISCONNECTED' : 
                        !sessionId ? 'DISCONNECTED' :
+                       status === 'found' ? 'SUCCESS' :
+                       status === 'claimed' ? 'READY' :
                        mining ? attempts.toLocaleString() : 'READY';
   const hashRateLcdText = `${hr.toLocaleString()} H/s`;
   
