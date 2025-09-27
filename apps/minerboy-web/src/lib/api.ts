@@ -319,7 +319,7 @@ export async function apiGetUserTeamChoice(wallet: `0x${string}`, season?: strin
   return r.json();
 }
 
-export async function apiChooseTeam(wallet: `0x${string}`, teamSlug: string): Promise<{
+export async function apiChooseTeam(wallet: `0x${string}`, teamSlug: string, nonce: string, expiry: string, sig: string): Promise<{
   ok: boolean;
   season_id: number;
   season_slug: string;
@@ -329,7 +329,7 @@ export async function apiChooseTeam(wallet: `0x${string}`, teamSlug: string): Pr
   const r = await fetch(`${BASE}/v2/teams/choose`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ wallet, team_slug: teamSlug }),
+    body: JSON.stringify({ wallet, team_slug: teamSlug, nonce, expiry, sig }),
   });
   if (r.status === 409) {
     const { error } = await r.json();
@@ -337,7 +337,7 @@ export async function apiChooseTeam(wallet: `0x${string}`, teamSlug: string): Pr
   }
   if (r.status === 400) {
     const { error } = await r.json();
-    throw new Error(error); // 'no_active_team_season'
+    throw new Error(error); // 'no_active_team_season', 'invalid_nonce', 'expired', 'bad_sig'
   }
   if (!r.ok) throw new Error('Failed to choose team');
   return r.json();

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
-import { apiListTeams, apiGetUserTeamChoice, apiChooseTeam, Team } from '@/lib/api';
+import { apiListTeams, apiGetUserTeamChoice, apiChooseTeam, apiGetNameNonce, Team } from '@/lib/api';
 
 function ConfirmJoinModal({
   team,
@@ -59,6 +59,8 @@ function ConfirmJoinModal({
           <br /><br />
           <span style={{ color: '#ffaa44', fontSize: 12 }}>
             You cannot change teams once selected!
+            <br />
+            Requires wallet signature to confirm.
           </span>
         </div>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
@@ -158,7 +160,29 @@ export default function TeamSelector() {
     if (!confirmTeam || !address) return;
     setLoading(true);
     try {
-      const res = await apiChooseTeam(address as `0x${string}`, confirmTeam.slug);
+      // Get nonce for signature
+      const { nonce } = await apiGetNameNonce(address);
+      const expiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+      
+      // Build message for signature
+      const message = `MineBoy: choose team
+Wallet: ${address}
+Team: ${confirmTeam.slug}
+Nonce: ${nonce}
+Expires: ${expiry}`;
+      
+      // Request signature from wallet
+      if (!window.ethereum) {
+        throw new Error('No wallet connected');
+      }
+      const sig = await (window.ethereum as any).request({
+        method: 'personal_sign',
+        params: [message, address],
+      });
+      
+      // Choose team with signature
+      const res = await apiChooseTeam(address as `0x${string}`, confirmTeam.slug, nonce, expiry, sig);
+      
       // Update local state to reflect the team choice
       setMyTeamChoice({
         chosen: true,
@@ -168,7 +192,10 @@ export default function TeamSelector() {
       console.log(`Successfully joined team ${res.team_slug}, attributed ${res.attributed_claims} claims`);
     } catch (e: any) {
       console.error('Failed to join team:', e);
-      if (e.message === 'already_chosen') {
+      if (e.message === 'User rejected the request') {
+        // User cancelled signature - don't show error
+        console.log('Team selection cancelled by user');
+      } else if (e.message === 'already_chosen') {
         // Refresh team choice state
         try {
           const teamChoice = await apiGetUserTeamChoice(address as `0x${string}`);

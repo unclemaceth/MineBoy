@@ -42,16 +42,48 @@ export default async function routes(app: FastifyInstance) {
     }
   });
 
-  // Choose a team for the active TEAM season
+  // Choose a team for the active TEAM season (requires signature)
   app.post('/v2/teams/choose', async (req, reply) => {
     try {
-      const { wallet, team_slug } = req.body as { wallet?: string; team_slug?: string };
+      const { wallet, team_slug, nonce, expiry, sig } = req.body as { 
+        wallet?: string; 
+        team_slug?: string; 
+        nonce?: string; 
+        expiry?: string; 
+        sig?: string; 
+      };
       
-      if (!wallet || !team_slug) {
-        return reply.code(400).send({ error: 'wallet and team_slug required in request body' });
+      if (!wallet || !team_slug || !nonce || !expiry || !sig) {
+        return reply.code(400).send({ error: 'wallet, team_slug, nonce, expiry, and sig required' });
+      }
+
+      const db = getDB();
+      
+      // Verify nonce
+      const nonceValid = await verifyAndConsumeNameNonce(db, wallet, nonce);
+      if (!nonceValid) {
+        return reply.code(400).send({ error: 'invalid_nonce' });
       }
       
-      const db = getDB();
+      // Check expiry
+      const now = Date.now();
+      if (Date.parse(expiry) < now) {
+        return reply.code(400).send({ error: 'expired' });
+      }
+      
+      // Build message and verify signature
+      const message = `MineBoy: choose team
+Wallet: ${getAddress(wallet)}
+Team: ${team_slug}
+Nonce: ${nonce}
+Expires: ${expiry}`;
+      
+      const recovered = await verifyMessage(message, sig);
+      if (getAddress(recovered) !== getAddress(wallet)) {
+        return reply.code(400).send({ error: 'bad_sig' });
+      }
+      
+      // Choose the team
       const result = await chooseTeam(db, wallet, team_slug);
       
       return reply.send({ 
