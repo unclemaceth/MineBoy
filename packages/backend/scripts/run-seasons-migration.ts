@@ -18,15 +18,9 @@ async function main() {
     // Read the migration SQL file
     const migrationSql = readFileSync('./migrations/2025-seasons-system.sql', 'utf8');
     
-    // Split by semicolons and execute each statement
-    const statements = migrationSql.split(';').filter(stmt => stmt.trim());
-    
-    for (const statement of statements) {
-      if (statement.trim()) {
-        console.log('📝 Executing:', statement.trim().substring(0, 100) + '...');
-        await pool.query(statement);
-      }
-    }
+    // Execute the entire migration as one block to handle DO $$ blocks properly
+    console.log('📝 Executing seasons migration...');
+    await pool.query(migrationSql);
     
     await pool.end();
     console.log('✅ Seasons system migration completed successfully');
