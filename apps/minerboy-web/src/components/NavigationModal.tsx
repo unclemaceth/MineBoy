@@ -109,6 +109,9 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
   );
 }
 
+// Consistent grid template for all leaderboard rows
+const GRID_COLS = '40px 1.7fr 0.9fr minmax(72px,100px)';
+
 // Leaderboard Content Component
 function LeaderboardContent() {
   const { address } = useAccount();
@@ -245,7 +248,7 @@ function LeaderboardContent() {
               key={e.wallet} 
               style={{
                 display: 'grid',
-                gridTemplateColumns: '40px 1.8fr 0.6fr 100px',
+                gridTemplateColumns: GRID_COLS,
                 gap: '8px',
                 padding: '8px 12px',
                 borderBottom: index === (data.entries?.length || 0) - 1 ? 'none' : '1px solid #1a3d24',
@@ -257,21 +260,22 @@ function LeaderboardContent() {
             >
               <div style={{ fontWeight: 'bold' }}>{e.rank}</div>
               <div style={{
-                fontFamily: 'monospace',
-                overflow: e.arcade_name ? 'visible' : 'hidden',
-                textOverflow: e.arcade_name ? 'unset' : 'ellipsis',
-                whiteSpace: 'nowrap'
+                minWidth: 0,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                fontFamily: 'monospace'
               }}>
                 {e.arcade_name ?? e.walletShort}
               </div>
               <div style={{ 
-                fontSize: '12px', 
-                color: '#64FF8A', 
-                fontWeight: '700',
-                overflow: 'hidden', 
+                minWidth: 0,
+                overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
-                maxWidth: '80px'
+                fontSize: '12px',
+                color: '#64FF8A',
+                fontWeight: '700'
               }}>
                 {e.team_name ?? '—'}
               </div>
@@ -306,7 +310,7 @@ function LeaderboardContent() {
           </div>
           <div style={{
             display: 'grid',
-            gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
+            gridTemplateColumns: GRID_COLS,
             gap: '8px',
             padding: '8px 12px',
             fontSize: '10px',
@@ -317,21 +321,22 @@ function LeaderboardContent() {
           }}>
             <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
             <div style={{
-              fontFamily: 'monospace',
+              minWidth: 0,
               overflow: 'hidden',
               textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap'
+              whiteSpace: 'nowrap',
+              fontFamily: 'monospace'
             }}>
               {data.me.arcade_name ?? data.me.walletShort}
             </div>
             <div style={{ 
-              fontSize: '12px', 
-              color: '#64FF8A', 
-              fontWeight: '700',
-              overflow: 'hidden', 
+              minWidth: 0,
+              overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap',
-              maxWidth: '80px'
+              fontSize: '12px',
+              color: '#64FF8A',
+              fontWeight: '700'
             }}>
               {data.me.team_name ?? '—'}
             </div>

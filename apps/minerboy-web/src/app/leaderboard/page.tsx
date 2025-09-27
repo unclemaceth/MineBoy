@@ -52,6 +52,9 @@ function formatUpdateTime(isoString?: string) {
   });
 }
 
+// Consistent grid template for all leaderboard rows
+const GRID_COLS = '40px 1.7fr 0.9fr minmax(72px,100px)';
+
 export default function LeaderboardPage() {
   const { address } = useAccount();
   const [period, setPeriod] = useState<'all'|'24h'|'7d'>('all');
@@ -215,7 +218,7 @@ export default function LeaderboardPage() {
             padding: '8px 12px',
             borderBottom: '1px solid #3a8a4d',
             display: 'grid',
-            gridTemplateColumns: '40px 1.8fr 0.6fr 100px',
+            gridTemplateColumns: GRID_COLS,
             gap: '8px',
             fontSize: '10px',
             fontWeight: 'bold',
@@ -258,7 +261,7 @@ export default function LeaderboardPage() {
                   padding: '8px 12px',
                   borderBottom: index < data.entries.length - 1 ? '1px solid #1a4d2a' : 'none',
                   display: 'grid',
-                  gridTemplateColumns: '40px 1.8fr 0.6fr 100px',
+                  gridTemplateColumns: GRID_COLS,
                   gap: '8px',
                   fontSize: '10px',
                   color: '#c8ffc8',
@@ -267,24 +270,25 @@ export default function LeaderboardPage() {
               >
                 <div style={{ fontWeight: 'bold' }}>{e.rank}</div>
                 <div style={{ 
-                  fontFamily: 'monospace',
-                  overflow: e.arcade_name ? 'visible' : 'hidden',
-                  textOverflow: e.arcade_name ? 'unset' : 'ellipsis',
-                  whiteSpace: 'nowrap'
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'monospace'
                 }}>
                   {e.arcade_name ?? e.walletShort}
                 </div>
-                        <div style={{
-                          fontSize: '12px',
-                          fontWeight: '700',
-                          color: '#64FF8A',
-                          maxWidth: '100px',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}>
-                          {e.team_name ?? '—'}
-                        </div>
+                <div style={{
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: '12px',
+                  color: '#64FF8A',
+                  fontWeight: '700'
+                }}>
+                  {e.team_name ?? '—'}
+                </div>
                 <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{e.totalABIT}</div>
               </div>
             ))}
@@ -317,7 +321,7 @@ export default function LeaderboardPage() {
             </div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: '40px 1.4fr 0.8fr 100px',
+              gridTemplateColumns: GRID_COLS,
               gap: '8px',
               padding: '8px 12px',
               fontSize: '10px',
@@ -328,21 +332,22 @@ export default function LeaderboardPage() {
             }}>
               <div style={{ fontWeight: 'bold' }}>#{data.me.rank ?? '—'}</div>
               <div style={{
-                fontFamily: 'monospace',
+                minWidth: 0,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                fontFamily: 'monospace'
               }}>
                 {data.me.arcade_name ?? data.me.walletShort}
               </div>
               <div style={{
-                fontSize: '12px',
-                fontWeight: '700',
-                color: '#64FF8A',
-                whiteSpace: 'nowrap',
+                minWidth: 0,
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
-                maxWidth: '80px'
+                whiteSpace: 'nowrap',
+                fontSize: '12px',
+                color: '#64FF8A',
+                fontWeight: '700'
               }}>
                 {data.me.team_name ?? '—'}
               </div>
