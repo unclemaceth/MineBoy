@@ -255,22 +255,36 @@ export async function getTeamLeaderboard(
   season: Season
 ): Promise<Array<{ team_slug: string; members: number; total_wei: string; rank: number }>> {
   const res = await db.pool.query(
-    `WITH cleaned AS (
-       SELECT
-         team_slug,
-         wallet,
-         NULLIF(amount_wei::text, '')::numeric AS amt   -- safe cast
-       FROM claim_team_attributions
-       WHERE season_id = $1
-     )
-     SELECT
-       team_slug,
-       COUNT(DISTINCT wallet)                     AS members,
-       COALESCE(SUM(amt), 0)                      AS total_wei,
-       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt),0) DESC) AS rank
-     FROM cleaned
-     GROUP BY team_slug
-     ORDER BY total_wei DESC`,
+    `
+    WITH mem AS (
+      SELECT LOWER(wallet) AS wallet, team_slug
+      FROM user_teams
+      WHERE season_id = $1
+    ),
+    attrib AS (
+      SELECT LOWER(wallet) AS wallet,
+             team_slug,
+             NULLIF(amount_wei::text,'')::numeric AS amt
+      FROM claim_team_attributions
+      WHERE season_id = $1
+    ),
+    agg AS (
+      SELECT m.team_slug,
+             COUNT(DISTINCT m.wallet)                          AS members,
+             COALESCE(SUM(a.amt), 0)                           AS total_wei
+      FROM mem m
+      LEFT JOIN attrib a
+        ON a.wallet = m.wallet
+       AND a.team_slug = m.team_slug
+      GROUP BY m.team_slug
+    )
+    SELECT team_slug,
+           members,
+           total_wei,
+           ROW_NUMBER() OVER (ORDER BY total_wei DESC, members DESC, team_slug ASC) AS rank
+    FROM agg
+    ORDER BY total_wei DESC, members DESC, team_slug ASC
+    `,
     [season.id]
   );
   return res.rows;
