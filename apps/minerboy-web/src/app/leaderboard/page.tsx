@@ -429,8 +429,8 @@ export default function LeaderboardPage() {
           <ArcadeNameSelector />
         </div>
 
-        {/* Team Standings */}
-        <TeamStandings />
+        {/* Team Standings - Commented out as team data is now integrated into main leaderboard */}
+        {/* <TeamStandings /> */}
       </div>
     </Stage>
   );
