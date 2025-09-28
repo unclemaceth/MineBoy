@@ -114,4 +114,31 @@ export default async function routes(app: FastifyInstance) {
       return reply.code(500).send({ error: 'Failed to get season status' });
     }
   });
+
+  // Manual retro-attribution for testing
+  app.post('/v2/admin/retro-attribute', { preHandler: adminOnly }, async (request, reply) => {
+    try {
+      const { wallet, team_slug } = request.body as { wallet?: string; team_slug?: string };
+      
+      if (!wallet || !team_slug) {
+        return reply.code(400).send({ error: 'wallet and team_slug required' });
+      }
+
+      const db = getDB();
+      const { chooseTeam } = await import('../seasons.js');
+      
+      // This will run retro-attribution
+      const result = await chooseTeam(db, wallet, team_slug);
+      
+      return reply.send({
+        ok: true,
+        message: `Retro-attributed ${result.attributedClaims} claims for ${wallet} to team ${team_slug}`,
+        attributedClaims: result.attributedClaims,
+        alreadyChosen: result.alreadyChosen
+      });
+    } catch (error: any) {
+      app.log.error('Failed to retro-attribute:', error);
+      return reply.code(500).send({ error: 'Failed to retro-attribute', message: error.message });
+    }
+  });
 }

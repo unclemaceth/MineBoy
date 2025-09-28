@@ -44,22 +44,44 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
         // Get leaderboard entries
         const entriesRaw = await getIndividualLeaderboard(db, season, limit, offset);
         
-        // Get arcade names for top entries
+        // Get arcade names and team info for top entries
         const wallets = entriesRaw.map(e => e.wallet);
         const arcadeNames = wallets.length > 0 ? await db.pool.query(
           `SELECT LOWER(wallet) as wallet, name as arcade_name FROM user_names WHERE LOWER(wallet) = ANY($1)`,
           [wallets]
         ) : { rows: [] };
         
+        const teamInfo = wallets.length > 0 ? await db.pool.query(
+          `SELECT LOWER(ut.wallet) as wallet, ut.team_slug, t.name as team_name, t.emoji as team_emoji, t.color as team_color
+           FROM user_teams ut
+           JOIN teams t ON t.slug = ut.team_slug
+           JOIN seasons s ON s.id = ut.season_id
+           WHERE LOWER(ut.wallet) = ANY($1) AND s.scope = 'TEAM' AND s.is_active = true`,
+          [wallets]
+        ) : { rows: [] };
+        
         const nameMap = new Map(arcadeNames.rows.map(r => [r.wallet, r.arcade_name]));
+        const teamMap = new Map(teamInfo.rows.map(r => [r.wallet, {
+          team_slug: r.team_slug,
+          team_name: r.team_name,
+          team_emoji: r.team_emoji,
+          team_color: r.team_color
+        }]));
 
-        const entries = entriesRaw.map(e => ({
-          rank: e.rank,
-          wallet: e.wallet,
-          walletShort: shortAddrLast8(e.wallet),
-          totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
-          arcade_name: nameMap.get(e.wallet.toLowerCase()) ?? undefined,
-        }));
+        const entries = entriesRaw.map(e => {
+          const team = teamMap.get(e.wallet.toLowerCase());
+          return {
+            rank: e.rank,
+            wallet: e.wallet,
+            walletShort: shortAddrLast8(e.wallet),
+            totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+            arcade_name: nameMap.get(e.wallet.toLowerCase()) ?? undefined,
+            team_slug: team?.team_slug ?? undefined,
+            team_name: team?.team_name ?? undefined,
+            team_emoji: team?.team_emoji ?? undefined,
+            team_color: team?.team_color ?? undefined,
+          };
+        });
 
         // Get user's rank if wallet provided
         let me: any = null;
@@ -89,12 +111,27 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
               [wallet]
             );
             
+            const userTeamInfo = await db.pool.query(
+              `SELECT ut.team_slug, t.name as team_name, t.emoji as team_emoji, t.color as team_color
+               FROM user_teams ut
+               JOIN teams t ON t.slug = ut.team_slug
+               JOIN seasons s ON s.id = ut.season_id
+               WHERE LOWER(ut.wallet) = LOWER($1) AND s.scope = 'TEAM' AND s.is_active = true`,
+              [wallet]
+            );
+            
+            const team = userTeamInfo.rows[0];
+            
             me = {
               rank: parseInt(userRow.rank),
               wallet,
               walletShort: shortAddrLast8(wallet),
               totalABIT: toAbitString(userRow.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
               arcade_name: userArcadeName.rows[0]?.arcade_name ?? undefined,
+              team_slug: team?.team_slug ?? undefined,
+              team_name: team?.team_name ?? undefined,
+              team_emoji: team?.team_emoji ?? undefined,
+              team_color: team?.team_color ?? undefined,
             };
           } else {
             me = {
