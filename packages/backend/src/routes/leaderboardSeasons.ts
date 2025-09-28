@@ -253,7 +253,7 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
         // Get team members with their ABIT totals
         const membersResult = await db.pool.query(
           `WITH mem AS (
-             SELECT wallet, created_at AS joined_at
+             SELECT wallet, chosen_at AS joined_at
              FROM user_teams
              WHERE season_id = $1 AND team_slug = $2
            ),
@@ -272,9 +272,9 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
                   m.joined_at,
                   COALESCE(a.total_wei,0) AS total_wei
            FROM mem m
-           LEFT JOIN agg a USING(wallet)
-           LEFT JOIN names n USING(wallet)
-           ORDER BY a.total_wei DESC NULLS LAST, m.joined_at ASC`,
+           LEFT JOIN agg a ON a.wallet = m.wallet
+           LEFT JOIN names n ON n.wallet = m.wallet
+           ORDER BY COALESCE(a.total_wei,0) DESC, m.joined_at ASC`,
           [season.id, teamSlug]
         );
 
