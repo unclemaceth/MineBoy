@@ -122,7 +122,7 @@ export async function chooseTeam(
     const effectiveTeam = choice.rows[0]?.team_slug;
     if (!effectiveTeam) throw new Error('Failed to read team choice');
 
-    // Idempotent retro-attribute all *confirmed* claims for this wallet into this season
+    // Idempotent retro-attribute confirmed claims within TEAM season window
     const attrib = await db.pool.query(
       `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
        SELECT
@@ -135,6 +135,8 @@ export async function chooseTeam(
        FROM claims c
        WHERE c.status = 'confirmed'
          AND LOWER(c.wallet) = LOWER($3)
+         AND to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000)
+             BETWEEN $4 AND COALESCE($5, NOW())
          -- avoid dupes if we re-run
          AND NOT EXISTS (
            SELECT 1 FROM claim_team_attributions x
@@ -142,7 +144,7 @@ export async function chooseTeam(
          )
        ON CONFLICT DO NOTHING
        RETURNING claim_id`,
-      [season.id, effectiveTeam, lcWallet]
+      [season.id, effectiveTeam, lcWallet, season.starts_at, season.ends_at]
     );
 
     await db.pool.query('COMMIT');

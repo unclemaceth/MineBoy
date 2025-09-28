@@ -371,18 +371,25 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     return a.last_confirmed_at - b.last_confirmed_at;
   });
   
-  // Get team data for the top wallets
+  // Get team data for the top wallets - gracefully handle missing seasons
+  let seasonId: number | null = null;
   try {
-    const seasonId = await getCurrentSeasonId(d);
-    console.log('[getLeaderboardTop] results.length:', results.length, 'limit:', limit);
-    console.log('[getLeaderboardTop] results.slice(0, limit).length:', results.slice(0, limit).length);
-    const topWallets = results.slice(0, limit).map(r => r.wallet.toLowerCase());
-    
+    seasonId = await getCurrentSeasonId(d);
     console.log('[getLeaderboardTop] seasonId:', seasonId);
-    console.log('[getLeaderboardTop] topWallets:', topWallets.slice(0, 3));
-    
-    let teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
-    
+  } catch (error) {
+    console.warn('[getLeaderboardTop] No active season found:', error.message);
+    // Continue without team data
+  }
+
+  console.log('[getLeaderboardTop] results.length:', results.length, 'limit:', limit);
+  console.log('[getLeaderboardTop] results.slice(0, limit).length:', results.slice(0, limit).length);
+  const topWallets = results.slice(0, limit).map(r => r.wallet.toLowerCase());
+  
+  console.log('[getLeaderboardTop] topWallets:', topWallets.slice(0, 3));
+  
+  let teamData = new Map<string, { slug: string; name: string; emoji?: string; color?: string }>();
+  
+  if (seasonId) {
     const topWalletsLc = topWallets.map(w => w.toLowerCase());
 
     const teamRows = topWalletsLc.length
@@ -409,14 +416,15 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
         color: row.color,
       });
     }
+  }
 
-    // Get arcade names for the top wallets
-    const nameRows = topWalletsLc.length
-      ? await d.pool.query(`SELECT wallet, name FROM user_names WHERE wallet = ANY($1::text[])`, [topWalletsLc])
-      : { rows: [] };
+  // Get arcade names for the top wallets (always available, not season-dependent)
+  const nameRows = topWallets.length
+    ? await d.pool.query(`SELECT wallet, name FROM user_names WHERE wallet = ANY($1::text[])`, [topWallets])
+    : { rows: [] };
 
-    const nameMap = new Map<string, string>();
-    for (const r of nameRows.rows) nameMap.set(r.wallet.toLowerCase(), r.name);
+  const nameMap = new Map<string, string>();
+  for (const r of nameRows.rows) nameMap.set(r.wallet.toLowerCase(), r.name);
 
     const finalResults = results.slice(0, limit).map(result => {
       const team = teamData.get(result.wallet.toLowerCase());
@@ -590,7 +598,15 @@ export type TeamStanding = {
 };
 
 export async function getTeamStandings(db: any, period: Period): Promise<TeamStanding[]> {
-  const seasonId = await getCurrentSeasonId(db);
+  let seasonId: number | null = null;
+  try {
+    seasonId = await getCurrentSeasonId(db);
+  } catch (error) {
+    console.warn('[getTeamStandings] No active season found:', error.message);
+    // Return empty standings if no active season
+    return [];
+  }
+  
   const since = sinceForPeriod(period);
   
   const result = await db.pool.query(

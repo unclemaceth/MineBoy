@@ -50,7 +50,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
           // Find rank in the main leaderboard entries (consistent with displayed ranking)
           const myRank = entriesRaw.findIndex(e => e.wallet.toLowerCase() === wallet.toLowerCase());
           
-          // Look up team for "me"
+          // Look up team for "me" - gracefully handle missing seasons
           let meTeam: any = null;
           try {
             const { getDB, getCurrentSeasonId } = await import('../db.js');
@@ -66,7 +66,8 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
             );
             meTeam = rows[0] || null;
           } catch (error) {
-            console.error('[leaderboard] Error fetching user team:', error);
+            console.warn('[leaderboard] No active season or team lookup failed:', error.message);
+            // Don't fail the entire request - just skip team data
           }
 
           me = {
