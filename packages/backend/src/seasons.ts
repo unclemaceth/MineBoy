@@ -101,10 +101,10 @@ export async function chooseTeam(
 
   await db.pool.query('BEGIN');
   try {
-    // Insert or detect existing team choice (no throw)
+    // insert-or-noop user choice
     const ins = await db.pool.query(
-      `INSERT INTO user_teams(season_id, wallet, team_slug)
-       VALUES($1,$2,$3)
+      `INSERT INTO user_teams (season_id, wallet, team_slug)
+       VALUES ($1,$2,$3)
        ON CONFLICT (season_id, wallet) DO NOTHING
        RETURNING team_slug`,
       [season.id, lcWallet, teamSlug]
@@ -112,23 +112,20 @@ export async function chooseTeam(
 
     const alreadyChosen = ins.rowCount === 0;
 
-    // Fetch effective team (existing row or just inserted)
-    const choice = alreadyChosen
-      ? await db.pool.query(
-          `SELECT team_slug FROM user_teams WHERE season_id=$1 AND wallet=$2`,
-          [season.id, lcWallet]
-        )
+    // effective team (if already chosen, read it)
+    const teamRow = alreadyChosen
+      ? await db.pool.query(`SELECT team_slug FROM user_teams WHERE season_id=$1 AND wallet=$2`, [season.id, lcWallet])
       : ins;
-    const effectiveTeam = choice.rows[0]?.team_slug;
+    const effectiveTeam = teamRow.rows[0]?.team_slug;
     if (!effectiveTeam) throw new Error('Failed to read team choice');
 
-    // Idempotent retro-attribute confirmed claims within TEAM season window
+    // 🔑 retro-attribute ONLY claims within TEAM season window (BIGINT ms -> timestamptz)
     const attrib = await db.pool.query(
       `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
        SELECT
          c.id,
-         $2,                     -- team_slug (effective)
-         $1,                     -- season_id
+         $2,
+         $1,
          LOWER(c.wallet),
          c.amount_wei,
          to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000)
@@ -136,8 +133,7 @@ export async function chooseTeam(
        WHERE c.status = 'confirmed'
          AND LOWER(c.wallet) = LOWER($3)
          AND to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000)
-             BETWEEN $4 AND COALESCE($5, NOW())
-         -- avoid dupes if we re-run
+             BETWEEN $4::timestamptz AND COALESCE($5::timestamptz, NOW())
          AND NOT EXISTS (
            SELECT 1 FROM claim_team_attributions x
            WHERE x.season_id = $1 AND x.claim_id = c.id
@@ -253,8 +249,7 @@ export async function getTeamLeaderboard(
 ): Promise<Array<{ team_slug: string; members: number; total_wei: string; rank: number }>> {
   const res = await db.pool.query(
     `WITH cleaned AS (
-       SELECT team_slug, wallet,
-              NULLIF(amount_wei, '') AS amt
+       SELECT team_slug, wallet, NULLIF(amount_wei, '') AS amt
        FROM claim_team_attributions
        WHERE season_id = $1
      )
@@ -262,7 +257,7 @@ export async function getTeamLeaderboard(
        team_slug,
        COUNT(DISTINCT wallet) AS members,
        COALESCE(SUM(amt::numeric), 0) AS total_wei,
-       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt::numeric), 0) DESC) AS rank
+       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt::numeric),0) DESC) AS rank
      FROM cleaned
      GROUP BY team_slug
      ORDER BY total_wei DESC`,

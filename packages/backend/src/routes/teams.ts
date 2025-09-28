@@ -89,22 +89,28 @@ Expires: ${expiry}`;
       
       return reply.code(200).send({ 
         ok: true, 
+        chosen: true,
         season: { id: result.season.id, slug: result.season.slug },
         already_chosen: result.alreadyChosen,
         attributed_claims: result.attributedClaims
       });
-    } catch (error: any) {
-      app.log.error({ err: error, wallet, team_slug }, 'Failed to choose team');
+    } catch (err: any) {
+      // 🔴 Log the real error with full details
+      app.log.error({ err, body: req.body }, 'Failed to choose team');
       
-      // Friendly duplicate-key signal to the client
-      if (error?.code === '23505') {
-        return reply.code(200).send({
-          ok: true,
-          already_chosen: true,
-          attributed_claims: 0,
+      if (err?.code === '23505') {
+        // duplicate key on (season_id, wallet) -> treat as already chosen
+        return reply.code(200).send({ 
+          ok: true, 
+          chosen: true, 
+          already_chosen: true, 
+          attributed_claims: 0 
         });
       }
-      if (error.message === 'No active TEAM season') {
+      if (err?.name === 'SignatureError' || err?.name === 'NonceError') {
+        return reply.code(400).send({ ok: false, error: err.name });
+      }
+      if (err.message === 'No active TEAM season') {
         return reply.code(400).send({ error: 'no_active_team_season', message: 'No active TEAM season' });
       }
       

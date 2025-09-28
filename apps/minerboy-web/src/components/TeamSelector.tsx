@@ -185,17 +185,19 @@ Expires: ${expiry}`;
       
       console.log(`Successfully joined team ${res.team_slug}, attributed ${res.attributed_claims} claims`);
       
-      // Update local state directly (like ArcadeNameSelector does)
-      setMyTeamChoice({
-        chosen: true,
-        team_slug: res.team_slug,
-        season: { slug: res.season_slug, id: res.season_id }
-      });
-      setHasActiveTeamSeason(true);
-      
-      // Close modal after successful team selection
-      setShowConfirm(false);
-      setConfirmTeam(null);
+      // Only update state if API confirms team was chosen
+      if (res.ok && res.chosen) {
+        setMyTeamChoice({
+          chosen: true,
+          team_slug: res.team_slug,
+          season: { slug: res.season_slug, id: res.season_id }
+        });
+        setHasActiveTeamSeason(true);
+        
+        // Close modal after successful team selection
+        setShowConfirm(false);
+        setConfirmTeam(null);
+      }
     } catch (e: any) {
       console.error('Failed to join team:', e);
       if (e.message === 'User rejected the request') {

@@ -216,7 +216,7 @@ export async function apiPickTeam(wallet: `0x${string}`, teamSlug: string) {
 }
 
 export async function apiLeaderboardTeams() {
-  const r = await fetch(`${BASE}/v2/leaderboard/teams`, { cache: 'no-store' });
+  const r = await fetch(`${BASE}/v2/leaderboard/team?season=active`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch team standings');
   return r.json() as Promise<Array<Team & { members: number; total_score: string }>>;
 }
