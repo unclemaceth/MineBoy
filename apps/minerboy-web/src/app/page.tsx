@@ -803,7 +803,7 @@ function Home() {
           pushLine('Opening wallet for transaction...');
           
           // Use the proper MiningClaimRouter contract
-          const routerAddress = process.env.NEXT_PUBLIC_MINING_CLAIM_ROUTER_ADDRESS;
+          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
           
           // Use the claim data from backend (properly formatted)
           const claimData = {
@@ -822,16 +822,15 @@ function Home() {
             address: routerAddress as `0x${string}`,
             abi: [
               {
-                name: 'claim',
+                name: 'claimV2',
                 type: 'function',
-                stateMutability: 'nonpayable',
+                stateMutability: 'payable',
                 inputs: [
                   { name: 'claimData', type: 'tuple', components: [
                     { name: 'wallet', type: 'address' },
                     { name: 'cartridge', type: 'address' },
                     { name: 'tokenId', type: 'uint256' },
                     { name: 'rewardToken', type: 'address' },
-                    { name: 'rewardAmount', type: 'uint256' },
                     { name: 'workHash', type: 'bytes32' },
                     { name: 'attempts', type: 'uint64' },
                     { name: 'nonce', type: 'bytes32' },
@@ -842,8 +841,9 @@ function Home() {
                 outputs: []
               }
             ],
-            functionName: 'claim',
+            functionName: 'claimV2',
             args: [claimData, to0x(claimResponse.signature)],
+            value: BigInt('1000000000000000'), // 0.001 ETH (0.001 APE)
           });
           
           pushLine('Transaction submitted - waiting for hash...');
