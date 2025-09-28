@@ -254,14 +254,19 @@ export class ClaimProcessor {
     }
 
     // Validate job
-    const job = jobManager.getJob(claimReq.jobId);
+    const job = jobManager.validateJob(claimReq.sessionId, claimReq.jobId, claimReq.preimage.split(':')[0]);
     if (!job) {
-      throw new Error('Job not found');
+      throw new Error('Invalid or expired job');
     }
 
     // Validate hash meets difficulty
-    if (!hashMeetsDifficulty(claimReq.hash, job)) {
+    if (!hashMeetsDifficulty(claimReq.hash, job.suffix || '')) {
       throw new Error('Hash does not meet difficulty requirements');
+    }
+
+    // Validate hash matches preimage (using SHA-256, not keccak256)
+    if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
+      throw new Error('Hash does not match preimage');
     }
 
     // Get cartridge config
