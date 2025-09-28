@@ -93,8 +93,13 @@ export default function ClaimOverlayV2() {
         throw new Error('Missing claim data or signature');
       }
       
+      const routerAddress = (process.env.NEXT_PUBLIC_ROUTER_ADDRESS || contracts.miningClaimRouter) as `0x${string}`;
+      console.log('[CLAIM_DEBUG] Router address:', routerAddress);
+      console.log('[CLAIM_DEBUG] Env var:', process.env.NEXT_PUBLIC_ROUTER_ADDRESS);
+      console.log('[CLAIM_DEBUG] Fallback:', contracts.miningClaimRouter);
+      
       writeContract({
-        address: (process.env.NEXT_PUBLIC_ROUTER_ADDRESS || contracts.miningClaimRouter) as `0x${string}`,
+        address: routerAddress,
         abi: [
           {
             name: 'claimV2',
