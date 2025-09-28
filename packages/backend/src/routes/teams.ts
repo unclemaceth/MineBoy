@@ -44,14 +44,15 @@ export default async function routes(app: FastifyInstance) {
 
   // Choose a team for the active TEAM season (requires signature)
   app.post('/v2/teams/choose', async (req, reply) => {
+    const { wallet, team_slug, nonce, expiry, sig } = req.body as { 
+      wallet?: string; 
+      team_slug?: string; 
+      nonce?: string; 
+      expiry?: string; 
+      sig?: string; 
+    };
+    
     try {
-      const { wallet, team_slug, nonce, expiry, sig } = req.body as { 
-        wallet?: string; 
-        team_slug?: string; 
-        nonce?: string; 
-        expiry?: string; 
-        sig?: string; 
-      };
       
       if (!wallet || !team_slug || !nonce || !expiry || !sig) {
         return reply.code(400).send({ error: 'wallet, team_slug, nonce, expiry, and sig required' });
