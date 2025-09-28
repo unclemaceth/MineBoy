@@ -803,7 +803,7 @@ function Home() {
           pushLine('Opening wallet for transaction...');
           
           // Use the proper MiningClaimRouter contract
-          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
+          const routerAddress = process.env.NEXT_PUBLIC_MINING_CLAIM_ROUTER_ADDRESS;
           
           // Use the claim data from backend (properly formatted)
           const claimData = {

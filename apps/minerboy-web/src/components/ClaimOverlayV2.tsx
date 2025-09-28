@@ -94,7 +94,7 @@ export default function ClaimOverlayV2() {
       }
       
       writeContract({
-        address: contracts.miningClaimRouter as `0x${string}`,
+        address: (process.env.NEXT_PUBLIC_ROUTER_ADDRESS || contracts.miningClaimRouter) as `0x${string}`,
         abi: [
           {
             name: 'claimV2',
