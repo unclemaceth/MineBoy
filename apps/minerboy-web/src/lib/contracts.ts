@@ -35,5 +35,5 @@ export const MINING_CLAIM_ROUTER_ABI = parseAbi([
 ]);
 
 export const contracts = {
-  miningClaimRouter: '0xYOUR_MINING_CLAIM_ROUTER_ADDRESS'
+  miningClaimRouter: '0x5883d7a4a1b503ced7c799baf3d677a23093e564'
 };
