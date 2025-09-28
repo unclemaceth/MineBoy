@@ -7,8 +7,8 @@ import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
 
-// Use static siteUrl to stop metadata mismatch warning
-const siteUrl = 'https://mineboy.app';
+// Use dynamic siteUrl to match current origin (fixes Vercel preview warnings)
+const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://mineboy.app';
 
 export const curtis = {
   id: 33111,

@@ -119,28 +119,31 @@ export async function chooseTeam(
     const effectiveTeam = teamRow.rows[0]?.team_slug;
     if (!effectiveTeam) throw new Error('Failed to read team choice');
 
-    // 🔑 retro-attribute ONLY claims within TEAM season window (BIGINT ms -> timestamptz)
+    // 🔑 retro-attribute ONLY claims within TEAM season window (JOIN seasons to avoid param type issues)
     const attrib = await db.pool.query(
       `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
        SELECT
          c.id,
-         $2,
-         $1,
+         $2,               -- effective team
+         s.id,             -- season id from join
          LOWER(c.wallet),
          c.amount_wei,
          to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000)
        FROM claims c
+       JOIN seasons s ON s.id = $1 AND s.scope = 'TEAM'
        WHERE c.status = 'confirmed'
          AND LOWER(c.wallet) = LOWER($3)
          AND to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000)
-             BETWEEN $4::timestamptz AND COALESCE($5::timestamptz, NOW())
+             >= s.starts_at
+         AND (s.ends_at IS NULL OR
+              to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000) < s.ends_at)
          AND NOT EXISTS (
            SELECT 1 FROM claim_team_attributions x
-           WHERE x.season_id = $1 AND x.claim_id = c.id
+           WHERE x.season_id = s.id AND x.claim_id = c.id
          )
        ON CONFLICT DO NOTHING
        RETURNING claim_id`,
-      [season.id, effectiveTeam, lcWallet, season.starts_at, season.ends_at]
+      [season.id, effectiveTeam, lcWallet]
     );
 
     await db.pool.query('COMMIT');

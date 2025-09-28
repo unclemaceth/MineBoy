@@ -143,7 +143,7 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
           : await getSeasonBySlug(db, seasonParam);
           
         if (!season) {
-          return reply.code(404).send({ error: 'Season not found' });
+          return reply.code(200).send({ season: null, entries: [] });
         }
 
         // Get team leaderboard entries
