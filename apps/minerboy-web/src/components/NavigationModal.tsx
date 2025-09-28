@@ -110,7 +110,7 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
 }
 
 // Consistent grid template for all leaderboard rows
-const GRID_COLS = '40px 1.7fr 0.9fr minmax(72px,100px)';
+const GRID_COLS = '40px minmax(0,1.8fr) minmax(0,0.6fr) 100px';
 
 // Leaderboard Content Component
 function LeaderboardContent() {
@@ -292,13 +292,19 @@ function LeaderboardContent() {
               }}
             >
               <div style={{ fontWeight: 'bold' }}>{entry.rank}</div>
-              <div style={{
-                minWidth: 0,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontFamily: 'monospace'
-              }}>
+              <div 
+                style={{ 
+                  minWidth: 0,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontFamily: 'monospace'
+                }}
+                title={leaderboardType === 'individual' 
+                  ? (entry.arcade_name ?? entry.walletShort ?? entry.wallet)
+                  : (entry.name ?? entry.team_slug)
+                }
+              >
                 {leaderboardType === 'individual' 
                   ? (entry.arcade_name ?? entry.walletShort ?? entry.wallet)
                   : (entry.name ?? entry.team_slug)
@@ -364,13 +370,19 @@ function LeaderboardContent() {
               return (
                 <>
                   <div style={{ fontWeight: 'bold' }}>#{meData?.rank ?? '—'}</div>
-                  <div style={{
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    fontFamily: 'monospace'
-                  }}>
+                  <div 
+                    style={{ 
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      fontFamily: 'monospace'
+                    }}
+                    title={leaderboardType === 'individual' 
+                      ? (meData?.arcade_name ?? meData?.walletShort)
+                      : '—'
+                    }
+                  >
                     {leaderboardType === 'individual' 
                       ? (meData?.arcade_name ?? meData?.walletShort)
                       : '—'

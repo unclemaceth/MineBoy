@@ -46,6 +46,10 @@ CREATE INDEX IF NOT EXISTS cta_season_team_idx ON claim_team_attributions(season
 CREATE INDEX IF NOT EXISTS cta_season_wallet_idx ON claim_team_attributions(season_id, wallet);
 CREATE INDEX IF NOT EXISTS cta_wallet_idx ON claim_team_attributions(wallet);
 
+-- Unique key so attribution per (season, claim) is idempotent
+CREATE UNIQUE INDEX IF NOT EXISTS claim_team_attributions_unique
+ON claim_team_attributions (season_id, claim_id);
+
 -- Add confirmed_at to claims if it doesn't exist
 DO $$ 
 BEGIN

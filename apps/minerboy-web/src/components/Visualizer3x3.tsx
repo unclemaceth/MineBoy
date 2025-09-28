@@ -206,8 +206,8 @@ export default function Visualizer3x3({
         </div>
       )}
 
-      {/* Banner after claim completion */}
-      {!lastFound && claimState === 'idle' && (
+      {/* Banner after claim completion - hide when mining */}
+      {!lastFound && claimState === 'idle' && !mining && (
         <div 
           style={{
             position: 'absolute',

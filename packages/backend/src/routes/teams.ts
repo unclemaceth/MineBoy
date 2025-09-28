@@ -86,23 +86,28 @@ Expires: ${expiry}`;
       // Choose the team
       const result = await chooseTeam(db, wallet, team_slug);
       
-      return reply.send({ 
+      return reply.code(200).send({ 
         ok: true, 
-        season_id: result.season.id,
-        season_slug: result.season.slug,
-        team_slug,
+        season: { id: result.season.id, slug: result.season.slug },
+        already_chosen: result.alreadyChosen,
         attributed_claims: result.attributedClaims
       });
     } catch (error: any) {
-      if (error.code === '23505') { // Unique constraint violation
-        return reply.code(409).send({ error: 'already_chosen', message: 'Team already chosen for this season' });
+      app.log.error({ err: error, wallet, team_slug }, 'Failed to choose team');
+      
+      // Friendly duplicate-key signal to the client
+      if (error?.code === '23505') {
+        return reply.code(200).send({
+          ok: true,
+          already_chosen: true,
+          attributed_claims: 0,
+        });
       }
       if (error.message === 'No active TEAM season') {
         return reply.code(400).send({ error: 'no_active_team_season', message: 'No active TEAM season' });
       }
       
-      app.log.error('Failed to choose team:', error);
-      return reply.code(500).send({ error: 'Failed to choose team', message: error.message });
+      return reply.code(500).send({ ok: false, error: 'choose_team_failed' });
     }
   });
 
