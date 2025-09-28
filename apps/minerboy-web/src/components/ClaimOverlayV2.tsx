@@ -97,16 +97,15 @@ export default function ClaimOverlayV2() {
         address: contracts.miningClaimRouter as `0x${string}`,
         abi: [
           {
-            name: 'claim',
+            name: 'claimV2',
             type: 'function',
-            stateMutability: 'nonpayable',
+            stateMutability: 'payable',
             inputs: [
               { name: 'claimData', type: 'tuple', components: [
                 { name: 'wallet', type: 'address' },
                 { name: 'cartridge', type: 'address' },
                 { name: 'tokenId', type: 'uint256' },
                 { name: 'rewardToken', type: 'address' },
-                { name: 'rewardAmount', type: 'uint256' },
                 { name: 'workHash', type: 'bytes32' },
                 { name: 'attempts', type: 'uint64' },
                 { name: 'nonce', type: 'bytes32' },
@@ -117,14 +116,13 @@ export default function ClaimOverlayV2() {
             outputs: []
           }
         ],
-        functionName: 'claim',
+        functionName: 'claimV2',
         args: [
           {
             wallet: to0x(result.claim.wallet),
             cartridge: to0x(result.claim.cartridge),
             tokenId: BigInt(result.claim.tokenId),
             rewardToken: to0x(result.claim.rewardToken),
-            rewardAmount: BigInt(result.claim.rewardAmount),
             workHash: to0x(result.claim.workHash),
             attempts: BigInt(result.claim.attempts),
             nonce: to0x(result.claim.nonce),
@@ -132,6 +130,7 @@ export default function ClaimOverlayV2() {
           },
           to0x(result.signature)
         ],
+        value: BigInt('1000000000000000'), // 0.001 ETH (0.001 APE)
       });
       
     } catch (error) {
