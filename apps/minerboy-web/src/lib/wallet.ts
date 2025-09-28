@@ -8,7 +8,12 @@ export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
 
 // Use dynamic siteUrl to match current origin (fixes Vercel preview warnings)
-const siteUrl = typeof window !== 'undefined' ? window.location.origin : 'https://mineboy.app';
+const getSiteUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return 'https://mineboy.app';
+};
 
 export const curtis = {
   id: 33111,
@@ -35,8 +40,8 @@ export const wagmiConfig = defaultWagmiConfig({
   metadata: {
     name: 'MineBoy',
     description: 'MineBoy',
-    url: siteUrl,
-    icons: [`${siteUrl}/icon.png`]
+    url: getSiteUrl(),
+    icons: [`${getSiteUrl()}/icon.png`]
   },
   transports: {
     [apechain.id]: http('https://apechain.rpc.thirdweb.com'),
