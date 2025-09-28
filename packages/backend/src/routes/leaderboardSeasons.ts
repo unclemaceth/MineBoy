@@ -189,8 +189,8 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
         reply.header('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
         reply.send(payload);
       } catch (error) {
-        fastify.log.error('Failed to get team leaderboard:', error);
-        return reply.code(500).send({ error: 'Failed to fetch team leaderboard' });
+        fastify.log.error({ error }, 'Failed to get team leaderboard');
+        return reply.code(500).send({ ok: false, error: 'internal_error' });
       }
     }
   );

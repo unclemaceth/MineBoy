@@ -322,11 +322,18 @@ export async function apiGetUserTeamChoice(wallet: `0x${string}`, season?: strin
 export async function apiChooseTeam(wallet: `0x${string}`, teamSlug: string, nonce: string, expiry: string, sig: string): Promise<{
   ok: boolean;
   chosen: boolean;
-  season_id: number;
-  season_slug: string;
-  team_slug: string;
+  already_chosen: boolean;
   attributed_claims: number;
-  already_chosen?: boolean;
+  team: {
+    slug: string;
+    name: string;
+    emoji: string | null;
+  };
+  season: {
+    id: number;
+    slug: string;
+  };
+  team_slug: string; // backward compatibility
 }> {
   const r = await fetch(`${BASE}/v2/teams/choose`, {
     method: 'POST',

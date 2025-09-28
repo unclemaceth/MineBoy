@@ -90,9 +90,18 @@ Expires: ${expiry}`;
       return reply.code(200).send({ 
         ok: true, 
         chosen: true,
-        season: { id: result.season.id, slug: result.season.slug },
         already_chosen: result.alreadyChosen,
-        attributed_claims: result.attributedClaims
+        attributed_claims: result.attributedClaims,
+        team: {
+          slug: team_slug,
+          name: team_slug, // fallback to slug if no team details
+          emoji: null,
+        },
+        season: { 
+          id: result.season.id, 
+          slug: result.season.slug 
+        },
+        team_slug: team_slug, // backward compatibility
       });
     } catch (err: any) {
       // 🔴 Log the real error with full details
@@ -104,7 +113,13 @@ Expires: ${expiry}`;
           ok: true, 
           chosen: true, 
           already_chosen: true, 
-          attributed_claims: 0 
+          attributed_claims: 0,
+          team: {
+            slug: team_slug,
+            name: team_slug,
+            emoji: null,
+          },
+          team_slug: team_slug, // backward compatibility
         });
       }
       if (err?.name === 'SignatureError' || err?.name === 'NonceError') {

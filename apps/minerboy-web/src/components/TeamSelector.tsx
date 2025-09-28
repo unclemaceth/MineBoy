@@ -183,14 +183,14 @@ Expires: ${expiry}`;
       // Choose team with signature
       const res = await apiChooseTeam(address as `0x${string}`, confirmTeam.slug, nonce, expiry, sig);
       
-      console.log(`Successfully joined team ${res.team_slug}, attributed ${res.attributed_claims} claims`);
+      console.log(`Successfully joined team ${res.team?.slug ?? res.team_slug}, attributed ${res.attributed_claims} claims`);
       
       // Only update state if API confirms team was chosen
       if (res.ok && res.chosen) {
         setMyTeamChoice({
           chosen: true,
-          team_slug: res.team_slug,
-          season: { slug: res.season_slug, id: res.season_id }
+          team_slug: res.team.slug,
+          season: { slug: res.season.slug, id: res.season.id }
         });
         setHasActiveTeamSeason(true);
         
