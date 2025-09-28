@@ -124,10 +124,10 @@ export async function chooseTeam(
       `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
        SELECT
          c.id,
-         $2,               -- effective team
-         s.id,             -- season id from join
+         $2,                         -- effective team
+         s.id,                       -- TEAM season
          LOWER(c.wallet),
-         c.amount_wei,
+         (NULLIF(c.amount_wei, '')::numeric),     -- <<< THIS CAST FIXES 42804
          to_timestamp(COALESCE(c.confirmed_at, c.created_at) / 1000)
        FROM claims c
        JOIN seasons s ON s.id = $1 AND s.scope = 'TEAM'
@@ -252,15 +252,18 @@ export async function getTeamLeaderboard(
 ): Promise<Array<{ team_slug: string; members: number; total_wei: string; rank: number }>> {
   const res = await db.pool.query(
     `WITH cleaned AS (
-       SELECT team_slug, wallet, NULLIF(amount_wei, '') AS amt
+       SELECT
+         team_slug,
+         wallet,
+         NULLIF(amount_wei::text, '')::numeric AS amt   -- safe cast
        FROM claim_team_attributions
        WHERE season_id = $1
      )
      SELECT
        team_slug,
-       COUNT(DISTINCT wallet) AS members,
-       COALESCE(SUM(amt::numeric), 0) AS total_wei,
-       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt::numeric),0) DESC) AS rank
+       COUNT(DISTINCT wallet)                     AS members,
+       COALESCE(SUM(amt), 0)                      AS total_wei,
+       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt),0) DESC) AS rank
      FROM cleaned
      GROUP BY team_slug
      ORDER BY total_wei DESC`,
