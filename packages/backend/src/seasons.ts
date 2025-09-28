@@ -226,15 +226,19 @@ export async function getIndividualLeaderboard(
   const endTime = season.ends_at || new Date().toISOString();
   
   const result = await db.pool.query(
-    `SELECT
-       LOWER(wallet) AS wallet,
-       SUM(amount_wei::numeric) AS total_wei,
-       ROW_NUMBER() OVER (ORDER BY SUM(amount_wei::numeric) DESC) AS rank
-     FROM claims
-     WHERE status='confirmed'
-       AND confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
-       AND confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
-     GROUP BY LOWER(wallet)
+    `WITH cleaned AS (
+       SELECT LOWER(wallet) AS wallet, NULLIF(amount_wei::text, '')::numeric AS amt
+       FROM claims
+       WHERE status='confirmed'
+         AND confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
+         AND confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
+     )
+     SELECT
+       wallet,
+       COALESCE(SUM(amt), 0) AS total_wei,
+       ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt), 0) DESC) AS rank
+     FROM cleaned
+     GROUP BY wallet
      ORDER BY total_wei DESC
      LIMIT $3 OFFSET $4`,
     [season.starts_at, endTime, limit, offset]

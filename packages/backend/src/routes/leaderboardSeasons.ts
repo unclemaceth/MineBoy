@@ -65,16 +65,20 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
         let me: any = null;
         if (wallet) {
           const userRankResult = await db.pool.query(
-            `SELECT
-               LOWER(wallet) AS wallet,
-               SUM(amount_wei::numeric) AS total_wei,
-               ROW_NUMBER() OVER (ORDER BY SUM(amount_wei::numeric) DESC) AS rank
-             FROM claims
-             WHERE status='confirmed'
-               AND confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
-               AND confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
-               AND LOWER(wallet) = LOWER($3)
-             GROUP BY LOWER(wallet)`,
+            `WITH cleaned AS (
+               SELECT LOWER(wallet) AS wallet, NULLIF(amount_wei::text, '')::numeric AS amt
+               FROM claims
+               WHERE status='confirmed'
+                 AND confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
+                 AND confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000
+                 AND LOWER(wallet) = LOWER($3)
+             )
+             SELECT
+               wallet,
+               COALESCE(SUM(amt), 0) AS total_wei,
+               ROW_NUMBER() OVER (ORDER BY COALESCE(SUM(amt), 0) DESC) AS rank
+             FROM cleaned
+             GROUP BY wallet`,
             [season.starts_at, season.ends_at || new Date().toISOString(), wallet]
           );
 
@@ -191,6 +195,33 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
       } catch (error) {
         fastify.log.error({ error }, 'Failed to get team leaderboard');
         return reply.code(500).send({ ok: false, error: 'internal_error' });
+      }
+    }
+  );
+
+  // Get active season for a scope
+  fastify.get(
+    '/v2/seasons/active',
+    async (req, reply) => {
+      try {
+        const q: any = req.query || {};
+        const scope = q.scope as 'TEAM' | 'INDIVIDUAL';
+        
+        if (!scope || !['TEAM', 'INDIVIDUAL'].includes(scope)) {
+          return reply.code(400).send({ error: 'scope parameter required (TEAM or INDIVIDUAL)' });
+        }
+
+        const db = getDB();
+        const season = await getActiveSeason(db, scope);
+        
+        if (!season) {
+          return reply.code(200).send({ season: null });
+        }
+        
+        return reply.send({ season });
+      } catch (error) {
+        fastify.log.error({ error }, 'Failed to get active season');
+        return reply.code(500).send({ error: 'Failed to fetch active season' });
       }
     }
   );
