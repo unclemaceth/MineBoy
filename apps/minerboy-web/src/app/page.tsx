@@ -734,7 +734,7 @@ function Home() {
       });
       
       // 3) Try claim with reattach + retry on 409
-      const doClaim = () => api.claim({
+      const doClaim = () => api.claimV2({
         sessionId,
         jobId,
         preimage: hit.preimage,  // exact string from worker
@@ -811,7 +811,6 @@ function Home() {
             cartridge: to0x(claimResponse.claim.cartridge),
             tokenId: BigInt(claimResponse.claim.tokenId),
             rewardToken: to0x(claimResponse.claim.rewardToken),
-            rewardAmount: BigInt(claimResponse.claim.rewardAmount),
             workHash: to0x(claimResponse.claim.workHash),
             attempts: BigInt(claimResponse.claim.attempts),
             nonce: to0x(claimResponse.claim.nonce),
@@ -856,7 +855,20 @@ function Home() {
           
         } catch (txError: unknown) {
           console.error('[TX_ERROR]', txError);
-          pushLine(`Transaction failed: ${txError instanceof Error ? txError.message : String(txError)}`);
+          console.error('[TX_ERROR_DETAILS]', {
+            error: txError,
+            message: txError instanceof Error ? txError.message : String(txError),
+            stack: txError instanceof Error ? txError.stack : undefined
+          });
+          
+          // Try to extract revert reason if it's a contract error
+          let errorMessage = txError instanceof Error ? txError.message : String(txError);
+          if (errorMessage.includes('execution reverted:')) {
+            const revertReason = errorMessage.split('execution reverted:')[1]?.trim();
+            errorMessage = `Contract reverted: ${revertReason}`;
+          }
+          
+          pushLine(`Transaction failed: ${errorMessage}`);
           setStatus('error');
         }
       } else {

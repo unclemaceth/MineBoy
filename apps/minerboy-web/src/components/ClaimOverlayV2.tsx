@@ -70,7 +70,7 @@ export default function ClaimOverlayV2() {
     
     try {
       // Submit claim to backend
-      const result = await api.claim({
+      const result = await api.claimV2({
         sessionId,
         jobId,
         preimage: lastFound.preimage,
@@ -139,7 +139,21 @@ export default function ClaimOverlayV2() {
       });
       
     } catch (error) {
-      pushLine(`Claim failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error('[CLAIM_ERROR]', error);
+      console.error('[CLAIM_ERROR_DETAILS]', {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      
+      // Try to extract revert reason if it's a contract error
+      let errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('execution reverted:')) {
+        const revertReason = errorMessage.split('execution reverted:')[1]?.trim();
+        errorMessage = `Contract reverted: ${revertReason}`;
+      }
+      
+      pushLine(`Claim failed: ${errorMessage}`);
       setClaiming(false);
     }
   };
