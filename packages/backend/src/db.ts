@@ -443,12 +443,6 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
     console.log('[getLeaderboardTop] returning', finalResults.length, 'entries, first has team:', !!finalResults[0]?.team_slug);
     console.log('[getLeaderboardTop] sample entry:', JSON.stringify(finalResults[0], null, 2));
     return finalResults;
-    
-  } catch (error) {
-    console.error('[getLeaderboardTop] Error fetching team data:', error);
-    // Return results without team data if there's an error
-    return results.slice(0, limit);
-  }
 }
 
 export async function getAggregateForWallet(period: Period, wallet: string): Promise<LeaderboardEntry | null> {
