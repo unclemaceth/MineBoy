@@ -59,7 +59,8 @@ export default function MintPage() {
   const enoughTotal = true;
   const { errorReason, isPaused, isSoldOut, hasReachedWalletLimit, isERC20Payment, needsApproval, isLoading: contractLoading } = useContractState();
 
-  const totalCostWei = value;
+  // Backend minting is free, no cost
+  const totalCostWei = 0n;
   
   // Ensure errorReason is a string for rendering
   const displayErrorReason: string | null = errorReason ? String(errorReason) : null;
@@ -211,21 +212,7 @@ export default function MintPage() {
           textAlign: 'center'
         }}>
                  MAX PER TX: 1
-          {priceLoading ? (
-            <span style={{ color: '#ffa500' }}> • LOADING PRICE...</span>
-          ) : priceError ? (
-            <span style={{ color: '#ff6b6b' }}> • PRICE ERROR</span>
-          ) : estTotal ? (
-            <>
-              {" • "}PRICE: <span style={{ fontFamily: 'monospace' }}>{formatEther(mintPrice || BigInt(0))} APE</span>
-              {" • "}TOTAL: <span style={{ fontFamily: 'monospace' }}>{estTotal} APE</span>
-              {feeFormatted && (
-                <span> • FEE: ~<span style={{ fontFamily: 'monospace' }}>{feeFormatted} APE</span></span>
-              )}
-            </>
-                   ) : (
-                     <span style={{ color: '#ffa500' }}> • PRICE: 0.01 APE (fallback)</span>
-                   )}
+          <span style={{ color: '#4a7d5f' }}> • FREE MINT (Backend)</span>
         </div>
 
         {/* Contract State Warnings */}
@@ -304,7 +291,7 @@ export default function MintPage() {
             textAlign: 'center',
             border: '1px solid #ff6b6b'
           }}>
-            ! Not enough APE for mint (need {estTotal} APE, have {formatEther(bal.value)} APE)
+            ! Backend minting is free - no APE required
           </div>
         )}
 
@@ -328,11 +315,8 @@ export default function MintPage() {
           disabled={
             !canMint || 
             isMinting || 
-            isConfirming || 
             isChecking ||
             !isReady || 
-            !enoughTotal || 
-            spendLoading || 
             contractLoading ||
             !!needsApproval ||
             !!error
