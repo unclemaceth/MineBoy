@@ -28,6 +28,7 @@ import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
 import { registerSeasonLeaderboardRoute } from './routes/leaderboardSeasons.js';
 import { registerAdminPollerRoute } from './routes/adminPoller.js';
+import { mintingService } from './minting.js';
 import { registerHealthRoute } from './routes/health.js';
 import teamsRoutes from './routes/teams.js';
 import adminSeasonsRoutes from './routes/adminSeasons.js';
@@ -541,6 +542,57 @@ fastify.post<{ Body: { sessionId: string } }>('/v2/session/close', async (reques
   // Delete session
   await SessionStore.deleteSession(sessionId);
   return { ok: true };
+});
+
+// Mint cartridge endpoint
+fastify.post<{ Body: { wallet: string } }>('/v2/mint', async (request, reply) => {
+  try {
+    const { wallet } = request.body;
+    
+    if (!wallet) {
+      return reply.code(400).send({ error: 'Wallet address required' });
+    }
+    
+    // Normalize wallet address
+    const normalizedWallet = normalizeAddress(wallet);
+    
+    // Mint the cartridge
+    const result = await mintingService.mintCartridge(normalizedWallet);
+    
+    if (result.success) {
+      return {
+        success: true,
+        txHash: result.txHash,
+        message: 'Cartridge minted successfully'
+      };
+    } else {
+      return reply.code(400).send({ 
+        error: result.error || 'Minting failed' 
+      });
+    }
+  } catch (error: any) {
+    fastify.log.error('Error in mint endpoint:', error);
+    return reply.code(500).send({ 
+      error: error.message || 'Internal server error' 
+    });
+  }
+});
+
+// Get mint info endpoint
+fastify.get('/v2/mint/info', async (request, reply) => {
+  try {
+    const supplyInfo = await mintingService.getSupplyInfo();
+    return {
+      totalSupply: supplyInfo.totalSupply,
+      maxSupply: supplyInfo.maxSupply,
+      remaining: supplyInfo.remaining
+    };
+  } catch (error: any) {
+    fastify.log.error('Error getting mint info:', error);
+    return reply.code(500).send({ 
+      error: error.message || 'Failed to get mint info' 
+    });
+  }
 });
 
 // Admin endpoints (basic stats)

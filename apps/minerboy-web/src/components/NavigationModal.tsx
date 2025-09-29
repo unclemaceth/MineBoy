@@ -8,7 +8,7 @@ import TeamSelector from '@/components/TeamSelector';
 import ArcadeNameSelector from '@/components/ArcadeNameSelector';
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
 import { useMintPrice } from '@/hooks/useMintPrice';
-import { useSafeMint } from '@/hooks/useSafeMint';
+import { useBackendMint } from '@/hooks/useBackendMint';
 import { useSpendChecks } from '@/hooks/useSpendChecks';
 import { useContractState } from '@/hooks/useContractState';
 import { useMintCounter } from '@/hooks/useMintCounter';
@@ -545,8 +545,6 @@ function TeamStandings() {
 // Mint Content Component
 function MintContent() {
   const { address, isConnected, chainId } = useAccount();
-  const { writeContract, isPending: isMinting, data: hash } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
   
   const [count] = useState(1); // Fixed to 1 cartridge
   const [mounted, setMounted] = useState(false);
@@ -556,15 +554,17 @@ function MintContent() {
     setMounted(true);
   }, []);
 
-  // Show success message when mint is confirmed
+  // Show success message when mint completes successfully
+  const [lastMintSuccess, setLastMintSuccess] = useState(false);
+  
   useEffect(() => {
-    if (isConfirmed) {
+    if (lastMintSuccess) {
       setShowSuccess(true);
       // Hide success message after 5 seconds
       const timer = setTimeout(() => setShowSuccess(false), 5000);
       return () => clearTimeout(timer);
     }
-  }, [isConfirmed]);
+  }, [lastMintSuccess]);
 
   const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
   const onApeChain = chainId === 33139;
@@ -572,7 +572,7 @@ function MintContent() {
   const canMint = mounted && isConnected && contractAddress && (onApeChain || onCurtis);
 
   const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
-  const { simulate, mint, isReady, estTotal, value } = useSafeMint(count);
+  const { mint, isMinting, error: mintError, isReady } = useBackendMint();
   const { minted, max, remaining, isLoading: counterLoading } = useMintCounter(chainId || 0);
   const { ownedCount, canMint: walletCanMint, isLoading: walletLoading } = useWalletCartridgeCount(address, chainId || 0);
 
@@ -656,22 +656,29 @@ function MintContent() {
       )}
 
       <button
-        onClick={mint}
-        disabled={!isReady || isMinting || isConfirming || remaining === 0 || !walletCanMint}
+        onClick={async () => {
+          try {
+            await mint();
+            setLastMintSuccess(true);
+          } catch (error) {
+            console.error('Mint failed:', error);
+          }
+        }}
+        disabled={!isReady || isMinting || remaining === 0 || !walletCanMint}
         style={{
           padding: '12px 24px',
           borderRadius: '6px',
-          background: isReady && !isMinting && !isConfirming && remaining > 0 && walletCanMint
+          background: isReady && !isMinting && remaining > 0 && walletCanMint
             ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
             : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
           color: '#c8ffc8',
           border: '2px solid #8a8a8a',
-          cursor: isReady && !isMinting && !isConfirming && remaining > 0 && walletCanMint ? 'pointer' : 'not-allowed',
+          cursor: isReady && !isMinting && remaining > 0 && walletCanMint ? 'pointer' : 'not-allowed',
           fontSize: '14px',
           fontWeight: 'bold'
         }}
       >
-        {remaining === 0 ? 'Sold Out!' : !walletCanMint ? 'Already Owned!' : isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : 'Mint'}
+        {remaining === 0 ? 'Sold Out!' : !walletCanMint ? 'Already Owned!' : isMinting ? 'Minting...' : 'Mint'}
       </button>
 
       {/* Already Owned Message */}
@@ -711,18 +718,6 @@ function MintContent() {
         </div>
       )}
 
-      {hash && (
-        <div style={{ marginTop: '16px', fontSize: '12px', color: '#8a8a8a' }}>
-          <a 
-            href={`${EXPLORER_BASE}/tx/${hash}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: '#64ff8a', textDecoration: 'none' }}
-          >
-            View Transaction
-          </a>
-        </div>
-      )}
     </div>
   );
 }
