@@ -13,6 +13,7 @@ import { useWalletModal } from '@/state/walletModal';
 import { useWriteContract } from 'wagmi';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
+import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
 import { useSession, getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
@@ -124,6 +125,7 @@ function Home() {
   const { disconnectWallet } = useActiveDisconnect();
   const { open: openWalletModal } = useWalletModal();
   const { writeContract, data: hash } = useWriteContract();
+  const walletClient = useActiveWalletClient();
   
   // Session state
   const { 
@@ -819,7 +821,7 @@ function Home() {
             expiry: BigInt(claimResponse.claim.expiry)
           };
 
-          writeContract({
+          const contractConfig = {
             address: routerAddress as `0x${string}`,
             abi: [
               {
@@ -845,7 +847,16 @@ function Home() {
             functionName: 'claimV2',
             args: [claimData, to0x(claimResponse.signature)],
             value: BigInt('1000000000000000'), // 0.001 ETH (0.001 APE)
-          });
+          };
+
+          // Use writeContract for Glyph connections, walletClient for Web3Modal
+          if (walletClient) {
+            // For Web3Modal connections, use walletClient directly
+            await walletClient.writeContract(contractConfig);
+          } else {
+            // For Glyph connections, use wagmi's writeContract
+            writeContract(contractConfig);
+          }
           
           pushLine('Transaction submitted - waiting for hash...');
           pushLine('Waiting for confirmation...');
