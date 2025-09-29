@@ -9,29 +9,22 @@ import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
 // Custom Glyph button component - must be inside GlyphProvider
 function CustomGlyphButton() {
-  const glyphConnection = useNativeGlyphConnection();
-  const { connectors } = useConnect();
+  const { connectors, connect, isPending, error } = useConnect();
   
   const handleConnect = async () => {
     try {
       console.log('[Glyph] Custom button clicked');
-      console.log('[Glyph] Connection object:', glyphConnection);
-      console.log('[Glyph] Available methods:', Object.keys(glyphConnection));
       console.log('[Glyph] Available wagmi connectors:', connectors.map(c => c.name));
       
-      const result = await glyphConnection.connect();
-      console.log('[Glyph] Connect result:', result);
-      console.log('[Glyph] Connect called successfully');
-      
-      // Log all available properties on the connection object
-      console.log('[Glyph] All connection properties:', Object.getOwnPropertyNames(glyphConnection));
-      console.log('[Glyph] Connection prototype:', Object.getPrototypeOf(glyphConnection));
-      
-      // Try to find a Glyph connector in wagmi
+      // Find the Glyph connector
       const glyphConnector = connectors.find(c => c.name.toLowerCase().includes('glyph'));
       if (glyphConnector) {
         console.log('[Glyph] Found Glyph connector in wagmi:', glyphConnector.name);
-        // We could try to connect with this connector here
+        console.log('[Glyph] Connecting with wagmi Glyph connector...');
+        
+        // Use wagmi to connect with Glyph
+        await connect({ connector: glyphConnector });
+        console.log('[Glyph] Wagmi connection successful!');
       } else {
         console.log('[Glyph] No Glyph connector found in wagmi connectors');
       }
@@ -43,7 +36,8 @@ function CustomGlyphButton() {
   return (
     <button
       onClick={handleConnect}
-      className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3"
+      disabled={isPending}
+      className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {/* Glyph Logo */}
       <div className="w-6 h-6 flex items-center justify-center">
@@ -78,7 +72,9 @@ function CustomGlyphButton() {
           />
         </svg>
       </div>
-      <span>Create Wallet with Glyph</span>
+      <span>
+        {isPending ? 'Connecting...' : error ? 'Connection Failed' : 'Create Wallet with Glyph'}
+      </span>
     </button>
   );
 }
