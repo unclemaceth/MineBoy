@@ -11,6 +11,7 @@ import { useMintPrice } from '@/hooks/useMintPrice';
 import { useSafeMint } from '@/hooks/useSafeMint';
 import { useSpendChecks } from '@/hooks/useSpendChecks';
 import { useContractState } from '@/hooks/useContractState';
+import { useMintCounter } from '@/hooks/useMintCounter';
 import { formatEther } from 'viem';
 import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../lib/contracts";
 
@@ -560,6 +561,7 @@ function MintContent() {
 
   const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
   const { simulate, mint, isReady, estTotal, value } = useSafeMint(count);
+  const { minted, max, remaining, isLoading: counterLoading } = useMintCounter(chainId || 0);
 
   if (!mounted) {
     return <div style={{ textAlign: 'center', color: '#8a8a8a' }}>Loading...</div>;
@@ -589,6 +591,47 @@ function MintContent() {
     <div style={{ textAlign: 'center' }}>
       <h3 style={{ color: '#64ff8a', marginBottom: '16px' }}>Mint Cartridges</h3>
       
+      {/* Mint Counter */}
+      {!counterLoading && (
+        <div style={{ 
+          marginBottom: '20px', 
+          padding: '12px', 
+          background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+          borderRadius: '6px',
+          border: '1px solid #4a7d5f'
+        }}>
+          <p style={{ color: '#c8ffc8', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
+            {minted} of {max} minted
+          </p>
+          <p style={{ color: '#8a8a8a', fontSize: '14px', margin: '0' }}>
+            {remaining} remaining
+          </p>
+        </div>
+      )}
+
+      {/* Project Explanation */}
+      <div style={{ 
+        marginBottom: '20px', 
+        padding: '12px', 
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        borderRadius: '6px',
+        border: '1px solid #4a7d5f',
+        textAlign: 'left'
+      }}>
+        <p style={{ color: '#c8ffc8', fontSize: '12px', margin: '0 0 8px 0', fontWeight: 'bold' }}>
+          🎮 Mining-Focused Design:
+        </p>
+        <p style={{ color: '#8a8a8a', fontSize: '11px', margin: '0 0 4px 0' }}>
+          • 1 per wallet = 1 MineBoy at a time
+        </p>
+        <p style={{ color: '#8a8a8a', fontSize: '11px', margin: '0 0 4px 0' }}>
+          • Free mint + 0.001 APE mine tax per claim
+        </p>
+        <p style={{ color: '#8a8a8a', fontSize: '11px', margin: '0' }}>
+          • Focus on mining, not flipping
+        </p>
+      </div>
+      
       {priceLoading ? (
         <p style={{ color: '#8a8a8a' }}>Loading price...</p>
       ) : (
@@ -601,21 +644,21 @@ function MintContent() {
 
       <button
         onClick={mint}
-        disabled={!isReady || isMinting || isConfirming}
+        disabled={!isReady || isMinting || isConfirming || remaining === 0}
         style={{
           padding: '12px 24px',
           borderRadius: '6px',
-          background: isReady && !isMinting && !isConfirming 
+          background: isReady && !isMinting && !isConfirming && remaining > 0
             ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
             : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
           color: '#c8ffc8',
           border: '2px solid #8a8a8a',
-          cursor: isReady && !isMinting && !isConfirming ? 'pointer' : 'not-allowed',
+          cursor: isReady && !isMinting && !isConfirming && remaining > 0 ? 'pointer' : 'not-allowed',
           fontSize: '14px',
           fontWeight: 'bold'
         }}
       >
-        {isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : isConfirmed ? 'Minted!' : 'Mint'}
+        {remaining === 0 ? 'Sold Out!' : isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : isConfirmed ? 'Minted!' : 'Mint'}
       </button>
 
       {hash && (

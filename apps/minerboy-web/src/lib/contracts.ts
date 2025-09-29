@@ -14,13 +14,13 @@ export const CARTRIDGE_ABI = APEBIT_CARTRIDGE_ABI;
 
 // Real deployed addresses from Curtis deployment
 export const CONTRACTS: Record<number, { cartridge: `0x${string}` }> = {
-  33139: { cartridge: '0xE2cD7a8182DdC40F620f570c21f315E37dA2f21C' }, // ApeChain - deployed
+  33139: { cartridge: '0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d' }, // ApeChain - new secure contract
   33111: { cartridge: '0xb05fa76709b6bd18c63782e9044ff81430f6769c' }  // Curtis - actual deployed cartridge address
 };
 
 // Additional exports for compatibility with existing code
 export const CARTRIDGE_ADDRESSES: Record<number, `0x${string}`> = {
-  33139: '0xE2cD7a8182DdC40F620f570c21f315E37dA2f21C', // ApeChain - deployed
+  33139: '0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d', // ApeChain - new secure contract
   33111: '0xb05fa76709b6bd18c63782e9044ff81430f6769c'  // Curtis - actual deployed cartridge address
 };
 export const CARTRIDGE_ADDRESS = '0xb05fa76709b6bd18c63782e9044ff81430f6769c'; // Curtis cartridge address
@@ -35,5 +35,5 @@ export const MINING_CLAIM_ROUTER_ABI = parseAbi([
 ]);
 
 export const contracts = {
-  miningClaimRouter: '0x5883d7a4A1b503ced7c799Baf3d677A23093E564'
+  miningClaimRouter: '0x28D5204852D1f788157f909Ad5808f460Ddc6f02'
 };

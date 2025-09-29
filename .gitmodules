@@ -1,0 +1,3 @@
+[submodule "contracts/lib/creator-token-contracts"]
+	path = contracts/lib/creator-token-contracts
+	url = https://github.com/limitbreakinc/creator-token-contracts.git
