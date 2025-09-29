@@ -44,7 +44,7 @@ export default function MintPage() {
 
   // Get contract address for current chain
   const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
-  const onApeChain = chainId === 33133; // APECHAIN
+  const onApeChain = chainId === 33139; // APECHAIN
   const onCurtis = chainId === 33111; // CURTIS
   
   const canMint = mounted && isConnected && contractAddress && (onApeChain || onCurtis);

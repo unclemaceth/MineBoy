@@ -1,7 +1,7 @@
 'use client';
 import { useChainId, useSwitchChain } from 'wagmi';
 
-export const APECHAIN = 33133 as const;
+export const APECHAIN = 33139 as const;
 export const CURTIS  = 33111 as const;
 
 export default function NetworkSwitcher({ target = APECHAIN }:{ target?: number }) {

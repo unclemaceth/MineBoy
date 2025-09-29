@@ -554,7 +554,7 @@ function MintContent() {
   }, []);
 
   const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
-  const onApeChain = chainId === 33133;
+  const onApeChain = chainId === 33139;
   const onCurtis = chainId === 33111;
   const canMint = mounted && isConnected && contractAddress && (onApeChain || onCurtis);
 
