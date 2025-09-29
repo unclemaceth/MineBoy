@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Providers from "./providers";
 import "./globals.css";
 import GlobalWalletModal from "./GlobalWalletModal";
 import MaintenanceGate from "@/components/MaintenanceGate";
 import ClosedOverlay from "@/components/ClosedOverlay";
+import GlyphWalletProvider from "./GlyphWalletProvider";
+import W3MInit from "./W3MInit";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,7 +52,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>
+        <GlyphWalletProvider>
+          <W3MInit />
           {children}
           {/* mounted once globally */}
           <GlobalWalletModal />
@@ -59,7 +61,7 @@ export default function RootLayout({
           <MaintenanceGate />
           {/* CLOSED overlay for main branch - commented out for B branch */}
           {/* <ClosedOverlay /> */}
-        </Providers>
+        </GlyphWalletProvider>
       </body>
     </html>
   );

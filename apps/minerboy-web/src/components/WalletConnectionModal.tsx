@@ -7,16 +7,9 @@ import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
 // Clean up stale WalletConnect sessions
-async function hardResetWC(
-  disconnect?: (() => void) | (() => Promise<void>)
-) {
-  try { 
-    if (disconnect) await Promise.resolve(disconnect()); 
-  } catch {}
-  
+function removeStaleWalletConnect() {
   try {
-    // Clear old WC v1/v2 keys + wagmi cache
-    const keys = Object.keys(localStorage);
+    const keys = Object.keys(localStorage)
     for (const k of keys) {
       if (
         k.startsWith('wc@') ||
@@ -24,7 +17,7 @@ async function hardResetWC(
         k === 'wagmi.store' ||
         k === 'WALLETCONNECT_DEEPLINK_CHOICE'
       ) {
-        localStorage.removeItem(k);
+        localStorage.removeItem(k)
       }
     }
   } catch {}
@@ -113,12 +106,14 @@ export default function WalletConnectionModal() {
     
     try {
       console.log('WalletConnectionModal: Closing wrapper modal and opening Web3Modal');
-      // Clean up stale WalletConnect sessions first
-      await hardResetWC(disconnectAsync);
+      // Optional: clean up stale sessions if needed
+      // await disconnectAsync();
+      // removeStaleWalletConnect();
+      
       // close *our* wrapper first so you don't see 2 stacked modals
       close();
       // then open Web3Modal
-      setTimeout(() => open(), 0);
+      await open(); // single request
     } finally {
       openingRef.current = false;
     }
