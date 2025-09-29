@@ -49,26 +49,7 @@ export const wagmiConfig = defaultWagmiConfig({
   }
 });
 
-// Initialize Web3Modal with the same config (only once)
-declare global { interface Window { __W3M__?: boolean } }
-
-if (typeof window !== 'undefined') {
-  if (!w3mReady) {
-    console.warn('[MineBoy] NEXT_PUBLIC_WC_PROJECT_ID missing – Web3Modal disabled');
-  } else if (!window.__W3M__) {
-    window.__W3M__ = true;
-    console.log('[MineBoy] Initializing Web3Modal with projectId:', projectId);
-    createWeb3Modal({
-      wagmiConfig,
-      projectId,
-      themeMode: 'dark',
-      enableAnalytics: false,
-      enableOnramp: false
-    });
-    console.log('[MineBoy] Web3Modal initialized successfully');
-  } else {
-    console.log('[MineBoy] Web3Modal already initialized');
-  }
-}
+// Web3Modal is now initialized via Web3ModalBridge component
+// This ensures it uses the same wagmi config as GlyphWalletProvider
 
 // Clean build - removed all GlyphConnector references

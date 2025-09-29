@@ -1,10 +1,32 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useEffect, useRef } from 'react';
+import { useAccount, useDisconnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
+
+// Clean up stale WalletConnect sessions
+async function hardResetWC(disconnect: () => Promise<void>) {
+  try { 
+    await disconnect(); 
+  } catch {}
+  
+  try {
+    // Clear old WC v1/v2 keys + wagmi cache
+    const keys = Object.keys(localStorage);
+    for (const k of keys) {
+      if (
+        k.startsWith('wc@') ||
+        k.startsWith('walletconnect') ||
+        k === 'wagmi.store' ||
+        k === 'WALLETCONNECT_DEEPLINK_CHOICE'
+      ) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {}
+}
 
 // Custom Glyph button component
 function CustomGlyphButton({ onDone }: { onDone?: () => void }) {
@@ -68,6 +90,8 @@ export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
   const { open } = useWeb3Modal();
   const { isConnected, address } = useAccount();
+  const { disconnect } = useDisconnect();
+  const openingRef = useRef(false);
 
   // Debug logging
   useEffect(() => {
@@ -79,12 +103,21 @@ export default function WalletConnectionModal() {
 
   if (!isOpen) return null;
 
-  const onConnectClick = () => {
-    console.log('WalletConnectionModal: Closing wrapper modal and opening Web3Modal');
-    // close *our* wrapper first so you don't see 2 stacked modals
-    close();
-    // then open Web3Modal
-    setTimeout(() => open(), 0);
+  const onConnectClick = async () => {
+    if (openingRef.current) return; // Prevent duplicate requests
+    openingRef.current = true;
+    
+    try {
+      console.log('WalletConnectionModal: Closing wrapper modal and opening Web3Modal');
+      // Clean up stale WalletConnect sessions first
+      await hardResetWC(disconnect);
+      // close *our* wrapper first so you don't see 2 stacked modals
+      close();
+      // then open Web3Modal
+      setTimeout(() => open(), 0);
+    } finally {
+      openingRef.current = false;
+    }
   };
 
   return (
