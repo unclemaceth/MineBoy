@@ -7,9 +7,11 @@ import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
 // Clean up stale WalletConnect sessions
-async function hardResetWC(disconnect: () => Promise<void>) {
+async function hardResetWC(
+  disconnect?: (() => void) | (() => Promise<void>)
+) {
   try { 
-    await disconnect(); 
+    if (disconnect) await Promise.resolve(disconnect()); 
   } catch {}
   
   try {
@@ -90,7 +92,7 @@ export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
   const { open } = useWeb3Modal();
   const { isConnected, address } = useAccount();
-  const { disconnect } = useDisconnect();
+  const { disconnectAsync } = useDisconnect();
   const openingRef = useRef(false);
 
   // Debug logging
@@ -110,7 +112,7 @@ export default function WalletConnectionModal() {
     try {
       console.log('WalletConnectionModal: Closing wrapper modal and opening Web3Modal');
       // Clean up stale WalletConnect sessions first
-      await hardResetWC(disconnect);
+      await hardResetWC(disconnectAsync);
       // close *our* wrapper first so you don't see 2 stacked modals
       close();
       // then open Web3Modal

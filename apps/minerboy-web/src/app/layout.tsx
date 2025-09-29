@@ -5,7 +5,6 @@ import "./globals.css";
 import GlobalWalletModal from "./GlobalWalletModal";
 import MaintenanceGate from "@/components/MaintenanceGate";
 import ClosedOverlay from "@/components/ClosedOverlay";
-import Web3ModalBridge from "@/components/Web3ModalBridge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
