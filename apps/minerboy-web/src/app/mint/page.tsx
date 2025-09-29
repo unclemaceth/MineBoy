@@ -21,7 +21,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function MintPage() {
   const { address, isConnected, chainId } = useAccount();
-  const { writeContract, isPending: isMinting, data: hash } = useWriteContract();
+  const { writeContract, isPending: isWritePending, data: hash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   });
