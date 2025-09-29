@@ -604,6 +604,41 @@ fastify.get('/admin/stats', async () => {
   };
 });
 
+// Admin endpoint to clear all claims data (for migration to new chain)
+fastify.post('/admin/clear-claims', async (request, reply) => {
+  try {
+    if (!requireDebugAuth(request, reply)) return;
+
+    const { getDB } = await import('./db.js');
+    const d = getDB();
+    
+    // Clear all claims
+    const deleteClaims = d.prepare('DELETE FROM claims');
+    const claimsDeleted = deleteClaims.run();
+    
+    // Clear daily stats
+    const deleteStats = d.prepare('DELETE FROM daily_stats');
+    const statsDeleted = deleteStats.run();
+    
+    // Reset claim processor stats
+    claimProcessor.resetClaims();
+    
+    return reply.send({
+      success: true,
+      claimsDeleted: claimsDeleted.changes || 0,
+      statsDeleted: statsDeleted.changes || 0,
+      message: 'All claims and statistics cleared. Ready for fresh ApeChain data.',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('❌ Error clearing claims:', error);
+    return reply.code(500).send({ 
+      error: 'Failed to clear claims',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 // Debug lock info
 fastify.get('/v2/debug/lock', async (request, reply) => {
   const { sessionId, cartridge } = request.query as { sessionId?: string; cartridge?: string };
