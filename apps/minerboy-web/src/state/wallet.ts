@@ -12,5 +12,9 @@ type WalletState = {
 export const useWalletStore = create<WalletState>((set) => ({
   externalAddress: null,
   source: null,
-  setExternalAddress: (addr, source) => set({ externalAddress: addr, source })
+  setExternalAddress: (addr, source) => {
+    console.log('[useWalletStore] setExternalAddress called:', { addr, source })
+    set({ externalAddress: addr, source })
+    console.log('[useWalletStore] Store updated:', { externalAddress: addr, source })
+  }
 }))
