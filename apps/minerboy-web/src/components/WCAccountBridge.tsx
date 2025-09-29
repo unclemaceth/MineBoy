@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { getAccount, watchAccount } from 'wagmi'
+import { getAccount, watchAccount } from 'wagmi/actions'
 import { wagmiConfig as wcConfig } from '@/lib/wallet'     // <-- your multi-connector config
 import { useWalletStore } from '@/state/wallet'
 
@@ -13,7 +13,7 @@ export default function WCAccountBridge() {
 
     // watch changes from WC instance
     const unwatch = watchAccount(wcConfig, {
-      onChange(account) {
+      onChange(account: any) {
         useWalletStore.getState().setExternalAddress(account.address ?? null, account.address ? 'wc' : null)
       }
     })
