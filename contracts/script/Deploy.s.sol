@@ -93,7 +93,7 @@ contract Deploy is Script {
         
         // Print deployment summary
         console.log("\n=== DEPLOYMENT SUMMARY ===");
-        console.log("Network: Curtis Testnet (Chain ID: 33111)");
+        console.log("Network: ApeChain Mainnet (Chain ID: 33139)");
         console.log("ApeBitToken:", address(token));
         console.log("MiningClaimRouter:", address(router));
         console.log("ApeBitCartridge:", address(cartridge));

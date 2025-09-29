@@ -24,10 +24,10 @@ export const curtis = {
 } as const satisfies Chain;
 
 export const apechain = {
-  id: 33133,
+  id: 33139,
   name: 'ApeChain',
   nativeCurrency: { name: 'ApeCoin', symbol: 'APE', decimals: 18 },
-  rpcUrls: { default: { http: ['https://apechain.rpc.thirdweb.com'] } },
+  rpcUrls: { default: { http: ['https://rpc.apechain.com/http'] } },
   blockExplorers: { default: { name: 'ApeScan', url: 'https://apescan.io' } }
 } as const satisfies Chain;
 
@@ -44,7 +44,7 @@ export const wagmiConfig = defaultWagmiConfig({
     icons: [`${getSiteUrl()}/icon.png`]
   },
   transports: {
-    [apechain.id]: http('https://apechain.rpc.thirdweb.com'),
+    [apechain.id]: http('https://rpc.apechain.com/http'),
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
   }
 });

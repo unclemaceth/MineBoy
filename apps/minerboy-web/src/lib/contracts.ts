@@ -14,18 +14,18 @@ export const CARTRIDGE_ABI = APEBIT_CARTRIDGE_ABI;
 
 // Real deployed addresses from Curtis deployment
 export const CONTRACTS: Record<number, { cartridge: `0x${string}` }> = {
-  33133: { cartridge: '0x1234567890123456789012345678901234567890' }, // ApeChain - not deployed yet
+  33139: { cartridge: '0xE2cD7a8182DdC40F620f570c21f315E37dA2f21C' }, // ApeChain - deployed
   33111: { cartridge: '0xb05fa76709b6bd18c63782e9044ff81430f6769c' }  // Curtis - actual deployed cartridge address
 };
 
 // Additional exports for compatibility with existing code
 export const CARTRIDGE_ADDRESSES: Record<number, `0x${string}`> = {
-  33133: '0x1234567890123456789012345678901234567890', // ApeChain - not deployed yet
+  33139: '0xE2cD7a8182DdC40F620f570c21f315E37dA2f21C', // ApeChain - deployed
   33111: '0xb05fa76709b6bd18c63782e9044ff81430f6769c'  // Curtis - actual deployed cartridge address
 };
 export const CARTRIDGE_ADDRESS = '0xb05fa76709b6bd18c63782e9044ff81430f6769c'; // Curtis cartridge address
 export const CURTIS_CHAIN_ID = 33111;
-export const APECHAIN_CHAIN_ID = 33133;
+export const APECHAIN_CHAIN_ID = 33139;
 export const EXPLORER_BASE = 'https://curtis.explorer.caldera.xyz';
 export const APECHAIN_EXPLORER_BASE = 'https://apescan.io';
 
@@ -35,5 +35,5 @@ export const MINING_CLAIM_ROUTER_ABI = parseAbi([
 ]);
 
 export const contracts = {
-  miningClaimRouter: '0x5883d7a4a1b503ced7c799baf3d677a23093e564'
+  miningClaimRouter: '0x5883d7a4A1b503ced7c799Baf3d677A23093E564'
 };
