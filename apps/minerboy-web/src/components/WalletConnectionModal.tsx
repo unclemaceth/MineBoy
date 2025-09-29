@@ -23,13 +23,9 @@ function CustomGlyphButton() {
       console.log('[Glyph] Connect result:', result);
       console.log('[Glyph] Connect called successfully');
       
-      // Check if we can get wallet info
-      if (glyphConnection.user) {
-        console.log('[Glyph] User info:', glyphConnection.user);
-      }
-      if (glyphConnection.address) {
-        console.log('[Glyph] Address:', glyphConnection.address);
-      }
+      // Log all available properties on the connection object
+      console.log('[Glyph] All connection properties:', Object.getOwnPropertyNames(glyphConnection));
+      console.log('[Glyph] Connection prototype:', Object.getPrototypeOf(glyphConnection));
       
       // Try to find a Glyph connector in wagmi
       const glyphConnector = connectors.find(c => c.name.toLowerCase().includes('glyph'));
