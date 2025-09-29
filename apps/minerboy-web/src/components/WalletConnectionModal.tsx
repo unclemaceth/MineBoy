@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useConnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import GlyphProvider from './GlyphProvider';
@@ -10,13 +10,35 @@ import { useWalletModal } from '@/state/walletModal'; // your zustand store
 // Custom Glyph button component - must be inside GlyphProvider
 function CustomGlyphButton() {
   const glyphConnection = useNativeGlyphConnection();
+  const { connectors } = useConnect();
   
   const handleConnect = async () => {
     try {
       console.log('[Glyph] Custom button clicked');
       console.log('[Glyph] Connection object:', glyphConnection);
-      await glyphConnection.connect();
+      console.log('[Glyph] Available methods:', Object.keys(glyphConnection));
+      console.log('[Glyph] Available wagmi connectors:', connectors.map(c => c.name));
+      
+      const result = await glyphConnection.connect();
+      console.log('[Glyph] Connect result:', result);
       console.log('[Glyph] Connect called successfully');
+      
+      // Check if we can get wallet info
+      if (glyphConnection.user) {
+        console.log('[Glyph] User info:', glyphConnection.user);
+      }
+      if (glyphConnection.address) {
+        console.log('[Glyph] Address:', glyphConnection.address);
+      }
+      
+      // Try to find a Glyph connector in wagmi
+      const glyphConnector = connectors.find(c => c.name.toLowerCase().includes('glyph'));
+      if (glyphConnector) {
+        console.log('[Glyph] Found Glyph connector in wagmi:', glyphConnector.name);
+        // We could try to connect with this connector here
+      } else {
+        console.log('[Glyph] No Glyph connector found in wagmi connectors');
+      }
     } catch (err) {
       console.error('[Glyph] Connection error:', err);
     }
