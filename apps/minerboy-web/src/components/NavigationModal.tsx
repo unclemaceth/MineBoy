@@ -12,6 +12,7 @@ import { useSafeMint } from '@/hooks/useSafeMint';
 import { useSpendChecks } from '@/hooks/useSpendChecks';
 import { useContractState } from '@/hooks/useContractState';
 import { useMintCounter } from '@/hooks/useMintCounter';
+import { useWalletCartridgeCount } from '@/hooks/useWalletCartridgeCount';
 import { formatEther } from 'viem';
 import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../lib/contracts";
 
@@ -573,6 +574,7 @@ function MintContent() {
   const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
   const { simulate, mint, isReady, estTotal, value } = useSafeMint(count);
   const { minted, max, remaining, isLoading: counterLoading } = useMintCounter(chainId || 0);
+  const { ownedCount, canMint: walletCanMint, isLoading: walletLoading } = useWalletCartridgeCount(address, chainId || 0);
 
   if (!mounted) {
     return <div style={{ textAlign: 'center', color: '#8a8a8a' }}>Loading...</div>;
@@ -655,22 +657,42 @@ function MintContent() {
 
       <button
         onClick={mint}
-        disabled={!isReady || isMinting || isConfirming || remaining === 0}
+        disabled={!isReady || isMinting || isConfirming || remaining === 0 || !walletCanMint}
         style={{
           padding: '12px 24px',
           borderRadius: '6px',
-          background: isReady && !isMinting && !isConfirming && remaining > 0
+          background: isReady && !isMinting && !isConfirming && remaining > 0 && walletCanMint
             ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
             : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
           color: '#c8ffc8',
           border: '2px solid #8a8a8a',
-          cursor: isReady && !isMinting && !isConfirming && remaining > 0 ? 'pointer' : 'not-allowed',
+          cursor: isReady && !isMinting && !isConfirming && remaining > 0 && walletCanMint ? 'pointer' : 'not-allowed',
           fontSize: '14px',
           fontWeight: 'bold'
         }}
       >
-        {remaining === 0 ? 'Sold Out!' : isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : 'Mint'}
+        {remaining === 0 ? 'Sold Out!' : !walletCanMint ? 'Already Owned!' : isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : 'Mint'}
       </button>
+
+      {/* Already Owned Message */}
+      {!walletLoading && !walletCanMint && ownedCount > 0 && (
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          background: 'linear-gradient(180deg, #2d1a0f, #4a2a1a)',
+          borderRadius: '6px',
+          border: '2px solid #ff8a64',
+          color: '#ff8a64',
+          fontSize: '14px',
+          fontWeight: 'bold'
+        }}>
+          ⚠️ You already own {ownedCount} cartridge{ownedCount > 1 ? 's' : ''}! 
+          <br />
+          <span style={{ fontSize: '12px', opacity: 0.8 }}>
+            Use the SELECT CARTRIDGE button to mine with your existing cartridge.
+          </span>
+        </div>
+      )}
 
       {/* Success Message */}
       {showSuccess && (
