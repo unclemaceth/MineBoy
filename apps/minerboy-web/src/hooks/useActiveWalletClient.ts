@@ -1,19 +1,27 @@
 'use client'
-import { useMemo } from 'react'
-import { useWalletClient } from 'wagmi'         // Glyph context
-import { getWalletClient } from 'wagmi/actions'
+import { useEffect, useState } from 'react'
+import { useWalletClient } from 'wagmi'           // Glyph signer
+import { getWalletClient } from 'wagmi/actions'   // WC signer
 import { wagmiConfig as wcConfig } from '@/lib/wallet'
 import { useWalletStore } from '@/state/wallet'
 
 export function useActiveWalletClient() {
-  const glyph = useWalletClient()
+  const { data: glyphClient } = useWalletClient()
   const { source } = useWalletStore()
+  const [client, setClient] = useState<any>(null)
 
-  return useMemo(async () => {
-    if (glyph.data) return glyph.data                           // Glyph signer
-    if (source === 'wc') {
-      try { return await getWalletClient(wcConfig) } catch { return null }
-    }
-    return null
-  }, [glyph.data, source])
+  useEffect(() => {
+    let mounted = true
+    ;(async () => {
+      if (glyphClient) return setClient(glyphClient)
+      if (source === 'wc') {
+        try { const c = await getWalletClient(wcConfig); if (mounted) setClient(c) } catch {}
+      } else {
+        setClient(null)
+      }
+    })()
+    return () => { mounted = false }
+  }, [glyphClient, source])
+
+  return client
 }
