@@ -140,10 +140,11 @@ export default function CartridgeSelectionModal({
                   key={`${c.contractAddress}-${decId}`}
                   onClick={() => onSelectCartridge({ ...c, tokenId: decId })}
                   style={{
-                    padding: 12, backgroundColor: '#1a2e1f', border: '2px solid #4a7d5f',
-                    borderRadius: 8, color: '#64ff8a', fontFamily: 'Menlo, monospace',
-                    fontSize: 14, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
-                    display: 'flex', alignItems: 'center', gap: 12
+                    padding: 16, backgroundColor: '#1a2e1f', border: '2px solid #4a7d5f',
+                    borderRadius: 12, color: '#64ff8a', fontFamily: 'Menlo, monospace',
+                    fontSize: 14, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12,
+                    width: '100%'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#4a7d5f';
@@ -156,12 +157,12 @@ export default function CartridgeSelectionModal({
                 >
                   {/* Cartridge Image */}
                   <div style={{ 
-                    width: 48, 
-                    height: 48, 
-                    borderRadius: 6, 
+                    width: 80, 
+                    height: 80, 
+                    borderRadius: 8, 
                     overflow: 'hidden',
                     backgroundColor: '#0f2216',
-                    border: '1px solid #4a7d5f',
+                    border: '2px solid #4a7d5f',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -206,12 +207,12 @@ export default function CartridgeSelectionModal({
                     />
                   </div>
                   
-                  {/* Cartridge Info */}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 'bold' }}>
+                  {/* Cartridge Info - Centered underneath */}
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: 16, marginBottom: 4 }}>
                       Cartridge #{decId}
                     </div>
-                    <div style={{ fontSize: 12, opacity: 0.8 }}>
+                    <div style={{ fontSize: 12, color: '#4a7d5f' }}>
                       {c.contractAddress.slice(0, 6)}…{c.contractAddress.slice(-4)} • Chain {c.chainId}
                     </div>
                   </div>
