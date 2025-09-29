@@ -154,7 +154,7 @@ export default function CartridgeSelectionModal({
                     e.currentTarget.style.borderColor = '#4a7d5f';
                   }}
                 >
-                  {/* Animated Cartridge Image */}
+                  {/* Cartridge Image */}
                   <div style={{ 
                     width: 48, 
                     height: 48, 
@@ -167,6 +167,19 @@ export default function CartridgeSelectionModal({
                     justifyContent: 'center',
                     position: 'relative'
                   }}>
+                    {/* Always show the PNG image first */}
+                    <img
+                      src="/ApeBit Cart - MINEBOY.png"
+                      alt="Cartridge"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                      onLoad={() => console.log('PNG image loaded successfully')}
+                      onError={(e) => console.error('PNG image error:', e)}
+                    />
+                    {/* Video overlay (will hide the image when it loads) */}
                     <video
                       src={CARTRIDGE_ANIMATION_URL}
                       autoPlay
@@ -174,7 +187,12 @@ export default function CartridgeSelectionModal({
                       muted
                       playsInline
                       onLoadStart={() => console.log('Video loading started:', CARTRIDGE_ANIMATION_URL)}
-                      onCanPlay={() => console.log('Video can play:', CARTRIDGE_ANIMATION_URL)}
+                      onCanPlay={() => {
+                        console.log('Video can play:', CARTRIDGE_ANIMATION_URL);
+                        // Hide the image when video loads
+                        const img = document.querySelector('img[alt="Cartridge"]');
+                        if (img) img.style.display = 'none';
+                      }}
                       onError={(e) => console.error('Video error:', e, CARTRIDGE_ANIMATION_URL)}
                       style={{
                         width: '100%',
@@ -182,23 +200,9 @@ export default function CartridgeSelectionModal({
                         objectFit: 'cover',
                         position: 'absolute',
                         top: 0,
-                        left: 0
-                      }}
-                    />
-                    {/* Fallback image if video fails */}
-                    <img
-                      src="/ApeBit Cart - MINEBOY.png"
-                      alt="Cartridge"
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover',
-                        position: 'absolute',
-                        top: 0,
                         left: 0,
-                        zIndex: 1
+                        zIndex: 2
                       }}
-                      onError={(e) => console.error('Fallback image error:', e)}
                     />
                   </div>
                   
