@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 
 // Local animation URL for all cartridges
@@ -29,7 +29,7 @@ export default function CartridgeSelectionModal({
   onClose,
   onSelectCartridge,
 }: CartridgeSelectionModalProps) {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useActiveAccount();
   const [ownedCartridges, setOwnedCartridges] = useState<OwnedCartridge[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
