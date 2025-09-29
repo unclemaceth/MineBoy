@@ -8,6 +8,7 @@ export interface OwnedCartridge {
 
 const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY!;
 const APECHAIN_BASE = `https://apechain-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`;
+console.log('Alchemy base URL:', APECHAIN_BASE);
 
 function hexToDecString(id: any) {
   // Handles "1", "0x1", or big hex strings, or objects
@@ -38,7 +39,11 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
     }
 
     const contract = CARTRIDGE_ADDRESSES[APECHAIN_CHAIN_ID] as `0x${string}`;
+    console.log('Alchemy query - Contract address:', contract);
+    console.log('Alchemy query - Chain ID:', APECHAIN_CHAIN_ID);
+    console.log('Alchemy query - Wallet:', walletAddress);
     const url = `${APECHAIN_BASE}/getNFTsForOwner?owner=${walletAddress}&contractAddresses[]=${contract}&withMetadata=true&pageSize=100`;
+    console.log('Alchemy query - URL:', url);
 
     const res = await fetch(url, { headers: { accept: 'application/json' } });
     if (!res.ok) throw new Error(`Alchemy HTTP ${res.status}`);
