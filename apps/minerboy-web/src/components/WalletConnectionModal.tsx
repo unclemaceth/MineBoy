@@ -7,17 +7,26 @@ import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import GlyphProvider from './GlyphProvider';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
-// Custom Glyph button component
+// Custom Glyph button component - must be inside GlyphProvider
 function CustomGlyphButton() {
-  const { connect } = useNativeGlyphConnection();
+  const { connect, isConnecting, error } = useNativeGlyphConnection();
+  
+  const handleConnect = async () => {
+    try {
+      console.log('[Glyph] Custom button clicked');
+      console.log('[Glyph] Connection state:', { isConnecting, error });
+      await connect();
+      console.log('[Glyph] Connect called successfully');
+    } catch (err) {
+      console.error('[Glyph] Connection error:', err);
+    }
+  };
   
   return (
     <button
-      onClick={() => {
-        console.log('[Glyph] Custom button clicked');
-        connect();
-      }}
-      className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3"
+      onClick={handleConnect}
+      disabled={isConnecting}
+      className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {/* Glyph Logo */}
       <div className="w-6 h-6 flex items-center justify-center">
@@ -52,7 +61,7 @@ function CustomGlyphButton() {
           />
         </svg>
       </div>
-      <span>Create Wallet with Glyph</span>
+      <span>{isConnecting ? 'Connecting...' : 'Create Wallet with Glyph'}</span>
     </button>
   );
 }
