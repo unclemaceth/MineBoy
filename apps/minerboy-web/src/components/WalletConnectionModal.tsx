@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { useDisconnect } from 'wagmi';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
+import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
@@ -85,7 +85,7 @@ function CustomGlyphButton({ onDone }: { onDone?: () => void }) {
 export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
   const { isConnected, address } = useActiveAccount();
-  const { disconnectAsync } = useDisconnect();
+  const { disconnectWallet } = useActiveDisconnect();
   const openingRef = useRef(false);
   
   // Use Web3Modal hook - it should be initialized by the time this component mounts
