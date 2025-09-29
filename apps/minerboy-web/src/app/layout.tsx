@@ -5,6 +5,7 @@ import "./globals.css";
 import GlobalWalletModal from "./GlobalWalletModal";
 import MaintenanceGate from "@/components/MaintenanceGate";
 import ClosedOverlay from "@/components/ClosedOverlay";
+import Web3ModalBridge from "@/components/Web3ModalBridge";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -53,6 +54,8 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          {/* Web3Modal bridge - uses same wagmi config as Glyph */}
+          <Web3ModalBridge />
           {/* mounted once globally */}
           <GlobalWalletModal />
           {/* Sits on top when maintenance is enabled */}
