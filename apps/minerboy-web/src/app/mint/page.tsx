@@ -10,7 +10,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagm
 import OpenConnectModalButton from '@/components/OpenConnectModalButton';
 import MintNetworkGuard from '@/components/MintNetworkGuard';
 import { useMintPrice } from '@/hooks/useMintPrice';
-import { useSafeMint } from '@/hooks/useSafeMint';
+import { useBackendMint } from '@/hooks/useBackendMint';
 import { useSpendChecks } from '@/hooks/useSpendChecks';
 import { useContractState } from '@/hooks/useContractState';
 import { formatEther } from 'viem';
@@ -53,12 +53,10 @@ export default function MintPage() {
   const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
 
   // Use the new safety hooks
-  const { simulate, mint, isReady, estTotal, value } = useSafeMint(count);
-  const { bal, feeFormatted, enoughForFee, enoughForValue, enoughTotal, isLoading: spendLoading, gasEstimateError } = useSpendChecks(
-    contractAddress || undefined, 
-    value, 
-    count
-  );
+  const { mint, isMinting, error: mintError, isReady } = useBackendMint();
+  // Backend minting doesn't need spend checks
+  const spendLoading = false;
+  const enoughTotal = true;
   const { errorReason, isPaused, isSoldOut, hasReachedWalletLimit, isERC20Payment, needsApproval, isLoading: contractLoading } = useContractState();
 
   const totalCostWei = value;
@@ -74,31 +72,21 @@ export default function MintPage() {
     try {
       console.log('Mint button clicked!', { isConnected, chainId, address, contractAddress });
       
-      // Add timeout to prevent hanging
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('RPC timeout while simulating')), 8000)
-      );
+      // Use backend minting
+      const result = await mint();
+      console.log('Mint successful:', result);
       
-      // Preflight check with timeout
-      const simulatePromise = simulate();
-      await Promise.race([simulatePromise, timeoutPromise]);
-      
-      // If simulation passes, send the transaction
-      const txHash = await mint();
-      console.log('TX sent:', txHash);
+      // Add a mock token ID for display (backend doesn't return token ID)
+      setMintedTokenIds([Date.now()]); // Use timestamp as mock ID
       
     } catch (err: any) {
-      console.error('[Mint preflight failed]', err);
+      console.error('[Mint failed]', err);
       
-      // Extract meaningful error message from viem
-      let errorMessage = 'Transaction reverted';
+      // Extract meaningful error message
+      let errorMessage = 'Minting failed';
       
       if (err.message?.includes('timeout')) {
         errorMessage = 'Transaction check timed out - please try again';
-      } else if (err.shortMessage) {
-        errorMessage = err.shortMessage;
-      } else if (err.details) {
-        errorMessage = err.details;
       } else if (err.message) {
         errorMessage = err.message;
       }
@@ -354,24 +342,22 @@ export default function MintPage() {
             width: '100%',
             padding: '16px',
             borderRadius: '8px',
-            background: canMint && !isMinting && !isConfirming && !isChecking && isReady && enoughTotal && !spendLoading && !contractLoading && !needsApproval && !error
+            background: canMint && !isMinting && !isChecking && isReady && !error
               ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)' 
               : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
             color: '#c8ffc8',
             border: '2px solid #8a8a8a',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: canMint && !isMinting && !isConfirming && !isChecking && isReady && enoughTotal && !spendLoading && !contractLoading && !needsApproval && !error ? 'pointer' : 'not-allowed',
-            opacity: canMint && !isMinting && !isConfirming && !isChecking && isReady && enoughTotal && !spendLoading && !contractLoading && !needsApproval && !error ? 1 : 0.5,
+            cursor: canMint && !isMinting && !isChecking && isReady && !error ? 'pointer' : 'not-allowed',
+            opacity: canMint && !isMinting && !isChecking && isReady && !error ? 1 : 0.5,
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
             marginBottom: '16px'
           }}
         >
           {isChecking ? 'CHECKING…' :
            isMinting ? 'MINTING…' :
-           isConfirming ? 'CONFIRMING…' :
            error ? 'CANNOT MINT' :
-           !enoughTotal ? 'INSUFFICIENT BALANCE' :
            needsApproval ? 'NEEDS APPROVAL' :
            displayErrorReason ? 'CANNOT MINT' :
                      'MINT CARTRIDGE'}

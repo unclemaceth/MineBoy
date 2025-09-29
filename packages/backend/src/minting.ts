@@ -2,13 +2,15 @@ import { ethers } from 'ethers';
 import { config } from './config.js';
 import { errorResponse } from './utils.js';
 
-// Cartridge contract ABI (just the mint function)
+// Cartridge contract ABI (just the mint functions)
 const CARTRIDGE_ABI = [
-  'function mint(address to) external',
+  'function mint(address to) external payable',
+  'function adminMint(address to, uint256 quantity) external',
   'function balanceOf(address owner) external view returns (uint256)',
   'function totalSupply() external view returns (uint256)',
   'function maxSupply() external view returns (uint256)',
-  'function maxPerWallet() external view returns (uint256)'
+  'function maxPerWallet() external view returns (uint256)',
+  'function mintPrice() external view returns (uint256)'
 ];
 
 export class MintingService {
@@ -85,9 +87,9 @@ export class MintingService {
         return { success: false, error: 'No cartridges remaining' };
       }
 
-      // Mint the cartridge
+      // Mint the cartridge using adminMint (free for admins)
       console.log(`Minting cartridge to ${walletAddress}...`);
-      const tx = await this.cartridgeContract.mint(walletAddress);
+      const tx = await this.cartridgeContract.adminMint(walletAddress, 1);
       console.log(`Mint transaction submitted: ${tx.hash}`);
       
       // Wait for confirmation
