@@ -568,9 +568,9 @@ function MintContent() {
   }, [lastMintSuccess]);
 
   const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
-  const onApeChain = chainId === 33139;
-  const onCurtis = chainId === 33111;
-  const canMint = mounted && isConnected && contractAddress && (onApeChain || onCurtis);
+  const onApeChain = true; // We're always on ApeChain now
+  const onCurtis = false; // No longer supporting Curtis
+  const canMint = mounted && isConnected && contractAddress && onApeChain;
 
   const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
   const { mint, isMinting, error: mintError, isReady } = useBackendMint();
