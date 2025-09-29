@@ -3,7 +3,6 @@
 import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
-import { GlyphConnector } from '@use-glyph/sdk-react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;

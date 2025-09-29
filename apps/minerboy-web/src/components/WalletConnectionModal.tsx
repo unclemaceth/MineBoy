@@ -16,10 +16,16 @@ function CustomGlyphButton({ onDone }: { onDone?: () => void }) {
       console.log('[Glyph] Custom button clicked');
       console.log('[Glyph] Available wagmi connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
       
-      // Find the Glyph connector by ID or name
-      const glyphConnector = connectors.find(c => c.id === 'glyph' || c.name === 'Glyph');
+      // Find any connector that might be Glyph-related
+      const glyphConnector = connectors.find(c => 
+        c.id === 'glyph' || 
+        c.name === 'Glyph' || 
+        c.name.toLowerCase().includes('glyph') ||
+        c.id.toLowerCase().includes('glyph')
+      );
+      
       if (glyphConnector) {
-        console.log('[Glyph] Found Glyph connector in wagmi:', glyphConnector.name);
+        console.log('[Glyph] Found Glyph connector in wagmi:', { id: glyphConnector.id, name: glyphConnector.name });
         console.log('[Glyph] Connecting with wagmi Glyph connector...');
         
         // Use wagmi to connect with Glyph on ApeChain
@@ -28,6 +34,7 @@ function CustomGlyphButton({ onDone }: { onDone?: () => void }) {
         onDone?.();
       } else {
         console.log('[Glyph] No Glyph connector found in wagmi connectors');
+        console.log('[Glyph] Available connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
       }
     } catch (err) {
       console.error('[Glyph] Connection error:', err);
