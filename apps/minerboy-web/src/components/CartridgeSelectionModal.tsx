@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 
-// IPFS animation URL for all cartridges
-const CARTRIDGE_ANIMATION_URL = 'ipfs://bafybeialpduggxyd6gdh47pfhkmb5v74f2k4sznwkqbpgdkxcfwgb6c7ti';
+// Local animation URL for all cartridges
+const CARTRIDGE_ANIMATION_URL = '/apebitcart.mp4';
 
 interface CartridgeSelectionModalProps {
   isOpen: boolean;
