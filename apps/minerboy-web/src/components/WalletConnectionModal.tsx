@@ -89,6 +89,9 @@ export default function WalletConnectionModal() {
   
   // Use Web3Modal hook - it should be initialized by the time this component mounts
   const { open } = useWeb3Modal();
+  
+  // Use Glyph connection hook
+  const { connect: connectGlyph } = useNativeGlyphConnection();
 
   // Debug logging
   useEffect(() => {
@@ -105,17 +108,25 @@ export default function WalletConnectionModal() {
     openingRef.current = true;
     
     try {
-      console.log('WalletConnectionModal: Closing wrapper modal and opening Web3Modal');
-      // Optional: clean up stale sessions if needed
-      // await disconnectAsync();
-      // removeStaleWalletConnect();
+      console.log('WalletConnectionModal: Opening Web3Modal directly');
+      // Clean up stale sessions
+      removeStaleWalletConnect();
       
-      // close *our* wrapper first so you don't see 2 stacked modals
+      // close our modal and open Web3Modal
       close();
-      // then open Web3Modal
-      await open(); // single request
+      await open();
     } finally {
       openingRef.current = false;
+    }
+  };
+
+  const onGlyphClick = async () => {
+    try {
+      console.log('WalletConnectionModal: Connecting with Glyph');
+      await connectGlyph();
+      close(); // Close our modal after successful connection
+    } catch (err) {
+      console.error('Glyph connection error:', err);
     }
   };
 
@@ -127,21 +138,54 @@ export default function WalletConnectionModal() {
           <button onClick={close} className="rounded p-1 text-zinc-400 hover:text-white">✕</button>
         </div>
 
-        <button
-          onClick={onConnectClick}
-          className="mb-3 h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90"
-        >
-          Connect Wallet
-        </button>
+        <div className="space-y-3">
+          <button
+            onClick={onConnectClick}
+            className="h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90 flex items-center justify-center gap-2"
+          >
+            <span>🌐</span>
+            <span>WalletConnect (MetaMask, etc.)</span>
+          </button>
 
-        {/* GLYPH: Direct SDK connection */}
-        <div 
-          onClick={() => {
-            console.log('WalletConnectionModal: Closing wrapper modal for Glyph');
-            close();
-          }}
-        >
-          <CustomGlyphButton onDone={close} />
+          <button
+            onClick={onGlyphClick}
+            className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3"
+          >
+            {/* Glyph Logo */}
+            <div className="w-6 h-6 flex items-center justify-center">
+              <svg 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                xmlns="http://www.w3.org/2000/svg"
+                className="text-white"
+              >
+                <path 
+                  d="M12 2L2 7L12 12L22 7L12 2Z" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                <path 
+                  d="M2 17L12 22L22 17" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+                <path 
+                  d="M2 12L12 17L22 12" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
+            <span>Create Wallet with Glyph</span>
+          </button>
         </div>
       </div>
     </div>
