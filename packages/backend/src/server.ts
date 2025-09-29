@@ -906,7 +906,7 @@ const start = async () => {
     });
     
     console.log(`🚀 MineBoy Backend v2 running on ${config.HOST}:${config.PORT}`);
-    console.log(`📡 Connected to Curtis testnet (${config.CHAIN_ID})`);
+    console.log(`📡 Connected to ${config.CHAIN_ID === 33139 ? 'ApeChain mainnet' : config.CHAIN_ID === 33111 ? 'Curtis testnet' : `Chain ${config.CHAIN_ID}`} (${config.CHAIN_ID})`);
     console.log(`🎮 ${config.ALLOWED_CARTRIDGES.length} cartridges configured`);
     console.log(`💰 Initial reward: ${config.INITIAL_REWARD_WEI} wei (${config.INITIAL_REWARD_WEI.slice(0, 3)} ABIT)`);
     console.log(`[SessionStore] using ${SessionStore.kind}`);
