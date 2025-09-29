@@ -607,7 +607,10 @@ fastify.get('/admin/stats', async () => {
 // Admin endpoint to clear all claims data (for migration to new chain)
 fastify.post('/admin/clear-claims', async (request, reply) => {
   try {
-    if (!requireDebugAuth(request, reply)) return;
+    const auth = request.headers.authorization || '';
+    if (!ADMIN_TOKEN || auth !== `Bearer ${ADMIN_TOKEN}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
 
     const { getDB } = await import('./db.js');
     const d = getDB();
