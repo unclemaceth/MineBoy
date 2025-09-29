@@ -53,8 +53,6 @@ export default function RootLayout({
       >
         <Providers>
           {children}
-          {/* Web3Modal bridge - uses same wagmi config as Glyph */}
-          <Web3ModalBridge />
           {/* mounted once globally */}
           <GlobalWalletModal />
           {/* Sits on top when maintenance is enabled */}
@@ -67,3 +65,4 @@ export default function RootLayout({
   );
 }
 // Force redeploy - Tue Sep 16 00:26:11 BST 2025
+// Fresh build - Web3ModalBridge references removed
