@@ -4,7 +4,8 @@ import { ReactNode } from 'react'
 import { GlyphWalletProvider as GlyphProvider } from '@use-glyph/sdk-react'
 import { apechain } from '@/lib/wallet'
 
-const chains = [apechain] as const
+// Create a mutable array for GlyphWalletProvider
+const chains = [apechain]
 
 export default function GlyphWalletProvider({ children }: { children: ReactNode }) {
   return (
