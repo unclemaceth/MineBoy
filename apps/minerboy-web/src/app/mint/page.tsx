@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 // Force dynamic rendering and disable SSR
 export const dynamic = 'force-dynamic';
 export const ssr = false;
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import OpenConnectModalButton from '@/components/OpenConnectModalButton';
 import MintNetworkGuard from '@/components/MintNetworkGuard';
 import { useMintPrice } from '@/hooks/useMintPrice';
@@ -20,7 +21,8 @@ import Stage from "@/components/Stage";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default function MintPage() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected } = useActiveAccount();
+  const chainId = 33139; // ApeChain - we'll handle network switching separately if needed
   const { writeContract, isPending: isWritePending, data: hash } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,

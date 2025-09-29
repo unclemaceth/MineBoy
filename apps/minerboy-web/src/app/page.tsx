@@ -10,7 +10,8 @@ import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import { useWalletModal } from '@/state/walletModal';
-import { useAccount, useDisconnect, useWriteContract } from 'wagmi';
+import { useDisconnect, useWriteContract } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useSession, getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
@@ -118,7 +119,7 @@ function Home() {
   const [foundResult, setFoundResult] = useState<FoundResult | null>(null);
   
   // Wagmi hooks
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useActiveAccount();
   const { disconnect } = useDisconnect();
   const { open: openWalletModal } = useWalletModal();
   const { writeContract, data: hash } = useWriteContract();

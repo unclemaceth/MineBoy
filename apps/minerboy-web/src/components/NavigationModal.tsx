@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { apiGetIndividualLeaderboard, apiGetTeamLeaderboard, SeasonLeaderboardResponse, TeamLeaderboardResponse } from '@/lib/api';
 import { apiLeaderboardTeams } from '@/lib/api';
 import TeamSelector from '@/components/TeamSelector';
@@ -116,7 +116,7 @@ const GRID_COLS = '40px minmax(0,1.8fr) minmax(0,0.6fr) 100px';
 
 // Leaderboard Content Component
 function LeaderboardContent() {
-  const { address } = useAccount();
+  const { address } = useActiveAccount();
   
   // Debug logging
   useEffect(() => {
@@ -544,7 +544,8 @@ function TeamStandings() {
 
 // Mint Content Component
 function MintContent() {
-  const { address, isConnected, chainId } = useAccount();
+  const { address, isConnected } = useActiveAccount();
+  const chainId = 33139; // ApeChain - we'll handle network switching separately if needed
   
   const [count] = useState(1); // Fixed to 1 cartridge
   const [mounted, setMounted] = useState(false);
