@@ -164,18 +164,41 @@ export default function CartridgeSelectionModal({
                     border: '1px solid #4a7d5f',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    position: 'relative'
                   }}>
                     <video
                       src={CARTRIDGE_ANIMATION_URL}
                       autoPlay
                       loop
                       muted
+                      playsInline
+                      onLoadStart={() => console.log('Video loading started:', CARTRIDGE_ANIMATION_URL)}
+                      onCanPlay={() => console.log('Video can play:', CARTRIDGE_ANIMATION_URL)}
+                      onError={(e) => console.error('Video error:', e, CARTRIDGE_ANIMATION_URL)}
                       style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover'
+                        objectFit: 'cover',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0
                       }}
+                    />
+                    {/* Fallback image if video fails */}
+                    <img
+                      src="/ApeBit Cart - MINEBOY.png"
+                      alt="Cartridge"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        zIndex: 1
+                      }}
+                      onError={(e) => console.error('Fallback image error:', e)}
                     />
                   </div>
                   
