@@ -16,18 +16,19 @@ export default async function routes(app: FastifyInstance) {
       
       const dailyStats = dailyStatsResult.rows[0];
       
-      // Compute active miners (last 10 minutes)
+      // Compute active miners (last 10 minutes) - only ApeChain data
       const now = Date.now();
       const activeWindowMs = 10 * 60 * 1000; // 10 minutes
+      const migrationDate = new Date('2025-09-29T00:00:00Z').getTime();
       
-      // For now, we'll use a simple approach: count distinct wallets
-      // from recent claims (last 10 minutes)
+      // Count distinct wallets from recent ApeChain claims (last 10 minutes)
       const activeMinersResult = await db.pool.query(`
         SELECT COUNT(DISTINCT wallet) AS active_miners
         FROM claims
         WHERE status='confirmed' 
           AND confirmed_at >= $1
-      `, [now - activeWindowMs]);
+          AND created_at >= $2
+      `, [now - activeWindowMs, migrationDate]);
       
       const activeMiners = parseInt(activeMinersResult.rows[0]?.active_miners || '0');
       
@@ -35,11 +36,15 @@ export default async function routes(app: FastifyInstance) {
       if (!dailyStats) {
         console.log('⚠️ No daily stats found, computing on-the-fly...');
         
+        // Only show claims from after ApeChain migration (Sept 29, 2025)
+        const migrationDate = new Date('2025-09-29T00:00:00Z').getTime();
+        
         const result = await db.pool.query(`
           WITH confirmed AS (
             SELECT wallet, cartridge_id, amount_wei
             FROM claims
-            WHERE status='confirmed'
+            WHERE status='confirmed' 
+              AND created_at >= $1
           )
           SELECT
             COUNT(DISTINCT wallet) AS total_miners,
@@ -47,7 +52,7 @@ export default async function routes(app: FastifyInstance) {
             COALESCE(SUM(amount_wei::numeric), 0)::text AS total_wei_text,
             COUNT(*) AS total_claims
           FROM confirmed
-        `);
+        `, [migrationDate]);
         
         const stats = result.rows[0];
         
