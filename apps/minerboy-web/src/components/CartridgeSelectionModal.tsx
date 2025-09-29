@@ -190,7 +190,7 @@ export default function CartridgeSelectionModal({
                       onCanPlay={() => {
                         console.log('Video can play:', CARTRIDGE_ANIMATION_URL);
                         // Hide the image when video loads
-                        const img = document.querySelector('img[alt="Cartridge"]');
+                        const img = document.querySelector('img[alt="Cartridge"]') as HTMLImageElement;
                         if (img) img.style.display = 'none';
                       }}
                       onError={(e) => console.error('Video error:', e, CARTRIDGE_ANIMATION_URL)}
