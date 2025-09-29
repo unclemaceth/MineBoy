@@ -46,11 +46,7 @@ export const wagmiConfig = defaultWagmiConfig({
   transports: {
     [apechain.id]: http('https://rpc.apechain.com/http'),
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
-  },
-  connectors: [
-    new GlyphConnector({ chains: [apechain] }),
-    // Web3Modal will add its own connectors
-  ]
+  }
 });
 
 // Initialize Web3Modal with the same config (only once)
@@ -74,3 +70,5 @@ if (typeof window !== 'undefined') {
     console.log('[MineBoy] Web3Modal already initialized');
   }
 }
+
+// Clean build - removed all GlyphConnector references
