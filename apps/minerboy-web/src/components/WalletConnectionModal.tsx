@@ -7,11 +7,60 @@ import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
 import GlyphProvider from './GlyphProvider';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
+// Custom Glyph button component
+function CustomGlyphButton() {
+  const { connect } = useNativeGlyphConnection();
+  
+  return (
+    <button
+      onClick={() => {
+        console.log('[Glyph] Custom button clicked');
+        connect();
+      }}
+      className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3"
+    >
+      {/* Glyph Logo */}
+      <div className="w-6 h-6 flex items-center justify-center">
+        <svg 
+          width="24" 
+          height="24" 
+          viewBox="0 0 24 24" 
+          fill="none" 
+          xmlns="http://www.w3.org/2000/svg"
+          className="text-white"
+        >
+          <path 
+            d="M12 2L2 7L12 12L22 7L12 2Z" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          />
+          <path 
+            d="M2 17L12 22L22 17" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          />
+          <path 
+            d="M2 12L12 17L22 12" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+          />
+        </svg>
+      </div>
+      <span>Create Wallet with Glyph</span>
+    </button>
+  );
+}
+
 export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
   const { open } = useWeb3Modal();
   const { isConnected, address } = useAccount();
-  const { connect: glyphConnect } = useNativeGlyphConnection();
 
   // Debug logging
   useEffect(() => {
@@ -48,26 +97,14 @@ export default function WalletConnectionModal() {
 
         {/* GLYPH: Wrapped in its own provider to avoid conflicts */}
         <GlyphProvider>
-          <button
+          <div 
             onClick={() => {
-              console.log('WalletConnectionModal: Closing wrapper modal and opening Glyph');
-              // Close our modal first
+              console.log('WalletConnectionModal: Closing wrapper modal for Glyph');
               close();
-              // Then trigger Glyph connection
-              setTimeout(() => {
-                try {
-                  glyphConnect();
-                  console.log('[Glyph] Connection triggered');
-                } catch (error) {
-                  console.error('[Glyph] Connection error:', error);
-                }
-              }, 0);
             }}
-            className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-2"
           >
-            <span className="text-lg">⛓️</span>
-            <span>Create Wallet with Glyph</span>
-          </button>
+            <CustomGlyphButton />
+          </div>
         </GlyphProvider>
       </div>
     </div>
