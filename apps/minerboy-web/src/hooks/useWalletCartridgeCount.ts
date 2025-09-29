@@ -8,7 +8,7 @@ export function useWalletCartridgeCount(walletAddress: string | undefined, chain
     address: contractAddress as `0x${string}`,
     abi: APEBIT_CARTRIDGE_ABI,
     functionName: 'balanceOf',
-    args: walletAddress ? [walletAddress] : undefined,
+    args: walletAddress ? [walletAddress as `0x${string}`] : undefined,
     chainId,
     query: {
       enabled: !!contractAddress && !!walletAddress
