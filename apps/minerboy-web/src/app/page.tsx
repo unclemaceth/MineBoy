@@ -230,7 +230,7 @@ function Home() {
     console.log('Main page wallet state:', { isConnected, address });
     if (isConnected && address) {
       setWallet(address);
-      pushLine('Connected to Curtis Network');
+      pushLine('Connected to ApeChain Network');
       pushLine(`Wallet Address: ${address.slice(0, 8)}...${address.slice(-8)}`);
       pushLine('Waiting for Cartridge Load...');
     } else {

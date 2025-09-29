@@ -72,7 +72,7 @@ export const useMinerStore = create<MinerState>()(
       // Actions
       connect: () => {
         set({ connected: true });
-        get().pushLine('Connected to Curtis Network');
+        get().pushLine('Connected to ApeChain Network');
         get().pushLine('Wallet Address: 0x...164');
         get().pushLine('Waiting for Cartridge Load...');
       },
