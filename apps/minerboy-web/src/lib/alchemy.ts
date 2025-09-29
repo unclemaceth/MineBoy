@@ -1,4 +1,4 @@
-import { CARTRIDGE_ADDRESSES, CURTIS_CHAIN_ID } from './contracts';
+import { CARTRIDGE_ADDRESSES, APECHAIN_CHAIN_ID } from './contracts';
 
 export interface OwnedCartridge {
   tokenId: string;          // decimal string, normalized
@@ -7,7 +7,7 @@ export interface OwnedCartridge {
 }
 
 const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY!;
-const CURTIS_BASE = `https://apechain-curtis.g.alchemy.com/v2/${ALCHEMY_KEY}`;
+const APECHAIN_BASE = `https://apechain-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 
 function hexToDecString(id: any) {
   // Handles "1", "0x1", or big hex strings, or objects
@@ -37,8 +37,8 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
       return [];
     }
 
-    const contract = CARTRIDGE_ADDRESSES[CURTIS_CHAIN_ID] as `0x${string}`;
-    const url = `${CURTIS_BASE}/getNFTsForOwner?owner=${walletAddress}&contractAddresses[]=${contract}&withMetadata=true&pageSize=100`;
+    const contract = CARTRIDGE_ADDRESSES[APECHAIN_CHAIN_ID] as `0x${string}`;
+    const url = `${APECHAIN_BASE}/getNFTsForOwner?owner=${walletAddress}&contractAddresses[]=${contract}&withMetadata=true&pageSize=100`;
 
     const res = await fetch(url, { headers: { accept: 'application/json' } });
     if (!res.ok) throw new Error(`Alchemy HTTP ${res.status}`);
@@ -68,7 +68,7 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
       return {
         tokenId: normalizedTokenId,
         contractAddress: (nft.contract?.address ?? contract) as `0x${string}`,
-        chainId: CURTIS_CHAIN_ID,
+        chainId: APECHAIN_CHAIN_ID,
       };
     });
     
@@ -80,9 +80,9 @@ export async function getOwnedCartridges(walletAddress: string): Promise<OwnedCa
   }
 }
 
-// Optional: remove for now; Curtis + SDK config is finicky.
+// Optional: remove for now; ApeChain + SDK config is finicky.
 // If you keep metadata, prefer the REST endpoint:
-// GET {CURTIS_BASE}/getNFTMetadata?contractAddress=...&tokenId=...
+// GET {APECHAIN_BASE}/getNFTMetadata?contractAddress=...&tokenId=...
 export async function getCartridgeMetadata(_tokenId: string) {
   return null;
 }
