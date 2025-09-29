@@ -263,52 +263,7 @@ export default function MintPage() {
           </div>
         )}
 
-        {/* Gas Estimation Warning */}
-        {gasEstimateError && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ffa500',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(255, 165, 0, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            border: '1px solid #ffa500'
-          }}>
-            ! Gas estimation failed - transaction may still work
-          </div>
-        )}
 
-        {/* Balance Warnings */}
-        {!enoughForValue && bal && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ff6b6b',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(255, 107, 107, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            border: '1px solid #ff6b6b'
-          }}>
-            ! Backend minting is free - no APE required
-          </div>
-        )}
-
-        {!enoughForFee && bal && feeFormatted && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ff6b6b',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(255, 107, 107, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            border: '1px solid #ff6b6b'
-          }}>
-            ! Not enough APE for network fee (need ~{feeFormatted} APE)
-          </div>
-        )}
 
         {/* Mint Button */}
         <button
