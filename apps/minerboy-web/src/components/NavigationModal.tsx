@@ -549,10 +549,21 @@ function MintContent() {
   
   const [count] = useState(1); // Fixed to 1 cartridge
   const [mounted, setMounted] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Show success message when mint is confirmed
+  useEffect(() => {
+    if (isConfirmed) {
+      setShowSuccess(true);
+      // Hide success message after 5 seconds
+      const timer = setTimeout(() => setShowSuccess(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [isConfirmed]);
 
   const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
   const onApeChain = chainId === 33139;
@@ -658,8 +669,25 @@ function MintContent() {
           fontWeight: 'bold'
         }}
       >
-        {remaining === 0 ? 'Sold Out!' : isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : isConfirmed ? 'Minted!' : 'Mint'}
+        {remaining === 0 ? 'Sold Out!' : isMinting ? 'Minting...' : isConfirming ? 'Confirming...' : 'Mint'}
       </button>
+
+      {/* Success Message */}
+      {showSuccess && (
+        <div style={{
+          marginTop: '16px',
+          padding: '12px',
+          background: 'linear-gradient(180deg, #0f4d1a, #1a5d2a)',
+          borderRadius: '6px',
+          border: '2px solid #64ff8a',
+          color: '#64ff8a',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          animation: 'pulse 1s ease-in-out'
+        }}>
+          🎉 Cartridge Minted Successfully! 🎉
+        </div>
+      )}
 
       {hash && (
         <div style={{ marginTop: '16px', fontSize: '12px', color: '#8a8a8a' }}>
