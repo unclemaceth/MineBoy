@@ -3,6 +3,7 @@
 import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
+import { GlyphConnector } from '@use-glyph/sdk-react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
@@ -46,7 +47,11 @@ export const wagmiConfig = defaultWagmiConfig({
   transports: {
     [apechain.id]: http('https://rpc.apechain.com/http'),
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
-  }
+  },
+  connectors: [
+    new GlyphConnector({ chains: [apechain] }),
+    // Web3Modal will add its own connectors
+  ]
 });
 
 // Initialize Web3Modal with the same config (only once)

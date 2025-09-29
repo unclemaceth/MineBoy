@@ -3,28 +3,29 @@
 import { useEffect } from 'react';
 import { useAccount, useConnect } from 'wagmi';
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useNativeGlyphConnection } from '@use-glyph/sdk-react';
-import GlyphProvider from './GlyphProvider';
+import { GlyphWalletProvider } from '@use-glyph/sdk-react';
+import { apechain } from '@/lib/wallet';
 import { useWalletModal } from '@/state/walletModal'; // your zustand store
 
-// Custom Glyph button component - must be inside GlyphProvider
-function CustomGlyphButton() {
+// Custom Glyph button component
+function CustomGlyphButton({ onDone }: { onDone?: () => void }) {
   const { connectors, connect, isPending, error } = useConnect();
   
   const handleConnect = async () => {
     try {
       console.log('[Glyph] Custom button clicked');
-      console.log('[Glyph] Available wagmi connectors:', connectors.map(c => c.name));
+      console.log('[Glyph] Available wagmi connectors:', connectors.map(c => ({ id: c.id, name: c.name })));
       
-      // Find the Glyph connector
-      const glyphConnector = connectors.find(c => c.name.toLowerCase().includes('glyph'));
+      // Find the Glyph connector by ID or name
+      const glyphConnector = connectors.find(c => c.id === 'glyph' || c.name === 'Glyph');
       if (glyphConnector) {
         console.log('[Glyph] Found Glyph connector in wagmi:', glyphConnector.name);
         console.log('[Glyph] Connecting with wagmi Glyph connector...');
         
-        // Use wagmi to connect with Glyph
-        await connect({ connector: glyphConnector });
+        // Use wagmi to connect with Glyph on ApeChain
+        await connect({ connector: glyphConnector, chainId: apechain.id });
         console.log('[Glyph] Wagmi connection successful!');
+        onDone?.();
       } else {
         console.log('[Glyph] No Glyph connector found in wagmi connectors');
       }
@@ -73,7 +74,7 @@ function CustomGlyphButton() {
         </svg>
       </div>
       <span>
-        {isPending ? 'Connecting...' : error ? 'Connection Failed' : 'Create Wallet with Glyph'}
+        {isPending ? 'Connecting...' : error ? 'Connection Failed' : 'Continue with Glyph'}
       </span>
     </button>
   );
@@ -103,32 +104,32 @@ export default function WalletConnectionModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60">
-      <div className="w-[520px] max-w-[90vw] rounded-2xl bg-[#1c1c1c] p-6 shadow-2xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Connect Wallet</h3>
-          <button onClick={close} className="rounded p-1 text-zinc-400 hover:text-white">✕</button>
-        </div>
+    <GlyphWalletProvider chains={[apechain]} askForSignature={false}>
+      <div className="fixed inset-0 z-50 grid place-items-center bg-black/60">
+        <div className="w-[520px] max-w-[90vw] rounded-2xl bg-[#1c1c1c] p-6 shadow-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-white">Connect Wallet</h3>
+            <button onClick={close} className="rounded p-1 text-zinc-400 hover:text-white">✕</button>
+          </div>
 
-        <button
-          onClick={onConnectClick}
-          className="mb-3 h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90"
-        >
-          Connect Wallet
-        </button>
+          <button
+            onClick={onConnectClick}
+            className="mb-3 h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90"
+          >
+            Connect Wallet
+          </button>
 
-        {/* GLYPH: Wrapped in its own provider to avoid conflicts */}
-        <GlyphProvider>
+          {/* GLYPH: Use wagmi connector */}
           <div 
             onClick={() => {
               console.log('WalletConnectionModal: Closing wrapper modal for Glyph');
               close();
             }}
           >
-            <CustomGlyphButton />
+            <CustomGlyphButton onDone={close} />
           </div>
-        </GlyphProvider>
+        </div>
       </div>
-    </div>
+    </GlyphWalletProvider>
   );
 }
