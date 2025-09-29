@@ -6,6 +6,7 @@ import MaintenanceGate from "@/components/MaintenanceGate";
 import ClosedOverlay from "@/components/ClosedOverlay";
 import GlyphWalletProvider from "./GlyphWalletProvider";
 import W3MInit from "./W3MInit";
+import WCAccountBridge from '@/components/WCAccountBridge';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -54,6 +55,7 @@ export default function RootLayout({
       >
         <GlyphWalletProvider>
           <W3MInit />
+          <WCAccountBridge />
           {children}
           {/* mounted once globally */}
           <GlobalWalletModal />
