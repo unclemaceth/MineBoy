@@ -90,10 +90,12 @@ function CustomGlyphButton({ onDone }: { onDone?: () => void }) {
 
 export default function WalletConnectionModal() {
   const { isOpen, close } = useWalletModal();
-  const { open } = useWeb3Modal();
   const { isConnected, address } = useAccount();
   const { disconnectAsync } = useDisconnect();
   const openingRef = useRef(false);
+  
+  // Use Web3Modal hook - it should be initialized by the time this component mounts
+  const { open } = useWeb3Modal();
 
   // Debug logging
   useEffect(() => {

@@ -49,7 +49,5 @@ export const wagmiConfig = defaultWagmiConfig({
   }
 });
 
-// Web3Modal is now initialized via Web3ModalBridge component
-// This ensures it uses the same wagmi config as GlyphWalletProvider
-
-// Clean build - removed all GlyphConnector references
+// Web3Modal is now initialized in the Providers component
+// This ensures it's available before any components try to use useWeb3Modal
