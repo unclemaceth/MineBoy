@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 
+// IPFS animation URL for all cartridges
+const CARTRIDGE_ANIMATION_URL = 'ipfs://bafybeialpduggxyd6gdh47pfhkmb5v74f2k4sznwkqbpgdkxcfwgb6c7ti';
+
 interface CartridgeSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -139,7 +142,8 @@ export default function CartridgeSelectionModal({
                   style={{
                     padding: 12, backgroundColor: '#1a2e1f', border: '2px solid #4a7d5f',
                     borderRadius: 8, color: '#64ff8a', fontFamily: 'Menlo, monospace',
-                    fontSize: 14, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s'
+                    fontSize: 14, cursor: 'pointer', textAlign: 'left', transition: 'all 0.2s',
+                    display: 'flex', alignItems: 'center', gap: 12
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.backgroundColor = '#4a7d5f';
@@ -150,11 +154,39 @@ export default function CartridgeSelectionModal({
                     e.currentTarget.style.borderColor = '#4a7d5f';
                   }}
                 >
-                  <div style={{ fontWeight: 'bold' }}>
-                    Cartridge #{decId}
+                  {/* Animated Cartridge Image */}
+                  <div style={{ 
+                    width: 48, 
+                    height: 48, 
+                    borderRadius: 6, 
+                    overflow: 'hidden',
+                    backgroundColor: '#0f2216',
+                    border: '1px solid #4a7d5f',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <video
+                      src={CARTRIDGE_ANIMATION_URL}
+                      autoPlay
+                      loop
+                      muted
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover'
+                      }}
+                    />
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.8 }}>
-                    {c.contractAddress.slice(0, 6)}…{c.contractAddress.slice(-4)} • Chain {c.chainId}
+                  
+                  {/* Cartridge Info */}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 'bold' }}>
+                      Cartridge #{decId}
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.8 }}>
+                      {c.contractAddress.slice(0, 6)}…{c.contractAddress.slice(-4)} • Chain {c.chainId}
+                    </div>
                   </div>
                 </button>
               );
