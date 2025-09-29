@@ -169,7 +169,7 @@ export default function CartridgeSelectionModal({
                   }}>
                     {/* Always show the PNG image first */}
                     <img
-                      src="/ApeBit Cart - MINEBOY.png"
+                      src="/apebit-cart-mineboy.png"
                       alt="Cartridge"
                       style={{
                         width: '100%',
