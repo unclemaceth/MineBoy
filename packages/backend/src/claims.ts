@@ -182,7 +182,7 @@ export class ClaimProcessor {
       workHash: claimReq.hash,
       attempts: claimReq.steps.toString(),
       nonce: ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`,
-      expiry: (Date.now() + 300000).toString(), // 5 minutes from now
+      expiry: (Math.floor(Date.now() / 1000) + 300).toString(), // 5 minutes from now (in seconds)
     };
     
     // Check nonce uniqueness
@@ -288,7 +288,7 @@ export class ClaimProcessor {
       workHash: claimReq.hash,
       attempts: claimReq.steps.toString(),
       nonce: ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`,
-      expiry: (Date.now() + 300000).toString(), // 5 minutes from now
+      expiry: (Math.floor(Date.now() / 1000) + 300).toString(), // 5 minutes from now (in seconds)
     };
 
     // Check nonce uniqueness
