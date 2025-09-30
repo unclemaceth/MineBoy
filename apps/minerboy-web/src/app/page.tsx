@@ -11,6 +11,8 @@ import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import { useWalletModal } from '@/state/walletModal';
 import { useWriteContract } from 'wagmi';
+import { writeContract } from 'wagmi/actions';
+import { wagmiConfig as wcConfig } from '@/lib/wallet';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
 import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
@@ -960,10 +962,10 @@ function Home() {
             console.log('[TX] Using Glyph walletClient');
             await walletClient.writeContract(contractConfig);
           } else if (provider === 'wc') {
-            // For Web3Modal connections, use wagmi's writeContract (triggers modal)
-            console.log('[TX] Using Web3Modal writeContract');
+            // For Web3Modal connections, use wagmi actions with Web3Modal config
+            console.log('[TX] Using Web3Modal writeContract with wcConfig');
             console.log('[TX] writeContract config:', contractConfig);
-            const txHash = await writeContractAsync(contractConfig);
+            const txHash = await writeContract(wcConfig, contractConfig);
             console.log('[TX] Transaction hash:', txHash);
           } else {
             // Fallback to wagmi's writeContract
