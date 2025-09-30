@@ -16,10 +16,10 @@ export default async function routes(app: FastifyInstance) {
       
       const dailyStats = dailyStatsResult.rows[0];
       
-      // Compute active miners (last 10 minutes) - only ApeChain data
+      // Compute active miners (last 10 minutes) - only new contract data
       const now = Date.now();
       const activeWindowMs = 10 * 60 * 1000; // 10 minutes
-      const migrationDate = new Date('2025-09-29T00:00:00Z').getTime();
+      const migrationDate = new Date('2025-09-29T15:00:53Z').getTime();
       
       // Count distinct wallets from recent ApeChain claims (last 10 minutes)
       const activeMinersResult = await db.pool.query(`
@@ -36,8 +36,8 @@ export default async function routes(app: FastifyInstance) {
       if (!dailyStats) {
         console.log('⚠️ No daily stats found, computing on-the-fly...');
         
-        // Only show claims from after ApeChain migration (Sept 29, 2025)
-        const migrationDate = new Date('2025-09-29T00:00:00Z').getTime();
+        // Only show claims from after new cartridge contract deployment (Sept 29, 2025 15:00:53 UTC)
+        const migrationDate = new Date('2025-09-29T15:00:53Z').getTime();
         
         const result = await db.pool.query(`
           WITH confirmed AS (
