@@ -1,13 +1,14 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useAccount, useChainId, useWriteContract } from 'wagmi';
+import { useChainId, useWriteContract } from 'wagmi';
 import { formatEther, zeroAddress } from 'viem';
 import { APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from '@/lib/contracts';
 import { useMintPrice } from './useMintPrice';
+import { useActiveAccount } from './useActiveAccount';
 
 export function useSafeMint(count: number) {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address } = useActiveAccount();
   const chainId = useChainId();
   const { writeContractAsync } = useWriteContract();
   const { data: mintPrice } = useMintPrice();

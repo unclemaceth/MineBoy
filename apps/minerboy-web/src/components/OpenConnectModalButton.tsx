@@ -1,7 +1,7 @@
 'use client';
 
 import { useWeb3Modal } from '@web3modal/wagmi/react';
-import { useAccount } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 export default function OpenConnectModalButton({ 
   children = 'Connect Wallet', 
@@ -11,7 +11,7 @@ export default function OpenConnectModalButton({
   className?: string;
 }) {
   const { open } = useWeb3Modal();
-  const { isConnected } = useAccount();
+  const { isConnected } = useActiveAccount();
 
   // Hide button when connected
   if (isConnected) return null;

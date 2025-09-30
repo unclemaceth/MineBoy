@@ -1,11 +1,12 @@
 'use client';
 
-import { useAccount, useBalance, useGasPrice, useEstimateGas } from 'wagmi';
+import { useBalance, useGasPrice, useEstimateGas } from 'wagmi';
 import { formatEther, encodeFunctionData } from 'viem';
 import { APEBIT_CARTRIDGE_ABI } from '@/lib/contracts';
+import { useActiveAccount } from './useActiveAccount';
 
 export function useSpendChecks(to: `0x${string}` | undefined, value: bigint, count: number = 1) {
-  const { address } = useAccount();
+  const { address } = useActiveAccount();
   
   // Wrap all hooks in try-catch to prevent crashes
   let bal, balanceLoading, gasPrice, gasPriceLoading, gasLimit, gasLimitLoading, gasEstimateError;

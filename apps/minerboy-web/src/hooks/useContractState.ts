@@ -1,7 +1,8 @@
 'use client';
 
-import { useAccount, useChainId, useReadContract } from 'wagmi';
+import { useChainId, useReadContract } from 'wagmi';
 import { APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from '@/lib/contracts';
+import { useActiveAccount } from './useActiveAccount';
 
 export function useContractState(): {
   paused: undefined;
@@ -25,7 +26,7 @@ export function useContractState(): {
   isLoading: boolean;
   contract: any;
 } {
-  const { address } = useAccount();
+  const { address } = useActiveAccount();
   const chainId = useChainId();
   const contract = chainId ? CARTRIDGE_ADDRESSES[chainId] : undefined;
 

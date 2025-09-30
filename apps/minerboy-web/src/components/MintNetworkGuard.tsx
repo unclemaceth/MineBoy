@@ -1,11 +1,12 @@
 'use client';
 
-import { useAccount, useChainId, useSwitchChain } from 'wagmi';
+import { useChainId, useSwitchChain } from 'wagmi';
 import { curtis, apechain } from '@/lib/wallet';
 import OpenConnectModalButton from './OpenConnectModalButton';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 export default function MintNetworkGuard() {
-  const { isConnected } = useAccount();
+  const { isConnected } = useActiveAccount();
   const chainId = useChainId();
   const { switchChain } = useSwitchChain();
 

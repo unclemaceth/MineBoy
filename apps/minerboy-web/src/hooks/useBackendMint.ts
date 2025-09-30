@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useActiveAccount } from './useActiveAccount';
 
 export function useBackendMint() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useActiveAccount();
   const [isMinting, setIsMinting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
