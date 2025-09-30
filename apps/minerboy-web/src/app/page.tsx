@@ -960,15 +960,15 @@ function Home() {
             console.log('[TX] Using Glyph walletClient');
             await walletClient.writeContract(contractConfig);
           } else if (provider === 'wc' && walletClient) {
-            // For Web3Modal connections, use walletClient
-            console.log('[TX] Using Web3Modal walletClient.writeContract');
+            // For Web3Modal connections, use viem wallet client with window.ethereum
+            console.log('[TX] Using Web3Modal walletClient (via window.ethereum)');
+            console.log('[TX] Config:', contractConfig);
             const txHash = await walletClient.writeContract(contractConfig);
             console.log('[TX] Transaction hash:', txHash);
           } else {
-            // Fallback to wagmi's writeContractAsync (for hook-based path)
-            console.log('[TX] Using fallback writeContractAsync');
-            const txHash = await writeContractAsync(contractConfig);
-            console.log('[TX] Transaction hash:', txHash);
+            // Fallback
+            console.log('[TX] No wallet client available, cannot send transaction');
+            throw new Error('No wallet client available');
           }
           
           pushLine('Transaction submitted - waiting for hash...');
