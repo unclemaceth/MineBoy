@@ -133,10 +133,10 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
   
   // TTL based on difficulty level
   let ttlMs: number;
-  if (zeros >= 9) ttlMs = 2048_000;      // BRUTAL: ~34 minutes (was 8 zeros = 17 min)
-  else if (zeros >= 8) ttlMs = 1024_000; // SERIOUS: ~17 minutes (was 7 zeros = 8.5 min)
-  else if (zeros >= 7) ttlMs = 512_000;  // TRICKY: ~8.5 minutes (was 6 zeros = 4.3 min)
-  else ttlMs = 256_000;                  // CASUAL: ~4.3 minutes (was 5 zeros = 2.1 min)
+  if (zeros >= 9) ttlMs = 1024_000;      // BRUTAL: 1024 seconds
+  else if (zeros >= 8) ttlMs = 512_000;  // SERIOUS: 512 seconds
+  else if (zeros >= 7) ttlMs = 256_000;  // TRICKY: 256 seconds
+  else ttlMs = 128_000;                  // CASUAL: 128 seconds
   
   return {
     suffix,
