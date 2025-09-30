@@ -12,13 +12,16 @@ export class SoundManager {
   // Audio elements
   private buttonSound: HTMLAudioElement | null = null;
   private confirmSound: HTMLAudioElement | null = null;
+  private failSound: HTMLAudioElement | null = null;
   private miningSound: HTMLAudioElement | null = null;
   
   // Pre-loaded audio pool for instant playback
   private buttonSoundPool: HTMLAudioElement[] = [];
   private confirmSoundPool: HTMLAudioElement[] = [];
+  private failSoundPool: HTMLAudioElement[] = [];
   private currentButtonIndex = 0;
   private currentConfirmIndex = 0;
+  private currentFailIndex = 0;
   
   private constructor() {
     if (typeof window !== 'undefined') {
@@ -54,10 +57,11 @@ export class SoundManager {
     // Create audio elements
     this.buttonSound = new Audio('/sounds/back_style_2_001.wav');
     this.confirmSound = new Audio('/sounds/confirm_style_1_001.wav');
+    this.failSound = new Audio('/sounds/Sequence_07.wav');
     this.miningSound = new Audio('/sounds/Robot Beep Boop.wav');
     
     // Configure audio
-    [this.buttonSound, this.confirmSound, this.miningSound].forEach(audio => {
+    [this.buttonSound, this.confirmSound, this.failSound, this.miningSound].forEach(audio => {
       if (audio) {
         audio.preload = 'auto';
         audio.volume = 0.7;
@@ -92,8 +96,16 @@ export class SoundManager {
       this.confirmSoundPool.push(audio);
     }
     
+    // Create a pool of pre-loaded fail sounds
+    for (let i = 0; i < 3; i++) {
+      const audio = new Audio('/sounds/Sequence_07.wav');
+      audio.preload = 'auto';
+      audio.volume = 0.7;
+      this.failSoundPool.push(audio);
+    }
+    
     // Force load all sounds
-    [...this.buttonSoundPool, ...this.confirmSoundPool, this.miningSound].forEach(audio => {
+    [...this.buttonSoundPool, ...this.confirmSoundPool, ...this.failSoundPool, this.miningSound].forEach(audio => {
       if (audio) {
         audio.load();
       }
@@ -192,6 +204,32 @@ export class SoundManager {
     }
   }
   
+  public playFailSound() {
+    if (!this.enabled || !this.claimSoundsEnabled) return;
+    
+    try {
+      // Use pre-loaded audio from pool
+      if (this.failSoundPool.length > 0) {
+        const audio = this.failSoundPool[this.currentFailIndex];
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          // Ignore autoplay errors
+        });
+        this.currentFailIndex = (this.currentFailIndex + 1) % this.failSoundPool.length;
+      } else {
+        // Fallback to main audio element
+        if (this.failSound) {
+          this.failSound.currentTime = 0;
+          this.failSound.play().catch(() => {
+            // Ignore autoplay errors
+          });
+        }
+      }
+    } catch (error) {
+      console.warn('Fail sound failed:', error);
+    }
+  }
+  
   public startMiningSound() {
     if (!this.enabled || !this.miningSoundsEnabled || !this.miningSound) return;
     
@@ -240,6 +278,11 @@ export const playButtonSound = () => {
 export const playConfirmSound = () => {
   soundManager.playConfirmSound();
   soundManager.playHapticFeedback('medium');
+};
+
+export const playFailSound = () => {
+  soundManager.playFailSound();
+  soundManager.playHapticFeedback('heavy');
 };
 
 export const startMiningSound = () => {

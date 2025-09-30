@@ -29,7 +29,7 @@ import { getOrCreateSessionId } from '@/lib/miningSession';
 import { apiStart, apiHeartbeat } from '@/lib/miningApi';
 import { normalizeJob } from '@/lib/normalizeJob';
 import { to0x, hexFrom } from "@/lib/hex";
-import { playButtonSound, playConfirmSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
+import { playButtonSound, playConfirmSound, playFailSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
 import SoundSettings from '@/components/SoundSettings';
 import NavigationModal from '@/components/NavigationModal';
 import StatisticsSection from '@/components/StatisticsSection';
@@ -271,6 +271,8 @@ function Home() {
         stopMining(); // Stop the store's mining state
         setMining(false);
         setStatus('idle');
+        stopMiningSound(); // Stop the mining sound
+        playFailSound(); // Play fail sound for TTL expiry
         setFoundResult(null); // Clear any pending found result
         setFound(undefined); // Clear lastFound from session
         setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
@@ -350,6 +352,8 @@ function Home() {
           miner.stopForTtl(); // Stop the actual mining worker with TTL-specific handling
           stopMining(); // Stop the store's mining state
           setMining(false);
+          stopMiningSound(); // Stop the mining sound
+          playFailSound(); // Play fail sound for session expiry
           setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
           setHashRate(0); // Clear hash rate display
           
