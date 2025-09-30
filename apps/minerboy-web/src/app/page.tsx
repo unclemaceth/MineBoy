@@ -151,7 +151,7 @@ function Home() {
   } = useSession();
   
   // Miner store for boot sequence
-  const { bootLines } = useMinerStore();
+  const { bootLines, stopMining, setHashRate } = useMinerStore();
   
   // Miner worker
   const miner = useMinerWorker({
@@ -268,7 +268,7 @@ function Home() {
       if (job.expiresAt && Date.now() > job.expiresAt) {
         // Stop all mining systems immediately
         miner.stop(); // Stop the actual mining worker
-        minerStore.stopMining(); // Stop the store's mining state
+        stopMining(); // Stop the store's mining state
         setMining(false);
         setStatus('idle');
         setFoundResult(null); // Clear any pending found result
@@ -348,7 +348,7 @@ function Home() {
           
           // Stop all mining systems immediately
           miner.stop(); // Stop the actual mining worker
-          minerStore.stopMining(); // Stop the store's mining state
+          stopMining(); // Stop the store's mining state
           setMining(false);
           setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
           setHashRate(0); // Clear hash rate display
