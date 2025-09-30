@@ -140,6 +140,10 @@ export function useMinerWorker(events: Events = {}) {
       sessionIdRef.current = 'dead';
       hardKill('ttl-expired');
     },
+    resetSession() {
+      console.log('[RESET_SESSION] Resetting dead session state');
+      sessionIdRef.current = crypto.randomUUID();
+    },
     running,
   }), [running]);
 

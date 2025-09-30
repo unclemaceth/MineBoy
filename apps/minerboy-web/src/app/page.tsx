@@ -599,6 +599,9 @@ function Home() {
       loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
       pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
       
+      // Reset the miner session state after successful session open
+      miner.resetSession();
+      
     } catch (error: any) {
       console.error('[SESSION_OPEN] Error:', error);
       
@@ -628,6 +631,14 @@ function Home() {
         pushLine(`🔒 CARTRIDGE LOCKED`);
         pushLine(`Session conflict - wait ${ttlSec}s`);
         pushLine(`Another session is active for this cartridge`);
+        pushLine(`⏰ TIME UP - Job expired!`);
+        pushLine(`Initiating Cartridge CoolDown...`);
+        pushLine(`Blowing in slot...`);
+        pushLine(`Removing dust...`);
+        
+        // Start cooldown timer for session conflict
+        setCooldownTimer(ttlSec);
+        
         setShowCartridgeSelect(true); // Re-show selection
         return;
       }
@@ -659,7 +670,10 @@ function Home() {
         return;
       }
       
-      pushLine(`❌ Session failed: ${errorInfo.message || (error instanceof Error ? error.message : 'Unknown error')}`);
+      // Gamified error messages instead of raw JSON
+      pushLine('⚠️ CARTRIDGE ERROR');
+      pushLine('Connection failed - retrying...');
+      pushLine('Check your network connection');
       setShowCartridgeSelect(true); // Re-show selection on any error
     }
   };
@@ -851,6 +865,11 @@ function Home() {
       }
 
       console.log('[CLAIM_OK]', claimResponse);
+      console.log('[REWARD_TOKEN_DEBUG]', {
+        rewardToken: claimResponse.claim?.rewardToken,
+        expected: '0x5f942b20b8aa905b8f6a46ae226e7f6bf2f44023',
+        isCorrect: claimResponse.claim?.rewardToken?.toLowerCase() === '0x5f942b20b8aa905b8f6a46ae226e7f6bf2f44023'
+      });
       console.log('[CLAIM_DATA]', { 
         hasClaim: !!claimResponse.claim, 
         hasSignature: !!claimResponse.signature,
@@ -1797,33 +1816,54 @@ function Home() {
         }}>
           <div style={{
             backgroundColor: '#1a1a1a',
-            border: '2px solid #64ff8a',
+            border: cooldownTimer ? '2px solid #ff6b6b' : '2px solid #64ff8a',
             borderRadius: 8,
             padding: 20,
             maxWidth: 300,
             width: '90%',
           }}>
-            <h3 style={{ color: '#64ff8a', marginBottom: 8, textAlign: 'center' }}>
-              Select Cartridge
+            <h3 style={{ color: cooldownTimer ? '#ff6b6b' : '#64ff8a', marginBottom: 8, textAlign: 'center' }}>
+              {cooldownTimer ? 'Cartridge Busy' : 'Select Cartridge'}
             </h3>
+            
+            {cooldownTimer && (
+              <div style={{
+                color: '#ff6b6b',
+                fontSize: '14px',
+                textAlign: 'center',
+                marginBottom: 16,
+                fontFamily: 'Menlo, monospace',
+                padding: '8px',
+                backgroundColor: 'rgba(255, 107, 107, 0.1)',
+                borderRadius: 4,
+                border: '1px solid #ff6b6b'
+              }}>
+                Cartridge is busy for {cooldownTimer}s
+                <br />
+                <small>We'll auto-retry when it's free</small>
+              </div>
+            )}
             
             {/* Load My Cartridges Button */}
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <button
                 onClick={() => {
+                  if (cooldownTimer) return; // Disabled during cooldown
                   playButtonSound();
                   setShowAlchemyCartridges(true);
                 }}
+                disabled={!!cooldownTimer}
                 style={{
-                  backgroundColor: '#4a7d5f',
-                  border: '2px solid #64ff8a',
+                  backgroundColor: cooldownTimer ? '#333' : '#4a7d5f',
+                  border: cooldownTimer ? '2px solid #666' : '2px solid #64ff8a',
                   borderRadius: 6,
-                  color: '#64ff8a',
+                  color: cooldownTimer ? '#666' : '#64ff8a',
                   padding: '8px 16px',
-                  cursor: 'pointer',
+                  cursor: cooldownTimer ? 'not-allowed' : 'pointer',
                   fontSize: 12,
                   fontFamily: 'Menlo, monospace',
                   fontWeight: 'bold',
+                  opacity: cooldownTimer ? 0.5 : 1,
                 }}
               >
                 🎮 Load My Cartridges
@@ -1844,19 +1884,23 @@ function Home() {
                 <div style={{ color: '#fff', marginBottom: 4 }}>{cart.name}</div>
                 <input
                   type="text"
-                  placeholder="Token ID"
+                  placeholder={cooldownTimer ? "Cartridge busy..." : "Token ID"}
                   id={`tokenId-${cart.contract}`}
+                  disabled={!!cooldownTimer}
                   style={{
                     width: '100%',
                     padding: 8,
-                    backgroundColor: '#333',
-                    border: '1px solid #555',
+                    backgroundColor: cooldownTimer ? '#1a1a1a' : '#333',
+                    border: cooldownTimer ? '1px solid #333' : '1px solid #555',
                     borderRadius: 4,
-                    color: '#fff',
+                    color: cooldownTimer ? '#666' : '#fff',
                     marginBottom: 8,
                     fontFamily: 'Menlo, monospace',
+                    opacity: cooldownTimer ? 0.5 : 1,
+                    cursor: cooldownTimer ? 'not-allowed' : 'text',
                   }}
                   onKeyDown={(e) => {
+                    if (cooldownTimer) return; // Disabled during cooldown
                     if (e.key === 'Enter') {
                       playButtonSound();
                       const tokenId = (e.target as HTMLInputElement).value;
