@@ -79,7 +79,6 @@ function Home() {
   const [showNavigationModal, setShowNavigationModal] = useState(false);
   const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | null>(null);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
-  const [cooldownMessage, setCooldownMessage] = useState<string>('');
 
   // Navigation helpers
   const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions') => {
@@ -283,7 +282,6 @@ function Home() {
         
         // Start cooldown timer and gamified sequence
         setCooldownTimer(60);
-        setCooldownMessage('Initiating Cartridge CoolDown...');
         pushLine('⏰ TIME UP - Job expired!');
         pushLine('Initiating Cartridge CoolDown...');
         pushLine('Blowing in slot...');
@@ -291,7 +289,6 @@ function Home() {
         
         // Auto-unload cartridge and return to terminal mode  
         clear(); // Clear session data (unloads cartridge)
-        setShowCartridgeSelect(true); // Show cartridge selection
         setMode('terminal'); // Return to terminal view
         
         hapticFeedback();
@@ -309,27 +306,11 @@ function Home() {
     const interval = setInterval(() => {
       setCooldownTimer(prev => {
         if (prev === null || prev <= 1) {
-          setCooldownMessage('');
           return null;
         }
         
         const newTime = prev - 1;
         console.log(`[COOLDOWN] ${newTime}s remaining`);
-        
-        // Update cooldown message based on time remaining
-        if (newTime > 50) {
-          setCooldownMessage('Initiating Cartridge CoolDown...');
-        } else if (newTime > 40) {
-          setCooldownMessage('Blowing in slot...');
-        } else if (newTime > 30) {
-          setCooldownMessage('Removing dust...');
-        } else if (newTime > 20) {
-          setCooldownMessage('Checking contacts...');
-        } else if (newTime > 10) {
-          setCooldownMessage('Calibrating reader...');
-        } else {
-          setCooldownMessage('Almost ready...');
-        }
         
         return newTime;
       });
@@ -405,7 +386,6 @@ function Home() {
           
           // Start cooldown timer for heartbeat failure
           setCooldownTimer(60);
-          setCooldownMessage('Initiating SYNC Resuscitation...');
           
           // Clear session state
           clear();
@@ -621,16 +601,27 @@ function Home() {
     } catch (error: any) {
       console.error('[SESSION_OPEN] Error:', error);
       
+      // Parse error info from nested structure
+      let errorInfo = error.info || error;
+      if (typeof errorInfo === 'string') {
+        try {
+          errorInfo = JSON.parse(errorInfo);
+        } catch (e) {
+          // If parsing fails, use the original error
+          errorInfo = error;
+        }
+      }
+      
       // Handle new two-tier locking error codes
-      if (error.code === 'cartridge_in_use') {
-        const minutes = error.remainingMinutes || 'unknown';
+      if (errorInfo.code === 'cartridge_in_use') {
+        const minutes = errorInfo.remainingMinutes || 'unknown';
         pushLine(`🔒 Cartridge locked for ~${minutes} minutes. Try later.`);
         setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
-      if (error.code === 'session_conflict') {
-        const ttlSec = error.details?.ttlSec || 60;
+      if (errorInfo.code === 'session_conflict') {
+        const ttlSec = errorInfo.details?.ttlSec || 60;
         pushLine(`🔒 CARTRIDGE LOCKED`);
         pushLine(`Session conflict - wait ${ttlSec}s`);
         pushLine(`Another session is active for this cartridge`);
@@ -638,21 +629,21 @@ function Home() {
         return;
       }
       
-      if (error.code === 'session_still_active') {
+      if (errorInfo.code === 'session_still_active') {
         pushLine('⚠️ Mining already active in another tab for this cartridge.');
         setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
-      if (error.code === 'active_session_elsewhere') {
+      if (errorInfo.code === 'active_session_elsewhere') {
         pushLine('⚠️ Another session is active on this cartridge.');
         setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
-      if (error.code === 'wallet_session_limit_exceeded') {
-        const limit = error.limit || 10;
-        const active = error.activeCount || 0;
+      if (errorInfo.code === 'wallet_session_limit_exceeded') {
+        const limit = errorInfo.limit || 10;
+        const active = errorInfo.activeCount || 0;
         pushLine(`🚫 Max ${limit} concurrent sessions reached (${active}/${limit}). Close a session to start another.`);
         setShowCartridgeSelect(true); // Re-show selection
         return;
@@ -665,7 +656,7 @@ function Home() {
         return;
       }
       
-      pushLine(`❌ Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      pushLine(`❌ Session failed: ${errorInfo.message || (error instanceof Error ? error.message : 'Unknown error')}`);
       setShowCartridgeSelect(true); // Re-show selection on any error
     }
   };
@@ -1446,7 +1437,6 @@ function Home() {
                 // Show terminal lines with typewriter effect
                 <TerminalTypewriter lines={[
                   ...terminal.slice(-7), // Show last 7 terminal lines
-                  ...(cooldownMessage ? [cooldownMessage] : []), // Add cooldown message if active
                   ...(mining ? ['Press > to return to Visualisation'] : []) // Add instruction if mining
                 ]} />
               )}
