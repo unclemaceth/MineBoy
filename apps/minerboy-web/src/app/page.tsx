@@ -11,8 +11,6 @@ import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import { useWalletModal } from '@/state/walletModal';
 import { useWriteContract } from 'wagmi';
-import { writeContract } from 'wagmi/actions';
-import { wagmiConfig as wcConfig } from '@/lib/wallet';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
 import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
@@ -961,15 +959,14 @@ function Home() {
             // For Glyph connections, use walletClient directly
             console.log('[TX] Using Glyph walletClient');
             await walletClient.writeContract(contractConfig);
-          } else if (provider === 'wc') {
-            // For Web3Modal connections, use wagmi actions with Web3Modal config
-            console.log('[TX] Using Web3Modal writeContract with wcConfig');
-            console.log('[TX] writeContract config:', contractConfig);
-            const txHash = await writeContract(wcConfig, contractConfig);
+          } else if (provider === 'wc' && walletClient) {
+            // For Web3Modal connections, use walletClient
+            console.log('[TX] Using Web3Modal walletClient.writeContract');
+            const txHash = await walletClient.writeContract(contractConfig);
             console.log('[TX] Transaction hash:', txHash);
           } else {
-            // Fallback to wagmi's writeContract
-            console.log('[TX] Using fallback writeContract');
+            // Fallback to wagmi's writeContractAsync (for hook-based path)
+            console.log('[TX] Using fallback writeContractAsync');
             const txHash = await writeContractAsync(contractConfig);
             console.log('[TX] Transaction hash:', txHash);
           }
