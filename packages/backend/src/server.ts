@@ -535,8 +535,8 @@ fastify.post<{ Body: { sessionId: string } }>('/v2/session/close', async (reques
   // Get session to release lock
   const session = await SessionStore.getSession(sessionId);
   if (session) {
-    const { contract, tokenId } = session.cartridge;
-    await SessionStore.releaseLock(contract, tokenId, session.minerId);
+    const { chainId, contract, tokenId } = session.cartridge;
+    await SessionStore.releaseSessionLock(chainId, contract, tokenId);
   }
   
   // Delete session
