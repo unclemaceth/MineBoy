@@ -454,7 +454,13 @@ export class ClaimProcessor {
   private async signClaimV2(claim: Omit<ClaimStruct, 'rewardAmount'>): Promise<string> {
     const domain = EIP712_DOMAIN_LOCAL;
     
+    console.log('[CLAIM_SIGN_V2] EIP-712 Domain:', domain);
+    console.log('[CLAIM_SIGN_V2] Claim data:', claim);
+    
     const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V2, claim);
+    
+    console.log('[CLAIM_SIGN_V2] Signature:', signature);
+    
     return signature;
   }
   
