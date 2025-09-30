@@ -2728,4 +2728,4 @@ function Home() {
 }
 
 export default dynamic(() => Promise.resolve(Home), { ssr: false });
-// Force redeploy Tue Sep 16 03:02:26 BST 2025
+// Force redeploy Tue Sep 16 03:02:26 BST 2025 - Fixed router address to use env var
