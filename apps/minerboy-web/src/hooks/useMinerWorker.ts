@@ -98,9 +98,6 @@ export function useMinerWorker(events: Events = {}) {
       
       if (!workerRef.current) return;
       
-      // Defensive: kill an old worker first
-      hardKill('pre-start');
-      
       const sid = crypto.randomUUID();
       sessionIdRef.current = sid;
       setRunning(true);
@@ -126,16 +123,11 @@ export function useMinerWorker(events: Events = {}) {
         height: job.height,
       };
       
-      // Create SharedArrayBuffer for atomic stop flag
-      const sab = new SharedArrayBuffer(4); // one Int32
-      const view = new Int32Array(sab);
-      view[0] = 0; // 0 = running, 1 = stop requested
-      
+      // Use simple stop flag (SharedArrayBuffer requires special headers)
       workerRef.current.postMessage({
         type: 'START',
         job: workerJob,
         sid,
-        sab,
       });
       
       console.log(`[START] New mining session: ${sid}`);

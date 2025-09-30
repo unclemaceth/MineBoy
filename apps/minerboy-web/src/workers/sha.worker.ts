@@ -18,7 +18,6 @@ type InStart = {
     difficultyBits?: number;
   };
   sid: string;               // session ID
-  sab: SharedArrayBuffer;    // atomic stop flag
 };
 
 type InStop = { type: 'STOP' };
@@ -43,7 +42,6 @@ let attempts = 0;
 let startTs = 0;
 let lastTickTs = 0;
 let sid: string | null = null;
-let stopFlag: Int32Array | null = null;
 
 
 function toLowerHex(s: string) {
@@ -99,11 +97,10 @@ function mine({ nonce, rule, suffix, difficultyBits }: {
   let counter = 0;
 
   while (running) {
-    // Check atomic stop flag every iteration - immediate exit
-    if (stopFlag && Atomics.load(stopFlag, 0) === 1) {
-      console.log('[WORKER] Atomic stop flag detected, exiting mine loop');
-      running = false;
-      ctx.postMessage({ type: 'STOPPED', sid });
+    // Check running flag every iteration - immediate exit
+    if (!running) {
+      console.log('[WORKER] Stop flag detected, exiting mine loop');
+      ctx.postMessage({ type: 'STOPPED', sid: sid || '' });
       return;
     }
 
@@ -160,19 +157,16 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
   
   if (msg.type === 'STOP') {
     console.log('Worker stopping...');
-    if (stopFlag) Atomics.store(stopFlag, 0, 1);
     running = false;
     return;
   }
   if (msg.type === 'START') {
     if (running) running = false;
-    const { job, sid: incomingSid, sab } = msg;
+    const { job, sid: incomingSid } = msg;
     const { nonce, rule, suffix, difficultyBits } = job;
 
-    // Set up atomic stop flag and session ID
+    // Set up session ID
     sid = incomingSid;
-    stopFlag = new Int32Array(sab);
-    stopFlag[0] = 0; // Reset to running state
 
     try {
       mine({ nonce, rule, suffix, difficultyBits });
