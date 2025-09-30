@@ -125,7 +125,7 @@ function Home() {
   const { address, isConnected, provider } = useActiveAccount();
   const { disconnectWallet } = useActiveDisconnect();
   const { open: openWalletModal } = useWalletModal();
-  const { writeContract, data: hash } = useWriteContract();
+  const { writeContract, writeContractAsync, data: hash } = useWriteContract();
   const walletClient = useActiveWalletClient();
   
   // Session state
@@ -962,11 +962,14 @@ function Home() {
           } else if (provider === 'wc') {
             // For Web3Modal connections, use wagmi's writeContract (triggers modal)
             console.log('[TX] Using Web3Modal writeContract');
-            writeContract(contractConfig);
+            console.log('[TX] writeContract config:', contractConfig);
+            const txHash = await writeContractAsync(contractConfig);
+            console.log('[TX] Transaction hash:', txHash);
           } else {
             // Fallback to wagmi's writeContract
             console.log('[TX] Using fallback writeContract');
-            writeContract(contractConfig);
+            const txHash = await writeContractAsync(contractConfig);
+            console.log('[TX] Transaction hash:', txHash);
           }
           
           pushLine('Transaction submitted - waiting for hash...');
