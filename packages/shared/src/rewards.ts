@@ -116,10 +116,10 @@ export function decorateFoundHash(powHash: `0x${string}`, amountWei: bigint | st
  */
 export function getDifficultySuffixForActiveMiners(activeMiners: number): string {
   // Dynamic difficulty scaling based on active miners
-  if (activeMiners < 50) return "00000";     // 5 hex chars
-  if (activeMiners < 100) return "000000";   // 6 hex chars
-  if (activeMiners < 200) return "0000000";  // 7 hex chars
-  return "00000000";                         // Hard - 8 hex chars
+  if (activeMiners < 50) return "000000";     // 6 hex chars (was 5)
+  if (activeMiners < 100) return "0000000";   // 7 hex chars (was 6)
+  if (activeMiners < 200) return "00000000";  // 8 hex chars (was 7)
+  return "000000000";                         // Hard - 9 hex chars (was 8)
 }
 
 /**
@@ -133,10 +133,10 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
   
   // TTL based on difficulty level
   let ttlMs: number;
-  if (zeros >= 8) ttlMs = 1024_000;      // BRUTAL: ~17 minutes
-  else if (zeros >= 7) ttlMs = 512_000;  // SERIOUS: ~8.5 minutes
-  else if (zeros >= 6) ttlMs = 256_000;  // TRICKY: ~4.3 minutes
-  else ttlMs = 128_000;                  // CASUAL: ~2.1 minutes
+  if (zeros >= 9) ttlMs = 2048_000;      // BRUTAL: ~34 minutes (was 8 zeros = 17 min)
+  else if (zeros >= 8) ttlMs = 1024_000; // SERIOUS: ~17 minutes (was 7 zeros = 8.5 min)
+  else if (zeros >= 7) ttlMs = 512_000;  // TRICKY: ~8.5 minutes (was 6 zeros = 4.3 min)
+  else ttlMs = 256_000;                  // CASUAL: ~4.3 minutes (was 5 zeros = 2.1 min)
   
   return {
     suffix,
