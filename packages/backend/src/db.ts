@@ -312,12 +312,17 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   const d = getDB();
   const since = sinceForPeriod(period);
   
-  // Get all confirmed claims for the period
+  // Only show claims from after new cartridge contract deployment (Sept 29, 2025 15:00:53 UTC)
+  const migrationDate = new Date('2025-09-29T15:00:53Z').getTime();
+  
+  // Get all confirmed claims for the period (only new contract data)
   const claimsResult = await d.pool.query(`
     SELECT wallet, amount_wei, confirmed_at, cartridge_id
     FROM claims
-    WHERE status='confirmed' AND ($1=0 OR confirmed_at >= $1)
-  `, [since]);
+    WHERE status='confirmed' 
+      AND created_at >= $2
+      AND ($1=0 OR confirmed_at >= $1)
+  `, [since, migrationDate]);
   const claims = claimsResult.rows as Array<{
     wallet: string;
     amount_wei: string;
@@ -449,14 +454,15 @@ export async function getAggregateForWallet(period: Period, wallet: string): Pro
   const d = getDB();
   const since = sinceForPeriod(period);
   const stmt = d.prepare(`
-    SELECT amount_wei, confirmed_at, cartridge_id
+    SELECT amount_wei, confirmed_at, cartridge_id, created_at
     FROM claims
-    WHERE status='confirmed' AND lower(wallet)=lower(@wallet) AND (@since=0 OR confirmed_at >= @since)
+    WHERE status='confirmed' AND lower(wallet)=lower(@wallet) AND (@since=0 OR created_at >= @since)
   `);
   const claims = await stmt.all({ wallet, since }) as Array<{
     amount_wei: string;
     confirmed_at: number;
     cartridge_id: number;
+    created_at: number;
   }>;
   
   if (claims.length === 0) return null;
@@ -493,7 +499,7 @@ export async function countWalletsAbove(period: Period, totalWei: string): Promi
   const claimsResult = await d.pool.query(`
     SELECT wallet, amount_wei
     FROM claims
-    WHERE status='confirmed' AND ($1=0 OR confirmed_at >= $1)
+    WHERE status='confirmed' AND ($1=0 OR created_at >= $1)
   `, [since]);
   const claims = claimsResult.rows as Array<{
     wallet: string;
