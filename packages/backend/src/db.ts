@@ -312,17 +312,12 @@ export async function getLeaderboardTop(period: Period, limit = 25): Promise<Lea
   const d = getDB();
   const since = sinceForPeriod(period);
   
-  // Only show claims from after new cartridge contract deployment (Sept 29, 2025 15:00:53 UTC)
-  const migrationDate = new Date('2025-09-29T15:00:53Z').getTime();
-  
-  // Get all confirmed claims for the period (only new contract data)
+  // Get all confirmed claims for the period
   const claimsResult = await d.pool.query(`
     SELECT wallet, amount_wei, confirmed_at, cartridge_id
     FROM claims
-    WHERE status='confirmed' 
-      AND created_at >= $2
-      AND ($1=0 OR confirmed_at >= $1)
-  `, [since, migrationDate]);
+    WHERE status='confirmed' AND ($1=0 OR created_at >= $1)
+  `, [since]);
   const claims = claimsResult.rows as Array<{
     wallet: string;
     amount_wei: string;
