@@ -122,7 +122,7 @@ function Home() {
   const [foundResult, setFoundResult] = useState<FoundResult | null>(null);
   
   // Wagmi hooks
-  const { address, isConnected } = useActiveAccount();
+  const { address, isConnected, provider } = useActiveAccount();
   const { disconnectWallet } = useActiveDisconnect();
   const { open: openWalletModal } = useWalletModal();
   const { writeContract, data: hash } = useWriteContract();
@@ -949,20 +949,20 @@ function Home() {
           console.log('[WALLET_DEBUG]', {
             walletClient: !!walletClient,
             walletClientType: walletClient?.constructor?.name,
-            walletClientTypeProp: walletClient?.type,
             hasWriteContract: !!writeContract,
-            address
+            address,
+            provider
           });
 
-          // Use writeContract for Web3Modal connections, walletClient for Glyph
-          if (walletClient && walletClient.type === 'web3modal') {
-            // For Web3Modal connections, use wagmi's writeContract (triggers modal)
-            console.log('[TX] Using Web3Modal writeContract');
-            writeContract(contractConfig);
-          } else if (walletClient && walletClient.writeContract) {
+          // Use provider to determine which path to take
+          if (provider === 'glyph' && walletClient) {
             // For Glyph connections, use walletClient directly
             console.log('[TX] Using Glyph walletClient');
             await walletClient.writeContract(contractConfig);
+          } else if (provider === 'wc') {
+            // For Web3Modal connections, use wagmi's writeContract (triggers modal)
+            console.log('[TX] Using Web3Modal writeContract');
+            writeContract(contractConfig);
           } else {
             // Fallback to wagmi's writeContract
             console.log('[TX] Using fallback writeContract');
