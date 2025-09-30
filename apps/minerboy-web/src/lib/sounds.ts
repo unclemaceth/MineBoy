@@ -252,17 +252,28 @@ export class SoundManager {
   
   public playHapticFeedback(type: 'light' | 'medium' | 'heavy' = 'light') {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      switch (type) {
-        case 'light':
-          navigator.vibrate(50);
-          break;
-        case 'medium':
-          navigator.vibrate(100);
-          break;
-        case 'heavy':
-          navigator.vibrate([100, 50, 100]);
-          break;
+      try {
+        let pattern: number | number[];
+        switch (type) {
+          case 'light':
+            pattern = 50;
+            break;
+          case 'medium':
+            pattern = 100;
+            break;
+          case 'heavy':
+            pattern = [100, 50, 100];
+            break;
+        }
+        
+        console.log(`[HAPTIC] Attempting ${type} vibration:`, pattern);
+        const result = navigator.vibrate(pattern);
+        console.log(`[HAPTIC] Vibration result:`, result);
+      } catch (error) {
+        console.warn('[HAPTIC] Vibration failed:', error);
       }
+    } else {
+      console.log('[HAPTIC] Vibration not supported or not in browser context');
     }
   }
 }

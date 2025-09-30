@@ -29,7 +29,7 @@ import { getOrCreateSessionId } from '@/lib/miningSession';
 import { apiStart, apiHeartbeat } from '@/lib/miningApi';
 import { normalizeJob } from '@/lib/normalizeJob';
 import { to0x, hexFrom } from "@/lib/hex";
-import { playButtonSound, playConfirmSound, playFailSound, startMiningSound, stopMiningSound } from '@/lib/sounds';
+import { playButtonSound, playConfirmSound, playFailSound, startMiningSound, stopMiningSound, soundManager } from '@/lib/sounds';
 import SoundSettings from '@/components/SoundSettings';
 import NavigationModal from '@/components/NavigationModal';
 import StatisticsSection from '@/components/StatisticsSection';
@@ -2308,6 +2308,79 @@ function Home() {
                   ) : (
                     <div>No cartridge - no locks</div>
                   )}
+                </div>
+              </div>
+
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  HAPTIC TEST
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4', marginBottom: '8px' }}>
+                  Test vibration feedback on mobile devices
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => { 
+                      playButtonSound(); 
+                      soundManager.playHapticFeedback('light');
+                    }}
+                    style={{
+                      background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                      color: '#c8ffc8',
+                      border: '1px solid #8a8a8a',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      fontFamily: 'Menlo, monospace'
+                    }}
+                  >
+                    Light (50ms)
+                  </button>
+                  <button
+                    onClick={() => { 
+                      playButtonSound(); 
+                      soundManager.playHapticFeedback('medium');
+                    }}
+                    style={{
+                      background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                      color: '#c8ffc8',
+                      border: '1px solid #8a8a8a',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      fontFamily: 'Menlo, monospace'
+                    }}
+                  >
+                    Medium (100ms)
+                  </button>
+                  <button
+                    onClick={() => { 
+                      playButtonSound(); 
+                      soundManager.playHapticFeedback('heavy');
+                    }}
+                    style={{
+                      background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                      color: '#c8ffc8',
+                      border: '1px solid #8a8a8a',
+                      borderRadius: '4px',
+                      padding: '6px 12px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      fontFamily: 'Menlo, monospace'
+                    }}
+                  >
+                    Heavy (Pattern)
+                  </button>
                 </div>
               </div>
 
