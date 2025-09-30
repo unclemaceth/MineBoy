@@ -133,6 +133,11 @@ export const ERROR_MAP: Record<string, {title:string; message:(p:any)=>string}> 
     message: ({ tokenId }) =>
       `Your session no longer owns the lock for cartridge #${tokenId}. It was taken by another session.`
   },
+  session_conflict: {
+    title: 'Cartridge locked',
+    message: ({ ttlSec, holderMinerId }) =>
+      `Cartridge is locked for ${ttlSec || 60} seconds. Please wait before trying again.`
+  },
   lock_expired: {
     title: 'Session expired',
     message: () => `Your session expired due to inactivity. Start a new session to continue.`

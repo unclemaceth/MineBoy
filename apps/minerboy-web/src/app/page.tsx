@@ -277,7 +277,9 @@ function Home() {
         clear(); // Clear session data (unloads cartridge)
         setShowCartridgeSelect(true); // Show cartridge selection
         setMode('terminal'); // Return to terminal view
-        pushLine('Cartridge ejected - please re-insert');
+        pushLine('⏰ TIME UP - Job expired!');
+        pushLine('Cartridge ejected - session locked for 60s');
+        pushLine('Please wait before re-inserting cartridge...');
         
         hapticFeedback();
       }
@@ -555,37 +557,54 @@ function Home() {
       pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
       
     } catch (error: any) {
+      console.error('[SESSION_OPEN] Error:', error);
+      
       // Handle new two-tier locking error codes
       if (error.code === 'cartridge_in_use') {
         const minutes = error.remainingMinutes || 'unknown';
-        pushLine(`Cartridge locked for ~${minutes} minutes. Try later.`);
+        pushLine(`🔒 Cartridge locked for ~${minutes} minutes. Try later.`);
+        setShowCartridgeSelect(true); // Re-show selection
+        return;
+      }
+      
+      if (error.code === 'session_conflict') {
+        const ttlSec = error.details?.ttlSec || 60;
+        pushLine(`🔒 CARTRIDGE LOCKED`);
+        pushLine(`Session conflict - wait ${ttlSec}s`);
+        pushLine(`Another session is active for this cartridge`);
+        setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
       if (error.code === 'session_still_active') {
-        pushLine('Mining already active in another tab for this cartridge.');
+        pushLine('⚠️ Mining already active in another tab for this cartridge.');
+        setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
       if (error.code === 'active_session_elsewhere') {
-        pushLine('Another session is active on this cartridge.');
+        pushLine('⚠️ Another session is active on this cartridge.');
+        setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
       if (error.code === 'wallet_session_limit_exceeded') {
         const limit = error.limit || 10;
         const active = error.activeCount || 0;
-        pushLine(`Max ${limit} concurrent sessions reached (${active}/${limit}). Close a session to start another.`);
+        pushLine(`🚫 Max ${limit} concurrent sessions reached (${active}/${limit}). Close a session to start another.`);
+        setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
       // Fallback for old error format
       if (String(error.message).includes('HTTP 409')) {
-        pushLine('Cartridge is in use. If you just reloaded, wait a few seconds and try again.');
+        pushLine('🔒 Cartridge is in use. If you just reloaded, wait a few seconds and try again.');
+        setShowCartridgeSelect(true); // Re-show selection
         return;
       }
       
-      pushLine(`Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      pushLine(`❌ Session failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setShowCartridgeSelect(true); // Re-show selection on any error
     }
   };
   
@@ -905,7 +924,14 @@ function Home() {
       
       // Handle session expiration specifically
       if (err.status === 404 || err.status === 409) {
-        pushLine(`Session conflict: ${err.info?.error || 'Unknown error'}`);
+        if (err.info?.code === 'session_conflict') {
+          const ttlSec = err.info?.details?.ttlSec || 60;
+          pushLine(`🔒 CARTRIDGE LOCKED`);
+          pushLine(`Session conflict - wait ${ttlSec}s`);
+          pushLine(`Another session is active for this cartridge`);
+        } else {
+          pushLine(`Session conflict: ${err.info?.error || 'Unknown error'}`);
+        }
         
         // Clear session state
         clear();
