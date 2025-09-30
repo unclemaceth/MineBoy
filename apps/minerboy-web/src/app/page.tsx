@@ -599,9 +599,6 @@ function Home() {
       loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
       pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
       
-      // Reset the miner session state after successful session open
-      miner.resetSession();
-      
     } catch (error: any) {
       console.error('[SESSION_OPEN] Error:', error);
       
@@ -746,6 +743,10 @@ function Home() {
       setStatus('mining');
       setMining(true);
       setMode('visual'); // Auto-switch to visualizer
+      
+      // Reset dead session state before starting mining
+      miner.resetSession();
+      
       miner.start(job);
       startMiningSound();
       pushLine('Mining started...');
@@ -1840,7 +1841,7 @@ function Home() {
               }}>
                 Cartridge is busy for {cooldownTimer}s
                 <br />
-                <small>We'll auto-retry when it's free</small>
+                <small>Selection will unlock soon...</small>
               </div>
             )}
             
