@@ -17,20 +17,23 @@ type InStart = {
     suffix?: string;
     difficultyBits?: number;
   };
+  sid: string;               // session ID
+  sab: SharedArrayBuffer;    // atomic stop flag
 };
 
 type InStop = { type: 'STOP' };
 type InMsg = InStart | InStop;
 
-type OutTick = { type: 'TICK'; attempts: number; hr: number; hash: string; nibs: number[] };
+type OutTick = { type: 'TICK'; attempts: number; hr: number; hash: string; nibs: number[]; sid: string };
 type OutFound = {
   type: 'FOUND';
   hash: string;        // 0x...
   preimage: string;    // string input fed to SHA-256
   attempts: number;
   hr: number;
+  sid: string;
 };
-type OutError = { type: 'ERROR'; message: string };
+type OutError = { type: 'ERROR'; message: string; sid: string };
 type OutMsg = OutTick | OutFound | OutError;
 
 const ctx = self;
@@ -39,6 +42,8 @@ let running = false;
 let attempts = 0;
 let startTs = 0;
 let lastTickTs = 0;
+let sid: string | null = null;
+let stopFlag: Int32Array | null = null;
 
 
 function toLowerHex(s: string) {
@@ -94,6 +99,14 @@ function mine({ nonce, rule, suffix, difficultyBits }: {
   let counter = 0;
 
   while (running) {
+    // Check atomic stop flag every iteration - immediate exit
+    if (stopFlag && Atomics.load(stopFlag, 0) === 1) {
+      console.log('[WORKER] Atomic stop flag detected, exiting mine loop');
+      running = false;
+      ctx.postMessage({ type: 'STOPPED', sid });
+      return;
+    }
+
     const preimage = `${nonce}:${counter}`;
     const hash = sha256HexAscii(preimage);
     attempts++;
@@ -115,6 +128,7 @@ function mine({ nonce, rule, suffix, difficultyBits }: {
         preimage,
         attempts,
         hr,
+        sid: sid || '',
       };
       console.log('Found hash!', out);
       ctx.postMessage(out);
@@ -131,7 +145,8 @@ function mine({ nonce, rule, suffix, difficultyBits }: {
           attempts, 
           hr: hrNow(),
           hash,
-          nibs: sampleNibs(hash)
+          nibs: sampleNibs(hash),
+          sid: sid || '',
         };
         ctx.postMessage(out);
       }
@@ -145,17 +160,28 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
   
   if (msg.type === 'STOP') {
     console.log('Worker stopping...');
+    if (stopFlag) Atomics.store(stopFlag, 0, 1);
     running = false;
     return;
   }
   if (msg.type === 'START') {
     if (running) running = false;
-    const { nonce, rule, suffix, difficultyBits } = msg.job;
+    const { job, sid: incomingSid, sab } = msg;
+    const { nonce, rule, suffix, difficultyBits } = job;
+
+    // Set up atomic stop flag and session ID
+    sid = incomingSid;
+    stopFlag = new Int32Array(sab);
+    stopFlag[0] = 0; // Reset to running state
 
     try {
       mine({ nonce, rule, suffix, difficultyBits });
     } catch (err) {
-      const out: OutError = { type: 'ERROR', message: String((err instanceof Error ? err.message : String(err))) };
+      const out: OutError = { 
+        type: 'ERROR', 
+        message: String((err instanceof Error ? err.message : String(err))),
+        sid: sid || '',
+      };
       ctx.postMessage(out);
     }
   }

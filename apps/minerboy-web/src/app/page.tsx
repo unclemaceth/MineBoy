@@ -267,7 +267,7 @@ function Home() {
     const checkExpiry = async () => {
       if (job.expiresAt && Date.now() > job.expiresAt) {
         // Stop all mining systems immediately
-        miner.stop(); // Stop the actual mining worker
+        miner.stopForTtl(); // Stop the actual mining worker with TTL-specific handling
         stopMining(); // Stop the store's mining state
         setMining(false);
         setStatus('idle');
@@ -347,7 +347,7 @@ function Home() {
           pushLine(`Session expired: ${errorMessage}`);
           
           // Stop all mining systems immediately
-          miner.stop(); // Stop the actual mining worker
+          miner.stopForTtl(); // Stop the actual mining worker with TTL-specific handling
           stopMining(); // Stop the store's mining state
           setMining(false);
           setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display

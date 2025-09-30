@@ -9,13 +9,66 @@ type Events = {
 
 export function useMinerWorker(events: Events = {}) {
   const workerRef = useRef<Worker | null>(null);
+  const stopTimerRef = useRef<number | null>(null);
+  const rateIntervalRef = useRef<number | null>(null);
   const [running, setRunning] = useState(false);
+  
+  // Session guard to prevent reanimation after TTL expiry
+  const sessionIdRef = useRef<string>('');
+
+  // Hard kill with fallback termination
+  const hardKill = (reason: string = 'manual') => {
+    console.log(`[HARD_KILL] ${reason}`);
+    
+    // Stop periodic UI updates
+    if (rateIntervalRef.current) {
+      clearInterval(rateIntervalRef.current);
+      rateIntervalRef.current = null;
+    }
+
+    const w = workerRef.current;
+    if (!w) return;
+
+    try { 
+      w.postMessage({ type: 'STOP' }); 
+    } catch (e) {
+      console.warn('[HARD_KILL] Failed to post STOP message:', e);
+    }
+
+    // If cooperative stop fails, terminate after 250ms
+    if (stopTimerRef.current) {
+      clearTimeout(stopTimerRef.current);
+    }
+    
+    stopTimerRef.current = window.setTimeout(() => {
+      try { 
+        w.terminate(); 
+        console.log('[HARD_KILL] Worker terminated by timeout');
+      } catch (e) {
+        console.warn('[HARD_KILL] Failed to terminate worker:', e);
+      }
+      workerRef.current = null;
+    }, 250);
+
+    // Immediately detach handlers so nothing updates the UI
+    w.onmessage = null;
+    workerRef.current = null;
+    setRunning(false);
+  };
 
   useEffect(() => {
     const w = new Worker(new URL('../workers/sha.worker.ts', import.meta.url), { type: 'module' });
     workerRef.current = w;
+    
     w.onmessage = (e: MessageEvent<unknown>) => {
       const msg = e.data as any;
+      
+      // Ignore stale messages from previous logical sessions
+      if (msg?.sid && sessionIdRef.current !== msg.sid) {
+        console.log('[STALE_MSG] Ignoring message from dead session:', msg.sid);
+        return;
+      }
+      
       if (msg?.type === 'TICK') {
         events.onTick?.(msg.attempts, msg.hr, msg.hash, msg.nibs);
       } else if (msg?.type === 'FOUND') {
@@ -24,14 +77,32 @@ export function useMinerWorker(events: Events = {}) {
       } else if (msg?.type === 'ERROR') {
         setRunning(false);
         events.onError?.(msg.message);
+      } else if (msg?.type === 'STOPPED') {
+        console.log('[WORKER_STOPPED] Worker confirmed stop');
+        setRunning(false);
       }
     };
-    return () => { w.terminate(); workerRef.current = null; };
+    
+    return () => { 
+      hardKill('unmount');
+    };
   }, []); // eslint-disable-line
 
   const api = useMemo(() => ({
     start(job: Job) {
+      // Refuse to start if current session was cancelled/expired
+      if (sessionIdRef.current === 'dead') {
+        console.log('[START_BLOCKED] Session is dead, refusing to start');
+        return;
+      }
+      
       if (!workerRef.current) return;
+      
+      // Defensive: kill an old worker first
+      hardKill('pre-start');
+      
+      const sid = crypto.randomUUID();
+      sessionIdRef.current = sid;
       setRunning(true);
       
       // Create worker job with compat aliases for existing worker code
@@ -55,15 +126,27 @@ export function useMinerWorker(events: Events = {}) {
         height: job.height,
       };
       
+      // Create SharedArrayBuffer for atomic stop flag
+      const sab = new SharedArrayBuffer(4); // one Int32
+      const view = new Int32Array(sab);
+      view[0] = 0; // 0 = running, 1 = stop requested
+      
       workerRef.current.postMessage({
         type: 'START',
         job: workerJob,
+        sid,
+        sab,
       });
+      
+      console.log(`[START] New mining session: ${sid}`);
     },
     stop() {
-      if (!workerRef.current) return;
-      setRunning(false);
-      workerRef.current.postMessage({ type: 'STOP' });
+      hardKill('manual-stop');
+    },
+    stopForTtl() {
+      console.log('[STOP_TTL] TTL expired, marking session as dead');
+      sessionIdRef.current = 'dead';
+      hardKill('ttl-expired');
     },
     running,
   }), [running]);
