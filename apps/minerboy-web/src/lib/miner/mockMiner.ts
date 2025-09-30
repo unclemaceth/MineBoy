@@ -3,7 +3,7 @@ import type { MiningState } from '../../state/miner';
 // Mining configuration
 const miningTarget = {
   type: "suffix" as const,
-  values: ["59517d556", "000000", "111111", "abc123"] // Multiple possible suffixes
+  values: ["59517d556", "00000", "111111", "abc123"] // Multiple possible suffixes
 };
 
 const miningConfig = {

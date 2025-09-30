@@ -1,0 +1,10 @@
+{
+  "transactions": [
+    {
+      "rpc": "https://rpc.apechain.com/http"
+    },
+    {
+      "rpc": "https://rpc.apechain.com/http"
+    }
+  ]
+}

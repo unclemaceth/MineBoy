@@ -116,10 +116,10 @@ export function decorateFoundHash(powHash: `0x${string}`, amountWei: bigint | st
  */
 export function getDifficultySuffixForActiveMiners(activeMiners: number): string {
   // Dynamic difficulty scaling based on active miners
-  if (activeMiners < 50) return "000000";     // 6 hex chars (was 5)
-  if (activeMiners < 100) return "0000000";   // 7 hex chars (was 6)
-  if (activeMiners < 200) return "00000000";  // 8 hex chars (was 7)
-  return "000000000";                         // Hard - 9 hex chars (was 8)
+  if (activeMiners < 50) return "00000";      // 5 hex chars (was 6)
+  if (activeMiners < 100) return "000000";    // 6 hex chars (was 7)
+  if (activeMiners < 200) return "0000000";   // 7 hex chars (was 8)
+  return "00000000";                          // Hard - 8 hex chars (was 9)
 }
 
 /**

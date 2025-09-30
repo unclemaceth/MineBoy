@@ -82,9 +82,9 @@ export type Difficulty = {
 
 /**
  * Our epoch → difficulty policy:
- *   epoch 0 → 6 zeros (000000)
- *   epoch 1 → 7 zeros (0000000) 
- *   epoch 2+ → 8 zeros (00000000) - cap
+ *   epoch 0 → 5 zeros (00000)
+ *   epoch 1 → 6 zeros (000000) 
+ *   epoch 2+ → 7 zeros (0000000) - cap
  */
 export function getDifficultyForEpoch(epoch: number | bigint): Difficulty {
   const e = Number(epoch ?? 0);
