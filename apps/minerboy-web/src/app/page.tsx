@@ -78,6 +78,8 @@ function Home() {
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
   const [showNavigationModal, setShowNavigationModal] = useState(false);
   const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | null>(null);
+  const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
+  const [cooldownMessage, setCooldownMessage] = useState<string>('');
 
   // Navigation helpers
   const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions') => {
@@ -279,13 +281,18 @@ function Home() {
         setHashRate(0); // Clear hash rate display
         pushLine('Job expired - stopping mining');
         
+        // Start cooldown timer and gamified sequence
+        setCooldownTimer(60);
+        setCooldownMessage('Initiating Cartridge CoolDown...');
+        pushLine('⏰ TIME UP - Job expired!');
+        pushLine('Initiating Cartridge CoolDown...');
+        pushLine('Blowing in slot...');
+        pushLine('Removing dust...');
+        
         // Auto-unload cartridge and return to terminal mode  
         clear(); // Clear session data (unloads cartridge)
         setShowCartridgeSelect(true); // Show cartridge selection
         setMode('terminal'); // Return to terminal view
-        pushLine('⏰ TIME UP - Job expired!');
-        pushLine('Cartridge ejected - session locked for 60s');
-        pushLine('Please wait before re-inserting cartridge...');
         
         hapticFeedback();
       }
@@ -294,6 +301,42 @@ function Home() {
     const interval = setInterval(checkExpiry, 1000); // Check every second
     return () => clearInterval(interval);
   }, [job, mining, pushLine, sessionId]);
+
+  // Cooldown timer effect
+  useEffect(() => {
+    if (cooldownTimer === null || cooldownTimer <= 0) return;
+    
+    const interval = setInterval(() => {
+      setCooldownTimer(prev => {
+        if (prev === null || prev <= 1) {
+          setCooldownMessage('');
+          return null;
+        }
+        
+        const newTime = prev - 1;
+        console.log(`[COOLDOWN] ${newTime}s remaining`);
+        
+        // Update cooldown message based on time remaining
+        if (newTime > 50) {
+          setCooldownMessage('Initiating Cartridge CoolDown...');
+        } else if (newTime > 40) {
+          setCooldownMessage('Blowing in slot...');
+        } else if (newTime > 30) {
+          setCooldownMessage('Removing dust...');
+        } else if (newTime > 20) {
+          setCooldownMessage('Checking contacts...');
+        } else if (newTime > 10) {
+          setCooldownMessage('Calibrating reader...');
+        } else {
+          setCooldownMessage('Almost ready...');
+        }
+        
+        return newTime;
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [cooldownTimer]);
 
   // Heartbeat to refresh lock for entire session
   useEffect(() => {
@@ -346,7 +389,10 @@ function Home() {
         // If session not found (404) or lock lost (409), clear session and stop mining
         if (errorCode === 'session_not_found' || errorCode === 'ownership_conflict' || error.status === 404 || error.status === 409) {
           console.log('Session expired or lock lost - clearing state and stopping mining');
-          pushLine(`Session expired: ${errorMessage}`);
+          pushLine('Heartbeat Failed');
+          pushLine('Initiating SYNC Resuscitation');
+          pushLine('Checking for nodes...');
+          pushLine('Connecting...');
           
           // Stop all mining systems immediately
           miner.stopForTtl(); // Stop the actual mining worker with TTL-specific handling
@@ -356,6 +402,10 @@ function Home() {
           playFailSound(); // Play fail sound for session expiry
           setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
           setHashRate(0); // Clear hash rate display
+          
+          // Start cooldown timer for heartbeat failure
+          setCooldownTimer(60);
+          setCooldownMessage('Initiating SYNC Resuscitation...');
           
           // Clear session state
           clear();
@@ -1138,7 +1188,8 @@ function Home() {
   }, [mining, job]);
 
   const hashLcdText = formatHashForDisplay(currentDisplayHash);
-  const statusLcdText = !isConnected ? 'DISCONNECTED' : 
+  const statusLcdText = cooldownTimer !== null ? `${cooldownTimer}s` :
+                       !isConnected ? 'DISCONNECTED' : 
                        !sessionId ? 'DISCONNECTED' :
                        status === 'found' ? 'SUCCESS' :
                        status === 'claimed' ? 'READY' :
@@ -1395,6 +1446,7 @@ function Home() {
                 // Show terminal lines with typewriter effect
                 <TerminalTypewriter lines={[
                   ...terminal.slice(-7), // Show last 7 terminal lines
+                  ...(cooldownMessage ? [cooldownMessage] : []), // Add cooldown message if active
                   ...(mining ? ['Press > to return to Visualisation'] : []) // Add instruction if mining
                 ]} />
               )}
