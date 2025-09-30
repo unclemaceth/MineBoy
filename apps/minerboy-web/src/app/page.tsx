@@ -331,7 +331,7 @@ function Home() {
         const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
         const chainId = cartridge.info.chainId;
         const contract = cartridge.info.contract as `0x${string}`;
-        const minerId = getMinerIdCached(address);
+        const minerId = getMinerIdCached();
         
         console.log('[HB_PAYLOAD]', { sessionId, minerId, chainId, contract, tokenId: cartridge.tokenId });
         
@@ -805,7 +805,7 @@ function Home() {
         const sessionId = getOrCreateSessionId(parseInt(cartridge.tokenId));
         const chainId = cartridge.info.chainId;
         const contract = cartridge.info.contract as `0x${string}`;
-        const minerId = getMinerIdCached(address);
+        const minerId = getMinerIdCached();
         
         await apiHeartbeat({
           wallet: address as `0x${string}`,
