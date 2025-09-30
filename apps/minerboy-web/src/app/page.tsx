@@ -612,6 +612,8 @@ function Home() {
         }
       }
       
+      console.log('[SESSION_OPEN] Parsed error info:', errorInfo);
+      
       // Handle new two-tier locking error codes
       if (errorInfo.code === 'cartridge_in_use') {
         const minutes = errorInfo.remainingMinutes || 'unknown';
@@ -1045,9 +1047,7 @@ function Home() {
       setStatus('found');
       pushLine('Claim modal reopened - press Claim to submit or B to dismiss');
     } else {
-      // Toggle view
-      setMode(mode === 'visual' ? 'terminal' : 'visual');
-      pushLine(`Switched to ${mode === 'visual' ? 'terminal' : 'visual'} view`);
+      pushLine('B: No hash to claim');
     }
   };
   
@@ -1447,6 +1447,7 @@ function Home() {
           )}
           
           {/* Live telemetry when mining (only show in terminal mode) */}
+          {/* Commented out obsolete HR/attempts stats box
           {mining && !booting && mode === 'terminal' && (
             <div style={{ 
               position: "absolute",
@@ -1463,6 +1464,7 @@ function Home() {
               <div>A: {attempts.toLocaleString()}</div>
             </div>
           )}
+          */}
         </div>
       </div>
 

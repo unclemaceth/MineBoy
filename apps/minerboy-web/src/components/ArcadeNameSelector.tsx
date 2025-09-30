@@ -1,10 +1,11 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useAccount, useSignMessage } from 'wagmi';
+import { useSignMessage } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { apiGetArcadeName, apiGetNameNonce, apiSetArcadeName } from '@/lib/api';
 
 export default function ArcadeNameSelector() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected } = useActiveAccount();
   const [arcadeName, setArcadeName] = useState<string>('');
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState(false);

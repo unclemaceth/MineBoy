@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { apiListTeams, apiGetUserTeamChoice, apiChooseTeam, apiGetNameNonce, Team } from '@/lib/api';
 
 function ConfirmJoinModal({
@@ -109,7 +109,7 @@ function ConfirmJoinModal({
 }
 
 export default function TeamSelector() {
-  const { address } = useAccount();
+  const { address } = useActiveAccount();
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeamChoice, setMyTeamChoice] = useState<{ chosen: boolean; team_slug?: string; season?: any } | null>(null);
   const [pick, setPick] = useState<string>('');
