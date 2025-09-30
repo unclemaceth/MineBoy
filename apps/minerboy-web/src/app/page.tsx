@@ -604,7 +604,19 @@ function Home() {
       
       // Parse error info from nested structure
       let errorInfo = error.info || error;
-      if (typeof errorInfo === 'string') {
+      
+      // If errorInfo is an Error object, try to extract JSON from the message
+      if (errorInfo instanceof Error || errorInfo?.message) {
+        const errorMessage = errorInfo.message || String(errorInfo);
+        const jsonMatch = errorMessage.match(/\{.*\}/);
+        if (jsonMatch) {
+          try {
+            errorInfo = JSON.parse(jsonMatch[0]);
+          } catch (e) {
+            console.warn('[SESSION_OPEN] Failed to parse JSON from error message:', e);
+          }
+        }
+      } else if (typeof errorInfo === 'string') {
         try {
           errorInfo = JSON.parse(errorInfo);
         } catch (e) {
