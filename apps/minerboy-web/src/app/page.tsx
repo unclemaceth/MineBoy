@@ -282,14 +282,15 @@ function Home() {
         
         // Start cooldown timer and gamified sequence
         setCooldownTimer(60);
+        // Auto-unload cartridge and return to terminal mode  
+        clear(); // Clear session data (unloads cartridge)
+        setMode('terminal'); // Return to terminal view
+        
+        // Show retro nostalgic messages AFTER clearing
         pushLine('⏰ TIME UP - Job expired!');
         pushLine('Initiating Cartridge CoolDown...');
         pushLine('Blowing in slot...');
         pushLine('Removing dust...');
-        
-        // Auto-unload cartridge and return to terminal mode  
-        clear(); // Clear session data (unloads cartridge)
-        setMode('terminal'); // Return to terminal view
         
         hapticFeedback();
       }
