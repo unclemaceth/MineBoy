@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
+import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
 import { apiListTeams, apiGetUserTeamChoice, apiChooseTeam, apiGetNameNonce, Team } from '@/lib/api';
 
 function ConfirmJoinModal({
@@ -110,6 +111,7 @@ function ConfirmJoinModal({
 
 export default function TeamSelector() {
   const { address } = useActiveAccount();
+  const walletClient = useActiveWalletClient();
   const [teams, setTeams] = useState<Team[]>([]);
   const [myTeamChoice, setMyTeamChoice] = useState<{ chosen: boolean; team_slug?: string; season?: any } | null>(null);
   const [pick, setPick] = useState<string>('');
@@ -171,14 +173,11 @@ Team: ${confirmTeam.slug}
 Nonce: ${nonce}
 Expires: ${expiry}`;
       
-      // Request signature from wallet
-      if (!window.ethereum) {
+      // Request signature from wallet using the active wallet client
+      if (!walletClient) {
         throw new Error('No wallet connected');
       }
-      const sig = await (window.ethereum as any).request({
-        method: 'personal_sign',
-        params: [message, address],
-      });
+      const sig = await walletClient.signMessage({ message });
       
       // Choose team with signature
       const res = await apiChooseTeam(address as `0x${string}`, confirmTeam.slug, nonce, expiry, sig);

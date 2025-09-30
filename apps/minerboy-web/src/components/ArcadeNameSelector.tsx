@@ -2,10 +2,12 @@
 import { useEffect, useState } from 'react';
 import { useSignMessage } from 'wagmi';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
+import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
 import { apiGetArcadeName, apiGetNameNonce, apiSetArcadeName } from '@/lib/api';
 
 export default function ArcadeNameSelector() {
   const { address, isConnected } = useActiveAccount();
+  const walletClient = useActiveWalletClient();
   const [arcadeName, setArcadeName] = useState<string>('');
   const [inputValue, setInputValue] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -68,14 +70,11 @@ Name: ${name}
 Nonce: ${nonce}
 Expires: ${expiry}`;
       
-      // Sign the message
-      if (!window.ethereum) {
+      // Sign the message using the active wallet client
+      if (!walletClient) {
         throw new Error('No wallet connected');
       }
-      const sig = await (window.ethereum as any).request({
-        method: 'personal_sign',
-        params: [message, address],
-      });
+      const sig = await walletClient.signMessage({ message });
       
       // Submit to backend
       await apiSetArcadeName(address, name, nonce, expiry, sig);

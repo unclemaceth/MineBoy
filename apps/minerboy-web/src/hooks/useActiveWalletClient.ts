@@ -3,25 +3,32 @@ import { useEffect, useState } from 'react'
 import { useWalletClient } from 'wagmi'           // Glyph signer
 import { getWalletClient } from 'wagmi/actions'   // WC signer
 import { wagmiConfig as wcConfig } from '@/lib/wallet'
-import { useWalletStore } from '@/state/wallet'
+import { useActiveAccount } from './useActiveAccount'
 
 export function useActiveWalletClient() {
   const { data: glyphClient } = useWalletClient()
-  const { source } = useWalletStore()
+  const { provider } = useActiveAccount()
   const [client, setClient] = useState<any>(null)
 
   useEffect(() => {
     let mounted = true
     ;(async () => {
-      if (glyphClient) return setClient(glyphClient)
-      if (source === 'wc') {
-        try { const c = await getWalletClient(wcConfig); if (mounted) setClient(c) } catch {}
+      if (provider === 'glyph' && glyphClient) {
+        setClient(glyphClient)
+      } else if (provider === 'wc') {
+        try { 
+          const c = await getWalletClient(wcConfig)
+          if (mounted) setClient(c) 
+        } catch (e) {
+          console.warn('Failed to get Web3Modal wallet client:', e)
+          if (mounted) setClient(null)
+        }
       } else {
         setClient(null)
       }
     })()
     return () => { mounted = false }
-  }, [glyphClient, source])
+  }, [glyphClient, provider])
 
   return client
 }
