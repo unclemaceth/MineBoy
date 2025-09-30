@@ -66,6 +66,13 @@ type FoundResult = {
 };
 
 function Home() {
+  // SURGICAL FORENSICS: Check env vars at boot
+  console.log("[ENV_CHECK_ON_BOOT]", {
+    routerEnv: process.env.NEXT_PUBLIC_ROUTER_ADDRESS,
+    rewardTokenEnv: process.env.NEXT_PUBLIC_REWARD_TOKEN_ADDRESS,
+    chainIdEnv: process.env.NEXT_PUBLIC_CHAIN_ID
+  });
+
   const [connectPressed, setConnectPressed] = useState(false);
   const [cartridges, setCartridges] = useState<CartridgeConfig[]>([]);
   const [showCartridgeSelect, setShowCartridgeSelect] = useState(false);
@@ -901,6 +908,35 @@ function Home() {
           // Submit claim to smart contract
           pushLine('Opening wallet for transaction...');
           
+          // SURGICAL FORENSICS: Find the source of 0x588...E564
+          console.log("[ROUTER_RUNTIME_CHECK]", {
+            env: process.env.NEXT_PUBLIC_ROUTER_ADDRESS,
+            legacyFlag: process.env.CLAIM_LEGACY_ENABLED,
+            anyWindowCfg: (window as any)?.CONFIG?.router || (window as any)?.router,
+          });
+
+          // Monkey-patch providers to see EXACT params
+          const provs = [
+            (window as any)?.glyph?.provider,
+            (window as any)?.ethereum
+          ].filter(Boolean);
+
+          for (const p of provs) {
+            if (!p || p.__patched) continue;
+            const orig = p.request?.bind(p);
+            if (!orig) continue;
+            p.__patched = true;
+            p.request = async (req: any) => {
+              if (req?.method === "eth_sendTransaction") {
+                try {
+                  const to = req?.params?.[0]?.to;
+                  console.log("[EIP1193 INSPECT]", { method: req.method, to, params: req.params?.[0] });
+                } catch {}
+              }
+              return orig(req);
+            };
+          }
+          
           // Use the proper MiningClaimRouter contract
           const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
           
@@ -943,6 +979,14 @@ function Home() {
             args: [claimData, to0x(claimResponse.signature)],
             value: BigInt('1000000000000000'), // 0.001 ETH (0.001 APE)
           };
+
+          // SURGICAL FORENSICS: Dump exact input to writeContract
+          console.log("[WRITE_CONTRACT_CFG]", {
+            address: contractConfig.address,  // must be 0x9C19…2E43
+            abiName: contractConfig?.abi?.[0]?.name, // sanity ping
+            functionName: contractConfig.functionName,
+            args: contractConfig.args,
+          });
 
           // Debug wallet client state
           console.log('[WALLET_DEBUG]', {
