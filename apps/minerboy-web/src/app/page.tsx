@@ -266,13 +266,15 @@ function Home() {
     
     const checkExpiry = async () => {
       if (job.expiresAt && Date.now() > job.expiresAt) {
-        // Stop all mining systems
-        miner.stop();
+        // Stop all mining systems immediately
+        miner.stop(); // Stop the actual mining worker
         minerStore.stopMining(); // Stop the store's mining state
         setMining(false);
         setStatus('idle');
         setFoundResult(null); // Clear any pending found result
         setFound(undefined); // Clear lastFound from session
+        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
+        setHashRate(0); // Clear hash rate display
         pushLine('Job expired - stopping mining');
         
         // Auto-unload cartridge and return to terminal mode  
@@ -344,10 +346,12 @@ function Home() {
           console.log('Session expired or lock lost - clearing state and stopping mining');
           pushLine(`Session expired: ${errorMessage}`);
           
-          // Stop all mining systems
-          miner.stop();
+          // Stop all mining systems immediately
+          miner.stop(); // Stop the actual mining worker
           minerStore.stopMining(); // Stop the store's mining state
           setMining(false);
+          setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
+          setHashRate(0); // Clear hash rate display
           
           // Clear session state
           clear();
