@@ -456,8 +456,16 @@ export class ClaimProcessor {
     
     console.log('[CLAIM_SIGN_V2] Domain verifyingContract:', domain.verifyingContract);
     console.log('[CLAIM_SIGN_V2] Domain chainId:', domain.chainId);
-    console.log('[CLAIM_SIGN_V2] Claim rewardToken:', claim.rewardToken);
+    console.log('[CLAIM_SIGN_V2] Signer address:', this.signer.address);
+    console.log('[CLAIM_SIGN_V2] Claim wallet:', claim.wallet);
     console.log('[CLAIM_SIGN_V2] Claim cartridge:', claim.cartridge);
+    console.log('[CLAIM_SIGN_V2] Claim tokenId:', claim.tokenId);
+    console.log('[CLAIM_SIGN_V2] Claim rewardToken:', claim.rewardToken);
+    console.log('[CLAIM_SIGN_V2] Claim workHash:', claim.workHash);
+    console.log('[CLAIM_SIGN_V2] Claim nonce:', claim.nonce);
+    console.log('[CLAIM_SIGN_V2] Claim expiry:', claim.expiry);
+    console.log('[CLAIM_SIGN_V2] Current timestamp:', Math.floor(Date.now() / 1000));
+    console.log('[CLAIM_SIGN_V2] Expiry - now:', claim.expiry - Math.floor(Date.now() / 1000), 'seconds');
     
     const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V2, claim);
     
