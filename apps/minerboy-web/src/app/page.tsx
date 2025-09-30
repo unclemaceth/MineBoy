@@ -266,7 +266,9 @@ function Home() {
     
     const checkExpiry = async () => {
       if (job.expiresAt && Date.now() > job.expiresAt) {
+        // Stop all mining systems
         miner.stop();
+        minerStore.stopMining(); // Stop the store's mining state
         setMining(false);
         setStatus('idle');
         setFoundResult(null); // Clear any pending found result
@@ -342,8 +344,10 @@ function Home() {
           console.log('Session expired or lock lost - clearing state and stopping mining');
           pushLine(`Session expired: ${errorMessage}`);
           
-          // Stop mining immediately
+          // Stop all mining systems
           miner.stop();
+          minerStore.stopMining(); // Stop the store's mining state
+          setMining(false);
           
           // Clear session state
           clear();
