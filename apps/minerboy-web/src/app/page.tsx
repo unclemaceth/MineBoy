@@ -683,8 +683,8 @@ function Home() {
         
         // Lock this specific cartridge instead of all selections
         setLockedCartridge({
-          contract: canonical.contract,
-          tokenId: canonical.tokenId,
+          contract: cartridgeInfo.contract,
+          tokenId: tokenId,
           ttl: ttlSec
         });
         
@@ -2096,7 +2096,8 @@ function Home() {
                 </div>
                 */}
               </div>
-            ))}
+              );
+            })}
             
             
             <button

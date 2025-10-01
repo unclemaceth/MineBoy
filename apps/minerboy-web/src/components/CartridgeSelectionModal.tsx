@@ -148,7 +148,7 @@ export default function CartridgeSelectionModal({
                     if (isLocked) return; // Don't allow selection of locked cartridge
                     onSelectCartridge({ ...c, tokenId: decId });
                   }}
-                  disabled={isLocked}
+                  disabled={!!isLocked}
                   style={{
                     padding: 24, 
                     backgroundColor: isLocked ? '#2a1a1a' : '#1a2e1f', 
