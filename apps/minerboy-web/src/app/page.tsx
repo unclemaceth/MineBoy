@@ -1108,7 +1108,7 @@ function Home() {
         pushLine('Press A to start mining again');
         
         playFailSound(); // Play fail sound for penalty
-        hapticFeedback('heavy');
+        hapticFeedback();
         
         return; // Exit early
       }
