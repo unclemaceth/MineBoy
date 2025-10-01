@@ -5,6 +5,7 @@ export const APEBIT_CARTRIDGE_ABI = parseAbi([
   'function mint(address to) payable',
   'function totalSupply() view returns (uint256)',
   'function maxSupply() view returns (uint256)',
+  'function maxPerWallet() view returns (uint256)',
   'function balanceOf(address owner) view returns (uint256)',
   'event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)'
 ] as const);
