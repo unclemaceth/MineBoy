@@ -77,11 +77,11 @@ function Home() {
   const [lockInfo, setLockInfo] = useState<any>(null);
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
   const [showNavigationModal, setShowNavigationModal] = useState(false);
-  const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | null>(null);
+  const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | 'welcome' | null>(null);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
 
   // Navigation helpers
-  const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions') => {
+  const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => {
     setNavigationPage(page);
     setShowNavigationModal(true);
     playButtonSound();
@@ -92,6 +92,19 @@ function Home() {
     setNavigationPage(null);
     playButtonSound();
   };
+
+  // Show welcome modal on first load (unless user has hidden it)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hideWelcome = localStorage.getItem('mineboy_hideWelcome');
+      if (!hideWelcome) {
+        setTimeout(() => {
+          setNavigationPage('welcome');
+          setShowNavigationModal(true);
+        }, 1000); // Delay 1 second after page load
+      }
+    }
+  }, []);
 
   // Single-tab enforcement
   useEffect(() => {

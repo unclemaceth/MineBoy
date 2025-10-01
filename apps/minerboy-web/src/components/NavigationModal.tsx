@@ -18,7 +18,7 @@ import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../lib
 
 type NavigationModalProps = {
   isOpen: boolean;
-  page: 'leaderboard' | 'mint' | 'instructions' | null;
+  page: 'leaderboard' | 'mint' | 'instructions' | 'welcome' | null;
   onClose: () => void;
 };
 
@@ -68,6 +68,7 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
             {page === 'leaderboard' && 'LEADERBOARD'}
             {page === 'mint' && 'MINT CARTRIDGE'}
             {page === 'instructions' && 'HOW TO PLAY'}
+            {page === 'welcome' && 'WELCOME TO MINEBOY'}
           </h2>
           <button
             onClick={onClose}
@@ -105,6 +106,7 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
           {page === 'leaderboard' && <LeaderboardContent />}
           {page === 'mint' && <MintContent />}
           {page === 'instructions' && <InstructionsContent />}
+          {page === 'welcome' && <WelcomeContent onClose={onClose} />}
         </div>
       </div>
     </div>
@@ -875,6 +877,176 @@ function InstructionsContent() {
           <p><strong>Network:</strong> ApeChain mainnet only (Chain ID: 33139)</p>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Welcome Content Component
+function WelcomeContent({ onClose }: { onClose: () => void }) {
+  const [dontShowAgain, setDontShowAgain] = useState(false);
+
+  const handleDontShowAgain = () => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mineboy_hideWelcome', 'true');
+      setDontShowAgain(true);
+      onClose();
+    }
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center' }}>
+      {/* MineBoy Logo */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
+        <img 
+          src="/mineboylogo.png" 
+          alt="MineBoy" 
+          style={{ maxWidth: '200px', height: 'auto' }} 
+        />
+      </div>
+
+      {/* Main Intro */}
+      <div style={{
+        padding: '20px',
+        background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
+        border: '3px solid #4a7d5f',
+        borderRadius: '12px'
+      }}>
+        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#64ff8a' }}>
+          Welcome to MineBoy
+        </h3>
+        <p style={{ fontSize: '16px', color: '#c8ffc8', lineHeight: '1.6', margin: '0' }}>
+          Gamified cryptographic SHA256 mining.<br/>
+          <span style={{ color: '#64ff8a', fontSize: '18px', fontWeight: 'bold' }}>MINE TO WIN!</span>
+        </p>
+      </div>
+
+      {/* Wallet Safety */}
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
+        border: '2px solid #ff8a00',
+        borderRadius: '8px'
+      }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: '#ffc864' }}>
+          🔐 WALLET SAFETY FIRST
+        </h4>
+        <p style={{ fontSize: '12px', color: '#c8a864', lineHeight: '1.5', marginBottom: '8px' }}>
+          We recommend creating a new wallet for safety:
+        </p>
+        <div style={{ fontSize: '11px', color: '#c8a864', lineHeight: '1.4', textAlign: 'left' }}>
+          <p style={{ margin: '4px 0' }}>📱 <strong>Mobile:</strong> Use Rabby Wallet's in-app browser</p>
+          <p style={{ margin: '4px 0' }}>🔑 <strong>Easy Setup:</strong> Create wallet with Glyph (social login)</p>
+        </div>
+      </div>
+
+      {/* What You Need */}
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        border: '2px solid #4a7d5f',
+        borderRadius: '8px'
+      }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: '#64ff8a' }}>
+          📋 WHAT YOU NEED
+        </h4>
+        <div style={{ fontSize: '12px', color: '#c8ffc8', lineHeight: '1.5', textAlign: 'left' }}>
+          <p style={{ margin: '8px 0' }}>
+            <strong>1. APE Tokens:</strong> For MINE TAX (0.001 APE) + gas per claim<br/>
+            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>1 APE ≈ 1000 claims</span>
+          </p>
+          <p style={{ margin: '8px 0' }}>
+            <strong>2. MINE CART(s):</strong> FREE mint, up to 2 per wallet<br/>
+            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>Gas is sponsored!</span>
+          </p>
+        </div>
+      </div>
+
+      {/* Mine Tax Explanation */}
+      <div style={{
+        padding: '12px',
+        background: 'rgba(74, 125, 95, 0.2)',
+        border: '1px solid #4a7d5f',
+        borderRadius: '6px'
+      }}>
+        <p style={{ fontSize: '11px', color: '#8a8a8a', lineHeight: '1.4', margin: 0 }}>
+          💡 Mine Tax supports prize pools, team collection sweeps, and server costs
+        </p>
+      </div>
+
+      {/* This Season's Prizes */}
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #2a1f3d, #1a0f2d)',
+        border: '3px solid #9b59b6',
+        borderRadius: '8px'
+      }}>
+        <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#e74c3c' }}>
+          🏆 THIS SEASON'S PRIZES
+        </h4>
+        <div style={{ fontSize: '13px', color: '#c8ffc8', lineHeight: '1.6', textAlign: 'left' }}>
+          <p style={{ margin: '6px 0', color: '#f1c40f' }}>🥇 <strong>1st Place:</strong> Alpha Dog</p>
+          <p style={{ margin: '6px 0', color: '#c0c0c0' }}>🥈 <strong>2nd Place:</strong> Eyeversed Blood of Ape</p>
+          <p style={{ margin: '6px 0', color: '#cd7f32' }}>🥉 <strong>3rd Place:</strong> ApeDroidz</p>
+        </div>
+        <div style={{ 
+          marginTop: '12px', 
+          padding: '8px', 
+          background: 'rgba(231, 76, 60, 0.2)', 
+          borderRadius: '4px',
+          border: '1px solid #e74c3c'
+        }}>
+          <p style={{ fontSize: '11px', color: '#ff8a8a', margin: 0, fontWeight: 'bold' }}>
+            ⚠️ Only tokens you've MINED count as Score Tokens<br/>
+            Buying the token won't improve your score!
+          </p>
+        </div>
+      </div>
+
+      {/* Don't Show Again */}
+      <div style={{ marginTop: '8px' }}>
+        <label style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          gap: '8px', 
+          cursor: 'pointer',
+          fontSize: '12px',
+          color: '#8a8a8a'
+        }}>
+          <input
+            type="checkbox"
+            checked={dontShowAgain}
+            onChange={(e) => {
+              setDontShowAgain(e.target.checked);
+              if (e.target.checked) {
+                localStorage.setItem('mineboy_hideWelcome', 'true');
+              } else {
+                localStorage.removeItem('mineboy_hideWelcome');
+              }
+            }}
+            style={{ cursor: 'pointer' }}
+          />
+          Don't show this message again
+        </label>
+      </div>
+
+      {/* Close Button */}
+      <button
+        onClick={handleDontShowAgain}
+        style={{
+          padding: '12px 32px',
+          background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+          color: '#c8ffc8',
+          border: '2px solid #64ff8a',
+          borderRadius: '8px',
+          fontSize: '14px',
+          fontWeight: 'bold',
+          cursor: 'pointer',
+          fontFamily: 'Menlo, monospace'
+        }}
+      >
+        LET'S MINE! 🎮
+      </button>
     </div>
   );
 }
