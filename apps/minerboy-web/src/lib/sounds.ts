@@ -253,22 +253,31 @@ export class SoundManager {
   public playHapticFeedback(type: 'light' | 'medium' | 'heavy' = 'light') {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
       try {
-        let pattern: number | number[];
+        // iOS doesn't support vibration patterns (arrays), only single durations
+        // Convert all to simple durations for iOS compatibility
+        let duration: number;
         switch (type) {
           case 'light':
-            pattern = 50;
+            duration = 10; // Very short pulse
             break;
           case 'medium':
-            pattern = 100;
+            duration = 20; // Medium pulse
             break;
           case 'heavy':
-            pattern = [100, 50, 100];
+            duration = 30; // Longer pulse
             break;
         }
         
-        console.log(`[HAPTIC] Attempting ${type} vibration:`, pattern);
-        const result = navigator.vibrate(pattern);
+        // Detect iOS for debugging
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        
+        console.log(`[HAPTIC] Attempting ${type} vibration: ${duration}ms (iOS: ${isIOS})`);
+        const result = navigator.vibrate(duration);
         console.log(`[HAPTIC] Vibration result:`, result);
+        
+        if (!result) {
+          console.warn('[HAPTIC] Vibration API returned false - may be blocked by browser settings');
+        }
       } catch (error) {
         console.warn('[HAPTIC] Vibration failed:', error);
       }
