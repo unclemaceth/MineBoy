@@ -553,8 +553,8 @@ function MintContent() {
   const [mounted, setMounted] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Mint goes live at 8PM GMT on October 1, 2025
-  const MINT_START_TIME = new Date('2025-10-01T20:00:00Z').getTime(); // 8PM GMT (Z = UTC/GMT)
+  // Mint goes live in 5 minutes (for testing)
+  const MINT_START_TIME = Date.now() + (5 * 60 * 1000); // 5 minutes from now
   const [timeUntilMint, setTimeUntilMint] = useState<number>(0);
   const [mintIsLive, setMintIsLive] = useState(false);
 
