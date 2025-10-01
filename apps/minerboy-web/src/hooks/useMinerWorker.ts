@@ -90,8 +90,21 @@ export function useMinerWorker(events: Events = {}) {
 
   const api = useMemo(() => ({
     start(job: Job) {
-      // Refuse to start if current session was cancelled/expired
-      if (!workerRef.current) return;
+      // Recreate worker if it was killed (e.g. after TTL timeout)
+      if (!workerRef.current) {
+        console.log('[WORKER_RECREATE] Worker was null, creating new worker');
+        const w = new Worker(new URL('../workers/sha.worker.ts', import.meta.url), { type: 'module' });
+        workerRef.current = w;
+        
+        w.onmessage = (e: MessageEvent<unknown>) => {
+          const msg = e.data as OutMsg;
+          if (msg.type === 'HASH_RATE') {
+            onHashRate?.(msg.rate);
+          } else if (msg.type === 'FOUND') {
+            onFound?.(msg.result, msg.attempts);
+          }
+        };
+      }
       
       // Always create a fresh session ID (clears any 'dead' state)
       const sid = crypto.randomUUID();
