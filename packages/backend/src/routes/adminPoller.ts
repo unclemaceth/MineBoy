@@ -124,7 +124,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     }
   });
 
-  // Audit and fix inflated scores - re-verify all confirmed claims
+  // Audit and fix inflated scores - re-verify all confirmed claims (batched)
   fastify.post('/v2/admin/audit-claims', async (req, reply) => {
     const auth = req.headers.authorization || '';
     if (!process.env.ADMIN_TOKEN || auth !== `Bearer ${process.env.ADMIN_TOKEN}`) {
@@ -132,19 +132,45 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     }
 
     try {
+      const { limit, offset } = req.body as { limit?: number; offset?: number } || {};
+      const batchSize = Math.min(limit || 100, 500); // Max 500 per batch
+      const batchOffset = offset || 0;
+
       const { getDB } = await import('../db.js');
       const db = getDB();
       
-      // Get all confirmed claims with tx_hash
+      // Get total count
+      const countResult = await db.pool.query(
+        `SELECT COUNT(*) as total FROM claims WHERE status='confirmed' AND tx_hash IS NOT NULL`
+      );
+      const totalClaims = parseInt(countResult.rows[0].total, 10);
+      
+      // Get batch of confirmed claims with tx_hash
       const result = await db.pool.query(
         `SELECT id, tx_hash, wallet, amount_wei 
          FROM claims 
          WHERE status='confirmed' AND tx_hash IS NOT NULL
-         ORDER BY confirmed_at DESC`
+         ORDER BY confirmed_at DESC
+         LIMIT $1 OFFSET $2`,
+        [batchSize, batchOffset]
       );
       
       const claims = result.rows;
-      console.log(`🔍 [AUDIT] Found ${claims.length} confirmed claims to audit`);
+      console.log(`🔍 [AUDIT] Processing batch: ${claims.length} claims (offset ${batchOffset}/${totalClaims})`);
+      
+      if (claims.length === 0) {
+        return {
+          ok: true,
+          message: 'No more claims to audit',
+          total: totalClaims,
+          processed: 0,
+          verified: 0,
+          failed: 0,
+          notFound: 0,
+          errors: 0,
+          nextOffset: null
+        };
+      }
       
       // Create ApeChain client
       const { createPublicClient, http, defineChain } = await import('viem');
@@ -198,18 +224,28 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         }
         
         // Small delay to avoid overwhelming RPC
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, 50)); // Reduced to 50ms
       }
 
-      console.log(`🔍 [AUDIT] Complete: ${verified} verified, ${failed} failed, ${notFound} not found, ${errors} errors`);
+      const nextOffset = batchOffset + claims.length < totalClaims ? batchOffset + claims.length : null;
+
+      console.log(`🔍 [AUDIT] Batch complete: ${verified} verified, ${failed} failed, ${notFound} not found, ${errors} errors`);
+      console.log(`🔍 [AUDIT] Progress: ${batchOffset + claims.length}/${totalClaims} (${Math.round((batchOffset + claims.length) / totalClaims * 100)}%)`);
 
       return {
         ok: true,
-        total: claims.length,
+        total: totalClaims,
+        processed: claims.length,
         verified,
         failed,
         notFound,
-        errors
+        errors,
+        nextOffset,
+        progress: {
+          current: batchOffset + claims.length,
+          total: totalClaims,
+          percent: Math.round((batchOffset + claims.length) / totalClaims * 100)
+        }
       };
     } catch (e) {
       console.error(`🔍 [AUDIT] Fatal error:`, e);
