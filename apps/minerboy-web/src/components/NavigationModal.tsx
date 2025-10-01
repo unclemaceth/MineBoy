@@ -551,8 +551,32 @@ function MintContent() {
   const [mounted, setMounted] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
+  // Mint goes live at 8PM GMT on October 1, 2025
+  const MINT_START_TIME = new Date('2025-10-01T20:00:00Z').getTime(); // 8PM GMT (Z = UTC/GMT)
+  const [timeUntilMint, setTimeUntilMint] = useState<number>(0);
+  const [mintIsLive, setMintIsLive] = useState(false);
+
   useEffect(() => {
     setMounted(true);
+    
+    // Check if mint is live and update countdown
+    const checkMintStatus = () => {
+      const now = Date.now();
+      const diff = MINT_START_TIME - now;
+      
+      if (diff <= 0) {
+        setMintIsLive(true);
+        setTimeUntilMint(0);
+      } else {
+        setMintIsLive(false);
+        setTimeUntilMint(diff);
+      }
+    };
+    
+    checkMintStatus();
+    const interval = setInterval(checkMintStatus, 1000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Show success message when mint completes successfully
@@ -601,9 +625,39 @@ function MintContent() {
     );
   }
 
+  // Format countdown timer
+  const formatTimeRemaining = (ms: number) => {
+    const seconds = Math.floor(ms / 1000);
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div style={{ textAlign: 'center' }}>
       <h3 style={{ color: '#64ff8a', marginBottom: '16px' }}>Mint Cartridges</h3>
+      
+      {/* Mint Countdown Timer */}
+      {!mintIsLive && (
+        <div style={{ 
+          marginBottom: '20px', 
+          padding: '16px', 
+          background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
+          borderRadius: '8px',
+          border: '2px solid #ff8a00'
+        }}>
+          <p style={{ color: '#ffc864', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
+            🔒 Mint Locked
+          </p>
+          <p style={{ color: '#ff8a00', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', fontFamily: 'monospace' }}>
+            {formatTimeRemaining(timeUntilMint)}
+          </p>
+          <p style={{ color: '#c8a864', fontSize: '12px', margin: '0' }}>
+            Mint goes live at 8:00 PM GMT
+          </p>
+        </div>
+      )}
       
       {/* Mint Counter */}
       {!counterLoading && (
@@ -665,21 +719,21 @@ function MintContent() {
             console.error('Mint failed:', error);
           }
         }}
-        disabled={!isReady || isMinting || remaining === 0 || !walletCanMint}
+        disabled={!mintIsLive || !isReady || isMinting || remaining === 0 || !walletCanMint}
         style={{
           padding: '12px 24px',
           borderRadius: '6px',
-          background: isReady && !isMinting && remaining > 0 && walletCanMint
+          background: mintIsLive && isReady && !isMinting && remaining > 0 && walletCanMint
             ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
             : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
           color: '#c8ffc8',
           border: '2px solid #8a8a8a',
-          cursor: isReady && !isMinting && remaining > 0 && walletCanMint ? 'pointer' : 'not-allowed',
+          cursor: mintIsLive && isReady && !isMinting && remaining > 0 && walletCanMint ? 'pointer' : 'not-allowed',
           fontSize: '14px',
           fontWeight: 'bold'
         }}
       >
-        {remaining === 0 ? 'Sold Out!' : !walletCanMint ? 'Already Owned!' : isMinting ? 'Minting...' : 'Mint'}
+        {!mintIsLive ? '🔒 Locked' : remaining === 0 ? 'Sold Out!' : !walletCanMint ? 'Already Owned!' : isMinting ? 'Minting...' : 'Mint'}
       </button>
 
       {/* Already Owned Message */}
