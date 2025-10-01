@@ -139,54 +139,66 @@ export default function WalletConnectionModal() {
           <button onClick={close} className="rounded p-1 text-zinc-400 hover:text-white">✕</button>
         </div>
 
-        <div className="space-y-3">
-          <button
-            onClick={onConnectClick}
-            className="h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90 flex items-center justify-center gap-2"
-          >
-            <span>🌐</span>
-            <span>WalletConnect (MetaMask, etc.)</span>
-          </button>
+        <div className="space-y-4">
+          {/* WEB3 Degens Section */}
+          <div>
+            <p className="text-xs text-zinc-400 mb-2 text-center">
+              For WEB3 Degens who already know about wallets, seed phrases and Apeing without reading
+            </p>
+            <button
+              onClick={onConnectClick}
+              className="h-12 w-full rounded-xl bg-[#4BE477] font-semibold text-black hover:opacity-90 flex items-center justify-center gap-2"
+            >
+              <span>🌐</span>
+              <span>WalletConnect (MetaMask, etc.)</span>
+            </button>
+          </div>
 
-          <button
-            onClick={onGlyphClick}
-            className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3"
-          >
-            {/* Glyph Logo */}
-            <div className="w-6 h-6 flex items-center justify-center">
-              <svg 
-                width="24" 
-                height="24" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-                className="text-white"
-              >
-                <path 
-                  d="M12 2L2 7L12 12L22 7L12 2Z" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                <path 
-                  d="M2 17L12 22L22 17" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-                <path 
-                  d="M2 12L12 17L22 12" 
-                  stroke="currentColor" 
-                  strokeWidth="2" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </div>
-            <span>Create Wallet with Glyph</span>
-          </button>
+          {/* N00bs Section */}
+          <div>
+            <p className="text-xs text-zinc-400 mb-2 text-center">
+              For N00bs who don't know nuthin'! Make a wallet with your Social login, Gmail, Email, etc.
+            </p>
+            <button
+              onClick={onGlyphClick}
+              className="h-12 w-full rounded-xl border border-zinc-600 bg-zinc-800 text-white hover:bg-zinc-700 font-semibold flex items-center justify-center gap-3"
+            >
+              {/* Glyph Logo */}
+              <div className="w-6 h-6 flex items-center justify-center">
+                <svg 
+                  width="24" 
+                  height="24" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="text-white"
+                >
+                  <path 
+                    d="M12 2L2 7L12 12L22 7L12 2Z" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                  <path 
+                    d="M2 17L12 22L22 17" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                  <path 
+                    d="M2 12L12 17L22 12" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </div>
+              <span>Connect with Glyph</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
