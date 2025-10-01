@@ -124,6 +124,99 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     }
   });
 
+  // Audit and fix inflated scores - re-verify all confirmed claims
+  fastify.post('/v2/admin/audit-claims', async (req, reply) => {
+    const auth = req.headers.authorization || '';
+    if (!process.env.ADMIN_TOKEN || auth !== `Bearer ${process.env.ADMIN_TOKEN}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { getDB } = await import('../db.js');
+      const db = getDB();
+      
+      // Get all confirmed claims with tx_hash
+      const result = await db.pool.query(
+        `SELECT id, tx_hash, wallet, amount_wei 
+         FROM claims 
+         WHERE status='confirmed' AND tx_hash IS NOT NULL
+         ORDER BY confirmed_at DESC`
+      );
+      
+      const claims = result.rows;
+      console.log(`🔍 [AUDIT] Found ${claims.length} confirmed claims to audit`);
+      
+      // Create ApeChain client
+      const { createPublicClient, http, defineChain } = await import('viem');
+      
+      const APECHAIN_MAINNET = defineChain({
+        id: 33139,
+        name: "ApeChain",
+        nativeCurrency: { name: "APE", symbol: "APE", decimals: 18 },
+        rpcUrls: { default: { http: [process.env.RPC_URL!] } },
+      });
+      
+      const provider = createPublicClient({
+        chain: APECHAIN_MAINNET,
+        transport: http(process.env.RPC_URL!)
+      });
+
+      let verified = 0;
+      let failed = 0;
+      let notFound = 0;
+      let errors = 0;
+
+      for (const claim of claims) {
+        try {
+          const tx = normalizeTx(claim.tx_hash);
+          if (!tx) {
+            console.warn(`🔍 [AUDIT] Invalid tx_hash for claim ${claim.id}`);
+            errors++;
+            continue;
+          }
+
+          const receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
+          
+          if (!receipt) {
+            console.log(`🔍 [AUDIT] No receipt found for claim ${claim.id}, tx: ${tx}`);
+            notFound++;
+            continue;
+          }
+
+          if (receipt.status !== "success") {
+            // Transaction reverted - mark claim as failed
+            console.log(`🔍 [AUDIT] Claim ${claim.id} has reverted transaction, marking as failed`);
+            await failClaim(claim.id);
+            failed++;
+          } else {
+            // Transaction succeeded - keep as confirmed
+            verified++;
+          }
+        } catch (error: any) {
+          console.error(`🔍 [AUDIT] Error checking claim ${claim.id}:`, error);
+          errors++;
+        }
+        
+        // Small delay to avoid overwhelming RPC
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+
+      console.log(`🔍 [AUDIT] Complete: ${verified} verified, ${failed} failed, ${notFound} not found, ${errors} errors`);
+
+      return {
+        ok: true,
+        total: claims.length,
+        verified,
+        failed,
+        notFound,
+        errors
+      };
+    } catch (e) {
+      console.error(`🔍 [AUDIT] Fatal error:`, e);
+      return reply.code(500).send({ ok: false, error: String(e) });
+    }
+  });
+
   fastify.post('/v2/admin/poller/run-once', async (req, reply) => {
     const auth = req.headers.authorization || '';
     console.log(`[ADMIN_AUTH] Received: "${auth}"`);
@@ -155,18 +248,18 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       let notFound = 0;
       let confirmErrors = 0;
       
-      // Create client for chain 33111 (Curtis)
+      // Create client for chain 33139 (ApeChain Mainnet)
       const { createPublicClient, http, defineChain } = await import('viem');
       
-      const CURTIS_CHAIN = defineChain({
-        id: 33111,
-        name: "Curtis",
-        nativeCurrency: { name: "ABIT", symbol: "ABIT", decimals: 18 },
+      const APECHAIN_MAINNET = defineChain({
+        id: 33139,
+        name: "ApeChain",
+        nativeCurrency: { name: "APE", symbol: "APE", decimals: 18 },
         rpcUrls: { default: { http: [process.env.RPC_URL!] } },
       });
       
       const provider = createPublicClient({
-        chain: CURTIS_CHAIN,
+        chain: APECHAIN_MAINNET,
         transport: http(process.env.RPC_URL!)
       });
 
@@ -194,7 +287,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
               id: row.id,
               tx,
               statusBefore: row.status,
-              chain: 33111,
+              chain: 33139,
             });
             
             try {
