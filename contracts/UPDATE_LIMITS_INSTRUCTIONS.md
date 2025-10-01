@@ -1,8 +1,8 @@
 # Update Cartridge Limits Instructions
 
 This guide explains how to update the ApeBitCartridge contract to increase:
-- **maxSupply**: from 250 to 500
-- **maxPerWallet**: from 1 to 2
+- **maxSupply**: from 500 to 750
+- **maxPerWallet**: remains at 2
 
 ## Prerequisites
 
@@ -43,14 +43,14 @@ cast call 0xCA2d7b429248a38b276c8293506F3Be8e1fC2C2d "maxSupply()" --rpc-url htt
 cast call 0xCA2d7b429248a38b276c8293506F3Be8e1fC2C2d "maxPerWallet()" --rpc-url https://apechain.calderachain.xyz/http
 ```
 
-The first command should return `500` (0x1f4 in hex)
+The first command should return `750` (0x2ee in hex)
 The second command should return `2` (0x02 in hex)
 
 ## What Gets Updated
 
 ### On-Chain Changes:
-- `maxSupply` updated to 500
-- `maxPerWallet` updated to 2
+- `maxSupply` updated to 750
+- `maxPerWallet` remains at 2
 
 ### No Code Changes Needed:
 The frontend and backend automatically read these values from the contract:
@@ -78,7 +78,7 @@ The frontend and backend automatically read these values from the contract:
 
 Once the transaction is confirmed:
 1. Users will be able to mint up to 2 cartridges per wallet
-2. The max supply will be increased to 500
+2. The max supply will be increased to 750
 3. No frontend redeployment needed - changes are instant
 4. Backend will automatically respect the new limits
 

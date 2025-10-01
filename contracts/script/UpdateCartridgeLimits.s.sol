@@ -6,7 +6,7 @@ import "../src/ApeBitCartridge.sol";
 
 /**
  * @title UpdateCartridgeLimits
- * @dev Update maxSupply to 500 and maxPerWallet to 2
+ * @dev Update maxSupply to 750 and maxPerWallet to 2
  */
 contract UpdateCartridgeLimits is Script {
     function run() external {
@@ -22,9 +22,9 @@ contract UpdateCartridgeLimits is Script {
         console.log("Current maxSupply:", cartridge.maxSupply());
         console.log("Current maxPerWallet:", cartridge.maxPerWallet());
         
-        // Update max supply to 500
-        cartridge.setMaxSupply(500);
-        console.log("Updated maxSupply to: 500");
+        // Update max supply to 750
+        cartridge.setMaxSupply(750);
+        console.log("Updated maxSupply to: 750");
         
         // Update max per wallet to 2
         cartridge.setMaxPerWallet(2);
