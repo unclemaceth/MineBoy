@@ -855,7 +855,7 @@ function InstructionsContent() {
           <p>• <strong>Claim Fee:</strong> 0.001 APE per successful claim (goes to project)</p>
           <p>• <strong>Team Seasons:</strong> Choose a team and compete on leaderboards</p>
           <p>• <strong>Set Arcade Name:</strong> Personalize your miner name in the leaderboard</p>
-          <p>• <strong>Cartridge Limit:</strong> Currently 1 per wallet (will increase to 2 soon)</p>
+          <p>• <strong>Cartridge Limit:</strong> 2 per wallet</p>
         </div>
       </div>
 
