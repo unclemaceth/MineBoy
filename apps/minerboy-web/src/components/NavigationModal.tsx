@@ -16,6 +16,34 @@ import { useWalletCartridgeCount } from '@/hooks/useWalletCartridgeCount';
 import { formatEther } from 'viem';
 import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../lib/contracts";
 
+// Season end time: October 3, 2025 at 8:00 PM GMT (48 hours after launch)
+const SEASON_END_TIME = new Date('2025-10-03T20:00:00Z').getTime();
+
+// Countdown timer formatting helper
+function formatTimeRemaining(ms: number): string {
+  if (ms <= 0) return 'Season Ended';
+  
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) {
+    const h = hours % 24;
+    const m = minutes % 60;
+    return `${days}d ${h}h ${m}m`;
+  } else if (hours > 0) {
+    const m = minutes % 60;
+    const s = seconds % 60;
+    return `${hours}h ${m}m ${s}s`;
+  } else if (minutes > 0) {
+    const s = seconds % 60;
+    return `${minutes}m ${s}s`;
+  } else {
+    return `${seconds}s`;
+  }
+}
+
 type NavigationModalProps = {
   isOpen: boolean;
   page: 'leaderboard' | 'mint' | 'instructions' | 'welcome' | null;
@@ -128,6 +156,7 @@ function LeaderboardContent() {
   const [leaderboardType, setLeaderboardType] = useState<'individual' | 'team'>('individual');
   const [seasonData, setSeasonData] = useState<SeasonLeaderboardResponse | TeamLeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [timeRemaining, setTimeRemaining] = useState<number>(SEASON_END_TIME - Date.now());
 
   const fetchData = async () => {
     setLoading(true);
@@ -156,6 +185,14 @@ function LeaderboardContent() {
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
   }, [leaderboardType, address]);
+
+  // Update countdown timer every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRemaining(SEASON_END_TIME - Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const formatUpdateTime = (isoString?: string) => {
     if (!isoString) return '—';
@@ -191,6 +228,21 @@ function LeaderboardContent() {
         <h2 style={{ fontSize: 24, fontWeight: 'bold', color: '#64ff8a', marginBottom: 4 }}>LEADERBOARD</h2>
         <div style={{ fontSize: 10, color: '#8a8a8a' }}>
           Next update ~{getNextPollerTime()}
+        </div>
+        {/* Season countdown timer */}
+        <div style={{ 
+          marginTop: 12, 
+          padding: '8px 16px', 
+          background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
+          borderRadius: '6px',
+          border: '2px solid #ff8a00'
+        }}>
+          <div style={{ color: '#ffc864', fontSize: '11px', fontWeight: 'bold', marginBottom: 4 }}>
+            ⏱️ SEASON 1 ENDS
+          </div>
+          <div style={{ color: '#ff8a00', fontSize: '16px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            {formatTimeRemaining(timeRemaining)}
+          </div>
         </div>
       </div>
 
@@ -884,6 +936,7 @@ function InstructionsContent() {
 // Welcome Content Component
 function WelcomeContent({ onClose }: { onClose: () => void }) {
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState<number>(SEASON_END_TIME - Date.now());
 
   const handleDontShowAgain = () => {
     if (typeof window !== 'undefined') {
@@ -892,6 +945,14 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
       onClose();
     }
   };
+
+  // Update countdown timer every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeRemaining(SEASON_END_TIME - Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center' }}>
@@ -1068,9 +1129,24 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         border: '3px solid #9b59b6',
         borderRadius: '8px'
       }}>
-        <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#e74c3c' }}>
+        <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#e74c3c' }}>
           🏆 THIS SEASON'S PRIZES
         </h4>
+        {/* Season countdown timer */}
+        <div style={{ 
+          marginBottom: '12px', 
+          padding: '10px', 
+          background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
+          borderRadius: '6px',
+          border: '2px solid #ff8a00'
+        }}>
+          <div style={{ color: '#ffc864', fontSize: '11px', fontWeight: 'bold', marginBottom: 4 }}>
+            ⏱️ SEASON 1 ENDS IN
+          </div>
+          <div style={{ color: '#ff8a00', fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            {formatTimeRemaining(timeRemaining)}
+          </div>
+        </div>
         <div style={{ fontSize: '13px', color: '#c8ffc8', lineHeight: '1.6', textAlign: 'left' }}>
           <p style={{ margin: '6px 0', color: '#f1c40f' }}>🥇 <strong>1st Place:</strong> Alpha Dog</p>
           <p style={{ margin: '6px 0', color: '#c0c0c0' }}>🥈 <strong>2nd Place:</strong> Eyeversed Blood of Ape</p>
