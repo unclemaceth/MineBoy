@@ -1091,6 +1091,28 @@ function Home() {
     } catch (err: any) {
       console.error('[CLAIM] failed', err.status, err.info);
       
+      // Check if this is an AFK penalty (job expired before claim)
+      if (err.message === 'Job expired - cannot claim') {
+        // AFK Penalty - user found hash but didn't claim in time
+        setMode('terminal'); // Force switch to terminal view so they see the message
+        setFoundResult(null); // Clear the found hash
+        setFound(undefined); // Clear lastFound from session
+        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Reset hash display
+        setStatus('idle');
+        
+        // Show gamified AFK penalty messages
+        pushLine('⏰ AFK PENALTY!');
+        pushLine('You missed your hash window!');
+        pushLine('The job expired before you claimed.');
+        pushLine(' ');
+        pushLine('Press A to start mining again');
+        
+        playFailSound(); // Play fail sound for penalty
+        hapticFeedback('heavy');
+        
+        return; // Exit early
+      }
+      
       // Handle session expiration specifically
       if (err.status === 404 || err.status === 409) {
         if (err.info?.code === 'session_conflict') {
