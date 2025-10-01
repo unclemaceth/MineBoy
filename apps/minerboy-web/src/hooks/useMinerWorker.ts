@@ -91,13 +91,9 @@ export function useMinerWorker(events: Events = {}) {
   const api = useMemo(() => ({
     start(job: Job) {
       // Refuse to start if current session was cancelled/expired
-      if (sessionIdRef.current === 'dead') {
-        console.log('[START_BLOCKED] Session is dead, refusing to start');
-        return;
-      }
-      
       if (!workerRef.current) return;
       
+      // Always create a fresh session ID (clears any 'dead' state)
       const sid = crypto.randomUUID();
       sessionIdRef.current = sid;
       setRunning(true);
