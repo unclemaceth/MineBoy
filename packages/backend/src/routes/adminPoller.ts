@@ -196,12 +196,25 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         try {
           const tx = normalizeTx(claim.tx_hash);
           if (!tx) {
-            console.warn(`🔍 [AUDIT] Invalid tx_hash for claim ${claim.id}`);
-            errors++;
+            console.warn(`🔍 [AUDIT] Invalid tx_hash for claim ${claim.id}, marking as failed`);
+            await failClaim(claim.id);
+            failed++;
             continue;
           }
 
-          const receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
+          let receipt;
+          try {
+            receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
+          } catch (receiptError: any) {
+            // Transaction not found on ApeChain (likely Curtis testnet tx) - mark as failed
+            if (receiptError.message?.includes('not found') || receiptError.name === 'TransactionNotFoundError') {
+              console.log(`🔍 [AUDIT] Transaction ${tx} not found on ApeChain (Curtis claim), marking as failed`);
+              await failClaim(claim.id);
+              failed++;
+              continue;
+            }
+            throw receiptError; // Re-throw other errors
+          }
           
           if (!receipt) {
             console.log(`🔍 [AUDIT] No receipt found for claim ${claim.id}, tx: ${tx}`);
@@ -219,7 +232,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
             verified++;
           }
         } catch (error: any) {
-          console.error(`🔍 [AUDIT] Error checking claim ${claim.id}:`, error);
+          console.error(`🔍 [AUDIT] Error checking claim ${claim.id}:`, error.message || error);
           errors++;
         }
         
