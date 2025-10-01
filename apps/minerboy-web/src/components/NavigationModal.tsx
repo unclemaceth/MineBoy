@@ -904,6 +904,94 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         />
       </div>
 
+      {/* Navigation Guide */}
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        border: '2px solid #64ff8a',
+        borderRadius: '8px'
+      }}>
+        <h4 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '12px', color: '#64ff8a' }}>
+          📍 NAVIGATION BUTTONS
+        </h4>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          gap: '20px', 
+          alignItems: 'center',
+          marginBottom: '12px'
+        }}>
+          {/* M Button */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+              color: '#c8ffc8',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              border: '2px solid #8a8a8a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              fontFamily: 'Menlo, monospace'
+            }}>
+              M
+            </div>
+            <span style={{ fontSize: '10px', color: '#8a8a8a' }}>Mint</span>
+          </div>
+
+          {/* I Button */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+              color: '#c8ffc8',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              border: '2px solid #8a8a8a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              fontFamily: 'Menlo, monospace'
+            }}>
+              I
+            </div>
+            <span style={{ fontSize: '10px', color: '#8a8a8a' }}>Information</span>
+          </div>
+
+          {/* L Button */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              width: '32px',
+              height: '32px',
+              borderRadius: '50%',
+              background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+              color: '#c8ffc8',
+              fontSize: '16px',
+              fontWeight: 'bold',
+              border: '2px solid #8a8a8a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              fontFamily: 'Menlo, monospace'
+            }}>
+              L
+            </div>
+            <span style={{ fontSize: '10px', color: '#8a8a8a' }}>Leaderboard</span>
+          </div>
+        </div>
+        <p style={{ fontSize: '11px', color: '#8a8a8a', margin: 0, lineHeight: '1.4' }}>
+          Use these buttons on the main screen to access different sections
+        </p>
+      </div>
+
       {/* Main Intro */}
       <div style={{
         padding: '20px',
