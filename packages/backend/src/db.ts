@@ -131,7 +131,7 @@ export async function initDb(dbUrl?: string) {
 
 // Create a PostgreSQL adapter that mimics SQLite interface
 class PostgreSQLAdapter {
-  constructor(private pool: Pool) {}
+  constructor(public pool: Pool) {}
 
   prepare(query: string) {
     // 1) Collect parameter names in first-occurrence order from the ORIGINAL query
