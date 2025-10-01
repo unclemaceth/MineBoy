@@ -97,11 +97,25 @@ export function useMinerWorker(events: Events = {}) {
         workerRef.current = w;
         
         w.onmessage = (e: MessageEvent<unknown>) => {
-          const msg = e.data as OutMsg;
-          if (msg.type === 'HASH_RATE') {
-            onHashRate?.(msg.rate);
-          } else if (msg.type === 'FOUND') {
-            onFound?.(msg.result, msg.attempts);
+          const msg = e.data as any;
+          
+          // Ignore stale messages from previous logical sessions
+          if (msg?.sid && sessionIdRef.current !== msg.sid) {
+            console.log('[STALE_MSG] Ignoring message from dead session:', msg.sid);
+            return;
+          }
+          
+          if (msg?.type === 'TICK') {
+            events.onTick?.(msg.attempts, msg.hr, msg.hash, msg.nibs);
+          } else if (msg?.type === 'FOUND') {
+            setRunning(false);
+            events.onFound?.(msg);
+          } else if (msg?.type === 'ERROR') {
+            setRunning(false);
+            events.onError?.(msg.message);
+          } else if (msg?.type === 'STOPPED') {
+            console.log('[WORKER_STOPPED] Worker confirmed stop');
+            setRunning(false);
           }
         };
       }
