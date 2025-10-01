@@ -309,6 +309,9 @@ function Home() {
         setMode('terminal'); // Return to terminal view
         setShowCartridgeSelect(true); // Re-show selection modal so user can see cooldown and reselect after
         
+        // Reset the dead session state so mining can restart after cooldown
+        miner.resetSession();
+        
         // Show retro nostalgic messages AFTER clearing
         pushLine('⏰ TIME UP - Job expired!');
         pushLine('Initiating Cartridge CoolDown...');
