@@ -1327,11 +1327,10 @@ function Home() {
     const bits = job.bits ?? (suffix?.length ?? 0) * 4;
     
     let level = 'CASUAL';
-    if (suffix?.length >= 9) level = 'BRUTAL';
-    else if (suffix?.length >= 8) level = 'SERIOUS';
-    else if (suffix?.length >= 7) level = 'TRICKY';
-    else if (suffix?.length >= 6) level = 'CASUAL';
-    else level = 'CASUAL';
+    if (suffix?.length >= 9) level = 'BRUTAL';      // 9 zeros
+    else if (suffix?.length >= 8) level = 'SERIOUS'; // 8 zeros
+    else if (suffix?.length >= 7) level = 'TRICKY';  // 7 zeros
+    else level = 'CASUAL';                           // 6 zeros (default)
     
     setDifficultyText(`D: ${level} | T: ${ttlSec != null ? `${ttlSec}s` : '--'}`);
   }, [job, ttlSec]);
