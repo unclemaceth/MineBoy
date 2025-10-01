@@ -682,22 +682,22 @@ function MintContent() {
       {/* Project Explanation */}
       <div style={{ 
         marginBottom: '20px', 
-        padding: '12px', 
+        padding: '16px', 
         background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-        borderRadius: '6px',
+        borderRadius: '8px',
         border: '1px solid #4a7d5f',
         textAlign: 'left'
       }}>
-        <p style={{ color: '#c8ffc8', fontSize: '12px', margin: '0 0 8px 0', fontWeight: 'bold' }}>
+        <p style={{ color: '#c8ffc8', fontSize: '15px', margin: '0 0 12px 0', fontWeight: 'bold' }}>
           🎮 Mining-Focused Design:
         </p>
-        <p style={{ color: '#8a8a8a', fontSize: '11px', margin: '0 0 4px 0' }}>
-          • 1 per wallet = 1 MineBoy at a time
+        <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0 0 8px 0', lineHeight: '1.5' }}>
+          • 2 per wallet = 2 tabs/windows/devices on the same wallet at the same time
         </p>
-        <p style={{ color: '#8a8a8a', fontSize: '11px', margin: '0 0 4px 0' }}>
+        <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0 0 8px 0', lineHeight: '1.5' }}>
           • Free mint + 0.001 APE mine tax per claim
         </p>
-        <p style={{ color: '#8a8a8a', fontSize: '11px', margin: '0' }}>
+        <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0', lineHeight: '1.5' }}>
           • Focus on mining, not flipping
         </p>
       </div>
