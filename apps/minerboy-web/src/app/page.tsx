@@ -2369,6 +2369,39 @@ function Home() {
               {/* Statistics Section */}
               <StatisticsSection />
 
+              {/* Show Welcome Page Button */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  WELCOME PAGE
+                </h3>
+                <button
+                  onClick={() => {
+                    playButtonSound();
+                    setShowDebugModal(false);
+                    openNavigationPage('welcome');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                    color: '#c8ffc8',
+                    border: '2px solid #64ff8a',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    fontFamily: 'Menlo, monospace'
+                  }}
+                >
+                  🎮 Show Welcome Page
+                </button>
+              </div>
+
               <div style={{
                 padding: '12px',
                 background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
