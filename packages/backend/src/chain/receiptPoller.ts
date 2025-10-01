@@ -21,6 +21,56 @@ export function startReceiptPoller(rpcUrl: string) {
   
   console.log(`📊 Receipt poller starting: ${intervalMs}ms interval, ${batchLimit} batch limit`);
   
+  const checkMissingAttributions = async () => {
+    try {
+      const { getDB } = await import('../db.js');
+      const { getActiveSeason, attributeClaimToTeam } = await import('../seasons.js');
+      
+      const db = getDB();
+      const teamSeason = await getActiveSeason(db, 'TEAM');
+      
+      if (!teamSeason) {
+        console.log('📊 [ATTRIBUTION_CHECK] No active TEAM season, skipping');
+        return;
+      }
+      
+      // Find confirmed claims within the season that have no attribution
+      const missingResult = await db.pool.query(
+        `SELECT c.id, c.wallet, c.amount_wei, c.confirmed_at
+         FROM claims c
+         LEFT JOIN claim_team_attributions cta ON cta.claim_id = c.id
+         WHERE c.status = 'confirmed'
+           AND c.confirmed_at >= EXTRACT(EPOCH FROM $1::timestamptz) * 1000
+           AND ($2::timestamptz IS NULL OR c.confirmed_at <= EXTRACT(EPOCH FROM $2::timestamptz) * 1000)
+           AND cta.claim_id IS NULL
+         LIMIT 100`,
+        [teamSeason.starts_at, teamSeason.ends_at]
+      );
+      
+      if (missingResult.rows.length > 0) {
+        console.log(`📊 [ATTRIBUTION_CHECK] Found ${missingResult.rows.length} confirmed claims without attribution`);
+        
+        for (const claim of missingResult.rows) {
+          try {
+            await attributeClaimToTeam(
+              db,
+              claim.id,
+              claim.wallet,
+              claim.amount_wei,
+              new Date(claim.confirmed_at)
+            );
+          } catch (err) {
+            console.error(`📊 [ATTRIBUTION_CHECK] Failed to attribute claim ${claim.id}:`, err);
+          }
+        }
+        
+        console.log(`📊 [ATTRIBUTION_CHECK] Attribution check complete`);
+      }
+    } catch (err) {
+      console.error('📊 [ATTRIBUTION_CHECK] Error:', err);
+    }
+  };
+  
   const checkPendingReceiptsInBatches = async () => {
     const now = Date.now();
     console.log(`📊 [POLLER_TICK] Starting check at ${new Date(now).toISOString()}`);
@@ -28,6 +78,9 @@ export function startReceiptPoller(rpcUrl: string) {
     try {
       // Expire old pending claims (24h+ old)
       await expireStalePending(now - 24 * 60 * 60 * 1000);
+      
+      // Check for missing attributions (safety net)
+      await checkMissingAttributions();
       
       // Get pending claims with tx_hash, ordered by updated_at
       const rows = await listPendingWithTx(); // ← await
