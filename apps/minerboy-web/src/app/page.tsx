@@ -967,20 +967,34 @@ function Home() {
           });
 
           // Use provider to determine which path to take
+          let txHash: string | undefined;
           if (provider === 'glyph' && walletClient) {
             // For Glyph connections, use walletClient directly
             console.log('[TX] Using Glyph walletClient');
-            await walletClient.writeContract(contractConfig);
+            txHash = await walletClient.writeContract(contractConfig);
+            console.log('[TX] Transaction hash:', txHash);
           } else if (provider === 'wc' && walletClient) {
             // For Web3Modal connections, use viem wallet client with window.ethereum
             console.log('[TX] Using Web3Modal walletClient (via window.ethereum)');
             console.log('[TX] Config:', contractConfig);
-            const txHash = await walletClient.writeContract(contractConfig);
+            txHash = await walletClient.writeContract(contractConfig);
             console.log('[TX] Transaction hash:', txHash);
           } else {
             // Fallback
             console.log('[TX] No wallet client available, cannot send transaction');
             throw new Error('No wallet client available');
+          }
+          
+          // Send transaction hash to backend immediately
+          if (txHash && claimResponse.claimId) {
+            try {
+              console.log('[TX_HASH_SUBMIT_IMMEDIATE]', { claimId: claimResponse.claimId, txHash });
+              await api.claimTx({ claimId: claimResponse.claimId, txHash });
+              pushLine('Transaction tracked by backend');
+            } catch (e) {
+              console.error('[TX_HASH_SUBMIT_ERROR]', e);
+              // Don't fail the claim if backend tracking fails
+            }
           }
           
           pushLine('Transaction submitted - waiting for hash...');
