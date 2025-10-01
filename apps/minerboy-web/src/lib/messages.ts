@@ -128,6 +128,11 @@ export const ERROR_MAP: Record<string, {title:string; message:(p:any)=>string}> 
     message: ({ active, limit }) =>
       `You have ${active} active sessions. The maximum allowed is ${limit}.`
   },
+  wallet_session_limit: {
+    title: '⚠️ Too Many Sessions!',
+    message: ({ activeCount, limit }) =>
+      `SYSTEM OVERLOAD! You're running ${activeCount}/${limit} sessions. Close a tab/window to mine with another cartridge.`
+  },
   lock_owned_elsewhere: {
     title: 'Session conflict',
     message: ({ tokenId }) =>

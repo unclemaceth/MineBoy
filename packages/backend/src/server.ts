@@ -245,6 +245,24 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       return errorResponse(reply, 403, 'ownership_required', 'Wallet does not own this cartridge');
     }
 
+    // Check wallet session limit (prevent exploit where user transfers multiple cartridges to one wallet)
+    const sessionLimit = await SessionStore.checkWalletSessionLimit(w);
+    if (!sessionLimit.allowed) {
+      console.warn('[OPEN] Wallet session limit exceeded:', {
+        wallet: w,
+        activeCount: sessionLimit.activeCount,
+        limit: sessionLimit.limit
+      });
+      return reply.status(429).send({
+        code: 'wallet_session_limit',
+        message: `Wallet has too many active mining sessions (${sessionLimit.activeCount}/${sessionLimit.limit})`,
+        details: {
+          activeCount: sessionLimit.activeCount,
+          limit: sessionLimit.limit
+        }
+      });
+    }
+
     // 1) Check existing ownership lock
     const lock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
     if (lock) {
