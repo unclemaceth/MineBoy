@@ -143,7 +143,7 @@ export default function WalletConnectionModal() {
           {/* WEB3 Degens Section */}
           <div>
             <p className="text-xs text-zinc-400 mb-2 text-center">
-              For WEB3 Degens who already know about wallets, seed phrases and Apeing without reading!
+              For WEB3 Degens who already know about wallets, seed phrases and Apeing In without reading!
             </p>
             <button
               onClick={onConnectClick}
