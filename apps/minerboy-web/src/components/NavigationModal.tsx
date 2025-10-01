@@ -791,11 +791,12 @@ function InstructionsContent() {
           🎮 HOW TO PLAY
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p><strong>1. Connect Wallet:</strong> Use the CONNECT button to link your wallet</p>
-          <p><strong>2. Select Cartridge:</strong> Choose an NFT cartridge to mine</p>
-          <p><strong>3. Start Mining:</strong> Press the A button to begin mining</p>
-          <p><strong>4. Find Hashes:</strong> Look for hashes ending in 0000</p>
-          <p><strong>5. Claim Rewards:</strong> Submit successful hashes for ABIT tokens</p>
+          <p><strong>1. Mint Cartridge:</strong> Get your NFT cartridge (1 per wallet, free mint)</p>
+          <p><strong>2. Connect Wallet:</strong> Use CONNECT button (Glyph or WalletConnect)</p>
+          <p><strong>3. Select Cartridge:</strong> Load your cartridge into the MineBoy</p>
+          <p><strong>4. Start Mining:</strong> Press A button to begin SHA256 mining</p>
+          <p><strong>5. Find Valid Hash:</strong> Mine until you find a hash with enough zeros (difficulty scales dynamically)</p>
+          <p><strong>6. Claim Rewards:</strong> Press B to submit and earn ABIT tokens (0.001 APE fee per claim)</p>
         </div>
       </div>
 
@@ -810,9 +811,10 @@ function InstructionsContent() {
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
           <p><strong>A Button:</strong> Start/Stop mining</p>
-          <p><strong>B Button:</strong> Claim found hash</p>
-          <p><strong>MENU:</strong> Open debug panel</p>
-          <p><strong>Navigation:</strong> M=Mint, I=Info, L=Leaderboard</p>
+          <p><strong>B Button:</strong> Open claim overlay (hash found) or re-open if closed</p>
+          <p><strong>D-Pad Left/Right:</strong> Switch between terminal and visualizer views</p>
+          <p><strong>MENU Button:</strong> Open debug panel with stats and controls</p>
+          <p><strong>Navigation:</strong> M=Mint, I=Info, L=Leaderboard (via top buttons)</p>
         </div>
       </div>
 
@@ -823,13 +825,16 @@ function InstructionsContent() {
         borderRadius: '8px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
-          💡 TIPS
+          💰 REWARD TIERS
         </h3>
-        <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p>• Higher hash rates increase your chances of finding valid hashes</p>
-          <p>• Each cartridge has different mining parameters</p>
-          <p>• Check the leaderboard to see top miners</p>
-          <p>• Join a team for competitive mining seasons</p>
+        <div style={{ fontSize: '11px', lineHeight: '1.4', color: '#c8ffc8', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+          <div>Tier 0-7: 8-64 ABIT</div>
+          <div>Tier 8-15: 72-128 ABIT</div>
+          <div style={{ gridColumn: '1 / -1', marginTop: '4px', color: '#8a8a8a' }}>
+            • Tier based on first character of hash after 0x (0-f = 16 tiers)<br/>
+            • Rewards increase by 8 ABIT per tier<br/>
+            • Best hash (0xf...) = "Hashalicious" = 128 ABIT
+          </div>
         </div>
       </div>
 
@@ -840,13 +845,34 @@ function InstructionsContent() {
         borderRadius: '8px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
-          🔒 LOCK SYSTEM EXPLAINED
+          💡 TIPS & INFO
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p><strong>Ownership Lock (1h):</strong> Prevents cart flipping. New owner must wait 1h after transfer.</p>
-          <p><strong>Session Lock (60s):</strong> One session per cartridge. Refreshed by heartbeats.</p>
-          <p><strong>Wallet Limit:</strong> Max concurrent sessions per wallet (default: 10).</p>
-          <p><strong>Graceful Recovery:</strong> Same wallet can resume after tab closure.</p>
+          <p>• <strong>Dynamic Difficulty:</strong> Adjusts based on active miners (5-8 zeros required)</p>
+          <p>• <strong>Job Timeout:</strong> Each job expires after 2-17 min. Fail = cartridge cooldown (60s)</p>
+          <p>• <strong>Claim Fee:</strong> 0.001 APE per successful claim (goes to project)</p>
+          <p>• <strong>Team Seasons:</strong> Choose a team and compete on leaderboards</p>
+          <p>• <strong>Set Arcade Name:</strong> Personalize your miner name in the leaderboard</p>
+          <p>• <strong>Cartridge Limit:</strong> Currently 1 per wallet (will increase to 2 soon)</p>
+        </div>
+      </div>
+
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        border: '2px solid #4a7d5f',
+        borderRadius: '8px'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
+          🔒 SESSION & COOLDOWNS
+        </h3>
+        <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
+          <p><strong>Session Lock:</strong> One active session per cartridge, prevents multi-window cheating</p>
+          <p><strong>Heartbeat System:</strong> Backend validates your session every 30s to keep it alive</p>
+          <p><strong>Job Timeout (TTL):</strong> Each mining job has a time limit. Fail to find hash in time = 60s cartridge cooldown</p>
+          <p><strong>Session Conflict:</strong> If cartridge is locked by another session, wait for cooldown or close other tabs</p>
+          <p><strong>EIP-712 Signatures:</strong> Secure claim verification using cryptographic signatures</p>
+          <p><strong>Network:</strong> ApeChain mainnet only (Chain ID: 33139)</p>
         </div>
       </div>
     </div>
