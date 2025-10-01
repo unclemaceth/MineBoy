@@ -28,15 +28,20 @@ export class MintingService {
   }
 
   /**
-   * Check if a wallet can mint (doesn't already own a cartridge)
+   * Check if a wallet can mint (based on maxPerWallet limit)
    */
   async canMint(walletAddress: string): Promise<{ canMint: boolean; reason?: string }> {
     try {
-      const balance = await this.cartridgeContract.balanceOf(walletAddress);
-      const ownedCount = Number(balance);
+      const [balance, maxPerWallet] = await Promise.all([
+        this.cartridgeContract.balanceOf(walletAddress),
+        this.cartridgeContract.maxPerWallet()
+      ]);
       
-      if (ownedCount > 0) {
-        return { canMint: false, reason: `Wallet already owns ${ownedCount} cartridge(s)` };
+      const ownedCount = Number(balance);
+      const maxAllowed = Number(maxPerWallet);
+      
+      if (ownedCount >= maxAllowed) {
+        return { canMint: false, reason: `Wallet already owns ${ownedCount} cartridge(s) (max: ${maxAllowed})` };
       }
       
       return { canMint: true };
