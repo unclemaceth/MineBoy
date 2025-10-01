@@ -52,13 +52,29 @@ export function startReceiptPoller(rpcUrl: string) {
         
         for (const claim of missingResult.rows) {
           try {
-            await attributeClaimToTeam(
-              db,
-              claim.id,
-              claim.wallet,
-              claim.amount_wei,
-              new Date(claim.confirmed_at)
-            );
+            // confirmed_at is stored as milliseconds, convert to Date
+            const confirmedAtMs = claim.confirmed_at ? parseInt(claim.confirmed_at, 10) : Date.now();
+            const confirmedDate = new Date(confirmedAtMs);
+            
+            // Validate the date
+            if (isNaN(confirmedDate.getTime())) {
+              console.error(`📊 [ATTRIBUTION_CHECK] Invalid confirmed_at for claim ${claim.id}: ${claim.confirmed_at}, using current time`);
+              await attributeClaimToTeam(
+                db,
+                claim.id,
+                claim.wallet,
+                claim.amount_wei,
+                new Date()
+              );
+            } else {
+              await attributeClaimToTeam(
+                db,
+                claim.id,
+                claim.wallet,
+                claim.amount_wei,
+                confirmedDate
+              );
+            }
           } catch (err) {
             console.error(`📊 [ATTRIBUTION_CHECK] Failed to attribute claim ${claim.id}:`, err);
           }
