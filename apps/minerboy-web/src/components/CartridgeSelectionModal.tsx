@@ -10,6 +10,7 @@ interface CartridgeSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectCartridge: (cartridge: OwnedCartridge) => void;
+  lockedCartridge?: { contract: string; tokenId: string; ttl: number } | null;
 }
 
 const toDecString = (id: string) => {
@@ -28,6 +29,7 @@ export default function CartridgeSelectionModal({
   isOpen,
   onClose,
   onSelectCartridge,
+  lockedCartridge,
 }: CartridgeSelectionModalProps) {
   const { address, isConnected } = useActiveAccount();
   const [ownedCartridges, setOwnedCartridges] = useState<OwnedCartridge[]>([]);
@@ -135,24 +137,48 @@ export default function CartridgeSelectionModal({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {ownedCartridges.map((c) => {
               const decId = toDecString(c.tokenId);
+              const isLocked = lockedCartridge && 
+                               lockedCartridge.contract.toLowerCase() === c.contractAddress.toLowerCase() && 
+                               lockedCartridge.tokenId === decId;
+              
               return (
                 <button
                   key={`${c.contractAddress}-${decId}`}
-                  onClick={() => onSelectCartridge({ ...c, tokenId: decId })}
+                  onClick={() => {
+                    if (isLocked) return; // Don't allow selection of locked cartridge
+                    onSelectCartridge({ ...c, tokenId: decId });
+                  }}
+                  disabled={isLocked}
                   style={{
-                    padding: 24, backgroundColor: '#1a2e1f', border: '2px solid #4a7d5f',
-                    borderRadius: 16, color: '#64ff8a', fontFamily: 'Menlo, monospace',
-                    fontSize: 14, cursor: 'pointer', textAlign: 'center', transition: 'all 0.2s',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16,
-                    width: '100%'
+                    padding: 24, 
+                    backgroundColor: isLocked ? '#2a1a1a' : '#1a2e1f', 
+                    border: isLocked ? '2px solid #ff6b6b' : '2px solid #4a7d5f',
+                    borderRadius: 16, 
+                    color: isLocked ? '#ff6b6b' : '#64ff8a', 
+                    fontFamily: 'Menlo, monospace',
+                    fontSize: 14, 
+                    cursor: isLocked ? 'not-allowed' : 'pointer', 
+                    textAlign: 'center', 
+                    transition: 'all 0.2s',
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: 16,
+                    width: '100%',
+                    position: 'relative',
+                    opacity: isLocked ? 0.6 : 1
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#4a7d5f';
-                    e.currentTarget.style.borderColor = '#64ff8a';
+                    if (!isLocked) {
+                      e.currentTarget.style.backgroundColor = '#4a7d5f';
+                      e.currentTarget.style.borderColor = '#64ff8a';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = '#1a2e1f';
-                    e.currentTarget.style.borderColor = '#4a7d5f';
+                    if (!isLocked) {
+                      e.currentTarget.style.backgroundColor = '#1a2e1f';
+                      e.currentTarget.style.borderColor = '#4a7d5f';
+                    }
                   }}
                 >
                   {/* Cartridge Image */}
@@ -162,12 +188,57 @@ export default function CartridgeSelectionModal({
                     borderRadius: 12, 
                     overflow: 'hidden',
                     backgroundColor: '#0f2216',
-                    border: '3px solid #4a7d5f',
+                    border: isLocked ? '3px solid #ff6b6b' : '3px solid #4a7d5f',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     position: 'relative'
                   }}>
+                    {/* Locked Overlay */}
+                    {isLocked && (
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        backgroundColor: 'rgba(255, 107, 107, 0.85)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10,
+                        gap: 12
+                      }}>
+                        <div style={{
+                          fontSize: 48,
+                          fontWeight: 'bold',
+                          color: '#fff',
+                          fontFamily: 'Menlo, monospace'
+                        }}>
+                          🔒
+                        </div>
+                        <div style={{
+                          fontSize: 36,
+                          fontWeight: 'bold',
+                          color: '#fff',
+                          fontFamily: 'Menlo, monospace'
+                        }}>
+                          {lockedCartridge.ttl}s
+                        </div>
+                        <div style={{
+                          fontSize: 12,
+                          color: '#fff',
+                          textAlign: 'center',
+                          padding: '0 20px',
+                          fontFamily: 'Menlo, monospace'
+                        }}>
+                          Session Conflict
+                          <br />
+                          Check other devices
+                        </div>
+                      </div>
+                    )}
                     {/* Always show the PNG image first */}
                     <img
                       src="/apebit-cart-mineboy.png"

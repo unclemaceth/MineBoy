@@ -79,6 +79,7 @@ function Home() {
   const [showNavigationModal, setShowNavigationModal] = useState(false);
   const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | 'welcome' | null>(null);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
+  const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number } | null>(null);
 
   // Navigation helpers
   const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => {
@@ -332,6 +333,27 @@ function Home() {
     
     return () => clearInterval(interval);
   }, [cooldownTimer]);
+
+  // Locked cartridge timer effect
+  useEffect(() => {
+    if (!lockedCartridge || lockedCartridge.ttl <= 0) return;
+    
+    const interval = setInterval(() => {
+      setLockedCartridge(prev => {
+        if (!prev || prev.ttl <= 1) {
+          console.log('[LOCKED_CART] Lock expired');
+          return null;
+        }
+        
+        const newTtl = prev.ttl - 1;
+        console.log(`[LOCKED_CART] ${prev.tokenId} locked for ${newTtl}s`);
+        
+        return { ...prev, ttl: newTtl };
+      });
+    }, 1000);
+    
+    return () => clearInterval(interval);
+  }, [lockedCartridge]);
 
   // Heartbeat to refresh lock for entire session
   useEffect(() => {
@@ -650,16 +672,21 @@ function Home() {
       
       if (errorInfo.code === 'session_conflict') {
         const ttlSec = errorInfo.details?.ttlSec || 60;
-        pushLine(`🔒 CARTRIDGE LOCKED`);
-        pushLine(`Session conflict - wait ${ttlSec}s`);
-        pushLine(`Another session is active for this cartridge`);
-        pushLine(`⏰ TIME UP - Job expired!`);
-        pushLine(`Initiating Cartridge CoolDown...`);
-        pushLine(`Blowing in slot...`);
-        pushLine(`Removing dust...`);
+        pushLine(`🔒 SESSION CONFLICT DETECTED`);
+        pushLine(`This cartridge is already mining`);
+        pushLine(`on another browser/window/device.`);
+        pushLine(` `);
+        pushLine(`Check your other devices for`);
+        pushLine(`active sessions using this cart.`);
+        pushLine(` `);
+        pushLine(`Cart locked for ${ttlSec}s`);
         
-        // Start cooldown timer for session conflict
-        setCooldownTimer(ttlSec);
+        // Lock this specific cartridge instead of all selections
+        setLockedCartridge({
+          contract: canonical.contract,
+          tokenId: canonical.tokenId,
+          ttl: ttlSec
+        });
         
         setShowCartridgeSelect(true); // Re-show selection
         return;
@@ -1927,7 +1954,12 @@ function Home() {
             }}>
               Lock expires in 60s if inactive
             </div>
-            {cartridges.map((cart) => (
+            {cartridges.map((cart) => {
+              // Check if this specific cartridge is locked
+              const isThisCartLocked = lockedCartridge && lockedCartridge.contract === cart.contract;
+              const lockedTokenId = isThisCartLocked ? lockedCartridge.tokenId : null;
+              
+              return (
               <div key={cart.contract} style={{ marginBottom: 12 }}>
                 <div style={{ color: '#fff', marginBottom: 4 }}>{cart.name}</div>
                 <input
@@ -2722,6 +2754,7 @@ function Home() {
         isOpen={showAlchemyCartridges}
         onClose={() => setShowAlchemyCartridges(false)}
         onSelectCartridge={handleAlchemyCartridgeSelect}
+        lockedCartridge={lockedCartridge}
       />
 
       {/* Navigation Modal */}
