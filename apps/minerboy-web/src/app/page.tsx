@@ -307,6 +307,7 @@ function Home() {
         // Auto-unload cartridge and return to terminal mode  
         clear(); // Clear session data (unloads cartridge)
         setMode('terminal'); // Return to terminal view
+        setShowCartridgeSelect(true); // Re-show selection modal so user can see cooldown and reselect after
         
         // Show retro nostalgic messages AFTER clearing
         pushLine('⏰ TIME UP - Job expired!');
