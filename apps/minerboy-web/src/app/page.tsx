@@ -79,7 +79,7 @@ function Home() {
   const [showNavigationModal, setShowNavigationModal] = useState(false);
   const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | 'welcome' | null>(null);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
-  const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number } | null>(null);
+  const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
 
   // Navigation helpers
   const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => {
@@ -294,8 +294,16 @@ function Home() {
         setHashRate(0); // Clear hash rate display
         pushLine('Job expired - stopping mining');
         
-        // Start cooldown timer and gamified sequence
-        setCooldownTimer(60);
+        // Lock this specific cartridge with blue timeout styling
+        if (cartridge) {
+          setLockedCartridge({
+            contract: cartridge.info.contract,
+            tokenId: cartridge.tokenId,
+            ttl: 60,
+            type: 'timeout'
+          });
+        }
+        
         // Auto-unload cartridge and return to terminal mode  
         clear(); // Clear session data (unloads cartridge)
         setMode('terminal'); // Return to terminal view
@@ -685,7 +693,8 @@ function Home() {
         setLockedCartridge({
           contract: cartridgeInfo.contract,
           tokenId: tokenId,
-          ttl: ttlSec
+          ttl: ttlSec,
+          type: 'conflict'
         });
         
         setShowCartridgeSelect(true); // Re-show selection

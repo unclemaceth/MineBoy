@@ -10,7 +10,7 @@ interface CartridgeSelectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectCartridge: (cartridge: OwnedCartridge) => void;
-  lockedCartridge?: { contract: string; tokenId: string; ttl: number } | null;
+  lockedCartridge?: { contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null;
 }
 
 const toDecString = (id: string) => {
@@ -140,6 +140,13 @@ export default function CartridgeSelectionModal({
               const isLocked = lockedCartridge && 
                                lockedCartridge.contract.toLowerCase() === c.contractAddress.toLowerCase() && 
                                lockedCartridge.tokenId === decId;
+              const lockType = isLocked ? lockedCartridge.type : null;
+              const isTimeout = lockType === 'timeout';
+              const isConflict = lockType === 'conflict';
+              
+              // Color scheme: blue for timeout, red for conflict
+              const lockColor = isTimeout ? '#6b9bff' : '#ff6b6b'; // Blue or Red
+              const lockBg = isTimeout ? '#1a1f2a' : '#2a1a1a'; // Dark blue or dark red
               
               return (
                 <button
@@ -151,10 +158,10 @@ export default function CartridgeSelectionModal({
                   disabled={!!isLocked}
                   style={{
                     padding: 24, 
-                    backgroundColor: isLocked ? '#2a1a1a' : '#1a2e1f', 
-                    border: isLocked ? '2px solid #ff6b6b' : '2px solid #4a7d5f',
+                    backgroundColor: isLocked ? lockBg : '#1a2e1f', 
+                    border: isLocked ? `2px solid ${lockColor}` : '2px solid #4a7d5f',
                     borderRadius: 16, 
-                    color: isLocked ? '#ff6b6b' : '#64ff8a', 
+                    color: isLocked ? lockColor : '#64ff8a', 
                     fontFamily: 'Menlo, monospace',
                     fontSize: 14, 
                     cursor: isLocked ? 'not-allowed' : 'pointer', 
@@ -188,7 +195,7 @@ export default function CartridgeSelectionModal({
                     borderRadius: 12, 
                     overflow: 'hidden',
                     backgroundColor: '#0f2216',
-                    border: isLocked ? '3px solid #ff6b6b' : '3px solid #4a7d5f',
+                    border: isLocked ? `3px solid ${lockColor}` : '3px solid #4a7d5f',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -202,7 +209,7 @@ export default function CartridgeSelectionModal({
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: 'rgba(255, 107, 107, 0.85)',
+                        backgroundColor: isTimeout ? 'rgba(107, 155, 255, 0.85)' : 'rgba(255, 107, 107, 0.85)',
                         display: 'flex',
                         flexDirection: 'column',
                         alignItems: 'center',
@@ -216,7 +223,7 @@ export default function CartridgeSelectionModal({
                           color: '#fff',
                           fontFamily: 'Menlo, monospace'
                         }}>
-                          🔒
+                          {isTimeout ? '❄️' : '🔒'}
                         </div>
                         <div style={{
                           fontSize: 36,
@@ -233,9 +240,19 @@ export default function CartridgeSelectionModal({
                           padding: '0 20px',
                           fontFamily: 'Menlo, monospace'
                         }}>
-                          Session Conflict
-                          <br />
-                          Check other devices
+                          {isTimeout ? (
+                            <>
+                              Cooldown Active
+                              <br />
+                              Job timed out
+                            </>
+                          ) : (
+                            <>
+                              Session Conflict
+                              <br />
+                              Check other devices
+                            </>
+                          )}
                         </div>
                       </div>
                     )}
