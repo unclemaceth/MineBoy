@@ -428,6 +428,101 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     }
   });
 
+  // Migrate to new season with CSV data
+  fastify.post('/v2/admin/migrate-season', async (req, reply) => {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const authHeader = req.headers.authorization;
+    
+    if (!adminToken || authHeader !== `Bearer ${adminToken}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { csvData, seasonStartTime } = req.body as { csvData: Array<{wallet: string, amount: string}>, seasonStartTime?: string };
+      
+      if (!csvData || !Array.isArray(csvData)) {
+        return reply.code(400).send({ error: 'csvData array required (format: [{wallet, amount}])' });
+      }
+
+      console.log(`🔄 [MIGRATE] Starting season migration with ${csvData.length} wallets`);
+
+      const { getDB } = await import('../db.js');
+      const db = getDB();
+
+      const startTime = seasonStartTime || new Date().toISOString();
+
+      // Create Season 4 - INDIVIDUAL
+      const indivSeason = await db.pool.query(
+        `INSERT INTO seasons (slug, scope, starts_at, ends_at, is_active)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (slug) DO UPDATE SET is_active = EXCLUDED.is_active
+         RETURNING id`,
+        ['s4-individual-2025', 'INDIVIDUAL', startTime, null, true]
+      );
+      const indivSeasonId = indivSeason.rows[0].id;
+
+      // Create Season 4 - TEAM
+      const teamSeason = await db.pool.query(
+        `INSERT INTO seasons (slug, scope, starts_at, ends_at, is_active)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (slug) DO UPDATE SET is_active = EXCLUDED.is_active
+         RETURNING id`,
+        ['s4-team-2025', 'TEAM', startTime, null, true]
+      );
+      const teamSeasonId = teamSeason.rows[0].id;
+
+      console.log(`🔄 [MIGRATE] Created Season 4: Individual=${indivSeasonId}, Team=${teamSeasonId}`);
+
+      // Deactivate old seasons
+      await db.pool.query(
+        `UPDATE seasons SET is_active = false WHERE id NOT IN ($1, $2)`,
+        [indivSeasonId, teamSeasonId]
+      );
+
+      // For each wallet, create a claim attribution
+      let credited = 0;
+      for (const entry of csvData) {
+        const wallet = entry.wallet.toLowerCase();
+        const amountWei = entry.amount;
+
+        // Get user's team for Season 4 (if they have one)
+        const teamResult = await db.pool.query(
+          `SELECT team_slug FROM user_teams WHERE LOWER(wallet) = $1 AND season_id = $2`,
+          [wallet, teamSeasonId]
+        );
+        const teamSlug = teamResult.rows[0]?.team_slug || null;
+
+        // Create a fake claim ID for attribution
+        const fakeClaimId = `migration_${wallet}_${Date.now()}`;
+
+        // Insert into claim_team_attributions if they have a team
+        if (teamSlug) {
+          await db.pool.query(
+            `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
+             VALUES($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM $6::timestamptz) * 1000)
+             ON CONFLICT (claim_id) DO NOTHING`,
+            [fakeClaimId, teamSlug, teamSeasonId, wallet, amountWei, startTime]
+          );
+        }
+
+        credited++;
+      }
+
+      console.log(`🔄 [MIGRATE] Credited ${credited} wallets`);
+
+      return {
+        ok: true,
+        indivSeasonId,
+        teamSeasonId,
+        credited,
+        message: `Season 4 created and ${credited} wallets credited`
+      };
+    } catch (error) {
+      console.error('Migration error:', error);
+      return reply.code(500).send({ error: 'Migration failed', details: String(error) });
+    }
+  });
+
   // CSV-based audit: Compare database claims against a list of valid ApeChain transaction hashes
   fastify.post('/v2/admin/audit-claims-csv', async (req, reply) => {
     const adminToken = process.env.ADMIN_TOKEN;

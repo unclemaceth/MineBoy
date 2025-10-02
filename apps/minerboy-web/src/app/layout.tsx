@@ -61,8 +61,8 @@ export default function RootLayout({
           <GlobalWalletModal />
           {/* Sits on top when maintenance is enabled */}
           <MaintenanceGate />
-          {/* CLOSED overlay for main branch - commented out for B branch */}
-          {/* <ClosedOverlay /> */}
+          {/* CLOSED overlay to prevent access during migration */}
+          <ClosedOverlay />
         </GlyphWalletProvider>
       </body>
     </html>
