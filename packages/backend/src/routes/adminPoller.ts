@@ -489,20 +489,22 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
 
         // Create a migration claim in the claims table
         const claimId = `migration_${wallet}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        const fakeHash = `0x${'0'.repeat(64)}`; // Fake hash for migration
         
         await db.pool.query(
-          `INSERT INTO claims (id, wallet, amount_wei, status, created_at, confirmed_at, tx_hash, cartridge_id)
-           VALUES($1, $2, $3, $4, $5, $6, $7, $8)
+          `INSERT INTO claims (id, wallet, cartridge_id, hash, amount_wei, tx_hash, status, created_at, confirmed_at)
+           VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
            ON CONFLICT (id) DO NOTHING`,
           [
             claimId,
             wallet,
+            -1, // Fake cartridge ID
+            fakeHash, // Required hash field
             amountWei,
+            `0xmigration${claimId.substring(10, 74)}`, // Fake tx hash
             'confirmed',
             confirmedAtMs,
-            confirmedAtMs,
-            `0xmigration${claimId.substring(10, 74)}`, // Fake tx hash
-            -1 // Fake cartridge ID (negative to identify migration claims)
+            confirmedAtMs
           ]
         );
 
