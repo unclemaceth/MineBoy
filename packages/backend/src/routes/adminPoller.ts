@@ -479,11 +479,31 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         [indivSeasonId, teamSeasonId]
       );
 
-      // For each wallet, create a claim attribution
+      // For each wallet, create a migration claim
       let credited = 0;
+      const confirmedAtMs = Math.floor(new Date(startTime).getTime());
+      
       for (const entry of csvData) {
         const wallet = entry.wallet.toLowerCase();
         const amountWei = entry.amount;
+
+        // Create a migration claim in the claims table
+        const claimId = `migration_${wallet}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+        
+        await db.pool.query(
+          `INSERT INTO claims (id, wallet, amount_wei, status, created_at, confirmed_at, tx_hash)
+           VALUES($1, $2, $3, $4, $5, $6, $7)
+           ON CONFLICT (id) DO NOTHING`,
+          [
+            claimId,
+            wallet,
+            amountWei,
+            'confirmed',
+            confirmedAtMs,
+            confirmedAtMs,
+            `0xmigration${claimId.substring(10, 74)}` // Fake tx hash
+          ]
+        );
 
         // Get user's team for Season 4 (if they have one)
         const teamResult = await db.pool.query(
@@ -492,16 +512,13 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         );
         const teamSlug = teamResult.rows[0]?.team_slug || null;
 
-        // Create a fake claim ID for attribution
-        const fakeClaimId = `migration_${wallet}_${Date.now()}`;
-
         // Insert into claim_team_attributions if they have a team
         if (teamSlug) {
           await db.pool.query(
             `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
-             VALUES($1, $2, $3, $4, $5, EXTRACT(EPOCH FROM $6::timestamptz) * 1000)
+             VALUES($1, $2, $3, $4, $5, $6)
              ON CONFLICT (claim_id) DO NOTHING`,
-            [fakeClaimId, teamSlug, teamSeasonId, wallet, amountWei, startTime]
+            [claimId, teamSlug, teamSeasonId, wallet, amountWei, confirmedAtMs]
           );
         }
 
