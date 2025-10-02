@@ -115,7 +115,8 @@ export class ClaimProcessor {
   }
   
   /**
-   * Process a claim request
+   * Process a claim request (DEPRECATED - use processClaimV2)
+   * STRICT MODE: Enforces physics-based validation
    */
   async processClaim(claimReq: ClaimReq): Promise<ClaimRes | null> {
     // Debug: log what we received
@@ -140,9 +141,14 @@ export class ClaimProcessor {
       throw new Error('Invalid or expired job');
     }
     
+    // ANTI-BOT: STRICT validation - job MUST have all required fields
+    if (!job.issuedAtMs || !job.counterStart || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
+      throw new Error('Job missing anti-bot fields - client must upgrade');
+    }
+    
     // Strict preimage sanity checks
     if (!claimReq.preimage.includes(':')) {
-      throw new Error('Invalid preimage format');
+      throw new Error('Invalid preimage format - expected nonce:counter');
     }
     const [noncePart, counterPart] = claimReq.preimage.split(':');
     if (!noncePart || counterPart === undefined) {
@@ -152,10 +158,49 @@ export class ClaimProcessor {
       throw new Error('Preimage nonce mismatch');
     }
     
-    // Validate hash difficulty using the new system
-    if (!hashMeetsDifficulty(claimReq.hash, job.suffix || '')) {
-      throw new Error('Hash does not meet difficulty');
+    // ANTI-BOT: Validate counter
+    const counter = parseInt(counterPart, 10);
+    if (isNaN(counter) || counter < 0) {
+      throw new Error('Invalid counter in preimage');
     }
+    if (counter < job.counterStart || counter >= job.counterEnd) {
+      throw new Error(`Counter ${counter} out of assigned range [${job.counterStart}, ${job.counterEnd})`);
+    }
+    
+    // ANTI-BOT: Import hashMeetsRule for strict suffix checking
+    const hashMeetsRule = (Mining as any).hashMeetsRule ?? (Mining as any).default?.hashMeetsRule;
+    if (typeof hashMeetsRule !== 'function') {
+      throw new Error('shared/mining is missing hashMeetsRule');
+    }
+    
+    // Validate hash difficulty using allowedSuffixes (STRICT)
+    try {
+      if (!hashMeetsRule(claimReq.hash, job)) {
+        throw new Error('Hash does not match any allowed suffix');
+      }
+    } catch (error) {
+      throw new Error(`Hash validation failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+    
+    // ANTI-BOT: Physics check
+    const now = Date.now();
+    const elapsedMs = now - job.issuedAtMs;
+    const tries = counter - job.counterStart + 1;
+    
+    const minMsForTries = (Mining as any).minMsForTries ?? (Mining as any).default?.minMsForTries;
+    if (typeof minMsForTries !== 'function') {
+      throw new Error('shared/mining is missing minMsForTries');
+    }
+    
+    const minRequired = minMsForTries(tries, job.maxHps, 0.70);
+    if (elapsedMs < minRequired) {
+      throw new Error(
+        `Claim too fast: ${tries} hashes in ${elapsedMs}ms, ` +
+        `minimum ${minRequired}ms required at ${job.maxHps} H/s (70% slack)`
+      );
+    }
+    
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms @ ${job.maxHps} H/s)`);
     
     // Validate hash matches preimage (using SHA-256, not keccak256)
     if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
@@ -245,6 +290,7 @@ export class ClaimProcessor {
 
   /**
    * Process claim using ClaimV2 (no rewardAmount in signature)
+   * STRICT MODE: Enforces physics-based validation
    */
   async processClaimV2(claimReq: ClaimReq): Promise<ClaimRes | null> {
     // Validate session
@@ -259,10 +305,68 @@ export class ClaimProcessor {
       throw new Error('Invalid or expired job');
     }
 
-    // Validate hash meets difficulty
-    if (!hashMeetsDifficulty(claimReq.hash, job.suffix || '')) {
-      throw new Error('Hash does not meet difficulty requirements');
+    // ANTI-BOT: STRICT validation - job MUST have all required fields
+    if (!job.issuedAtMs || !job.counterStart || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
+      throw new Error('Job missing anti-bot fields - client must upgrade');
     }
+
+    // ANTI-BOT: Parse and validate counter from preimage (format: nonce:counter)
+    const parts = claimReq.preimage.split(':');
+    if (parts.length !== 2) {
+      throw new Error('Invalid preimage format - expected nonce:counter');
+    }
+    
+    const [noncePart, counterPart] = parts;
+    const counter = parseInt(counterPart, 10);
+    
+    if (isNaN(counter) || counter < 0) {
+      throw new Error('Invalid counter in preimage');
+    }
+
+    // ANTI-BOT: Verify counter is within assigned window
+    if (counter < job.counterStart || counter >= job.counterEnd) {
+      throw new Error(`Counter ${counter} out of assigned range [${job.counterStart}, ${job.counterEnd})`);
+    }
+
+    // ANTI-BOT: Import hashMeetsRule for strict suffix checking
+    const hashMeetsRule = (Mining as any).hashMeetsRule ?? (Mining as any).default?.hashMeetsRule;
+    if (typeof hashMeetsRule !== 'function') {
+      throw new Error('shared/mining is missing hashMeetsRule');
+    }
+
+    // ANTI-BOT: Validate hash using allowedSuffixes (STRICT - no fallback)
+    try {
+      if (!hashMeetsRule(claimReq.hash, job)) {
+        throw new Error('Hash does not match any allowed suffix');
+      }
+    } catch (error) {
+      throw new Error(`Hash validation failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+
+    // ANTI-BOT: Physics check - time plausibility
+    const now = Date.now();
+    const elapsedMs = now - job.issuedAtMs;
+    
+    // Calculate number of hashes attempted (counter - counterStart)
+    const tries = counter - job.counterStart + 1; // +1 because counter is inclusive
+    
+    // Import minMsForTries
+    const minMsForTries = (Mining as any).minMsForTries ?? (Mining as any).default?.minMsForTries;
+    if (typeof minMsForTries !== 'function') {
+      throw new Error('shared/mining is missing minMsForTries');
+    }
+    
+    // Calculate minimum time required with slack (70% tolerance for variance)
+    const minRequired = minMsForTries(tries, job.maxHps, 0.70);
+    
+    if (elapsedMs < minRequired) {
+      throw new Error(
+        `Claim too fast: ${tries} hashes in ${elapsedMs}ms, ` +
+        `minimum ${minRequired}ms required at ${job.maxHps} H/s (70% slack)`
+      );
+    }
+    
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms @ ${job.maxHps} H/s)`);
 
     // Validate hash matches preimage (using SHA-256, not keccak256)
     if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
@@ -465,7 +569,7 @@ export class ClaimProcessor {
     console.log('[CLAIM_SIGN_V2] Claim nonce:', claim.nonce);
     console.log('[CLAIM_SIGN_V2] Claim expiry:', claim.expiry);
     console.log('[CLAIM_SIGN_V2] Current timestamp:', Math.floor(Date.now() / 1000));
-    console.log('[CLAIM_SIGN_V2] Expiry - now:', claim.expiry - Math.floor(Date.now() / 1000), 'seconds');
+    console.log('[CLAIM_SIGN_V2] Expiry - now:', parseInt(claim.expiry) - Math.floor(Date.now() / 1000), 'seconds');
     
     const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V2, claim);
     
