@@ -60,6 +60,12 @@ function serializeJob(job: any | null): any | null {
     nonceStart: 0,
     ttlSec: job.ttlMs ? Math.ceil(job.ttlMs / 1000) : undefined,
     expiresAt: job.expiresAt,
+    // ANTI-BOT: Include new required fields
+    allowedSuffixes: job.allowedSuffixes,
+    counterStart: job.counterStart,
+    counterEnd: job.counterEnd,
+    maxHps: job.maxHps,
+    issuedAtMs: job.issuedAtMs,
   };
 }
 
