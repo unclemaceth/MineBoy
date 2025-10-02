@@ -207,7 +207,10 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
             receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
           } catch (receiptError: any) {
             // Transaction not found on ApeChain (likely Curtis testnet tx) - mark as failed
-            if (receiptError.message?.includes('not found') || receiptError.name === 'TransactionNotFoundError') {
+            // Check for "could not be found" (the actual RPC error message)
+            if (receiptError.message?.includes('could not be found') || 
+                receiptError.message?.includes('not found') || 
+                receiptError.name === 'TransactionNotFoundError') {
               console.log(`🔍 [AUDIT] Transaction ${tx} not found on ApeChain (Curtis claim), marking as failed`);
               await failClaim(claim.id);
               failed++;
