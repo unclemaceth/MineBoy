@@ -159,6 +159,7 @@ function mine({
   let batchCount = 0;
 
   console.log(`[WORKER] Starting STRICT mining: counter [${counterStart}, ${counterEnd}), maxHps=${maxHps}, allowedSuffixes=${allowedSuffixes.length}, expiresAt=${expiresAt}`);
+  console.log(`[WORKER] Allowed suffixes:`, allowedSuffixes);
 
   while (running && counter < counterEnd) {
     // Check TTL expiry first (highest priority)
@@ -196,6 +197,14 @@ function mine({
       running = false;
       const elapsed = (performance.now() - startTs) / 1000;
       const hr = Math.round((attempts / elapsed) * 10) / 10;
+      
+      // Log which suffix matched
+      const hashLower = (hash.startsWith('0x') ? hash.slice(2) : hash).toLowerCase();
+      const matchedSuffix = allowedSuffixes.find(s => 
+        hashLower.endsWith(s.toLowerCase().replace(/^0x/, ''))
+      );
+      console.log(`[WORKER] Found hash! Matched suffix: ${matchedSuffix}`, { hash, counter, attempts, hr });
+      
       const out: OutFound = {
         type: 'FOUND',
         hash,
@@ -205,7 +214,6 @@ function mine({
         sid: sid || '',
         counter,
       };
-      console.log('[WORKER] Found hash!', out);
       ctx.postMessage(out);
       return;
     }
