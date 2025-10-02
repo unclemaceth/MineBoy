@@ -17,16 +17,16 @@ export interface Job {
   expiresAt: number;    // epoch ms
   // difficulty
   rule: 'suffix';
-  suffix: string;       // required suffix (e.g., "00", "000", "0000")
+  suffix: string;       // DEPRECATED: use allowedSuffixes
   epoch: number;
   ttlMs: number;
   
-  // NEW: Anti-bot & throttling fields
-  issuedAtMs?: number;        // when server issued this job
-  counterStart?: number;      // inclusive - start of counter window
-  counterEnd?: number;        // exclusive - end of counter window
-  maxHps?: number;            // server hashrate cap (e.g., 5000)
-  allowedSuffixes?: string[]; // difficulty sets (e.g., ["00000", "33333", "55555"])
+  // ANTI-BOT FIELDS (REQUIRED for all new jobs)
+  issuedAtMs: number;         // when server issued this job (epoch ms)
+  counterStart: number;       // inclusive - start of counter window
+  counterEnd: number;         // exclusive - end of counter window
+  maxHps: number;             // server hashrate cap (e.g., 5000)
+  allowedSuffixes: string[];  // difficulty sets (e.g., ["00000", "33333", "55555"])
 }
 
 // Optional (used by frontend/backend)
@@ -114,22 +114,24 @@ export function getSuffixForEpoch(epoch: number): string {
   return d.suffix;
 }
 
-// ---------- NEW: Anti-Bot Helpers ----------
+// ---------- ANTI-BOT HELPERS (STRICT MODE) ----------
 
 /**
  * Calculate minimum time required for a given number of hash attempts
+ * Uses strict physics: tries / maxHps * 1000ms
  * @param tries Number of hash attempts
  * @param maxHps Maximum hashrate (e.g., 5000)
- * @param slack Tolerance factor (0.70 = 70% of theoretical time, allows for variance)
- * @returns Minimum milliseconds required
+ * @param slack Tolerance factor (0.70 = allow 70% of theoretical time minimum)
+ * @returns Minimum milliseconds required (no slack if omitted)
  */
-export function minMsForTries(tries: number, maxHps: number, slack = 0.70): number {
-  const ms = Math.floor((tries / Math.max(1, maxHps)) * 1000);
+export function minMsForTries(tries: number, maxHps: number, slack = 1.0): number {
+  if (tries <= 0 || maxHps <= 0) return 0;
+  const ms = (tries / maxHps) * 1000;
   return Math.floor(ms * slack);
 }
 
 /**
- * Check if hash ends with a specific suffix
+ * Check if hash ends with a specific suffix (no 0x handling, expects raw hex)
  * @param hash The hash to check (with or without 0x prefix)
  * @param suffix The required suffix (e.g., "00000")
  */
@@ -140,35 +142,30 @@ export function hashHasSuffix(hash: string, suffix: string): boolean {
 }
 
 /**
- * Check if hash matches any suffix in an allowed set
+ * Check if hash matches ANY suffix in an allowed set
  * @param hash The hash to check
  * @param allowed Array of allowed suffixes (e.g., ["00000", "33333", "55555"])
+ * @returns true if hash ends with any of the allowed suffixes
  */
 export function hashInAllowedSuffixes(hash: string, allowed: string[]): boolean {
   if (!Array.isArray(allowed) || allowed.length === 0) return false;
-  const h = (hash.startsWith('0x') ? hash.slice(2) : hash).toLowerCase();
-  for (const s of allowed) {
-    const sx = s.toLowerCase().replace(/^0x/, '');
-    if (h.endsWith(sx)) return true;
+  for (const suffix of allowed) {
+    if (hashHasSuffix(hash, suffix)) return true;
   }
   return false;
 }
 
 /**
- * Unified difficulty checker - prefers allowedSuffixes when present, falls back to single suffix
+ * STRICT difficulty checker - REQUIRES allowedSuffixes, no fallback
  * @param hash The hash to check
- * @param job Job object with suffix and/or allowedSuffixes
+ * @param job Job object with REQUIRED allowedSuffixes field
+ * @throws Error if job.allowedSuffixes is missing or empty
  */
-export function hashMeetsRule(hash: string, job: { suffix?: string; allowedSuffixes?: string[] }): boolean {
-  // Prefer allowed sets when present
-  if (job.allowedSuffixes?.length) {
-    return hashInAllowedSuffixes(hash, job.allowedSuffixes);
+export function hashMeetsRule(hash: string, job: { allowedSuffixes: string[] }): boolean {
+  if (!job.allowedSuffixes || job.allowedSuffixes.length === 0) {
+    throw new Error('Job missing allowedSuffixes - client must upgrade');
   }
-  // Fall back to single suffix for backward compatibility
-  if (job.suffix) {
-    return hashHasSuffix(hash, job.suffix);
-  }
-  return false;
+  return hashInAllowedSuffixes(hash, job.allowedSuffixes);
 }
 
 // Default export for ESM/CJS interop safety
