@@ -168,15 +168,27 @@ function Home() {
   // Miner store for boot sequence
   const { bootLines, stopMining, setHashRate } = useMinerStore();
   
+  // ANTI-BOT: State for progress tracking
+  const [miningProgress, setMiningProgress] = useState(0);
+  const [miningEta, setMiningEta] = useState(0);
+  
   // Miner worker
   const miner = useMinerWorker({
-    onTick: (a, hashRate, hash, nibs) => {
-      setTelemetry(a, hashRate);
-      if (hash) {
-        setCurrentDisplayHash(hash);
+    onTick: (data) => {
+      // ANTI-BOT: Updated to handle new data structure
+      setTelemetry(data.attempts, data.hr);
+      if (data.hash) {
+        setCurrentDisplayHash(data.hash);
       }
-      if (nibs && nibs.length === 9) {
-        setVisualizerNibs(nibs);
+      if (data.nibs && data.nibs.length === 9) {
+        setVisualizerNibs(data.nibs);
+      }
+      // ANTI-BOT: Update progress and ETA
+      if (data.progress !== undefined) {
+        setMiningProgress(data.progress);
+      }
+      if (data.estimatedSecondsLeft !== undefined) {
+        setMiningEta(data.estimatedSecondsLeft);
       }
     },
     onFound: ({ hash, preimage, attempts, hr }) => {
@@ -775,6 +787,10 @@ function Home() {
         pushLine('Job expired - requesting new job...');
         try {
           const newJob = await api.getNextJob(sessionId);
+          if (!newJob) {
+            pushLine('No job available (cadence gate) - wait a moment');
+            return;
+          }
           setJob(newJob);
           pushLine('New job received - starting mining');
           // Start mining with new job
@@ -1150,6 +1166,10 @@ function Home() {
       setShowJobExpired(false);
       pushLine('Requesting new job...');
       const newJob = await api.getNextJob(sessionId);
+      if (!newJob) {
+        pushLine('No job available (cadence gate) - wait a moment');
+        return;
+      }
       setJob(newJob);
       pushLine('New job received - Press A to mine');
     } catch {
@@ -1317,27 +1337,30 @@ function Home() {
                        mining ? attempts.toLocaleString() : 'READY';
   const hashRateLcdText = `${hr.toLocaleString()} H/s`;
   
-  // Difficulty info with live TTL countdown
-  const [difficultyText, setDifficultyText] = useState('No job');
+  // ANTI-BOT: Progress LCD text (replaces difficulty display)
+  const [progressText, setProgressText] = useState('No job');
   const ttlSec = useJobTtl(job);
   
   useEffect(() => {
     if (!job) { 
-      setDifficultyText('No job'); 
+      setProgressText('No job'); 
       return; 
     }
     
-    const suffix = job.target;
-    const bits = job.bits ?? (suffix?.length ?? 0) * 4;
+    if (!mining) {
+      setProgressText('Ready to mine');
+      return;
+    }
     
-    let level = 'CASUAL';
-    if (suffix?.length >= 9) level = 'BRUTAL';      // 9 zeros
-    else if (suffix?.length >= 8) level = 'SERIOUS'; // 8 zeros
-    else if (suffix?.length >= 7) level = 'TRICKY';  // 7 zeros
-    else level = 'CASUAL';                           // 6 zeros (default)
-    
-    setDifficultyText(`D: ${level} | T: ${ttlSec != null ? `${ttlSec}s` : '--'}`);
-  }, [job, ttlSec]);
+    // ANTI-BOT: Show progress and ETA during mining
+    if (miningProgress > 0 || miningEta > 0) {
+      const progressStr = `${Math.floor(miningProgress)}%`;
+      const etaStr = miningEta > 0 ? `${Math.floor(miningEta)}s` : '--';
+      setProgressText(`Progress: ${progressStr} | ETA: ${etaStr}`);
+    } else {
+      setProgressText('Mining...');
+    }
+  }, [job, mining, miningProgress, miningEta]);
 
   // Helper function for short hash display
   const short = (h?: string, n = 10) =>
@@ -1734,7 +1757,7 @@ function Home() {
         MENU
       </button>
 
-      {/* Difficulty LCD: top 66%, left 7%, width 200px */}
+      {/* ANTI-BOT: Progress LCD (replaces Difficulty LCD) */}
       <div style={{
         position: "absolute", 
         top: px(86.5, H) - 25, 
@@ -1759,7 +1782,7 @@ function Home() {
           overflow: "hidden", 
           textOverflow: "ellipsis"
         }}>
-          {difficultyText}
+          {progressText}
         </div>
       </div>
 
