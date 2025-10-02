@@ -23,6 +23,13 @@ export type ApiJob = {
   expiresAt?: number;           // epoch ms
   ttlMs?: number;
   ttlSec?: number;
+  
+  // ANTI-BOT: New required fields
+  allowedSuffixes?: string[];
+  counterStart?: number;
+  counterEnd?: number;
+  maxHps?: number;
+  issuedAtMs?: number;
 };
 
 export type SessionOpenApiResp = {
