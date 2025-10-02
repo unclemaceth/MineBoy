@@ -2,9 +2,25 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { MiningJob as Job } from '@/types/mining';
 
 type Events = {
-  onTick?: (attempts: number, hr: number, hash?: string, nibs?: number[]) => void;
-  onFound?: (payload: { hash: string; preimage: string; attempts: number; hr: number }) => void;
+  onTick?: (data: { 
+    attempts: number; 
+    hr: number; 
+    hash?: string; 
+    nibs?: number[];
+    // ANTI-BOT: Progress tracking
+    counter?: number;
+    progress?: number;
+    estimatedSecondsLeft?: number;
+  }) => void;
+  onFound?: (payload: { 
+    hash: string; 
+    preimage: string; 
+    attempts: number; 
+    hr: number;
+    counter?: number;
+  }) => void;
   onError?: (message: string) => void;
+  onStopped?: (reason: string) => void; // NEW: Handle STOPPED message
 };
 
 export function useMinerWorker(events: Events = {}) {
@@ -70,16 +86,32 @@ export function useMinerWorker(events: Events = {}) {
       }
       
       if (msg?.type === 'TICK') {
-        events.onTick?.(msg.attempts, msg.hr, msg.hash, msg.nibs);
+        // ANTI-BOT: Pass full tick data including progress
+        events.onTick?.({
+          attempts: msg.attempts,
+          hr: msg.hr,
+          hash: msg.hash,
+          nibs: msg.nibs,
+          counter: msg.counter,
+          progress: msg.progress,
+          estimatedSecondsLeft: msg.estimatedSecondsLeft,
+        });
       } else if (msg?.type === 'FOUND') {
         setRunning(false);
-        events.onFound?.(msg);
+        events.onFound?.({
+          hash: msg.hash,
+          preimage: msg.preimage,
+          attempts: msg.attempts,
+          hr: msg.hr,
+          counter: msg.counter,
+        });
       } else if (msg?.type === 'ERROR') {
         setRunning(false);
         events.onError?.(msg.message);
       } else if (msg?.type === 'STOPPED') {
-        console.log('[WORKER_STOPPED] Worker confirmed stop');
+        console.log('[WORKER_STOPPED] Worker stopped:', msg.reason);
         setRunning(false);
+        events.onStopped?.(msg.reason || 'unknown');
       }
     };
     
@@ -106,16 +138,32 @@ export function useMinerWorker(events: Events = {}) {
           }
           
           if (msg?.type === 'TICK') {
-            events.onTick?.(msg.attempts, msg.hr, msg.hash, msg.nibs);
+            // ANTI-BOT: Pass full tick data including progress
+            events.onTick?.({
+              attempts: msg.attempts,
+              hr: msg.hr,
+              hash: msg.hash,
+              nibs: msg.nibs,
+              counter: msg.counter,
+              progress: msg.progress,
+              estimatedSecondsLeft: msg.estimatedSecondsLeft,
+            });
           } else if (msg?.type === 'FOUND') {
             setRunning(false);
-            events.onFound?.(msg);
+            events.onFound?.({
+              hash: msg.hash,
+              preimage: msg.preimage,
+              attempts: msg.attempts,
+              hr: msg.hr,
+              counter: msg.counter,
+            });
           } else if (msg?.type === 'ERROR') {
             setRunning(false);
             events.onError?.(msg.message);
           } else if (msg?.type === 'STOPPED') {
-            console.log('[WORKER_STOPPED] Worker confirmed stop');
+            console.log('[WORKER_STOPPED] Worker stopped:', msg.reason);
             setRunning(false);
+            events.onStopped?.(msg.reason || 'unknown');
           }
         };
       }
@@ -125,35 +173,45 @@ export function useMinerWorker(events: Events = {}) {
       sessionIdRef.current = sid;
       setRunning(true);
       
-      // Create worker job with compat aliases for existing worker code
+      // ANTI-BOT: Create worker job with REQUIRED fields
       const workerJob = {
-        id: job.id,
-        // canonical fields we want to use going forward
-        data: job.data,
-        target: job.target,
-        
-        // --- COMPAT ALIASES (so the existing worker keeps working) ---
-        // many miners historically used `suffix` instead of `target`
-        suffix: job.target,
-        // many miners used `nonce` / `noncePrefix` as the preimage base
-        // our backend's "seed" is in `data`, so mirror it:
+        algo: 'sha256-suffix' as const,
+        charset: 'hex' as const,
         nonce: job.nonce ?? job.data,
-        noncePrefix: job.nonce ?? job.data,
-        // difficulty bits (optional; won't hurt if unused)
-        bits: job.bits,
-        targetBits: job.targetBits,
+        
+        // ANTI-BOT REQUIRED FIELDS
+        counterStart: job.counterStart ?? 0,
+        counterEnd: job.counterEnd ?? 100000,
+        maxHps: job.maxHps ?? 5000,
+        allowedSuffixes: job.allowedSuffixes ?? [],
+        
+        // DEPRECATED (kept for backward compat warnings)
+        suffix: job.target,
         rule: job.rule ?? 'suffix',
-        height: job.height,
       };
       
-      // Use simple stop flag (SharedArrayBuffer requires special headers)
+      // Validate required fields
+      if (!workerJob.nonce) {
+        console.error('[START] Job missing nonce');
+        events.onError?.('Job missing nonce');
+        setRunning(false);
+        return;
+      }
+      
+      if (!workerJob.allowedSuffixes || workerJob.allowedSuffixes.length === 0) {
+        console.error('[START] Job missing allowedSuffixes');
+        events.onError?.('Job missing allowedSuffixes - refresh to upgrade');
+        setRunning(false);
+        return;
+      }
+      
+      console.log(`[START] New STRICT mining session: ${sid}, counter [${workerJob.counterStart}, ${workerJob.counterEnd}), maxHps=${workerJob.maxHps}`);
+      
       workerRef.current.postMessage({
         type: 'START',
         job: workerJob,
         sid,
       });
-      
-      console.log(`[START] New mining session: ${sid}`);
     },
     stop() {
       hardKill('manual-stop');

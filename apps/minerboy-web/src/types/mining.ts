@@ -5,7 +5,7 @@ export type MiningJob = {
   // required
   id: string;
   data: `0x${string}`;
-  target: string;                    // e.g. "000000"
+  target: string;                    // e.g. "000000" (DEPRECATED: use allowedSuffixes)
 
   // optional metadata
   rule?: 'suffix';
@@ -24,4 +24,10 @@ export type MiningJob = {
   // keep raw TTLs if backend sends them
   ttlMs?: number;
   ttlSec?: number;
+  
+  // ANTI-BOT FIELDS (REQUIRED for STRICT mode)
+  counterStart?: number;             // inclusive start of counter window
+  counterEnd?: number;               // exclusive end of counter window
+  maxHps?: number;                   // target hashrate (e.g., 5000)
+  allowedSuffixes?: string[];        // array of valid hash suffixes
 };
