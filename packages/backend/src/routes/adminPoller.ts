@@ -424,7 +424,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       console.log(`🔍 [CSV_AUDIT] Valid tx set created with ${validTxSet.size} unique hashes`);
 
       // Get database connection
-      const { getDB } = await import('../db.js');
+      const { getDB, failConfirmedClaim } = await import('../db.js');
       const db = getDB();
 
       // Fetch ALL confirmed claims with tx hashes
@@ -448,7 +448,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         } else {
           // NOT in CSV = Curtis testnet claim - mark as failed
           console.log(`🔍 [CSV_AUDIT] Failing Curtis claim ${claim.id} (tx: ${txHash.substring(0, 10)}...)`);
-          await failClaim(claim.id);
+          await failConfirmedClaim(claim.id);
           failed++;
         }
       }

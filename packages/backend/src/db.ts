@@ -261,6 +261,13 @@ export async function failClaim(claimId: string) {
   await stmt.run({ claimId }); // ← await
 }
 
+export async function failConfirmedClaim(claimId: string) {
+  const d = getDB();
+  // For audit purposes: mark confirmed claims as failed (Curtis testnet cleanup)
+  const stmt = d.prepare(`UPDATE claims SET status='failed' WHERE id=@claimId AND status='confirmed'`);
+  await stmt.run({ claimId }); // ← await
+}
+
 export async function expireStalePending(now: number) {
   const d = getDB();
   const stmt = d.prepare(`
