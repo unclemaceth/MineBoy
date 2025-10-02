@@ -491,8 +491,8 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         const claimId = `migration_${wallet}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
         
         await db.pool.query(
-          `INSERT INTO claims (id, wallet, amount_wei, status, created_at, confirmed_at, tx_hash)
-           VALUES($1, $2, $3, $4, $5, $6, $7)
+          `INSERT INTO claims (id, wallet, amount_wei, status, created_at, confirmed_at, tx_hash, cartridge_id)
+           VALUES($1, $2, $3, $4, $5, $6, $7, $8)
            ON CONFLICT (id) DO NOTHING`,
           [
             claimId,
@@ -501,7 +501,8 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
             'confirmed',
             confirmedAtMs,
             confirmedAtMs,
-            `0xmigration${claimId.substring(10, 74)}` // Fake tx hash
+            `0xmigration${claimId.substring(10, 74)}`, // Fake tx hash
+            'migration_cartridge' // Fake cartridge ID
           ]
         );
 
