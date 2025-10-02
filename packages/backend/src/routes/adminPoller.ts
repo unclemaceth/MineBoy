@@ -451,43 +451,18 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       console.log(`🔍 [CSV_AUDIT] Valid tx set created with ${validTxSet.size} unique hashes`);
 
       // Get database connection
-      const { getDB, failConfirmedClaim } = await import('../db.js');
+      const { getDB } = await import('../db.js');
       const db = getDB();
 
-      // Fetch ALL confirmed claims with tx hashes
-      const result = await db.pool.query(
-        `SELECT id, tx_hash FROM claims WHERE status = 'confirmed' AND tx_hash IS NOT NULL ORDER BY created_at ASC`
-      );
-
-      const allClaims = result.rows;
-      console.log(`🔍 [CSV_AUDIT] Found ${allClaims.length} confirmed claims to audit`);
-
-      let verified = 0;
-      let failed = 0;
-
-      // Process each claim
-      for (const claim of allClaims) {
-        const txHash = claim.tx_hash.toLowerCase().trim();
-        
-        if (validTxSet.has(txHash)) {
-          // Valid ApeChain transaction - keep as confirmed
-          verified++;
-        } else {
-          // NOT in CSV = Curtis testnet claim - DELETE IT
-          console.log(`🔍 [CSV_AUDIT] DELETING Curtis claim ${claim.id} (tx: ${txHash.substring(0, 10)}...)`);
-          await db.pool.query(`DELETE FROM claims WHERE id = $1`, [claim.id]);
-          failed++;
-        }
-      }
-
-      console.log(`🔍 [CSV_AUDIT] Audit complete: ${verified} verified, ${failed} failed`);
+      // ONLY delete failed claims - leave confirmed ones alone
+      console.log(`🔍 [CSV_AUDIT] Deleting all failed claims (Curtis testnet garbage)...`);
+      const deleteResult = await db.pool.query(`DELETE FROM claims WHERE status = 'failed'`);
+      console.log(`🔍 [CSV_AUDIT] Deleted ${deleteResult.rowCount} failed claims`);
 
       return {
         ok: true,
-        total: allClaims.length,
-        verified,
-        failed,
-        message: `Audit complete: ${failed} Curtis claims marked as failed`
+        deleted: deleteResult.rowCount || 0,
+        message: `Deleted ${deleteResult.rowCount} failed Curtis claims`
       };
     } catch (error) {
       console.error('CSV audit error:', error);
