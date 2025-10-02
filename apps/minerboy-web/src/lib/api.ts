@@ -60,7 +60,13 @@ export const api = {
   openSession(body: OpenSessionReq): Promise<OpenSessionRes> {
     return jfetch("/v2/session/open", { method: "POST", body: JSON.stringify(body) }, (j) => {
       const apiResp = j as SessionOpenApiResp;
+      // ANTI-BOT: Backend may return null if cadence gate active
       const job = apiResp.job ? normalizeJob(apiResp.job) : undefined;
+      
+      if (!job) {
+        console.log('[OPEN_SESSION] No job returned (cadence gate active)');
+      }
+      
       return { 
         sessionId: apiResp.sessionId,
         job,
@@ -101,8 +107,11 @@ export const api = {
       });
       
       const res = normalizeClaimRes(json);
+      // ANTI-BOT: Backend may return null nextJob if cadence gate active
       if (res.nextJob) {
         res.nextJob = normalizeJob(res.nextJob as ApiJob);
+      } else {
+        console.log('[CLAIM] No nextJob returned (cadence gate active)');
       }
       return res;
     } catch (e: any) {
@@ -131,8 +140,11 @@ export const api = {
       });
       
       const res = normalizeClaimRes(json);
+      // ANTI-BOT: Backend may return null nextJob if cadence gate active
       if (res.nextJob) {
         res.nextJob = normalizeJob(res.nextJob as ApiJob);
+      } else {
+        console.log('[CLAIM_V2] No nextJob returned (cadence gate active)');
       }
       return {
         ...res,
@@ -157,10 +169,17 @@ export const api = {
     }, () => ({ ok: true }));
   },
   
-  getNextJob(sessionId: string): Promise<MiningJob> {
+  getNextJob(sessionId: string): Promise<MiningJob | null> {
     return jfetch(`/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => {
+      // ANTI-BOT: Backend may return null if cadence gate active
+      if (!j) return null;
       return normalizeJob(j as ApiJob);
     });
+  },
+  
+  // ANTI-BOT: Check eligibility for next job (cadence gating)
+  checkEligibility(sessionId: string): Promise<{ eligible: boolean; waitMs: number; message: string }> {
+    return jfetch(`/v2/job/eligibility?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => j as any);
   },
   
   getStats(): Promise<unknown> {
