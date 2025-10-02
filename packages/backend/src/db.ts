@@ -264,8 +264,9 @@ export async function failClaim(claimId: string) {
 export async function failConfirmedClaim(claimId: string) {
   const d = getDB();
   // For audit purposes: mark confirmed claims as failed (Curtis testnet cleanup)
-  const stmt = d.prepare(`UPDATE claims SET status='failed' WHERE id=@claimId AND status='confirmed'`);
-  await stmt.run({ claimId }); // ← await
+  // Use direct PostgreSQL query to ensure transaction commits
+  await d.pool.query(`UPDATE claims SET status='failed' WHERE id=$1 AND status='confirmed'`, [claimId]);
+  console.log(`[FAIL_CONFIRMED] Updated claim ${claimId} to failed status`);
 }
 
 export async function expireStalePending(now: number) {
