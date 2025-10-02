@@ -495,7 +495,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         await db.pool.query(
           `INSERT INTO claims (id, wallet, cartridge_id, hash, amount_wei, tx_hash, status, created_at, confirmed_at)
            VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
-           ON CONFLICT (id) DO NOTHING`,
+           ON CONFLICT (wallet, hash) DO NOTHING`,
           [
             claimId,
             wallet,
