@@ -473,9 +473,9 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
           // Valid ApeChain transaction - keep as confirmed
           verified++;
         } else {
-          // NOT in CSV = Curtis testnet claim - mark as failed
-          console.log(`🔍 [CSV_AUDIT] Failing Curtis claim ${claim.id} (tx: ${txHash.substring(0, 10)}...)`);
-          await failConfirmedClaim(claim.id);
+          // NOT in CSV = Curtis testnet claim - DELETE IT
+          console.log(`🔍 [CSV_AUDIT] DELETING Curtis claim ${claim.id} (tx: ${txHash.substring(0, 10)}...)`);
+          await db.pool.query(`DELETE FROM claims WHERE id = $1`, [claim.id]);
           failed++;
         }
       }
