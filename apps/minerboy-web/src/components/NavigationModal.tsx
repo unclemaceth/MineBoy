@@ -923,7 +923,7 @@ function InstructionsContent() {
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
           <p><strong>Session Lock:</strong> One active session per cartridge, prevents multi-window cheating</p>
           <p><strong>Heartbeat System:</strong> Backend validates your session every 30s to keep it alive</p>
-          <p><strong>Job Timeout (TTL):</strong> Each mining job has a time limit. Fail to find hash in time = 60s cartridge cooldown</p>
+          <p><strong>Job Timeout (TTL):</strong> Each mining job has a time limit based on difficulty. Fail to find hash in time = 60s cartridge cooldown</p>
           <p><strong>Session Conflict:</strong> If cartridge is locked by another session, wait for cooldown or close other tabs</p>
           <p><strong>EIP-712 Signatures:</strong> Secure claim verification using cryptographic signatures</p>
           <p><strong>Network:</strong> ApeChain mainnet only (Chain ID: 33139)</p>

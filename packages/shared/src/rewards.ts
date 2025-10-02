@@ -131,12 +131,12 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
   const suffix = getDifficultySuffixForActiveMiners(activeMiners);
   const zeros = suffix.length;
   
-  // TTL based on difficulty level
+  // TTL based on difficulty level (doubled)
   let ttlMs: number;
-  if (zeros >= 9) ttlMs = 1024_000;      // BRUTAL: 1024 seconds (9 zeros)
-  else if (zeros >= 8) ttlMs = 512_000;  // SERIOUS: 512 seconds (8 zeros)
-  else if (zeros >= 7) ttlMs = 256_000;  // TRICKY: 256 seconds (7 zeros)
-  else ttlMs = 128_000;                  // CASUAL: 128 seconds (6 zeros)
+  if (zeros >= 9) ttlMs = 2048_000;      // BRUTAL: 2048 seconds (9 zeros)
+  else if (zeros >= 8) ttlMs = 1024_000;  // SERIOUS: 1024 seconds (8 zeros)
+  else if (zeros >= 7) ttlMs = 512_000;  // TRICKY: 512 seconds (7 zeros)
+  else ttlMs = 256_000;                  // CASUAL: 256 seconds (6 zeros)
   
   return {
     suffix,
