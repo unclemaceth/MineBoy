@@ -1,3 +1,4 @@
+// Phase 3 anti-bot backend - force clean rebuild
 import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
@@ -91,6 +92,12 @@ function serializeJob(job: any | null): ApiJob | null {
     nonceStart: 0,
     ttlSec: job.ttlMs ? Math.ceil(job.ttlMs / 1000) : undefined,
     expiresAt: job.expiresAt,
+    // ANTI-BOT: Include new required fields
+    allowedSuffixes: job.allowedSuffixes,
+    counterStart: job.counterStart,
+    counterEnd: job.counterEnd,
+    maxHps: job.maxHps,
+    issuedAtMs: job.issuedAtMs,
   };
 }
 
