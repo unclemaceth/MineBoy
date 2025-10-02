@@ -161,8 +161,20 @@ function mine({
   console.log(`[WORKER] Starting STRICT mining: counter [${counterStart}, ${counterEnd}), maxHps=${maxHps}, allowedSuffixes=${allowedSuffixes.length}, expiresAt=${expiresAt}`);
   console.log(`[WORKER] Allowed suffixes:`, allowedSuffixes);
 
-  while (running && counter < counterEnd) {
-    // Check TTL expiry first (highest priority)
+  while (running) {
+    // Check counter window exhaustion FIRST (most common case)
+    if (counter >= counterEnd) {
+      console.log('[WORKER] Counter window exhausted, stopping');
+      running = false;
+      ctx.postMessage({ 
+        type: 'STOPPED', 
+        sid: sid || '', 
+        reason: 'window_exhausted' 
+      } as OutStopped);
+      return;
+    }
+    
+    // Check TTL expiry (rare, only if job has been running for a very long time)
     if (expiresAt && Date.now() > expiresAt) {
       console.log('[WORKER] TTL expired, stopping');
       running = false;
@@ -267,17 +279,9 @@ function mine({
       }
     }
   }
-
-  // Reached end of counter window without finding hash
-  if (counter >= counterEnd) {
-    running = false;
-    console.log(`[WORKER] Exhausted counter window [${counterStart}, ${counterEnd})`);
-    ctx.postMessage({ 
-      type: 'STOPPED', 
-      sid: sid || '', 
-      reason: 'window_exhausted' 
-    } as OutStopped);
-  }
+  
+  // Loop exited - this shouldn't happen as we have explicit stops above
+  console.log('[WORKER] Loop exited unexpectedly');
 }
 
 ctx.onmessage = (e: MessageEvent<InMsg>) => {

@@ -223,44 +223,15 @@ function Home() {
       console.log('[STOPPED_HANDLER]', reason);
       
       if (reason === 'window_exhausted') {
-        // ANTI-BOT: Counter window exhausted, seamlessly request next job
-        console.log('[AUTO_CONTINUE] Window exhausted, sessionId:', sessionId);
-        pushLine('Window exhausted - requesting new job...');
+        // Counter window exhausted - user must manually restart
+        console.log('[WINDOW_EXHAUSTED] Counter window exhausted, stopping');
+        stopMining();
+        setMining(false);
+        setStatus('idle');
         stopMiningSound();
-        
-        // Request new job and continue mining
-        if (sessionId) {
-          try {
-            console.log('[AUTO_CONTINUE] Calling api.getNextJob...');
-            const newJob = await api.getNextJob(sessionId);
-            console.log('[AUTO_CONTINUE] Received job:', newJob ? 'YES' : 'NULL');
-            
-            if (newJob) {
-              setJob(newJob);
-              pushLine('New job received - resuming mining');
-              console.log('[AUTO_CONTINUE] Starting miner with new job');
-              // Automatically restart mining with new job
-              miner.start(newJob);
-              startMiningSound();
-              pushLine('Mining resumed with new window');
-            } else {
-              console.log('[AUTO_CONTINUE] No job (cadence gate)');
-              pushLine('No job available (cadence gate) - press A to retry');
-              setMining(false);
-              setStatus('idle');
-            }
-          } catch (error) {
-            console.error('[AUTO_CONTINUE] Failed to get next job:', error);
-            pushLine('Failed to get new job - press A to retry');
-            setMining(false);
-            setStatus('idle');
-          }
-        } else {
-          console.error('[AUTO_CONTINUE] No sessionId!');
-          pushLine('No session - press A to retry');
-          setMining(false);
-          setStatus('idle');
-        }
+        pushLine('⏸️ Counter window exhausted!');
+        pushLine('Press A to continue mining');
+        hapticFeedback();
       } else if (reason === 'ttl_expired') {
         // TTL expired - trigger cooldown with gamified messages
         console.log('[TTL_TIMEOUT] Job expired');
