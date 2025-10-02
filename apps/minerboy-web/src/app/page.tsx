@@ -219,6 +219,36 @@ function Home() {
       setStatus('error');
       stopMiningSound();
     },
+    onStopped: async (reason) => {
+      console.log('[STOPPED_HANDLER]', reason);
+      if (reason === 'window_exhausted') {
+        pushLine('Window exhausted - requesting new job...');
+        stopMiningSound();
+        
+        // Request new job and continue mining
+        if (sessionId) {
+          try {
+            const newJob = await api.getNextJob(sessionId);
+            if (newJob) {
+              setJob(newJob);
+              pushLine('New job received - resuming mining');
+              // Automatically restart mining with new job
+              miner.start(newJob);
+              startMiningSound();
+            } else {
+              pushLine('No job available (cadence gate) - press A to retry');
+              setMining(false);
+              setStatus('idle');
+            }
+          } catch (error) {
+            console.error('[AUTO_CONTINUE] Failed to get next job:', error);
+            pushLine('Failed to get new job - press A to retry');
+            setMining(false);
+            setStatus('idle');
+          }
+        }
+      }
+    },
   });
   
   // Typewriter for boot sequence
