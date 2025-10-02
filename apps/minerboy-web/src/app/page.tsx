@@ -222,20 +222,27 @@ function Home() {
     onStopped: async (reason) => {
       console.log('[STOPPED_HANDLER]', reason);
       if (reason === 'window_exhausted') {
+        console.log('[AUTO_CONTINUE] Window exhausted, sessionId:', sessionId);
         pushLine('Window exhausted - requesting new job...');
         stopMiningSound();
         
         // Request new job and continue mining
         if (sessionId) {
           try {
+            console.log('[AUTO_CONTINUE] Calling api.getNextJob...');
             const newJob = await api.getNextJob(sessionId);
+            console.log('[AUTO_CONTINUE] Received job:', newJob ? 'YES' : 'NULL');
+            
             if (newJob) {
               setJob(newJob);
               pushLine('New job received - resuming mining');
+              console.log('[AUTO_CONTINUE] Starting miner with new job');
               // Automatically restart mining with new job
               miner.start(newJob);
               startMiningSound();
+              pushLine('Mining resumed with new window');
             } else {
+              console.log('[AUTO_CONTINUE] No job (cadence gate)');
               pushLine('No job available (cadence gate) - press A to retry');
               setMining(false);
               setStatus('idle');
@@ -246,6 +253,11 @@ function Home() {
             setMining(false);
             setStatus('idle');
           }
+        } else {
+          console.error('[AUTO_CONTINUE] No sessionId!');
+          pushLine('No session - press A to retry');
+          setMining(false);
+          setStatus('idle');
         }
       }
     },
