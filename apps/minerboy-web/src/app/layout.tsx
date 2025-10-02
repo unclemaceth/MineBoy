@@ -62,7 +62,7 @@ export default function RootLayout({
               {/* Sits on top when maintenance is enabled */}
               <MaintenanceGate />
               {/* CLOSED overlay to prevent access during anti-bot upgrade */}
-              <ClosedOverlay />
+              {/* <ClosedOverlay /> */} {/* Commented out for Phase 3 testing */}
         </GlyphWalletProvider>
       </body>
     </html>
