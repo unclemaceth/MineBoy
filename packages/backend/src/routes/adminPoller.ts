@@ -459,7 +459,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
          RETURNING id`,
         ['s4-individual-2025', 'INDIVIDUAL', startTime, null, true]
       );
-      const indivSeasonId = indivSeason.rows[0].id;
+      const indivSeasonId = parseInt(indivSeason.rows[0].id);
 
       // Create Season 4 - TEAM
       const teamSeason = await db.pool.query(
@@ -469,7 +469,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
          RETURNING id`,
         ['s4-team-2025', 'TEAM', startTime, null, true]
       );
-      const teamSeasonId = teamSeason.rows[0].id;
+      const teamSeasonId = parseInt(teamSeason.rows[0].id);
 
       console.log(`🔄 [MIGRATE] Created Season 4: Individual=${indivSeasonId}, Team=${teamSeasonId}`);
 
