@@ -20,6 +20,33 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     };
   });
 
+  // Check claim status counts
+  fastify.get('/v2/admin/claim-stats', async (req, reply) => {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const authHeader = req.headers.authorization;
+    
+    if (!adminToken || authHeader !== `Bearer ${adminToken}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { getDB } = await import('../db.js');
+      const db = getDB();
+
+      const result = await db.pool.query(
+        `SELECT status, COUNT(*) as count FROM claims GROUP BY status ORDER BY status`
+      );
+
+      return {
+        ok: true,
+        stats: result.rows
+      };
+    } catch (error) {
+      console.error('Claim stats error:', error);
+      return reply.code(500).send({ error: 'Failed to get stats', details: String(error) });
+    }
+  });
+
   // Test RPC connection
   fastify.get('/v2/admin/test-rpc', async (req, reply) => {
     try {
