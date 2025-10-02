@@ -481,7 +481,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
 
       // For each wallet, create a migration claim
       let credited = 0;
-      const confirmedAtMs = Math.floor(new Date(startTime).getTime());
+      const confirmedAtMs = Math.floor(new Date(startTime).getTime()); // Milliseconds for claims table
       
       for (const entry of csvData) {
         const wallet = entry.wallet.toLowerCase();
@@ -519,7 +519,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
         if (teamSlug) {
           await db.pool.query(
             `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
-             VALUES($1, $2, $3, $4, $5, $6)
+             VALUES($1, $2, $3, $4, $5, to_timestamp($6 / 1000))
              ON CONFLICT (claim_id) DO NOTHING`,
             [claimId, teamSlug, teamSeasonId, wallet, amountWei, confirmedAtMs]
           );
