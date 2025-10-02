@@ -184,6 +184,7 @@ export function useMinerWorker(events: Events = {}) {
         counterEnd: job.counterEnd ?? 100000,
         maxHps: job.maxHps ?? 5000,
         allowedSuffixes: job.allowedSuffixes ?? [],
+        expiresAt: job.expiresAt, // TTL expiry (epoch ms)
         
         // DEPRECATED (kept for backward compat warnings)
         suffix: job.target,

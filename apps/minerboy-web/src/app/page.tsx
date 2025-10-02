@@ -221,7 +221,9 @@ function Home() {
     },
     onStopped: async (reason) => {
       console.log('[STOPPED_HANDLER]', reason);
+      
       if (reason === 'window_exhausted') {
+        // ANTI-BOT: Counter window exhausted, seamlessly request next job
         console.log('[AUTO_CONTINUE] Window exhausted, sessionId:', sessionId);
         pushLine('Window exhausted - requesting new job...');
         stopMiningSound();
@@ -259,6 +261,44 @@ function Home() {
           setMining(false);
           setStatus('idle');
         }
+      } else if (reason === 'ttl_expired') {
+        // TTL expired - trigger cooldown with gamified messages
+        console.log('[TTL_TIMEOUT] Job expired');
+        stopMining(); // Stop the store's mining state
+        setMining(false);
+        setStatus('idle');
+        stopMiningSound();
+        playFailSound();
+        setFoundResult(null);
+        setFound(undefined);
+        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000');
+        setHashRate(0);
+        
+        // Lock this specific cartridge with blue timeout styling
+        if (cartridge) {
+          setLockedCartridge({
+            contract: cartridge.info.contract,
+            tokenId: cartridge.tokenId,
+            ttl: 60,
+            type: 'timeout'
+          });
+        }
+        
+        // Auto-unload cartridge and return to terminal mode
+        clear();
+        setMode('terminal');
+        setShowCartridgeSelect(true);
+        
+        // Reset the dead session state so mining can restart after cooldown
+        miner.resetSession();
+        
+        // Show retro nostalgic messages
+        pushLine('⏰ TIME UP - Job expired!');
+        pushLine('Initiating Cartridge CoolDown...');
+        pushLine('Blowing in slot...');
+        pushLine('Removing dust...');
+        
+        hapticFeedback();
       }
     },
   });
@@ -329,56 +369,9 @@ function Home() {
     return () => clearInterval(id);
   }, [mining]);
   
-  // Job expiry check
-  useEffect(() => {
-    if (!job || !mining) return;
-    
-    const checkExpiry = async () => {
-      if (job.expiresAt && Date.now() > job.expiresAt) {
-        // Stop all mining systems immediately
-        miner.stopForTtl(); // Stop the actual mining worker with TTL-specific handling
-        stopMining(); // Stop the store's mining state
-        setMining(false);
-        setStatus('idle');
-        stopMiningSound(); // Stop the mining sound
-        playFailSound(); // Play fail sound for TTL expiry
-        setFoundResult(null); // Clear any pending found result
-        setFound(undefined); // Clear lastFound from session
-        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
-        setHashRate(0); // Clear hash rate display
-        pushLine('Job expired - stopping mining');
-        
-        // Lock this specific cartridge with blue timeout styling
-        if (cartridge) {
-          setLockedCartridge({
-            contract: cartridge.info.contract,
-            tokenId: cartridge.tokenId,
-            ttl: 60,
-            type: 'timeout'
-          });
-        }
-        
-        // Auto-unload cartridge and return to terminal mode  
-        clear(); // Clear session data (unloads cartridge)
-        setMode('terminal'); // Return to terminal view
-        setShowCartridgeSelect(true); // Re-show selection modal so user can see cooldown and reselect after
-        
-        // Reset the dead session state so mining can restart after cooldown
-        miner.resetSession();
-        
-        // Show retro nostalgic messages AFTER clearing
-        pushLine('⏰ TIME UP - Job expired!');
-        pushLine('Initiating Cartridge CoolDown...');
-        pushLine('Blowing in slot...');
-        pushLine('Removing dust...');
-        
-        hapticFeedback();
-      }
-    };
-    
-    const interval = setInterval(checkExpiry, 1000); // Check every second
-    return () => clearInterval(interval);
-  }, [job, mining, pushLine, sessionId]);
+  // REMOVED: Old TTL timer system - now using counter window exhaustion only
+  // The worker will post STOPPED: window_exhausted when the counter window is done
+  // TTL timeout handling is now in the onStopped callback below
 
   // Cooldown timer effect
   useEffect(() => {

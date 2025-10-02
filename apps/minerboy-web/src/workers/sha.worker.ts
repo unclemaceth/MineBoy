@@ -17,6 +17,7 @@ type InStart = {
     counterEnd: number;      // exclusive
     maxHps: number;          // target hashrate (e.g., 5000)
     allowedSuffixes: string[]; // e.g., ["00000", "10000", ..., "f0000"]
+    expiresAt?: number;      // epoch ms - TTL expiry
     // DEPRECATED (kept for error messages)
     suffix?: string;
     rule?: 'suffix' | 'bits';
@@ -118,13 +119,15 @@ function mine({
   counterStart, 
   counterEnd, 
   maxHps, 
-  allowedSuffixes 
+  allowedSuffixes,
+  expiresAt
 }: {
   nonce: string;
   counterStart: number;
   counterEnd: number;
   maxHps: number;
   allowedSuffixes: string[];
+  expiresAt?: number;
 }) {
   // STRICT: Validate required fields
   if (!allowedSuffixes || allowedSuffixes.length === 0) {
@@ -155,9 +158,21 @@ function mine({
   let batchStart = performance.now();
   let batchCount = 0;
 
-  console.log(`[WORKER] Starting STRICT mining: counter [${counterStart}, ${counterEnd}), maxHps=${maxHps}, allowedSuffixes=${allowedSuffixes.length}`);
+  console.log(`[WORKER] Starting STRICT mining: counter [${counterStart}, ${counterEnd}), maxHps=${maxHps}, allowedSuffixes=${allowedSuffixes.length}, expiresAt=${expiresAt}`);
 
   while (running && counter < counterEnd) {
+    // Check TTL expiry first (highest priority)
+    if (expiresAt && Date.now() > expiresAt) {
+      console.log('[WORKER] TTL expired, stopping');
+      running = false;
+      ctx.postMessage({ 
+        type: 'STOPPED', 
+        sid: sid || '', 
+        reason: 'ttl_expired' 
+      } as OutStopped);
+      return;
+    }
+    
     // Check running flag - immediate exit
     if (!running) {
       console.log('[WORKER] Stop flag detected, exiting mine loop');
@@ -327,6 +342,7 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
         counterEnd: job.counterEnd,
         maxHps: job.maxHps,
         allowedSuffixes: job.allowedSuffixes,
+        expiresAt: job.expiresAt,
       });
     } catch (err) {
       const out: OutError = { 
