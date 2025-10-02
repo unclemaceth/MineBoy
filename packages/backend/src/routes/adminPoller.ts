@@ -502,7 +502,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
             confirmedAtMs,
             confirmedAtMs,
             `0xmigration${claimId.substring(10, 74)}`, // Fake tx hash
-            'migration_cartridge' // Fake cartridge ID
+            -1 // Fake cartridge ID (negative to identify migration claims)
           ]
         );
 
