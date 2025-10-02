@@ -207,6 +207,14 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
             receipt = await provider.getTransactionReceipt({ hash: tx as `0x${string}` });
           } catch (receiptError: any) {
             // Transaction not found on ApeChain (likely Curtis testnet tx) - mark as failed
+            // Log the FULL error details for debugging
+            console.log(`🔍 [AUDIT] Receipt error for tx ${tx}:`, {
+              message: receiptError.message,
+              name: receiptError.name,
+              code: receiptError.code,
+              fullError: JSON.stringify(receiptError, null, 2)
+            });
+            
             // Check for "could not be found" (the actual RPC error message)
             if (receiptError.message?.includes('could not be found') || 
                 receiptError.message?.includes('not found') || 
@@ -216,6 +224,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
               failed++;
               continue;
             }
+            console.log(`🔍 [AUDIT] Unexpected error type, re-throwing...`);
             throw receiptError; // Re-throw other errors
           }
           
@@ -389,6 +398,73 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     } catch (error) {
       console.error('Manual poller error:', error);
       return reply.code(500).send({ error: 'Manual poller failed', details: String(error) });
+    }
+  });
+
+  // CSV-based audit: Compare database claims against a list of valid ApeChain transaction hashes
+  fastify.post('/v2/admin/audit-claims-csv', async (req, reply) => {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const authHeader = req.headers.authorization;
+    
+    if (!adminToken || authHeader !== `Bearer ${adminToken}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { validTxHashes } = req.body as { validTxHashes: string[] };
+      
+      if (!validTxHashes || !Array.isArray(validTxHashes)) {
+        return reply.code(400).send({ error: 'validTxHashes array required' });
+      }
+
+      console.log(`🔍 [CSV_AUDIT] Starting audit with ${validTxHashes.length} valid tx hashes`);
+
+      // Normalize and create a Set for fast lookup
+      const validTxSet = new Set(validTxHashes.map(tx => tx.toLowerCase().trim()));
+      console.log(`🔍 [CSV_AUDIT] Valid tx set created with ${validTxSet.size} unique hashes`);
+
+      // Get database connection
+      const { getDB } = await import('../db.js');
+      const db = getDB();
+
+      // Fetch ALL confirmed claims with tx hashes
+      const result = await db.pool.query(
+        `SELECT id, tx_hash FROM claims WHERE status = 'confirmed' AND tx_hash IS NOT NULL ORDER BY created_at ASC`
+      );
+
+      const allClaims = result.rows;
+      console.log(`🔍 [CSV_AUDIT] Found ${allClaims.length} confirmed claims to audit`);
+
+      let verified = 0;
+      let failed = 0;
+
+      // Process each claim
+      for (const claim of allClaims) {
+        const txHash = claim.tx_hash.toLowerCase().trim();
+        
+        if (validTxSet.has(txHash)) {
+          // Valid ApeChain transaction - keep as confirmed
+          verified++;
+        } else {
+          // NOT in CSV = Curtis testnet claim - mark as failed
+          console.log(`🔍 [CSV_AUDIT] Failing Curtis claim ${claim.id} (tx: ${txHash.substring(0, 10)}...)`);
+          await failClaim(claim.id);
+          failed++;
+        }
+      }
+
+      console.log(`🔍 [CSV_AUDIT] Audit complete: ${verified} verified, ${failed} failed`);
+
+      return {
+        ok: true,
+        total: allClaims.length,
+        verified,
+        failed,
+        message: `Audit complete: ${failed} Curtis claims marked as failed`
+      };
+    } catch (error) {
+      console.error('CSV audit error:', error);
+      return reply.code(500).send({ error: 'CSV audit failed', details: String(error) });
     }
   });
 }
