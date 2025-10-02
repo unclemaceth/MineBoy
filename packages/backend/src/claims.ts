@@ -148,7 +148,7 @@ export class ClaimProcessor {
     }
     
     // ANTI-BOT: STRICT validation - job MUST have all required fields
-    if (!job.issuedAtMs || !job.counterStart || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
+    if (!job.issuedAtMs || job.counterStart === undefined || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
       throw new Error('Job missing anti-bot fields - client must upgrade');
     }
     
@@ -312,7 +312,7 @@ export class ClaimProcessor {
     }
 
     // ANTI-BOT: STRICT validation - job MUST have all required fields
-    if (!job.issuedAtMs || !job.counterStart || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
+    if (!job.issuedAtMs || job.counterStart === undefined || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
       throw new Error('Job missing anti-bot fields - client must upgrade');
     }
 
