@@ -59,10 +59,10 @@ export default function RootLayout({
           {children}
           {/* mounted once globally */}
           <GlobalWalletModal />
-          {/* Sits on top when maintenance is enabled */}
-          <MaintenanceGate />
-          {/* CLOSED overlay to prevent access during migration */}
-          <ClosedOverlay />
+              {/* Sits on top when maintenance is enabled */}
+              <MaintenanceGate />
+              {/* CLOSED overlay to prevent access during migration */}
+              {/* <ClosedOverlay /> */}
         </GlyphWalletProvider>
       </body>
     </html>

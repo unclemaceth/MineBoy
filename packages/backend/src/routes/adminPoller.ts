@@ -471,7 +471,7 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
       );
       const teamSeasonId = parseInt(teamSeason.rows[0].id);
 
-      console.log(`🔄 [MIGRATE] Created Season 4: Individual=${indivSeasonId}, Team=${teamSeasonId}`);
+      console.log(`🔄 [MIGRATE] Created Season 4: Individual=${indivSeasonId} (type: ${typeof indivSeasonId}), Team=${teamSeasonId} (type: ${typeof teamSeasonId})`);
 
       // Deactivate old seasons
       await db.pool.query(
@@ -509,18 +509,20 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
           ]
         );
 
-        // Get user's team for Season 4 (if they have one)
+        // Get user's team for the CURRENT active TEAM season (not Season 4, since it was just created)
+        // We need to find their team from Season 3 or whatever season they last chose
         const teamResult = await db.pool.query(
-          `SELECT team_slug FROM user_teams WHERE LOWER(wallet) = $1 AND season_id = $2`,
-          [wallet, teamSeasonId]
+          `SELECT team_slug FROM user_teams WHERE LOWER(wallet) = $1 ORDER BY created_at DESC LIMIT 1`,
+          [wallet]
         );
         const teamSlug = teamResult.rows[0]?.team_slug || null;
 
         // Insert into claim_team_attributions if they have a team
         if (teamSlug) {
+          console.log(`🔄 [MIGRATE] Attributing ${wallet} -> team ${teamSlug}, seasonId=${teamSeasonId} (type: ${typeof teamSeasonId})`);
           await db.pool.query(
             `INSERT INTO claim_team_attributions (claim_id, team_slug, season_id, wallet, amount_wei, confirmed_at)
-             VALUES($1, $2, $3, $4, $5, to_timestamp($6 / 1000))
+             VALUES($1, $2, $3::integer, $4, $5, to_timestamp($6 / 1000))
              ON CONFLICT (claim_id) DO NOTHING`,
             [claimId, teamSlug, teamSeasonId, wallet, amountWei, confirmedAtMs]
           );
