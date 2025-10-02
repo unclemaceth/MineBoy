@@ -639,20 +639,8 @@ function Home() {
       // Create a compatible session object for the existing loadOpenSession function
       const compatibleSession = {
         sessionId: res.sessionId,
-        job: res.job ? normalizeJob({
-          id: res.job.id,
-          data: res.job.data as `0x${string}`, // Cast to expected type
-          target: res.job.target,
-          suffix: res.job.suffix,
-          height: res.job.height,
-          difficulty: {
-            rule: res.job.rule as 'suffix',
-            bits: res.job.difficultyBits
-          },
-          nonce: res.job.nonce,
-          expiresAt: res.job.expiresAt,
-          ttlMs: res.job.ttlMs
-        }) : undefined // No placeholder - if no job, don't create session
+        // ANTI-BOT FIX: Pass the entire job object to normalizeJob instead of cherry-picking fields
+        job: res.job ? normalizeJob(res.job as any) : undefined
       };
       
       loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
