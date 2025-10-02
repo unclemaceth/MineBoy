@@ -157,10 +157,11 @@ export class JobManager {
     // ANTI-BOT: Calculate lease size based on difficulty tier
     // Optimize for 5k H/s: larger windows for higher difficulty
     let leaseHashes: number;
-    if (diff.zeros >= 9) leaseHashes = 100_000;  // BRUTAL: 20s of work @ 5k H/s
-    else if (diff.zeros >= 8) leaseHashes = 100_000; // SERIOUS: 20s
-    else if (diff.zeros >= 7) leaseHashes = 50_000;  // TRICKY: 10s
-    else leaseHashes = 25_000;                       // CASUAL: 5s
+    // ANTI-BOT: 500k hashes @ 5k H/s = 100 seconds per window (satisfying dopamine!)
+    if (diff.zeros >= 9) leaseHashes = 500_000;  // BRUTAL: 100s of work @ 5k H/s
+    else if (diff.zeros >= 8) leaseHashes = 500_000; // EXPERT: 100s
+    else if (diff.zeros >= 7) leaseHashes = 250_000;  // ADVENTURER: 50s
+    else leaseHashes = 500_000;                       // CASUAL: 100s
     
     const counterEnd = counterStart + leaseHashes;
     
