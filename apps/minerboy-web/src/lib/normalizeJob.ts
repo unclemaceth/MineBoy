@@ -37,5 +37,10 @@ export function normalizeJob(api: ApiJob): MiningJob {
       typeof api.ttlMs === 'number'  ? Math.round(api.ttlMs / 1000) :
       expiresAt ? Math.max(0, Math.round((expiresAt - Date.now()) / 1000)) :
       undefined,
+    // ANTI-BOT: Pass through new required fields
+    allowedSuffixes: api.allowedSuffixes,
+    counterStart: api.counterStart,
+    counterEnd: api.counterEnd,
+    maxHps: api.maxHps,
   };
 }
