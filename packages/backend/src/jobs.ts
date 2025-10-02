@@ -72,21 +72,6 @@ export class JobManager {
     };
   }
   
-  /**
-   * ANTI-BOT: Build allowed suffix set for difficulty tier
-   * Uses suffix sets instead of single suffix (e.g., ["00000", "33333", "55555"])
-   */
-  private buildAllowedSuffixes(zeros: number): string[] {
-    // For now, use all hex digits as valid last character
-    // This gives 16x the search space vs. single "00000"
-    const base = '0'.repeat(zeros - 1);
-    return [
-      base + '0', base + '1', base + '2', base + '3',
-      base + '4', base + '5', base + '6', base + '7',
-      base + '8', base + '9', base + 'a', base + 'b',
-      base + 'c', base + 'd', base + 'e', base + 'f'
-    ];
-  }
 
   /**
    * Get active miners count from database
@@ -154,19 +139,16 @@ export class JobManager {
     // ANTI-BOT: Get or initialize counter cursor for this cartridge
     let counterStart = this.counterCursorByKey.get(cartridgeKey) || 0;
     
-    // ANTI-BOT: Calculate lease size based on difficulty tier
-    // Optimize for 5k H/s: larger windows for higher difficulty
-    let leaseHashes: number;
-    // ANTI-BOT: 500k hashes @ 5k H/s = 100 seconds per window (satisfying dopamine!)
-    if (diff.zeros >= 9) leaseHashes = 500_000;  // BRUTAL: 100s of work @ 5k H/s
-    else if (diff.zeros >= 8) leaseHashes = 500_000; // EXPERT: 100s
-    else if (diff.zeros >= 7) leaseHashes = 250_000;  // ADVENTURER: 50s
-    else leaseHashes = 500_000;                       // CASUAL: 100s
-    
+    // ANTI-BOT: Use lease size from difficulty config (scales with difficulty)
+    // CASUAL: 100k = 20s @ 5k H/s
+    // TRICKY: 250k = 50s @ 5k H/s
+    // SERIOUS: 1M = 200s @ 5k H/s
+    // BRUTAL: 6M = 1200s @ 5k H/s
+    const leaseHashes = diff.leaseHashes;
     const counterEnd = counterStart + leaseHashes;
     
-    // ANTI-BOT: Build allowed suffix set (16x search space)
-    const allowedSuffixes = this.buildAllowedSuffixes(diff.zeros);
+    // ANTI-BOT: Use allowed suffixes from difficulty config
+    const allowedSuffixes = diff.allowedSuffixes;
     
     // ANTI-BOT: Get max hashrate from environment
     const maxHps = parseInt(process.env.MINER_MAX_HPS || '1000000'); // Default: no throttle during testing

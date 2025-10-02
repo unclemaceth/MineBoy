@@ -110,38 +110,83 @@ export function decorateFoundHash(powHash: `0x${string}`, amountWei: bigint | st
 }
 
 /**
- * Get difficulty suffix based on active miners count
- * @param activeMiners Number of active miners
- * @returns Suffix string for difficulty (e.g., "000", "0000", "00000")
+ * Build allowed suffix patterns for a given number of zeros
+ * @param zeros Number of zeros (5 or 6)
+ * @param count How many patterns to allow
+ * @returns Array of allowed suffix patterns
  */
-export function getDifficultySuffixForActiveMiners(activeMiners: number): string {
-  // Dynamic difficulty scaling based on active miners
-  if (activeMiners < 50) return "000000";      // 6 hex chars - CASUAL
-  if (activeMiners < 100) return "0000000";    // 7 hex chars - TRICKY
-  if (activeMiners < 200) return "00000000";   // 8 hex chars - SERIOUS
-  return "000000000";                          // 9 hex chars - BRUTAL
+function buildAllowedSuffixes(zeros: number, count: number): string[] {
+  const digits = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'];
+  const patterns: string[] = [];
+  
+  for (let i = 0; i < Math.min(count, 16); i++) {
+    patterns.push(digits[i].repeat(zeros));
+  }
+  
+  return patterns;
 }
 
 /**
- * Get difficulty info for active miners
+ * Get difficulty suffix based on active miners count (LEGACY - kept for compatibility)
  * @param activeMiners Number of active miners
- * @returns Difficulty configuration object
+ * @returns Suffix string for difficulty
+ * @deprecated Use getDifficultyForActiveMiners instead
+ */
+export function getDifficultySuffixForActiveMiners(activeMiners: number): string {
+  // Return first suffix from new system for backward compatibility
+  const diff = getDifficultyForActiveMiners(activeMiners);
+  return diff.allowedSuffixes[0];
+}
+
+/**
+ * Get difficulty info for active miners using allowed suffix sets
+ * @param activeMiners Number of active miners
+ * @returns Difficulty configuration with allowed suffixes, lease size, and TTL
  */
 export function getDifficultyForActiveMiners(activeMiners: number) {
-  const suffix = getDifficultySuffixForActiveMiners(activeMiners);
-  const zeros = suffix.length;
+  if (activeMiners < 50) {
+    // CASUAL: 5 zeros, all 16 patterns (~13s expected @ 5k H/s)
+    return {
+      zeros: 5,
+      suffix: '00000', // LEGACY: kept for compatibility
+      allowedSuffixes: buildAllowedSuffixes(5, 16), // All 16 patterns
+      leaseHashes: 100_000,  // 20 seconds @ 5k H/s
+      ttlMs: 256_000,        // 256 seconds total
+      activeMiners
+    };
+  }
   
-  // TTL based on difficulty level (doubled)
-  let ttlMs: number;
-  if (zeros >= 9) ttlMs = 2048_000;      // BRUTAL: 2048 seconds (9 zeros)
-  else if (zeros >= 8) ttlMs = 1024_000;  // SERIOUS: 1024 seconds (8 zeros)
-  else if (zeros >= 7) ttlMs = 512_000;  // TRICKY: 512 seconds (7 zeros)
-  else ttlMs = 256_000;                  // CASUAL: 256 seconds (6 zeros)
+  if (activeMiners < 100) {
+    // TRICKY: 5 zeros, 5 patterns (~42s expected @ 5k H/s)
+    return {
+      zeros: 5,
+      suffix: '00000', // LEGACY: kept for compatibility
+      allowedSuffixes: buildAllowedSuffixes(5, 5), // 5 patterns
+      leaseHashes: 250_000,  // 50 seconds @ 5k H/s
+      ttlMs: 512_000,        // 512 seconds total
+      activeMiners
+    };
+  }
   
+  if (activeMiners < 200) {
+    // SERIOUS: 5 zeros, 1 pattern (~3.5 min expected @ 5k H/s)
+    return {
+      zeros: 5,
+      suffix: '00000', // LEGACY: kept for compatibility
+      allowedSuffixes: buildAllowedSuffixes(5, 1), // Only 00000
+      leaseHashes: 1_000_000,  // 200 seconds (~3.3 min) @ 5k H/s
+      ttlMs: 1024_000,         // 1024 seconds total
+      activeMiners
+    };
+  }
+  
+  // BRUTAL: 6 zeros, 3 patterns (~19 min expected @ 5k H/s)
   return {
-    suffix,
-    zeros,
-    ttlMs,
+    zeros: 6,
+    suffix: '000000', // LEGACY: kept for compatibility
+    allowedSuffixes: buildAllowedSuffixes(6, 3), // 3 patterns
+    leaseHashes: 6_000_000,  // 1200 seconds (20 min) @ 5k H/s
+    ttlMs: 2048_000,         // 2048 seconds total
     activeMiners
   };
 }
