@@ -34,6 +34,7 @@ import teamsRoutes from './routes/teams.js';
 import adminSeasonsRoutes from './routes/adminSeasons.js';
 import statsRoutes from './routes/stats.js';
 import { registerMaintenance } from './routes/maintenance.js';
+import { registerJobRoutes } from './routes/job.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
@@ -157,6 +158,7 @@ await registerHealthRoute(fastify);
 await fastify.register(teamsRoutes);
 await fastify.register(adminSeasonsRoutes);
 await fastify.register(statsRoutes);
+registerJobRoutes(fastify); // ANTI-BOT: Job eligibility endpoint
 
 // Health check
 fastify.get('/health', async () => {
