@@ -137,7 +137,19 @@ export class JobManager {
     const diff = Rewards.getDifficultyForActiveMiners(activeMiners);
     
     // ANTI-BOT: Get or initialize counter cursor for this cartridge
-    let counterStart = this.counterCursorByKey.get(cartridgeKey) || 0;
+    // SECURITY: Randomize the starting point to prevent rainbow table attacks
+    const existingCursor = this.counterCursorByKey.get(cartridgeKey);
+    let counterStart: number;
+    
+    if (existingCursor !== undefined) {
+      // Continue from where we left off
+      counterStart = existingCursor;
+    } else {
+      // SECURITY: First job for this cartridge - start at a random offset
+      // Search space: 0 to 10M, randomize to make pre-computation harder
+      counterStart = Math.floor(Math.random() * 9_500_000);
+      console.log(`[SECURITY] New cartridge ${cartridgeKey} - randomized start: ${counterStart}`);
+    }
     
     // ANTI-BOT: Use lease size from difficulty config (scales with difficulty)
     // CASUAL: 100k = 20s @ 5k H/s

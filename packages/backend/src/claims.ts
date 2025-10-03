@@ -209,15 +209,34 @@ export class ClaimProcessor {
       throw new Error('shared/mining is missing minMsForTries');
     }
     
-    const minRequired = minMsForTries(tries, job.maxHps, 0.70);
+    // SECURITY: Tightened physics validation (85% slack = max 1.18x speedup allowed)
+    const SLACK_TOLERANCE = 0.85; // Increased from 0.70 to make GPU mining harder
+    const minRequired = minMsForTries(tries, job.maxHps, SLACK_TOLERANCE);
+    
+    // SECURITY: Reject claims that are too fast (possible GPU mining)
     if (elapsedMs < minRequired) {
+      console.warn(`[ANTI-BOT] REJECTED too fast: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms)`);
       throw new Error(
         `Claim too fast: ${tries} hashes in ${elapsedMs}ms, ` +
-        `minimum ${minRequired}ms required at ${job.maxHps} H/s (70% slack)`
+        `minimum ${minRequired}ms required at ${job.maxHps} H/s (85% slack)`
       );
     }
     
-    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms @ ${job.maxHps} H/s)`);
+    // SECURITY: Also reject claims that are suspiciously slow (possible cherry-picking)
+    const maxAllowed = minMsForTries(tries, job.maxHps, 0.30); // 30% slower = red flag
+    if (elapsedMs > maxAllowed) {
+      console.warn(`[ANTI-BOT] REJECTED too slow: ${tries} hashes in ${elapsedMs}ms (max: ${maxAllowed}ms) - possible cherry-picking`);
+      throw new Error(
+        `Claim too slow: ${tries} hashes in ${elapsedMs}ms, ` +
+        `maximum ${maxAllowed}ms expected (possible job shopping detected)`
+      );
+    }
+    
+    // Calculate timing ratio for statistical tracking
+    const expectedMs = minMsForTries(tries, job.maxHps, 1.0); // Perfect theoretical time
+    const timingRatio = elapsedMs / expectedMs;
+    
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, max: ${maxAllowed}ms, ratio: ${timingRatio.toFixed(2)})`);
     
     // Validate hash matches preimage (using SHA-256, not keccak256)
     if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
@@ -387,17 +406,34 @@ export class ClaimProcessor {
       throw new Error('shared/mining is missing minMsForTries');
     }
     
-    // Calculate minimum time required with slack (70% tolerance for variance)
-    const minRequired = minMsForTries(tries, job.maxHps, 0.70);
+    // SECURITY: Tightened physics validation (85% slack = max 1.18x speedup allowed)
+    const SLACK_TOLERANCE = 0.85; // Increased from 0.70 to make GPU mining harder
+    const minRequired = minMsForTries(tries, job.maxHps, SLACK_TOLERANCE);
     
+    // SECURITY: Reject claims that are too fast (possible GPU mining)
     if (elapsedMs < minRequired) {
+      console.warn(`[ANTI-BOT] REJECTED too fast: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms)`);
       throw new Error(
         `Claim too fast: ${tries} hashes in ${elapsedMs}ms, ` +
-        `minimum ${minRequired}ms required at ${job.maxHps} H/s (70% slack)`
+        `minimum ${minRequired}ms required at ${job.maxHps} H/s (85% slack)`
       );
     }
     
-    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms @ ${job.maxHps} H/s)`);
+    // SECURITY: Also reject claims that are suspiciously slow (possible cherry-picking)
+    const maxAllowed = minMsForTries(tries, job.maxHps, 0.30); // 30% slower = red flag
+    if (elapsedMs > maxAllowed) {
+      console.warn(`[ANTI-BOT] REJECTED too slow: ${tries} hashes in ${elapsedMs}ms (max: ${maxAllowed}ms) - possible cherry-picking`);
+      throw new Error(
+        `Claim too slow: ${tries} hashes in ${elapsedMs}ms, ` +
+        `maximum ${maxAllowed}ms expected (possible job shopping detected)`
+      );
+    }
+    
+    // Calculate timing ratio for statistical tracking
+    const expectedMs = minMsForTries(tries, job.maxHps, 1.0); // Perfect theoretical time
+    const timingRatio = elapsedMs / expectedMs;
+    
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, max: ${maxAllowed}ms, ratio: ${timingRatio.toFixed(2)})`);
 
     // Validate hash matches preimage (using SHA-256, not keccak256)
     if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
