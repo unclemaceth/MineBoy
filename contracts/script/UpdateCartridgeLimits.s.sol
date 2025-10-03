@@ -22,9 +22,9 @@ contract UpdateCartridgeLimits is Script {
         console.log("Current maxSupply:", cartridge.maxSupply());
         console.log("Current maxPerWallet:", cartridge.maxPerWallet());
         
-        // Update max supply to 2500
-        cartridge.setMaxSupply(2500);
-        console.log("Updated maxSupply to: 2500");
+        // Update max supply to 5000
+        cartridge.setMaxSupply(5000);
+        console.log("Updated maxSupply to: 5000");
         
         // Update max per wallet to 2
         cartridge.setMaxPerWallet(2);
