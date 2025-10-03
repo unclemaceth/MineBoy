@@ -62,8 +62,8 @@ export default function RootLayout({
           <GlobalWalletModal />
               {/* Sits on top when maintenance is enabled */}
               <MaintenanceGate />
-              {/* Season 1 Beta Test ended - showing thank you message */}
-              <SeasonEndOverlay />
+              {/* Season 1 Beta Test ended - commented out for testing */}
+              {/* <SeasonEndOverlay /> */}
         </GlyphWalletProvider>
       </body>
     </html>
