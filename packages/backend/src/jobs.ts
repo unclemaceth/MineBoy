@@ -255,7 +255,17 @@ export class JobManager {
     
     if (job.jobId !== jobId) return null;
     if (job.nonce !== nonce) return null;
-    if (Date.now() > job.expiresAt) return null;
+    
+    // Grace period: Allow claims for 2 minutes after TTL expires
+    // This gives users time to click Claim and submit transaction
+    // But prevents indefinite AFK (anti-bot measure)
+    const CLAIM_GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutes
+    const claimDeadline = job.expiresAt + CLAIM_GRACE_PERIOD_MS;
+    if (Date.now() > claimDeadline) {
+      console.log(`[validateJob] Claim deadline exceeded for job ${jobId}`);
+      return null;
+    }
+    
     if (job.consumed) return null; // Job already claimed
     
     return job;

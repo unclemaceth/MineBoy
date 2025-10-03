@@ -192,12 +192,8 @@ function Home() {
       }
     },
     onFound: ({ hash, preimage, attempts, hr }) => {
-      // Check if job is still valid before processing found hash
-      if (job && job.expiresAt && Date.now() > job.expiresAt) {
-        console.log('[FOUND_EXPIRED] Job expired, ignoring found hash');
-        pushLine('Hash found but job expired - ignoring');
-        return;
-      }
+      // Note: Worker already validated TTL before posting FOUND
+      // If we got here, the hash was found while job was valid
       
       setMining(false);
       setStatus('found');
@@ -776,31 +772,8 @@ function Home() {
     }
     
     if (!mining) {
-      // Check if job is still valid
-      if (job && job.expiresAt && Date.now() > job.expiresAt) {
-        pushLine('Job expired - requesting new job...');
-        try {
-          const newJob = await api.getNextJob(sessionId);
-          if (!newJob) {
-            pushLine('No job available (cadence gate) - wait a moment');
-            return;
-          }
-          setJob(newJob);
-          pushLine('New job received - starting mining');
-          // Start mining with new job
-          setFoundResult(null);
-          setFound(undefined); // Clear lastFound from session
-          setStatus('mining');
-          setMining(true);
-          setMode('visual');
-          miner.start(newJob);
-          startMiningSound();
-          pushLine('Mining started...');
-        } catch {
-          pushLine('Failed to get new job - re-insert cartridge');
-        }
-        return;
-      }
+      // Note: TTL expiry is now handled by worker posting STOPPED: ttl_expired
+      // The onStopped handler already handles getting a new job if needed
       
       // Start mining
       console.log('Starting mining with job:', job);
@@ -846,10 +819,10 @@ function Home() {
         throw new Error('No active session or job');
       }
 
-      // Check if job is still valid
-      if (job.expiresAt && Date.now() > job.expiresAt) {
-        throw new Error('Job expired - cannot claim');
-      }
+      // Note: We don't check TTL here because:
+      // 1. The worker validates TTL during mining
+      // 2. If hash was found before TTL expired, claim should be allowed
+      // 3. Backend validates job validity on submission
 
       // Keep heartbeats running during claim to maintain lock
 
