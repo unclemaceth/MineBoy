@@ -18,8 +18,8 @@ contract FixRewardTable is Script {
         
         console.log("Fixing reward table for deployed router...");
         
-        // Deployed router address
-        address routerAddress = 0x9c19d64fA17C4EB276FE3DFf4A8a6E57F42e43FF;
+        // Deployed router address (correct checksum)
+        address routerAddress = 0x9C192037b3EDa88cB4B31Ab1ad2AAD43Df352E43;
         MiningClaimRouter router = MiningClaimRouter(payable(routerAddress));
         
         console.log("Router address:", routerAddress);
