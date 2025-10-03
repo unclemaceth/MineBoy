@@ -769,52 +769,65 @@ function Home() {
     }
     
     if (!mining) {
-      // CRITICAL: Always fetch a FRESH job before starting mining
-      // This ensures we get a fresh window + grace period for each mining attempt
-      try {
-        pushLine('Requesting fresh mining job...');
-        const freshJob = await api.getNextJob(sessionId);
-        
-        if (!freshJob) {
-          pushLine('No job available (cadence gate)');
-          pushLine('Wait a moment and try again');
+      // Determine which job to use
+      let jobToUse = job;
+      
+      // If no job exists, or the existing job has expired, fetch a fresh one
+      if (!job || !job.id || (job.expiresAt && Date.now() > job.expiresAt)) {
+        try {
+          pushLine('Requesting fresh mining job...');
+          const freshJob = await api.getNextJob(sessionId);
+          
+          if (!freshJob) {
+            pushLine('No job available (cadence gate)');
+            pushLine('Wait a moment and try again');
+            return;
+          }
+          
+          // Update job state with fresh job
+          setJob(freshJob);
+          jobToUse = freshJob;
+          console.log('[FRESH_JOB_FOR_MINING]', {
+            jobId: freshJob.id,
+            expiresAt: freshJob.expiresAt,
+            counterStart: freshJob.counterStart,
+            counterEnd: freshJob.counterEnd
+          });
+        } catch (error) {
+          console.error('[FRESH_JOB_ERROR]', error);
+          pushLine('Failed to get fresh job');
+          pushLine('Re-insert cartridge if issue persists');
           return;
         }
-        
-        // Update job state with fresh job
-        setJob(freshJob);
-        console.log('[FRESH_JOB_FOR_MINING]', {
-          jobId: freshJob.id,
-          expiresAt: freshJob.expiresAt,
-          counterStart: freshJob.counterStart,
-          counterEnd: freshJob.counterEnd
+      } else {
+        // Use existing job from session open or previous claim
+        console.log('[USING_EXISTING_JOB]', {
+          jobId: job.id,
+          expiresAt: job.expiresAt,
+          counterStart: job.counterStart,
+          counterEnd: job.counterEnd
         });
-        
-        // Safety check - refuse to start if job is empty
-        if (!freshJob?.id || !freshJob?.data || !freshJob?.target) {
-          console.warn('Fresh job invalid, not starting miner');
-          pushLine('Invalid job - re-insert cartridge');
-          return;
-        }
-        
-        setFoundResult(null);
-        setFound(undefined); // Clear lastFound from session
-        setStatus('mining');
-        setMining(true);
-        setMode('visual'); // Auto-switch to visualizer
-        
-        // Reset dead session state before starting mining
-        miner.resetSession();
-        
-        miner.start(freshJob);
-        startMiningSound();
-        pushLine('Mining started with fresh window...');
-      } catch (error) {
-        console.error('[FRESH_JOB_ERROR]', error);
-        pushLine('Failed to get fresh job');
-        pushLine('Re-insert cartridge if issue persists');
+        pushLine('Starting mining...');
+      }
+      
+      // Safety check - refuse to start if job is empty
+      if (!jobToUse?.id || !jobToUse?.data || !jobToUse?.target) {
+        console.warn('Job invalid, not starting miner');
+        pushLine('Invalid job - re-insert cartridge');
         return;
       }
+        
+      setFoundResult(null);
+      setFound(undefined); // Clear lastFound from session
+      setStatus('mining');
+      setMining(true);
+      setMode('visual'); // Auto-switch to visualizer
+      
+      // Reset dead session state before starting mining
+      miner.resetSession();
+      
+      miner.start(jobToUse);
+      startMiningSound();
     } else {
       // Stop mining
       console.log('Stopping mining');
