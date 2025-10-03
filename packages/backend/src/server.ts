@@ -51,6 +51,12 @@ type ApiJob = {
   nonceStart?: number;   // default 0 (for UI)
   ttlSec?: number;       // optional
   expiresAt?: number;    // legacy compatibility
+  // ANTI-BOT FIELDS
+  allowedSuffixes?: string[];
+  counterStart?: number;
+  counterEnd?: number;
+  maxHps?: number;
+  issuedAtMs?: number;
 };
 
 function hexlifyData(data: any): `0x${string}` {
@@ -391,12 +397,32 @@ fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (reque
     return reply.code(404).send({ error: 'Session not found or expired' });
   }
   
+  // Check cadence eligibility before creating job
+  const eligibility = jobManager.canIssueJob(
+    session.wallet,
+    session.cartridge.contract,
+    session.cartridge.tokenId
+  );
+  
+  if (!eligibility.eligible) {
+    // Cadence gate - return null job with eligibility info
+    console.log(`[GET_NEXT_JOB] Cadence gate for ${session.wallet}:${session.cartridge.tokenId} - wait ${eligibility.waitMs}ms`);
+    return reply.send({
+      job: null,
+      cadence: {
+        eligible: false,
+        waitMs: eligibility.waitMs,
+        message: `Must wait ${Math.ceil(eligibility.waitMs / 1000)}s before next job`
+      }
+    });
+  }
+  
   const job = await jobManager.createJob(sessionId);
   if (!job) {
     return reply.code(500).send({ error: 'Failed to create job' });
   }
   
-  return job;
+  return reply.send({ job: serializeJob(job), cadence: { eligible: true, waitMs: 0 } });
 });
 
 // Process claim

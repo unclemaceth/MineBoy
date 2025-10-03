@@ -171,9 +171,18 @@ export const api = {
   
   getNextJob(sessionId: string): Promise<MiningJob | null> {
     return jfetch(`/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => {
-      // ANTI-BOT: Backend may return null if cadence gate active
-      if (!j) return null;
-      return normalizeJob(j as ApiJob);
+      // Backend now returns { job, cadence } structure
+      const response = j as { job: ApiJob | null; cadence?: { eligible: boolean; waitMs: number; message?: string } };
+      
+      // If cadence gate active, backend returns null job
+      if (!response.job) {
+        if (response.cadence) {
+          console.log('[GET_NEXT_JOB] Cadence gate:', response.cadence);
+        }
+        return null;
+      }
+      
+      return normalizeJob(response.job);
     });
   },
   
