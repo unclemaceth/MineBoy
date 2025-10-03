@@ -2575,16 +2575,41 @@ function Home() {
                   JOB INFO
                 </div>
                 <div style={{ fontSize: '10px', color: '#6a8d7f', marginBottom: '8px' }}>
-                  Job ID = server handle • Nonce = local counter
+                  Job ID = server handle • Counter = window position
                 </div>
                 <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                   {job ? (
                     <>
-                      <div><strong>Job ID:</strong> {job?.id ? `${job.id.slice(0, 8)}...${job.id.slice(-6)}` : 'N/A'}</div>
-                      <div><strong>Nonce (local):</strong> {mining ? attempts.toLocaleString() : 'N/A'}</div>
-                      <div><strong>Difficulty:</strong> {job.bits ? `${job.bits} bits` : `${(job.target?.length ?? 0) * 4} bits (from suffix)`}</div>
-                      <div><strong>Target:</strong> {job.target || 'N/A'}</div>
+                      <div><strong>Job ID:</strong> {job?.id ? `${job.id.slice(0, 12)}...${job.id.slice(-7)}` : 'N/A'}</div>
+                      <div><strong>Nonce (local):</strong> N/A</div>
+                      <div><strong>Difficulty:</strong> {job.target?.length ? `${job.target.length * 4} bits (from suffix)` : 'N/A'}</div>
+                      <div><strong>Target:</strong> {job.target || '00000'}</div>
                       <div><strong>Time Remaining:</strong> {ttlSec != null ? `${ttlSec}s` : 'N/A'}</div>
+                      {job.allowedSuffixes && (
+                        <>
+                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #4a7d5f' }}>
+                            <strong>Allowed Suffixes:</strong> {job.allowedSuffixes.length} patterns
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#6a8d7f', wordBreak: 'break-all' }}>
+                            {job.allowedSuffixes.slice(0, 8).join(', ')}{job.allowedSuffixes.length > 8 ? '...' : ''}
+                          </div>
+                        </>
+                      )}
+                      {job.counterStart !== undefined && job.counterEnd !== undefined && (
+                        <>
+                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #4a7d5f' }}>
+                            <strong>Counter Window:</strong> [{job.counterStart.toLocaleString()}, {job.counterEnd.toLocaleString()})
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#6a8d7f' }}>
+                            Window Size: {(job.counterEnd - job.counterStart).toLocaleString()} hashes
+                          </div>
+                        </>
+                      )}
+                      {job.maxHps && (
+                        <div style={{ marginTop: '4px' }}>
+                          <strong>Max Rate:</strong> {job.maxHps.toLocaleString()} H/s
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div>No active job</div>
