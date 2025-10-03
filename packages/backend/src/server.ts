@@ -36,6 +36,7 @@ import adminSeasonsRoutes from './routes/adminSeasons.js';
 import statsRoutes from './routes/stats.js';
 import { registerMaintenance } from './routes/maintenance.js';
 import { registerJobRoutes } from './routes/job.js';
+import { registerAdminExportRoute } from './routes/adminExport.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
@@ -167,6 +168,7 @@ await registerClaimTxRoute(fastify);
 await registerLeaderboardRoute(fastify);
 await registerSeasonLeaderboardRoute(fastify);
 await registerAdminPollerRoute(fastify);
+await registerAdminExportRoute(fastify); // Admin snapshot export
 await registerHealthRoute(fastify);
 await fastify.register(teamsRoutes);
 await fastify.register(adminSeasonsRoutes);

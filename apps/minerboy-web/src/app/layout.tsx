@@ -4,6 +4,7 @@ import "./globals.css";
 import GlobalWalletModal from "./GlobalWalletModal";
 import MaintenanceGate from "@/components/MaintenanceGate";
 import ClosedOverlay from "@/components/ClosedOverlay";
+import SeasonEndOverlay from "@/components/SeasonEndOverlay";
 import GlyphWalletProvider from "./GlyphWalletProvider";
 import W3MInit from "./W3MInit";
 import WCAccountBridge from '@/components/WCAccountBridge';
@@ -61,8 +62,8 @@ export default function RootLayout({
           <GlobalWalletModal />
               {/* Sits on top when maintenance is enabled */}
               <MaintenanceGate />
-              {/* CLOSED overlay to prevent access during anti-bot upgrade */}
-              {/* <ClosedOverlay /> */} {/* Commented out for Phase 3 testing */}
+              {/* Season 1 Beta Test ended - showing thank you message */}
+              <SeasonEndOverlay />
         </GlyphWalletProvider>
       </body>
     </html>
