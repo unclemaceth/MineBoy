@@ -326,21 +326,35 @@ export class ClaimProcessor {
     if (!job.issuedAtMs || job.counterStart === undefined || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
       throw new Error('Job missing anti-bot fields - client must upgrade');
     }
-
-    // ANTI-BOT: Parse and validate counter from preimage (format: nonce:counter)
+    
+    // SECURITY: Strict preimage sanity checks - must be nonce:counter:wallet:tokenId
     const parts = claimReq.preimage.split(':');
-    if (parts.length !== 2) {
-      throw new Error('Invalid preimage format - expected nonce:counter');
+    if (parts.length !== 4) {
+      throw new Error('Invalid preimage format - expected nonce:counter:wallet:tokenId');
+    }
+    const [noncePart, counterPart, walletPart, tokenIdPart] = parts;
+    if (!noncePart || counterPart === undefined || !walletPart || !tokenIdPart) {
+      throw new Error('Invalid preimage format - missing parts');
+    }
+    if (job.nonce !== noncePart) {
+      throw new Error('Preimage nonce mismatch');
     }
     
-    const [noncePart, counterPart] = parts;
-    const counter = parseInt(counterPart, 10);
+    // SECURITY: Verify wallet matches session wallet
+    if (walletPart.toLowerCase() !== session.wallet.toLowerCase()) {
+      throw new Error('Preimage wallet mismatch - work stealing attempt detected');
+    }
     
+    // SECURITY: Verify tokenId matches session cartridge
+    if (tokenIdPart !== session.cartridge.tokenId) {
+      throw new Error('Preimage tokenId mismatch - cartridge spoofing detected');
+    }
+    
+    // ANTI-BOT: Validate counter
+    const counter = parseInt(counterPart, 10);
     if (isNaN(counter) || counter < 0) {
       throw new Error('Invalid counter in preimage');
     }
-
-    // ANTI-BOT: Verify counter is within assigned window
     if (counter < job.counterStart || counter >= job.counterEnd) {
       throw new Error(`Counter ${counter} out of assigned range [${job.counterStart}, ${job.counterEnd})`);
     }
