@@ -152,16 +152,27 @@ export class ClaimProcessor {
       throw new Error('Job missing anti-bot fields - client must upgrade');
     }
     
-    // Strict preimage sanity checks
-    if (!claimReq.preimage.includes(':')) {
-      throw new Error('Invalid preimage format - expected nonce:counter');
+    // SECURITY: Strict preimage sanity checks - must be nonce:counter:wallet:tokenId
+    const parts = claimReq.preimage.split(':');
+    if (parts.length !== 4) {
+      throw new Error('Invalid preimage format - expected nonce:counter:wallet:tokenId');
     }
-    const [noncePart, counterPart] = claimReq.preimage.split(':');
-    if (!noncePart || counterPart === undefined) {
-      throw new Error('Invalid preimage format');
+    const [noncePart, counterPart, walletPart, tokenIdPart] = parts;
+    if (!noncePart || counterPart === undefined || !walletPart || !tokenIdPart) {
+      throw new Error('Invalid preimage format - missing parts');
     }
     if (job.nonce !== noncePart) {
       throw new Error('Preimage nonce mismatch');
+    }
+    
+    // SECURITY: Verify wallet matches session wallet
+    if (walletPart.toLowerCase() !== session.wallet.toLowerCase()) {
+      throw new Error('Preimage wallet mismatch - work stealing attempt detected');
+    }
+    
+    // SECURITY: Verify tokenId matches session cartridge
+    if (tokenIdPart !== session.cartridge.tokenId) {
+      throw new Error('Preimage tokenId mismatch - cartridge spoofing detected');
     }
     
     // ANTI-BOT: Validate counter

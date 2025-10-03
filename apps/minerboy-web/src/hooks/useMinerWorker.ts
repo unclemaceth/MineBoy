@@ -121,7 +121,7 @@ export function useMinerWorker(events: Events = {}) {
   }, []); // eslint-disable-line
 
   const api = useMemo(() => ({
-    start(job: Job) {
+    start(job: Job, walletAddress: string, tokenId: string) {
       // Recreate worker if it was killed (e.g. after TTL timeout)
       if (!workerRef.current) {
         console.log('[WORKER_RECREATE] Worker was null, creating new worker');
@@ -186,6 +186,10 @@ export function useMinerWorker(events: Events = {}) {
         allowedSuffixes: job.allowedSuffixes ?? [],
         expiresAt: job.expiresAt, // TTL expiry (epoch ms)
         
+        // SECURITY: Bind work to specific wallet + NFT
+        walletAddress,
+        tokenId,
+        
         // DEPRECATED (kept for backward compat warnings)
         suffix: job.target,
         rule: job.rule ?? 'suffix',
@@ -206,7 +210,14 @@ export function useMinerWorker(events: Events = {}) {
         return;
       }
       
-      console.log(`[START] New STRICT mining session: ${sid}, counter [${workerJob.counterStart}, ${workerJob.counterEnd}), maxHps=${workerJob.maxHps}`);
+      if (!walletAddress || !tokenId) {
+        console.error('[START] Missing walletAddress or tokenId');
+        events.onError?.('Missing wallet or NFT info');
+        setRunning(false);
+        return;
+      }
+      
+      console.log(`[START] New STRICT mining session: ${sid}, counter [${workerJob.counterStart}, ${workerJob.counterEnd}), maxHps=${workerJob.maxHps}, wallet=${walletAddress}, tokenId=${tokenId}`);
       
       workerRef.current.postMessage({
         type: 'START',

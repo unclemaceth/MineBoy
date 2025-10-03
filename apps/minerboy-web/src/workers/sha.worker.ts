@@ -18,6 +18,9 @@ type InStart = {
     maxHps: number;          // target hashrate (e.g., 5000)
     allowedSuffixes: string[]; // e.g., ["00000", "10000", ..., "f0000"]
     expiresAt?: number;      // epoch ms - TTL expiry
+    // SECURITY: Bind work to specific wallet + NFT
+    walletAddress: string;   // 0x...
+    tokenId: string;         // NFT token ID
     // DEPRECATED (kept for error messages)
     suffix?: string;
     rule?: 'suffix' | 'bits';
@@ -44,7 +47,7 @@ type OutTick = {
 type OutFound = {
   type: 'FOUND';
   hash: string;        // 0x...
-  preimage: string;    // nonce:counter
+  preimage: string;    // nonce:counter:wallet:tokenId
   attempts: number;
   hr: number;
   sid: string;
@@ -120,7 +123,9 @@ function mine({
   counterEnd, 
   maxHps, 
   allowedSuffixes,
-  expiresAt
+  expiresAt,
+  walletAddress,
+  tokenId
 }: {
   nonce: string;
   counterStart: number;
@@ -128,6 +133,8 @@ function mine({
   maxHps: number;
   allowedSuffixes: string[];
   expiresAt?: number;
+  walletAddress: string;
+  tokenId: string;
 }) {
   // STRICT: Validate required fields
   if (!allowedSuffixes || allowedSuffixes.length === 0) {
@@ -185,7 +192,8 @@ function mine({
       return;
     }
 
-    const preimage = `${nonce}:${counter}`;
+    // SECURITY: Include wallet and tokenId to bind work to specific user+NFT
+    const preimage = `${nonce}:${counter}:${walletAddress}:${tokenId}`;
     const hash = sha256HexAscii(preimage);
     attempts++;
     batchCount++;
@@ -332,6 +340,27 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
       ctx.postMessage(out);
       return;
     }
+    
+    // SECURITY: Validate wallet and tokenId
+    if (!job.walletAddress) {
+      const out: OutError = { 
+        type: 'ERROR', 
+        message: 'Job missing walletAddress - client must upgrade',
+        sid: sid || '',
+      };
+      ctx.postMessage(out);
+      return;
+    }
+    
+    if (!job.tokenId) {
+      const out: OutError = { 
+        type: 'ERROR', 
+        message: 'Job missing tokenId - client must upgrade',
+        sid: sid || '',
+      };
+      ctx.postMessage(out);
+      return;
+    }
 
     console.log('[WORKER] Starting STRICT mining with validated job');
     
@@ -343,6 +372,8 @@ ctx.onmessage = (e: MessageEvent<InMsg>) => {
         maxHps: job.maxHps,
         allowedSuffixes: job.allowedSuffixes,
         expiresAt: job.expiresAt,
+        walletAddress: job.walletAddress,
+        tokenId: job.tokenId,
       });
     } catch (err) {
       const out: OutError = { 

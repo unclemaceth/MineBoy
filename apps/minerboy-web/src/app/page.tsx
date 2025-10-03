@@ -817,6 +817,13 @@ function Home() {
         return;
       }
         
+      // SECURITY: Validate we have wallet and cartridge info
+      if (!wallet || !cartridge?.tokenId) {
+        console.warn('Missing wallet or cartridge info, cannot start mining');
+        pushLine('Session error - re-insert cartridge');
+        return;
+      }
+      
       setFoundResult(null);
       setFound(undefined); // Clear lastFound from session
       setStatus('mining');
@@ -826,7 +833,8 @@ function Home() {
       // Reset dead session state before starting mining
       miner.resetSession();
       
-      miner.start(jobToUse);
+      // SECURITY: Pass wallet and tokenId to bind work to this specific user+NFT
+      miner.start(jobToUse, wallet, cartridge.tokenId);
       startMiningSound();
     } else {
       // Stop mining
