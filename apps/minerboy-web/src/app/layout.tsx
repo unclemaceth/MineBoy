@@ -68,5 +68,5 @@ export default function RootLayout({
     </html>
   );
 }
-// Force redeploy - Tue Sep 16 00:26:11 BST 2025
+// Force redeploy - Fresh timers on each window - Fri Oct 3 2025
 // Fresh build - Web3ModalBridge references removed
