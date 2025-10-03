@@ -457,13 +457,15 @@ export class ClaimProcessor {
   
   /**
    * Calculate reward using tier-based system
+   * Tier 0 (0x0... Hashalicious) = 128 ABIT (best)
+   * Tier 15 (0xf... Trash Hash) = 8 ABIT (worst)
    */
   private calculateTierReward(workHash: `0x${string}`): bigint {
     const tier = Rewards.tierFromHash(workHash);
     const tierName = Rewards.getTierName(tier);
     
-    // Linear reward table: 8, 16, 24, ..., 128 ABIT (with 18 decimals)
-    const baseAmount = (tier + 1) * 8; // 8, 16, 24, ..., 128
+    // Inverted linear reward table: Tier 0 = 128, Tier 1 = 120, ..., Tier 15 = 8
+    const baseAmount = (16 - tier) * 8; // Tier 0 = 128, Tier 15 = 8
     const reward = BigInt(baseAmount) * BigInt(10 ** 18);
     
     console.log(`Tier reward calculation: tier=${tier} (${tierName}), amount=${baseAmount} ABIT, reward=${ethers.formatEther(reward)} ABIT`);
