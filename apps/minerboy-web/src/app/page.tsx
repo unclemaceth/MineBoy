@@ -219,14 +219,37 @@ function Home() {
       console.log('[STOPPED_HANDLER]', reason);
       
       if (reason === 'window_exhausted') {
-        // Counter window exhausted - user must manually restart
-        console.log('[WINDOW_EXHAUSTED] Counter window exhausted, stopping');
+        // Counter window exhausted - fetch fresh job before prompting user
+        console.log('[WINDOW_EXHAUSTED] Counter window exhausted, fetching new job');
         stopMining();
         setMining(false);
         setStatus('idle');
         stopMiningSound();
-        pushLine('⏸️ Counter window exhausted!');
-        pushLine('Press A to continue mining');
+        
+        // Fetch a fresh job with new counter window and expiresAt
+        if (sessionId) {
+          try {
+            pushLine('⏸️ Window exhausted, getting new job...');
+            const newJob = await api.getNextJob(sessionId);
+            if (newJob) {
+              setJob(newJob);
+              console.log('[NEW_JOB_AFTER_WINDOW]', {
+                jobId: newJob.id,
+                expiresAt: newJob.expiresAt,
+                counterStart: newJob.counterStart,
+                counterEnd: newJob.counterEnd
+              });
+              pushLine('New job ready - Press A to continue');
+            } else {
+              pushLine('No job available (cadence gate)');
+              pushLine('Wait a moment and try again');
+            }
+          } catch (error) {
+            console.error('[WINDOW_EXHAUSTED] Failed to get new job:', error);
+            pushLine('Failed to get new job');
+            pushLine('Re-insert cartridge if issue persists');
+          }
+        }
         hapticFeedback();
       } else if (reason === 'manual_stop') {
         // User manually stopped mining
