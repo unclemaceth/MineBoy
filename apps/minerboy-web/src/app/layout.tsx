@@ -68,5 +68,5 @@ export default function RootLayout({
     </html>
   );
 }
-// Force redeploy - Fresh job on every A press - Fri Oct 3 2025
+// Force redeploy - Timeout cooldown restored - Fri Oct 3 2025
 // Fresh build - Web3ModalBridge references removed
