@@ -219,37 +219,14 @@ function Home() {
       console.log('[STOPPED_HANDLER]', reason);
       
       if (reason === 'window_exhausted') {
-        // Counter window exhausted - fetch fresh job before prompting user
-        console.log('[WINDOW_EXHAUSTED] Counter window exhausted, fetching new job');
+        // Counter window exhausted - user must press A to get fresh job
+        console.log('[WINDOW_EXHAUSTED] Counter window exhausted');
         stopMining();
         setMining(false);
         setStatus('idle');
         stopMiningSound();
-        
-        // Fetch a fresh job with new counter window and expiresAt
-        if (sessionId) {
-          try {
-            pushLine('⏸️ Window exhausted, getting new job...');
-            const newJob = await api.getNextJob(sessionId);
-            if (newJob) {
-              setJob(newJob);
-              console.log('[NEW_JOB_AFTER_WINDOW]', {
-                jobId: newJob.id,
-                expiresAt: newJob.expiresAt,
-                counterStart: newJob.counterStart,
-                counterEnd: newJob.counterEnd
-              });
-              pushLine('New job ready - Press A to continue');
-            } else {
-              pushLine('No job available (cadence gate)');
-              pushLine('Wait a moment and try again');
-            }
-          } catch (error) {
-            console.error('[WINDOW_EXHAUSTED] Failed to get new job:', error);
-            pushLine('Failed to get new job');
-            pushLine('Re-insert cartridge if issue persists');
-          }
-        }
+        pushLine('⏸️ Counter window exhausted!');
+        pushLine('Press A for fresh mining job');
         hapticFeedback();
       } else if (reason === 'manual_stop') {
         // User manually stopped mining
@@ -758,38 +735,58 @@ function Home() {
       return;
     }
     
-    if (!sessionId || !job) {
+    if (!sessionId) {
       pushLine('Insert cartridge first!');
       return;
     }
     
     if (!mining) {
-      // Note: TTL expiry is now handled by worker posting STOPPED: ttl_expired
-      // The onStopped handler already handles getting a new job if needed
-      
-      // Start mining
-      console.log('Starting mining with job:', job);
-      console.log('Job details:', { id: job?.id, data: job?.data, target: job?.target });
-      
-      // Safety check - refuse to start if job is empty
-      if (!job?.id || !job?.data || !job?.target) {
-        console.warn('No valid job yet, not starting miner');
-        pushLine('No valid job - re-insert cartridge');
+      // CRITICAL: Always fetch a FRESH job before starting mining
+      // This ensures we get a fresh window + grace period for each mining attempt
+      try {
+        pushLine('Requesting fresh mining job...');
+        const freshJob = await api.getNextJob(sessionId);
+        
+        if (!freshJob) {
+          pushLine('No job available (cadence gate)');
+          pushLine('Wait a moment and try again');
+          return;
+        }
+        
+        // Update job state with fresh job
+        setJob(freshJob);
+        console.log('[FRESH_JOB_FOR_MINING]', {
+          jobId: freshJob.id,
+          expiresAt: freshJob.expiresAt,
+          counterStart: freshJob.counterStart,
+          counterEnd: freshJob.counterEnd
+        });
+        
+        // Safety check - refuse to start if job is empty
+        if (!freshJob?.id || !freshJob?.data || !freshJob?.target) {
+          console.warn('Fresh job invalid, not starting miner');
+          pushLine('Invalid job - re-insert cartridge');
+          return;
+        }
+        
+        setFoundResult(null);
+        setFound(undefined); // Clear lastFound from session
+        setStatus('mining');
+        setMining(true);
+        setMode('visual'); // Auto-switch to visualizer
+        
+        // Reset dead session state before starting mining
+        miner.resetSession();
+        
+        miner.start(freshJob);
+        startMiningSound();
+        pushLine('Mining started with fresh window...');
+      } catch (error) {
+        console.error('[FRESH_JOB_ERROR]', error);
+        pushLine('Failed to get fresh job');
+        pushLine('Re-insert cartridge if issue persists');
         return;
       }
-      
-      setFoundResult(null);
-      setFound(undefined); // Clear lastFound from session
-      setStatus('mining');
-      setMining(true);
-      setMode('visual'); // Auto-switch to visualizer
-      
-      // Reset dead session state before starting mining
-      miner.resetSession();
-      
-      miner.start(job);
-      startMiningSound();
-      pushLine('Mining started...');
     } else {
       // Stop mining
       console.log('Stopping mining');
