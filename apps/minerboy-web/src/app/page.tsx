@@ -228,44 +228,13 @@ function Home() {
         pushLine('⏸️ Counter window exhausted!');
         pushLine('Press A to continue mining');
         hapticFeedback();
-      } else if (reason === 'ttl_expired') {
-        // TTL expired - trigger cooldown with gamified messages
-        console.log('[TTL_TIMEOUT] Job expired');
-        stopMining(); // Stop the store's mining state
+      } else if (reason === 'manual_stop') {
+        // User manually stopped mining
+        console.log('[MANUAL_STOP] User stopped mining');
+        stopMining();
         setMining(false);
         setStatus('idle');
         stopMiningSound();
-        playFailSound();
-        setFoundResult(null);
-        setFound(undefined);
-        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000');
-        setHashRate(0);
-        
-        // Lock this specific cartridge with blue timeout styling
-        if (cartridge) {
-          setLockedCartridge({
-            contract: cartridge.info.contract,
-            tokenId: cartridge.tokenId,
-            ttl: 60,
-            type: 'timeout'
-          });
-        }
-        
-        // Auto-unload cartridge and return to terminal mode
-        clear();
-        setMode('terminal');
-        setShowCartridgeSelect(true);
-        
-        // Reset the dead session state so mining can restart after cooldown
-        miner.resetSession();
-        
-        // Show retro nostalgic messages
-        pushLine('⏰ TIME UP - Job expired!');
-        pushLine('Initiating Cartridge CoolDown...');
-        pushLine('Blowing in slot...');
-        pushLine('Removing dust...');
-        
-        hapticFeedback();
       }
     },
   });

@@ -162,7 +162,7 @@ function mine({
   console.log(`[WORKER] Allowed suffixes:`, allowedSuffixes);
 
   while (running) {
-    // Check counter window exhaustion FIRST (most common case)
+    // Check counter window exhaustion (only stop condition during mining)
     if (counter >= counterEnd) {
       console.log('[WORKER] Counter window exhausted, stopping');
       running = false;
@@ -174,19 +174,7 @@ function mine({
       return;
     }
     
-    // Check TTL expiry (rare, only if job has been running for a very long time)
-    if (expiresAt && Date.now() > expiresAt) {
-      console.log('[WORKER] TTL expired, stopping');
-      running = false;
-      ctx.postMessage({ 
-        type: 'STOPPED', 
-        sid: sid || '', 
-        reason: 'ttl_expired' 
-      } as OutStopped);
-      return;
-    }
-    
-    // Check running flag - immediate exit
+    // Check running flag - manual stop
     if (!running) {
       console.log('[WORKER] Stop flag detected, exiting mine loop');
       ctx.postMessage({ 

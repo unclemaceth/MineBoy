@@ -159,9 +159,16 @@ export class JobManager {
     // Update last job time for cadence gating
     this.lastJobTimeByKey.set(cartridgeKey, now);
     
+    // Calculate job expiry based on counter window size + claim grace period
+    // Window time = leaseHashes / maxHps (in seconds) * 1000 (to ms)
+    const windowTimeMs = Math.ceil((leaseHashes / maxHps) * 1000);
+    const CLAIM_GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutes to submit claim
+    const expiresAt = now + windowTimeMs + CLAIM_GRACE_PERIOD_MS;
+    const ttlMs = windowTimeMs + CLAIM_GRACE_PERIOD_MS;
+    
     // Debug logging
-    console.log('[jobs] activeMiners=%d zeros=%d allowedSuffixes=%d counterWindow=[%d,%d) maxHps=%d',
-      activeMiners, diff.zeros, allowedSuffixes.length, counterStart, counterEnd, maxHps);
+    console.log('[jobs] activeMiners=%d zeros=%d allowedSuffixes=%d counterWindow=[%d,%d) maxHps=%d windowTime=%dms ttl=%dms',
+      activeMiners, diff.zeros, allowedSuffixes.length, counterStart, counterEnd, maxHps, windowTimeMs, ttlMs);
     
     // STRICT MODE: All required fields present, no fallbacks
     const job: Job = {
@@ -169,11 +176,11 @@ export class JobManager {
       algo: 'sha256-suffix',
       charset: 'hex',
       nonce,
-      expiresAt: now + diff.ttlMs,
+      expiresAt,
       rule: 'suffix',
       suffix: diff.suffix, // DEPRECATED: kept for old client errors
       epoch: 0,
-      ttlMs: diff.ttlMs,
+      ttlMs,
       
       // ANTI-BOT FIELDS (REQUIRED)
       issuedAtMs: now,
@@ -256,13 +263,10 @@ export class JobManager {
     if (job.jobId !== jobId) return null;
     if (job.nonce !== nonce) return null;
     
-    // Grace period: Allow claims for 2 minutes after TTL expires
-    // This gives users time to click Claim and submit transaction
-    // But prevents indefinite AFK (anti-bot measure)
-    const CLAIM_GRACE_PERIOD_MS = 2 * 60 * 1000; // 2 minutes
-    const claimDeadline = job.expiresAt + CLAIM_GRACE_PERIOD_MS;
-    if (Date.now() > claimDeadline) {
-      console.log(`[validateJob] Claim deadline exceeded for job ${jobId}`);
+    // Check if job has expired (expiresAt = window end + 2 min grace period)
+    // This prevents AFK mining while allowing time to submit claims
+    if (Date.now() > job.expiresAt) {
+      console.log(`[validateJob] Job expired (past claim deadline) for job ${jobId}`);
       return null;
     }
     

@@ -151,7 +151,6 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
       suffix: '00000', // LEGACY: kept for compatibility
       allowedSuffixes: buildAllowedSuffixes(5, 16), // All 16 patterns
       leaseHashes: 100_000,  // 20 seconds @ 5k H/s
-      ttlMs: 256_000,        // 256 seconds total
       activeMiners
     };
   }
@@ -163,7 +162,6 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
       suffix: '00000', // LEGACY: kept for compatibility
       allowedSuffixes: buildAllowedSuffixes(5, 5), // 5 patterns
       leaseHashes: 250_000,  // 50 seconds @ 5k H/s
-      ttlMs: 512_000,        // 512 seconds total
       activeMiners
     };
   }
@@ -175,7 +173,6 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
       suffix: '00000', // LEGACY: kept for compatibility
       allowedSuffixes: buildAllowedSuffixes(5, 1), // Only 00000
       leaseHashes: 1_000_000,  // 200 seconds (~3.3 min) @ 5k H/s
-      ttlMs: 1024_000,         // 1024 seconds total
       activeMiners
     };
   }
@@ -186,7 +183,6 @@ export function getDifficultyForActiveMiners(activeMiners: number) {
     suffix: '000000', // LEGACY: kept for compatibility
     allowedSuffixes: buildAllowedSuffixes(6, 3), // 3 patterns
     leaseHashes: 6_000_000,  // 1200 seconds (20 min) @ 5k H/s
-    ttlMs: 2048_000,         // 2048 seconds total
     activeMiners
   };
 }
