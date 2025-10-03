@@ -206,15 +206,68 @@ export class JobManager {
   }
   
   /**
-   * Create a new job for a session
-   * STRICT MODE: Includes cadence gating and counter windows
+   * SECURITY: Check rate limits for job requests
    */
-  async createJob(sessionId: string): Promise<Job | null> {
+  async checkRateLimits(wallet: string, ipAddress?: string): Promise<{ allowed: boolean; reason?: string; waitMs?: number }> {
+    const redis = (await import('./redis.js')).getRedis();
+    if (!redis) {
+      // If Redis is unavailable, allow the request (fail open)
+      return { allowed: true };
+    }
+    
+    const now = Date.now();
+    const minute = Math.floor(now / 60000); // Current minute bucket
+    
+    // SECURITY: Per-wallet rate limit (10 jobs per minute)
+    const walletKey = `ratelimit:wallet:${wallet.toLowerCase()}:${minute}`;
+    const walletCount = await redis.incr(walletKey);
+    await redis.expire(walletKey, 120); // Keep for 2 minutes
+    
+    if (walletCount > 10) {
+      console.warn(`[RATE_LIMIT] Wallet ${wallet} exceeded limit: ${walletCount} requests this minute`);
+      return { 
+        allowed: false, 
+        reason: 'Too many job requests from this wallet',
+        waitMs: ((minute + 1) * 60000) - now // Wait until next minute
+      };
+    }
+    
+    // SECURITY: Per-IP rate limit (50 jobs per minute)
+    if (ipAddress) {
+      const ipKey = `ratelimit:ip:${ipAddress}:${minute}`;
+      const ipCount = await redis.incr(ipKey);
+      await redis.expire(ipKey, 120);
+      
+      if (ipCount > 50) {
+        console.warn(`[RATE_LIMIT] IP ${ipAddress} exceeded limit: ${ipCount} requests this minute`);
+        return { 
+          allowed: false, 
+          reason: 'Too many job requests from this IP',
+          waitMs: ((minute + 1) * 60000) - now
+        };
+      }
+    }
+    
+    return { allowed: true };
+  }
+
+  /**
+   * Create a new job for a session
+   * STRICT MODE: Includes cadence gating, rate limiting, and counter windows
+   */
+  async createJob(sessionId: string, ipAddress?: string): Promise<Job | null> {
     const session = await SessionStore.getSession(sessionId);
     if (!session) return null;
     
     const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
     if (!cartridge) return null;
+    
+    // SECURITY: Check rate limits before creating job
+    const rateLimitCheck = await this.checkRateLimits(session.wallet, ipAddress);
+    if (!rateLimitCheck.allowed) {
+      console.log(`[jobs] Rate limit exceeded for ${session.wallet}: ${rateLimitCheck.reason}`);
+      return null;
+    }
     
     // ANTI-BOT: Build cartridge key for tracking
     const cartridgeKey = this.buildCartridgeKey(

@@ -362,8 +362,9 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     await SessionStore.createSession(session);
     await SessionStore.addWalletSession(w, canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId);
 
-    // 5) Issue job + policy + TTLs
-    const job = await jobManager.createJob(clientSessionId);
+    // 5) Issue job + policy + TTLs (with IP address for rate limiting)
+    const ipAddress = req.headers['x-forwarded-for'] as string || req.ip;
+    const job = await jobManager.createJob(clientSessionId, ipAddress);
     if (!job) {
       await SessionStore.releaseSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
       await SessionStore.deleteSession(clientSessionId);
@@ -419,7 +420,8 @@ fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (reque
     });
   }
   
-  const job = await jobManager.createJob(sessionId);
+  const ipAddress = request.headers['x-forwarded-for'] as string || request.ip;
+  const job = await jobManager.createJob(sessionId, ipAddress);
   if (!job) {
     return reply.code(500).send({ error: 'Failed to create job' });
   }
