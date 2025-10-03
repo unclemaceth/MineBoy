@@ -219,14 +219,42 @@ function Home() {
       console.log('[STOPPED_HANDLER]', reason);
       
       if (reason === 'window_exhausted') {
-        // Counter window exhausted - user must press A to get fresh job
-        console.log('[WINDOW_EXHAUSTED] Counter window exhausted');
+        // Counter window exhausted WITHOUT finding a hash - TIMEOUT PENALTY
+        console.log('[WINDOW_EXHAUSTED] Counter window exhausted - timeout penalty');
         stopMining();
         setMining(false);
         setStatus('idle');
         stopMiningSound();
-        pushLine('⏸️ Counter window exhausted!');
-        pushLine('Press A for fresh mining job');
+        playFailSound();
+        setFoundResult(null);
+        setFound(undefined);
+        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000');
+        setHashRate(0);
+        
+        // Lock this specific cartridge with timeout styling (60s cooldown)
+        if (cartridge) {
+          setLockedCartridge({
+            contract: cartridge.info.contract,
+            tokenId: cartridge.tokenId,
+            ttl: 60,
+            type: 'timeout'
+          });
+        }
+        
+        // Auto-unload cartridge and return to terminal mode
+        clear();
+        setMode('terminal');
+        setShowCartridgeSelect(true);
+        
+        // Show gamified timeout messages
+        pushLine('⏰ MINING TIMEOUT!');
+        pushLine('Failed to find hash in time window');
+        pushLine('Cartridge locked for 60 seconds');
+        pushLine(' ');
+        pushLine('Wait for cooldown to finish');
+        
+        // Reset the dead session state
+        miner.resetSession();
         hapticFeedback();
       } else if (reason === 'manual_stop') {
         // User manually stopped mining
