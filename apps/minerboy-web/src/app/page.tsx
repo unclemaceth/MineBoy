@@ -1109,7 +1109,9 @@ function Home() {
       console.error('[CLAIM] failed', err.status, err.info);
       
       // Check if this is an AFK penalty (job expired before claim)
-      if (err.message === 'Job expired - cannot claim') {
+      // Backend returns "Invalid or expired job" when the job's expiresAt has passed
+      const isExpired = err.info?.error === 'Invalid or expired job' || err.message === 'Job expired - cannot claim';
+      if (isExpired) {
         // AFK Penalty - user found hash but didn't claim in time
         setMode('terminal'); // Force switch to terminal view so they see the message
         setFoundResult(null); // Clear the found hash
