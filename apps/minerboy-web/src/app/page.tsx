@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import dynamic from 'next/dynamic';
 import Stage from "@/components/Stage";
+import HUD from "@/components/HUD";
 import ActionButton from "@/components/ui/ActionButton";
 import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
@@ -38,7 +39,9 @@ import type { MiningJob as Job } from "@/types/mining";
 import RouterV3ABI from '@/abi/RouterV3.json';
 
 const W = 390; // iPhone 13 CSS pixels
-const H = 844; // iPhone 13 CSS pixels
+const H = 924; // iPhone 13 CSS pixels + 80px for HUD
+const HUD_HEIGHT = 80; // HUD height
+const CONTENT_HEIGHT = 844; // Original content area height
 const px = (p: number, total: number) => Math.round(total * p / 100);
 
 // Terminal typewriter component for individual messages
@@ -1466,11 +1469,29 @@ function Home() {
   };
 
   return (
-    <Stage width={390} height={844}>
+    <Stage width={390} height={924}> {/* Extended by 80px for HUD */}
+      {/* HUD at the top */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        zIndex: 50,
+      }}>
+        <HUD
+          pickaxeType={cartridge?.metadata?.type}
+          pickaxeId={cartridge?.tokenId}
+          multiplier={1.0} // TODO: Get from backend/state
+          multiplierSource="BASE" // TODO: Get from backend/state
+          seasonPoints={0} // TODO: Get from leaderboard API
+          width={390}
+        />
+      </div>
+
       {/* Navigation Links */}
       <div style={{
         position: 'absolute',
-        top: 807.5,
+        top: 887.5, // Moved down by 80px
         right: 280,
         zIndex: 100,
         display: 'flex',
@@ -1608,17 +1629,20 @@ function Home() {
       {/* Enhanced Shell Background */}
       <div style={{
         position: "absolute",
-        inset: 0,
+        top: HUD_HEIGHT,
+        left: 0,
+        right: 0,
+        bottom: 0,
         borderRadius: 28,
         overflow: "hidden",
       }}>
-        <EnhancedShell width={W} height={H} />
+        <EnhancedShell width={W} height={CONTENT_HEIGHT} />
       </div>
 
       {/* CRT (square): top 9%, left/right 7% => width 335px */}
       <div style={{
         position: "absolute",
-        top: px(9, H) + 10, // 86px (moved down 10px)
+        top: HUD_HEIGHT + px(9, CONTENT_HEIGHT) + 10, // 86px + HUD offset (moved down 10px)
         left: px(7, W), // 27px
         width: 335, // W * (1 - 0.14) = 335px
         aspectRatio: "1 / 1",

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { MiningJob as Job } from '@/types/mining';
 import type { CartridgeConfig } from '@/lib/api';
+import type { PickaxeMetadata } from '@/lib/alchemy';
 
 // Generate or retrieve stable minerId
 export function getOrCreateMinerId(): string {
@@ -32,7 +33,7 @@ type ClaimState = 'idle' | 'ready' | 'overlay' | 'submitting' | 'success' | 'err
 type SessionState = {
   // Connection state
   wallet?: `0x${string}`;
-  cartridge?: { info: CartridgeConfig; tokenId: string };
+  cartridge?: { info: CartridgeConfig; tokenId: string; metadata?: PickaxeMetadata };
   sessionId?: string;
   job?: Job;
   
