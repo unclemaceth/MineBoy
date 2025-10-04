@@ -7,6 +7,7 @@ export interface PickaxeMetadata {
   goldMined: number;
   videoUrl: string;          // /dripaxe.mp4, /pickhammer.mp4, /bluesteel.mp4
   hashRate: number;          // 8000, 7000, 6000
+  fallbackPng: string;       // /mineboydiamond.png, /mineboypickhammer.png, /mineboysteel.png
 }
 
 export interface OwnedCartridge {
@@ -20,11 +21,12 @@ const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY!;
 const APECHAIN_BASE = `https://apechain-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`;
 console.log('Alchemy base URL:', APECHAIN_BASE);
 
-// Pickaxe type mapping
-const PICKAXE_TYPE_MAP: Record<string, { videoUrl: string; hashRate: number }> = {
-  "The DripAxe": { videoUrl: "/dripaxe.mp4", hashRate: 8000 },
-  "The Morgul PickHammer": { videoUrl: "/pickhammer.mp4", hashRate: 7000 },
-  "Blue Steel": { videoUrl: "/bluesteel.mp4", hashRate: 6000 },
+// Pickaxe type mapping with fallback PNGs
+const PICKAXE_TYPE_MAP: Record<string, { videoUrl: string; hashRate: number; fallbackPng: string }> = {
+  "The DripAxe": { videoUrl: "/dripaxe.mp4", hashRate: 8000, fallbackPng: "/mineboydiamond.png" },
+  "The Morgul PickHammer": { videoUrl: "/pickhammer.mp4", hashRate: 7000, fallbackPng: "/mineboypickhammer.png" },
+  "Blue Steel": { videoUrl: "/bluesteel.mp4", hashRate: 6000, fallbackPng: "/mineboysteel.png" },
+  "The Blue Steel": { videoUrl: "/bluesteel.mp4", hashRate: 6000, fallbackPng: "/mineboysteel.png" }, // Alternative naming
 };
 
 function parsePickaxeMetadata(attributes: any[]): PickaxeMetadata | undefined {
@@ -52,7 +54,7 @@ function parsePickaxeMetadata(attributes: any[]): PickaxeMetadata | undefined {
     return undefined;
   }
 
-  const { videoUrl, hashRate } = PICKAXE_TYPE_MAP[type];
+  const { videoUrl, hashRate, fallbackPng } = PICKAXE_TYPE_MAP[type];
 
   return {
     type,
@@ -61,6 +63,7 @@ function parsePickaxeMetadata(attributes: any[]): PickaxeMetadata | undefined {
     goldMined,
     videoUrl,
     hashRate,
+    fallbackPng,
   };
 }
 

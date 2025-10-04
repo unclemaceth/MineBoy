@@ -3,8 +3,9 @@ import React, { useState, useEffect } from 'react';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 
-// Fallback animation URL for unknown pickaxes
+// Fallback URLs for unknown pickaxes
 const FALLBACK_ANIMATION_URL = '/apebitcart.mp4';
+const FALLBACK_IMAGE_URL = '/apebit-cart-mineboy.png';
 
 interface CartridgeSelectionModalProps {
   isOpen: boolean;
@@ -256,16 +257,16 @@ export default function CartridgeSelectionModal({
                         </div>
                       </div>
                     )}
-                    {/* Always show the PNG image first */}
+                    {/* Always show the PNG image first (type-specific fallback) */}
                     <img
-                      src="/apebit-cart-mineboy.png"
+                      src={c.metadata?.fallbackPng || FALLBACK_IMAGE_URL}
                       alt="Cartridge"
                       style={{
                         width: '100%',
                         height: '100%',
                         objectFit: 'cover'
                       }}
-                      onLoad={() => console.log('PNG image loaded successfully')}
+                      onLoad={() => console.log('PNG image loaded successfully:', c.metadata?.fallbackPng || FALLBACK_IMAGE_URL)}
                       onError={(e) => console.error('PNG image error:', e)}
                     />
                     {/* Video overlay (will hide the image when it loads) */}
