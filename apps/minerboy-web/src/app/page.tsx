@@ -793,8 +793,41 @@ function Home() {
             counterStart: freshJob.counterStart,
             counterEnd: freshJob.counterEnd
           });
-        } catch (error) {
+        } catch (error: any) {
           console.error('[FRESH_JOB_ERROR]', error);
+          
+          // Handle rate limiting with gamified messages
+          if (error.type === 'rate_limit') {
+            stopMining();
+            setMining(false);
+            setStatus('idle');
+            playFailSound();
+            
+            // Auto-switch to terminal
+            setMode('terminal');
+            clear();
+            
+            // Gamified rate limit messages
+            pushLine('⚠️  RATE LIMIT EXCEEDED!');
+            pushLine(' ');
+            pushLine('Too many job requests detected');
+            const waitSec = Math.ceil(error.waitMs / 1000);
+            pushLine(`Cooldown: ${waitSec} seconds`);
+            pushLine(' ');
+            if (error.reason?.includes('wallet')) {
+              pushLine('🚫 Wallet limit: 10 requests/minute');
+            } else if (error.reason?.includes('IP')) {
+              pushLine('🚫 Network limit: 50 requests/minute');
+            }
+            pushLine('Wait for cooldown to finish');
+            pushLine(' ');
+            pushLine('Mining is a marathon, not a sprint!');
+            
+            hapticFeedback();
+            return;
+          }
+          
+          // Generic error handling
           pushLine('Failed to get fresh job');
           pushLine('Re-insert cartridge if issue persists');
           return;
@@ -1115,6 +1148,46 @@ function Home() {
       
     } catch (err: any) {
       console.error('[CLAIM] failed', err.status, err.info);
+      
+      // SECURITY: Check for physics validation failures (too fast/too slow)
+      const errorMsg = err.info?.error || err.message || '';
+      const isTooFast = errorMsg.toLowerCase().includes('too fast');
+      const isTooSlow = errorMsg.toLowerCase().includes('too slow') || errorMsg.toLowerCase().includes('cherry');
+      
+      if (isTooFast || isTooSlow) {
+        // Physics violation detected - auto-switch to terminal
+        setMode('terminal');
+        setFoundResult(null);
+        setFound(undefined);
+        setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000');
+        setStatus('idle');
+        
+        clear();
+        if (isTooFast) {
+          pushLine('🚨 SECURITY ALERT: CLAIM TOO FAST');
+          pushLine(' ');
+          pushLine('Work completed impossibly quickly');
+          pushLine('Possible GPU mining or tampering');
+          pushLine(' ');
+          pushLine('🛡️  Anti-bot protection active');
+          pushLine('Fair play required for all miners');
+        } else {
+          pushLine('🚨 SECURITY ALERT: SUSPICIOUS TIMING');
+          pushLine(' ');
+          pushLine('Work took too long to complete');
+          pushLine('Possible hash cherry-picking detected');
+          pushLine(' ');
+          pushLine('🛡️  Anti-bot protection active');
+          pushLine('Submit work promptly after finding');
+        }
+        pushLine(' ');
+        pushLine('Press A to try again');
+        
+        playFailSound();
+        hapticFeedback();
+        
+        return; // Exit early
+      }
       
       // Check if this is an AFK penalty (job expired before claim)
       // Backend returns "Invalid or expired job" when the job's expiresAt has passed
@@ -2627,6 +2700,31 @@ function Home() {
                   ) : (
                     <div>No active job</div>
                   )}
+                </div>
+              </div>
+
+              {/* ANTI-BOT STATUS */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  🛡️ ANTI-BOT STATUS
+                </div>
+                <div style={{ fontSize: '10px', color: '#6a8d7f', marginBottom: '8px' }}>
+                  Security measures to ensure fair play
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  <div><strong>Physics Validation:</strong> ✅ Active (85% slack)</div>
+                  <div><strong>Rate Limit (Wallet):</strong> 10 jobs/minute</div>
+                  <div><strong>Rate Limit (Network):</strong> 50 jobs/minute</div>
+                  <div><strong>Counter Window:</strong> {job?.counterStart !== undefined && job?.counterEnd !== undefined ? `${(job.counterEnd - job.counterStart).toLocaleString()} hashes` : 'N/A'}</div>
+                  <div><strong>Work Binding:</strong> ✅ wallet+tokenId</div>
+                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #4a7d5f', fontSize: '10px', color: '#ffa500' }}>
+                    ⚠️  Exceeding limits results in cooldown penalties
+                  </div>
                 </div>
               </div>
 

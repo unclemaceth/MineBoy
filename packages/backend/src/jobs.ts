@@ -254,19 +254,27 @@ export class JobManager {
   /**
    * Create a new job for a session
    * STRICT MODE: Includes cadence gating, rate limiting, and counter windows
+   * Returns { job, error } where error contains rate limit details
    */
-  async createJob(sessionId: string, ipAddress?: string): Promise<Job | null> {
+  async createJob(sessionId: string, ipAddress?: string): Promise<{ job: Job | null; error?: { type: 'rate_limit'; reason: string; waitMs: number } }> {
     const session = await SessionStore.getSession(sessionId);
-    if (!session) return null;
+    if (!session) return { job: null };
     
     const cartridge = cartridgeRegistry.getCartridge(session.cartridge.contract);
-    if (!cartridge) return null;
+    if (!cartridge) return { job: null };
     
     // SECURITY: Check rate limits before creating job
     const rateLimitCheck = await this.checkRateLimits(session.wallet, ipAddress);
     if (!rateLimitCheck.allowed) {
       console.log(`[jobs] Rate limit exceeded for ${session.wallet}: ${rateLimitCheck.reason}`);
-      return null;
+      return { 
+        job: null, 
+        error: { 
+          type: 'rate_limit', 
+          reason: rateLimitCheck.reason || 'Rate limit exceeded',
+          waitMs: rateLimitCheck.waitMs || 60000
+        }
+      };
     }
     
     // ANTI-BOT: Build cartridge key for tracking
@@ -285,7 +293,7 @@ export class JobManager {
     
     if (!eligibility.eligible) {
       console.log(`[jobs] Cadence gate: cartridge ${cartridgeKey} must wait ${eligibility.waitMs}ms`);
-      return null; // Frontend should poll /eligibility
+      return { job: null }; // Frontend should poll /eligibility
     }
     
     // Generate nonce and create job with difficulty
@@ -308,7 +316,7 @@ export class JobManager {
     await SessionStore.setJob(sessionId, signedJob);
     
     console.log(`Created job ${job.jobId} for session ${sessionId} (counter [${job.counterStart},${job.counterEnd}), maxHps ${job.maxHps})`);
-    return signedJob;
+    return { job: signedJob };
   }
   
   /**

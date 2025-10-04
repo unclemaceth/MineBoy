@@ -171,8 +171,22 @@ export const api = {
   
   getNextJob(sessionId: string): Promise<MiningJob | null> {
     return jfetch(`/v2/job/next?sessionId=${encodeURIComponent(sessionId)}`, undefined, (j) => {
-      // Backend now returns { job, cadence } structure
-      const response = j as { job: ApiJob | null; cadence?: { eligible: boolean; waitMs: number; message?: string } };
+      // Backend now returns { job, cadence, rateLimit } structure
+      const response = j as { 
+        job: ApiJob | null; 
+        cadence?: { eligible: boolean; waitMs: number; message?: string };
+        rateLimit?: { limited: boolean; reason: string; waitMs: number; message: string };
+      };
+      
+      // If rate limited, throw specific error
+      if (response.rateLimit?.limited) {
+        console.warn('[GET_NEXT_JOB] Rate limit:', response.rateLimit);
+        const err: any = new Error(response.rateLimit.message);
+        err.type = 'rate_limit';
+        err.reason = response.rateLimit.reason;
+        err.waitMs = response.rateLimit.waitMs;
+        throw err;
+      }
       
       // If cadence gate active, backend returns null job
       if (!response.job) {

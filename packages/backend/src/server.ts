@@ -363,13 +363,24 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     await SessionStore.addWalletSession(w, canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId);
 
     // 5) Issue job + policy + TTLs (with IP address for rate limiting)
-    const ipAddress = req.headers['x-forwarded-for'] as string || req.ip;
-    const job = await jobManager.createJob(clientSessionId, ipAddress);
-    if (!job) {
+    const ipAddress = request.headers['x-forwarded-for'] as string || request.ip;
+    const result = await jobManager.createJob(clientSessionId, ipAddress);
+    
+    if (!result.job) {
+      // CRITICAL: Clean up ALL state created before this point
       await SessionStore.releaseSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
       await SessionStore.deleteSession(clientSessionId);
+      await SessionStore.removeWalletSession(w, clientSessionId); // FIX: Remove wallet session tracking
+      
+      // If rate limited, return specific error
+      if (result.error) {
+        return errorResponse(reply, 429, 'rate_limit_exceeded', result.error.reason);
+      }
+      
       return errorResponse(reply, 500, 'internal_error', 'Failed to create job');
     }
+    
+    const job = result.job;
 
     console.log('[OPEN] Session created successfully:', { sessionId: clientSessionId, jobId: job.jobId });
 
@@ -421,12 +432,28 @@ fastify.get<{ Querystring: { sessionId: string } }>('/v2/job/next', async (reque
   }
   
   const ipAddress = request.headers['x-forwarded-for'] as string || request.ip;
-  const job = await jobManager.createJob(sessionId, ipAddress);
-  if (!job) {
+  const result = await jobManager.createJob(sessionId, ipAddress);
+  
+  // Handle rate limiting
+  if (result.error) {
+    console.log(`[GET_NEXT_JOB] Rate limit for ${session.wallet}: ${result.error.reason}`);
+    return reply.send({
+      job: null,
+      rateLimit: {
+        limited: true,
+        reason: result.error.reason,
+        waitMs: result.error.waitMs,
+        message: `Rate limit exceeded - wait ${Math.ceil(result.error.waitMs / 1000)}s`
+      },
+      cadence: { eligible: true, waitMs: 0 }
+    });
+  }
+  
+  if (!result.job) {
     return reply.code(500).send({ error: 'Failed to create job' });
   }
   
-  return reply.send({ job: serializeJob(job), cadence: { eligible: true, waitMs: 0 } });
+  return reply.send({ job: serializeJob(result.job), cadence: { eligible: true, waitMs: 0 } });
 });
 
 // Process claim

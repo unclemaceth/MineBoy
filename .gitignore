@@ -113,3 +113,7 @@ Thumbs.db
 
 # Local development
 .local/
+
+# Security audits (private)
+SECURITY_AUDIT.md
+*_AUDIT.md
