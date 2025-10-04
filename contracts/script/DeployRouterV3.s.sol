@@ -62,6 +62,8 @@ contract DeployRouterV3 is Script {
         backendSigner = vm.envAddress("BACKEND_SIGNER");
         require(backendSigner != address(0), "BACKEND_SIGNER not set");
         
+        vm.startBroadcast();
+        
         // Set admin to deployer
         admin = msg.sender;
         
@@ -74,8 +76,6 @@ contract DeployRouterV3 is Script {
         console.log("MineStrategy Token:", mineStrategyToken);
         console.log("Treasury Wallet:", treasuryWallet);
         console.log("");
-        
-        vm.startBroadcast();
         
         // Deploy V3 Router
         MiningClaimRouterV3 router = new MiningClaimRouterV3(
@@ -108,17 +108,7 @@ contract DeployRouterV3 is Script {
         console.log("");
         console.log("================================================");
         
-        // Save deployment info to file
-        string memory deploymentInfo = string(abi.encodePacked(
-            "MiningClaimRouterV3=", vm.toString(address(router)), "\n",
-            "ApeBitToken=", vm.toString(APEBIT_TOKEN), "\n",
-            "Admin=", vm.toString(admin), "\n",
-            "BackendSigner=", vm.toString(backendSigner), "\n",
-            "Timestamp=", vm.toString(block.timestamp)
-        ));
-        
-        vm.writeFile("deployment-v3.txt", deploymentInfo);
-        console.log("Deployment info saved to: deployment-v3.txt");
+        // Deployment complete!
     }
 }
 

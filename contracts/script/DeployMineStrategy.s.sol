@@ -13,6 +13,8 @@ import "../src/MineStrategyToken.sol";
  */
 contract DeployMineStrategy is Script {
     function run() external {
+        vm.startBroadcast();
+        
         // Admin will be the deployer
         address admin = msg.sender;
         
@@ -23,8 +25,6 @@ contract DeployMineStrategy is Script {
         console.log("Admin:", admin);
         console.log("Max Supply: 1,000,000,000 MNESTR");
         console.log("");
-        
-        vm.startBroadcast();
         
         MineStrategyToken token = new MineStrategyToken(admin);
         
@@ -46,18 +46,6 @@ contract DeployMineStrategy is Script {
         console.log("   cast call", address(token), "\"hasRole(bytes32,address)(bool)\" $(cast keccak \"MINTER_ROLE()\") <ROUTER_ADDRESS> --rpc-url https://rpc.apechain.com");
         console.log("");
         console.log("================================================");
-        
-        // Save deployment info
-        string memory deploymentInfo = string(abi.encodePacked(
-            "MineStrategyToken=", vm.toString(address(token)), "\n",
-            "Symbol=MNESTR\n",
-            "Admin=", vm.toString(admin), "\n",
-            "MaxSupply=1000000000000000000000000000\n",
-            "Timestamp=", vm.toString(block.timestamp)
-        ));
-        
-        vm.writeFile("deployment-mnestr.txt", deploymentInfo);
-        console.log("Deployment info saved to: deployment-mnestr.txt");
     }
 }
 

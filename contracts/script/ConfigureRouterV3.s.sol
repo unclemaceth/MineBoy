@@ -15,7 +15,7 @@ import "../src/MiningClaimRouterV3.sol";
  */
 contract ConfigureRouterV3 is Script {
     // ⚠️ UPDATE THIS WITH YOUR DEPLOYED V3 ROUTER ADDRESS
-    address constant ROUTER_ADDRESS = address(0); // TODO: Set after deployment
+    address constant ROUTER_ADDRESS = 0xf808fC0a027e8F61C24580dda1A43afe3c088354;
     
     // Fee recipients (V3 Flywheel System)
     address constant MERCHANT_WALLET = 0xFB53Da794d3d4d831255e7AB40F4649791331e75; // Gold Cap
@@ -25,7 +25,7 @@ contract ConfigureRouterV3 is Script {
     
     // NFT addresses
     address constant NAPC_CONTRACT = 0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA;
-    address constant PICKAXE_CONTRACT = 0x3322b37349aefd6f50f7909b641f2177c1d34d25;
+    address constant PICKAXE_CONTRACT = 0x3322b37349AeFD6F50F7909B641f2177c1D34D25;
     address constant CARTRIDGE_CONTRACT = 0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d;
     
     function run() external {
@@ -69,7 +69,7 @@ contract ConfigureRouterV3 is Script {
         
         uint256 totalFee = router.getTotalMineFee();
         console.log("");
-        console.log("Total mine fee:", totalFee, "wei (", totalFee / 1 ether, "APE )");
+        console.log("Total mine fee (wei):", totalFee);
         console.log("Expected: 10000000000000000 wei (0.01 APE)");
         console.log("");
         
@@ -126,7 +126,7 @@ contract ConfigureRouterV3 is Script {
         console.log("cast call", ROUTER_ADDRESS, "\"multipliers(uint256)(address,uint256,uint256,bool,string)\" 0 --rpc-url https://rpc.apechain.com");
         console.log("");
         console.log("# Check pickaxes allowed:");
-        console.log("cast call", ROUTER_ADDRESS, "\"allowedCartridge(address)(bool)\"", PICKAXE_CONTRACT, "--rpc-url https://rpc.apechain.com");
+        console.log("cast call", ROUTER_ADDRESS, "allowedCartridge", PICKAXE_CONTRACT);
         console.log("");
         console.log("================================================");
     }
