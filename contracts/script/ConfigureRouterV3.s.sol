@@ -18,10 +18,10 @@ contract ConfigureRouterV3 is Script {
     address constant ROUTER_ADDRESS = address(0); // TODO: Set after deployment
     
     // Fee recipients (V3 Flywheel System)
-    address constant MERCHANT_WALLET = address(0); // TODO: NGT/GoldCap address
-    address constant FLYWHEEL_WALLET = address(0); // TODO: NPC trading bot wallet
-    address constant TEAM_WALLET = 0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5;
-    address constant LP_WALLET = address(0); // TODO: LP management wallet
+    address constant MERCHANT_WALLET = 0xFB53Da794d3d4d831255e7AB40F4649791331e75; // Gold Cap
+    address constant FLYWHEEL_WALLET = 0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4; // NPC trading bot
+    address constant TEAM_WALLET = 0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5; // Team
+    address constant LP_WALLET = 0xB8bb2C7fDE8FfB6fe2B71d401E5DD2612Fc6A043; // LP management
     
     // NFT addresses
     address constant NAPC_CONTRACT = 0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA;
