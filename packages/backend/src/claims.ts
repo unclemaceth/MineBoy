@@ -552,6 +552,214 @@ export class ClaimProcessor {
   }
   
   /**
+   * Process claim with V3 router (multipliers + dynamic fees)
+   */
+  async processClaimV3(claimReq: ClaimReq): Promise<ClaimRes | null> {
+    // Import multiplier module
+    const { calculateMultiplier } = await import('./multipliers.js');
+    
+    // Validate session
+    const session = await SessionStore.getSession(claimReq.sessionId);
+    if (!session) {
+      throw new Error('Session not found');
+    }
+
+    // Validate job
+    const job = jobManager.validateJob(claimReq.sessionId, claimReq.jobId, claimReq.preimage.split(':')[0]);
+    if (!job) {
+      throw new Error('Invalid or expired job');
+    }
+
+    // ANTI-BOT: STRICT validation - job MUST have all required fields
+    if (!job.issuedAtMs || job.counterStart === undefined || job.counterEnd === undefined || !job.maxHps || !job.allowedSuffixes) {
+      throw new Error('Job missing anti-bot fields - client must upgrade');
+    }
+    
+    // SECURITY: Strict preimage sanity checks - must be nonce:counter:wallet:tokenId
+    const parts = claimReq.preimage.split(':');
+    if (parts.length !== 4) {
+      throw new Error('Invalid preimage format - expected nonce:counter:wallet:tokenId');
+    }
+    const [noncePart, counterPart, walletPart, tokenIdPart] = parts;
+    if (!noncePart || counterPart === undefined || !walletPart || !tokenIdPart) {
+      throw new Error('Invalid preimage format - missing parts');
+    }
+    if (job.nonce !== noncePart) {
+      throw new Error('Preimage nonce mismatch');
+    }
+    
+    // SECURITY: Verify wallet matches session wallet
+    if (walletPart.toLowerCase() !== session.wallet.toLowerCase()) {
+      throw new Error('Preimage wallet mismatch - work stealing attempt detected');
+    }
+    
+    // SECURITY: Verify tokenId matches session cartridge
+    if (tokenIdPart !== session.cartridge.tokenId) {
+      throw new Error('Preimage tokenId mismatch - cartridge spoofing detected');
+    }
+    
+    // ANTI-BOT: Validate counter
+    const counter = parseInt(counterPart, 10);
+    if (isNaN(counter) || counter < 0) {
+      throw new Error('Invalid counter in preimage');
+    }
+    if (counter < job.counterStart || counter >= job.counterEnd) {
+      throw new Error(`Counter ${counter} out of assigned range [${job.counterStart}, ${job.counterEnd})`);
+    }
+
+    // ANTI-BOT: Import hashMeetsRule for strict suffix checking
+    const hashMeetsRule = (Mining as any).hashMeetsRule ?? (Mining as any).default?.hashMeetsRule;
+    if (typeof hashMeetsRule !== 'function') {
+      throw new Error('shared/mining is missing hashMeetsRule');
+    }
+
+    // ANTI-BOT: Validate hash using allowedSuffixes (STRICT - no fallback)
+    try {
+      if (!hashMeetsRule(claimReq.hash, job)) {
+        throw new Error('Hash does not match any allowed suffix');
+      }
+    } catch (error) {
+      throw new Error(`Hash validation failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+    }
+
+    // ANTI-BOT: Physics check - time plausibility
+    const now = Date.now();
+    const elapsedMs = now - job.issuedAtMs;
+    
+    // Calculate number of hashes attempted (counter - counterStart)
+    const tries = counter - job.counterStart + 1; // +1 because counter is inclusive
+    
+    // Import minMsForTries
+    const minMsForTries = (Mining as any).minMsForTries ?? (Mining as any).default?.minMsForTries;
+    if (typeof minMsForTries !== 'function') {
+      throw new Error('shared/mining is missing minMsForTries');
+    }
+    
+    // SECURITY: Tightened physics validation (85% slack = max 1.18x speedup allowed)
+    const SLACK_TOLERANCE = 0.85;
+    const minRequired = minMsForTries(tries, job.maxHps, SLACK_TOLERANCE);
+    
+    // SECURITY: Reject claims that are too fast (possible GPU mining)
+    if (elapsedMs < minRequired) {
+      console.warn(`[ANTI-BOT] REJECTED too fast: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms)`);
+      throw new Error(
+        `Claim too fast: ${tries} hashes in ${elapsedMs}ms, ` +
+        `minimum ${minRequired}ms required at ${job.maxHps} H/s (85% slack)`
+      );
+    }
+    
+    // SECURITY: Reject extremely slow claims ONLY if they searched through most of the window
+    const windowSize = job.counterEnd - job.counterStart;
+    const percentSearched = tries / windowSize;
+    
+    if (percentSearched > 0.5) {
+      const maxAllowed = minMsForTries(tries, job.maxHps, 0.20);
+      if (elapsedMs > maxAllowed) {
+        console.warn(`[ANTI-BOT] REJECTED extremely slow: ${tries} hashes (${(percentSearched * 100).toFixed(1)}% of window) in ${elapsedMs}ms (max: ${maxAllowed}ms)`);
+        throw new Error(
+          `Work took too long to complete: ${tries} hashes in ${elapsedMs}ms, ` +
+          `maximum ${maxAllowed}ms expected (work may be stale)`
+        );
+      }
+    }
+    
+    // Calculate timing ratio for statistical tracking
+    const expectedMs = minMsForTries(tries, job.maxHps, 1.0);
+    const timingRatio = elapsedMs / expectedMs;
+    
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, ratio: ${timingRatio.toFixed(2)})`);
+
+    // Validate hash matches preimage
+    if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
+      throw new Error('Hash does not match preimage');
+    }
+
+    // Calculate base reward using tier-based system
+    const baseReward = this.calculateTierReward(claimReq.hash as `0x${string}`);
+    const tierInfo = Rewards.getTierInfo(claimReq.hash as `0x${string}`);
+
+    // Calculate multiplier based on user's NFT holdings
+    console.log(`[V3_CLAIM] Calculating multiplier for ${session.wallet}...`);
+    const multiplierResult = await calculateMultiplier(session.wallet);
+    
+    // Apply multiplier to base reward
+    const { applyMultiplier } = await import('./multipliers.js');
+    const finalReward = applyMultiplier(baseReward, multiplierResult.multiplierBps);
+
+    console.log(`[V3_CLAIM] Base reward: ${ethers.formatEther(baseReward)} ABIT`);
+    console.log(`[V3_CLAIM] Multiplier: ${multiplierResult.multiplier}x (${multiplierResult.multiplierBps} bps)`);
+    console.log(`[V3_CLAIM] Final reward: ${ethers.formatEther(finalReward)} ABIT`);
+
+    // Create claimV3 struct
+    const claimStructV3 = {
+      cartridge: session.cartridge.contract,
+      tokenId: session.cartridge.tokenId,
+      wallet: session.wallet,
+      nonce: ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`,
+      tier: tierInfo.tier,
+      tries: tries,
+      elapsedMs: elapsedMs,
+      hash: claimReq.hash,
+      expiry: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now (in seconds)
+    };
+
+    // Check nonce uniqueness
+    if (this.usedNonces.has(claimStructV3.nonce)) {
+      throw new Error('Nonce already used');
+    }
+
+    // Sign the claimV3 with EIP-712
+    const signature = await this.signClaimV3(claimStructV3);
+
+    // Mark nonce as used
+    this.usedNonces.add(claimStructV3.nonce);
+
+    // Generate next job
+    const nextJob = await jobManager.createNextJob(claimReq.sessionId, claimReq.hash, job);
+
+    // Store claim in database
+    const claimId = randomUUID();
+    await insertPendingClaim({
+      id: claimId,
+      wallet: session.wallet,
+      cartridge_id: parseInt(session.cartridge.tokenId),
+      hash: claimReq.hash,
+      amount_wei: finalReward.toString(), // Store final reward (with multiplier)
+      tx_hash: null,
+      status: 'pending',
+      created_at: Date.now(),
+      confirmed_at: null,
+      pending_expires_at: Date.now() + 15 * 60_000
+    });
+
+    console.log(`Processed claimV3 for ${session.wallet}: ${ethers.formatEther(finalReward)} ABIT (Tier ${tierInfo.tier}: ${tierInfo.name}, ${multiplierResult.multiplier}x multiplier)`);
+    if (nextJob) {
+      console.log(`Issued next job (epoch ${nextJob.epoch}) with nonce ${nextJob.nonce.slice(0, 10)}...`);
+    }
+
+    // Return claimV3 data for client to submit
+    return {
+      success: true,
+      claimId,
+      claim: claimStructV3,
+      signature,
+      nextJob: serializeJob(nextJob),
+      tier: tierInfo.tier,
+      tierName: tierInfo.name,
+      amountLabel: Rewards.createRewardLabel(claimReq.hash as `0x${string}`, finalReward),
+      multiplier: multiplierResult, // Include multiplier info for frontend display
+    } as ClaimRes & { 
+      claimId: string; 
+      claim: any;
+      signature: string;
+      tier: number;
+      tierName: string;
+      amountLabel: string;
+      multiplier: any;
+    };
+  }
+
+  /**
    * Calculate reward using tier-based system
    * Tier 0 (0x0... Hashalicious) = 128 ABIT (best)
    * Tier 15 (0xf... Trash Hash) = 8 ABIT (worst)

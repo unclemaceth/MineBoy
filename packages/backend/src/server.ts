@@ -591,11 +591,11 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim/v2', async (request, reply) => {
       return reply.code(500).send({ error: 'lock_refresh_failed' });
     }
     
-    console.log('[CLAIM_V2_DEBUG] About to call processClaimV2 with:', request.body);
-    const result = await claimProcessor.processClaimV2(request.body);
-    console.log('[CLAIM_V2_DEBUG] processClaimV2 result:', result);
+    console.log('[CLAIM_V3_DEBUG] About to call processClaimV3 with:', request.body);
+    const result = await claimProcessor.processClaimV3(request.body);
+    console.log('[CLAIM_V3_DEBUG] processClaimV3 result:', result);
     if (!result) {
-      return reply.code(400).send({ error: 'Failed to process claimV2' });
+      return reply.code(400).send({ error: 'Failed to process claimV3' });
     }
     
     // Add success headers
