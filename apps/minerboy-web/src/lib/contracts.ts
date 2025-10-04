@@ -21,7 +21,7 @@ export const CONTRACTS: Record<number, { cartridge: `0x${string}` }> = {
 
 // Additional exports for compatibility with existing code
 export const CARTRIDGE_ADDRESSES: Record<number, `0x${string}`> = {
-  33139: '0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d', // ApeChain - new secure contract
+  33139: '0x3322b37349AeFD6F50F7909B641f2177c1D34D25', // ApeChain - Pickaxes (V3)
   33111: '0xb05fa76709b6bd18c63782e9044ff81430f6769c'  // Curtis - actual deployed cartridge address
 };
 export const CARTRIDGE_ADDRESS = '0xb05fa76709b6bd18c63782e9044ff81430f6769c'; // Curtis cartridge address
