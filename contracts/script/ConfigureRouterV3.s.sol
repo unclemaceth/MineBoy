@@ -17,10 +17,11 @@ contract ConfigureRouterV3 is Script {
     // ⚠️ UPDATE THIS WITH YOUR DEPLOYED V3 ROUTER ADDRESS
     address constant ROUTER_ADDRESS = address(0); // TODO: Set after deployment
     
-    // Fee recipients
-    address constant YOUR_WALLET = 0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5;
-    address constant VAULT_ADDRESS = address(0); // TODO: Set vault address
-    address constant GOLDCAP_ADDRESS = address(0); // TODO: Set gold cap address
+    // Fee recipients (V3 Flywheel System)
+    address constant MERCHANT_WALLET = address(0); // TODO: NGT/GoldCap address
+    address constant FLYWHEEL_WALLET = address(0); // TODO: NPC trading bot wallet
+    address constant TEAM_WALLET = 0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5;
+    address constant LP_WALLET = address(0); // TODO: LP management wallet
     
     // NFT addresses
     address constant NAPC_CONTRACT = 0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA;
@@ -41,28 +42,35 @@ contract ConfigureRouterV3 is Script {
         
         vm.startBroadcast();
         
-        // ============= ADD FEE RECIPIENTS =============
-        console.log("Adding fee recipients...");
+        // ============= ADD FEE RECIPIENTS (V3 FLYWHEEL) =============
+        console.log("Adding fee recipients (V3 Flywheel System)...");
         
-        // You: 0.002 APE
-        router.addFeeRecipient(YOUR_WALLET, 0.002 ether);
-        console.log("  [0] Your wallet:", YOUR_WALLET, "- 0.002 APE");
-        
-        // Vault: 0.002 APE (if address is set)
-        if (VAULT_ADDRESS != address(0)) {
-            router.addFeeRecipient(VAULT_ADDRESS, 0.002 ether);
-            console.log("  [1] Vault:", VAULT_ADDRESS, "- 0.002 APE");
+        // Merchant (NGT/GoldCap): 0.0025 APE
+        if (MERCHANT_WALLET != address(0)) {
+            router.addFeeRecipient(MERCHANT_WALLET, 0.0025 ether);
+            console.log("  [0] Merchant:", MERCHANT_WALLET, "- 0.0025 APE");
         }
         
-        // Gold Cap: 0.002 APE (if address is set)
-        if (GOLDCAP_ADDRESS != address(0)) {
-            router.addFeeRecipient(GOLDCAP_ADDRESS, 0.002 ether);
-            console.log("  [2] Gold Cap:", GOLDCAP_ADDRESS, "- 0.002 APE");
+        // Flywheel (NPC trading bot): 0.0050 APE
+        if (FLYWHEEL_WALLET != address(0)) {
+            router.addFeeRecipient(FLYWHEEL_WALLET, 0.0050 ether);
+            console.log("  [1] Flywheel:", FLYWHEEL_WALLET, "- 0.0050 APE");
+        }
+        
+        // Team: 0.0015 APE
+        router.addFeeRecipient(TEAM_WALLET, 0.0015 ether);
+        console.log("  [2] Team:", TEAM_WALLET, "- 0.0015 APE");
+        
+        // LP: 0.0010 APE
+        if (LP_WALLET != address(0)) {
+            router.addFeeRecipient(LP_WALLET, 0.0010 ether);
+            console.log("  [3] LP:", LP_WALLET, "- 0.0010 APE");
         }
         
         uint256 totalFee = router.getTotalMineFee();
         console.log("");
         console.log("Total mine fee:", totalFee, "wei (", totalFee / 1 ether, "APE )");
+        console.log("Expected: 10000000000000000 wei (0.01 APE)");
         console.log("");
         
         // ============= ADD NFT MULTIPLIERS =============

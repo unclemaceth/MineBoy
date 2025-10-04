@@ -1032,13 +1032,13 @@ function Home() {
             expiry: BigInt(claimResponse.claim.expiry)
           };
 
-          const contractConfig = {
-            address: routerAddress as `0x${string}`,
-            abi: RouterV3ABI,
-            functionName: 'claimV3',
-            args: [claimData, to0x(claimResponse.signature)],
-            value: BigInt('6000000000000000'), // 0.006 ETH (0.006 APE) - V3 dynamic fees
-          };
+        const contractConfig = {
+          address: routerAddress as `0x${string}`,
+          abi: RouterV3ABI,
+          functionName: 'claimV3',
+          args: [claimData, to0x(claimResponse.signature)],
+          value: BigInt('10000000000000000'), // 0.01 ETH (0.01 APE) - V3 flywheel fees
+        };
 
 
           // Debug wallet client state

@@ -33,6 +33,7 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
     
     // State variables
     address public immutable rewardToken;
+    address public treasuryWallet; // Receives 10% of mined MNESTR (configurable)
     
     // Fee system: Dynamic multi-recipient fees
     struct FeeRecipient {
@@ -99,6 +100,7 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
     event RewardTableUpdated(uint256[16] table);
     event RewardTierUpdated(uint8 indexed tier, uint256 amount);
     event CartridgeAllowedUpdated(address indexed cartridge, bool allowed);
+    event TreasuryWalletUpdated(address indexed oldTreasury, address indexed newTreasury);
     
     // Structs
     struct ClaimV3 {
@@ -115,18 +117,21 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
     
     /**
      * @dev Constructor sets up EIP-712 domain and initial configuration
-     * @param _rewardToken Address of the ApeBitToken contract
+     * @param _rewardToken Address of the MineStrategy token contract
+     * @param _treasuryWallet Initial treasury wallet (can be updated by admin)
      * @param _signer Address authorized to sign claims
      * @param admin Address that will have DEFAULT_ADMIN_ROLE
      * @param initialRewardTable Initial reward amounts for tiers 0-15
      */
     constructor(
         address _rewardToken,
+        address _treasuryWallet,
         address _signer,
         address admin,
         uint256[16] memory initialRewardTable
     ) EIP712("MiningClaimRouter", "3") {
         rewardToken = _rewardToken;
+        treasuryWallet = _treasuryWallet;
         rewardPerTier = initialRewardTable;
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(SIGNER_ROLE, _signer);
@@ -240,8 +245,16 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
         // Distribute fees
         _distributeFees();
         
-        // Mint reward tokens
-        IApeBitMintable(rewardToken).mint(claimData.wallet, finalReward);
+        // Mint reward tokens with 90/10 split (if treasury is set)
+        if (treasuryWallet != address(0)) {
+            uint256 minerReward = (finalReward * 9000) / 10000; // 90%
+            uint256 treasuryReward = finalReward - minerReward; // 10%
+            IApeBitMintable(rewardToken).mint(claimData.wallet, minerReward);
+            IApeBitMintable(rewardToken).mint(treasuryWallet, treasuryReward);
+        } else {
+            // No treasury set, mint 100% to miner
+            IApeBitMintable(rewardToken).mint(claimData.wallet, finalReward);
+        }
         
         // Emit events
         emit Claimed(
@@ -432,6 +445,16 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
     
     function isSigner(address signer) external view returns (bool) {
         return hasRole(SIGNER_ROLE, signer);
+    }
+    
+    /**
+     * @dev Update treasury wallet (admin only)
+     * @param newTreasury New treasury wallet address (can be address(0) to disable)
+     */
+    function setTreasuryWallet(address newTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        address oldTreasury = treasuryWallet;
+        treasuryWallet = newTreasury;
+        emit TreasuryWalletUpdated(oldTreasury, newTreasury);
     }
     
     function getDomainSeparator() external view returns (bytes32) {

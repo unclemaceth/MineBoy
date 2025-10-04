@@ -16,8 +16,11 @@ import "../src/MiningClaimRouterV3.sol";
  *   - BACKEND_SIGNER: Backend signer public address (has SIGNER_ROLE)
  */
 contract DeployRouterV3 is Script {
-    // Existing contract addresses (reuse ApeBitToken)
-    address constant APEBIT_TOKEN = 0x5f942B20B8aA905B8F6a46Ae226E7F6bF2F44023;
+    // MineStrategy token address (deploy this first!)
+    address mineStrategyToken; // Will be loaded from env: MNESTR_TOKEN_ADDRESS
+    
+    // Treasury wallet (receives 10% dev siphon, optional - can be address(0))
+    address treasuryWallet; // Will be loaded from env: TREASURY_WALLET (or 0x0)
     
     // Admin configuration
     address admin; // Will be set to msg.sender (deployer)
@@ -44,7 +47,18 @@ contract DeployRouterV3 is Script {
     ];
     
     function run() external {
-        // Load backend signer from env
+        // Load required addresses from env
+        mineStrategyToken = vm.envAddress("MNESTR_TOKEN_ADDRESS");
+        require(mineStrategyToken != address(0), "MNESTR_TOKEN_ADDRESS not set");
+        
+        // Treasury is optional (can be address(0) and set later via setTreasuryWallet)
+        try vm.envAddress("TREASURY_WALLET") returns (address _treasury) {
+            treasuryWallet = _treasury;
+        } catch {
+            treasuryWallet = address(0);
+            console.log("WARNING: TREASURY_WALLET not set, using address(0). Set later with setTreasuryWallet()");
+        }
+        
         backendSigner = vm.envAddress("BACKEND_SIGNER");
         require(backendSigner != address(0), "BACKEND_SIGNER not set");
         
@@ -57,14 +71,16 @@ contract DeployRouterV3 is Script {
         console.log("Network: ApeChain Mainnet");
         console.log("Deployer:", admin);
         console.log("Backend Signer:", backendSigner);
-        console.log("ApeBitToken:", APEBIT_TOKEN);
+        console.log("MineStrategy Token:", mineStrategyToken);
+        console.log("Treasury Wallet:", treasuryWallet);
         console.log("");
         
         vm.startBroadcast();
         
         // Deploy V3 Router
         MiningClaimRouterV3 router = new MiningClaimRouterV3(
-            APEBIT_TOKEN,
+            mineStrategyToken,
+            treasuryWallet,
             backendSigner,
             admin,
             initialRewardTable
