@@ -96,9 +96,30 @@ const EIP712_TYPES_V2 = {
   ],
 };
 
+const EIP712_TYPES_V3 = {
+  ClaimV3: [
+    { name: 'cartridge',     type: 'address' },
+    { name: 'tokenId',       type: 'uint256' },
+    { name: 'wallet',        type: 'address' },
+    { name: 'nonce',         type: 'bytes32' },
+    { name: 'tier',          type: 'uint256' },
+    { name: 'tries',         type: 'uint256' },
+    { name: 'elapsedMs',     type: 'uint256' },
+    { name: 'hash',          type: 'bytes32' },
+    { name: 'expiry',        type: 'uint256' },
+  ],
+};
+
 const EIP712_DOMAIN_LOCAL = {
   name: 'MinerBoyClaim',
   version: '1',
+  chainId: Number(process.env.CHAIN_ID),
+  verifyingContract: process.env.ROUTER_ADDRESS as `0x${string}`,
+} as const;
+
+const EIP712_DOMAIN_V3 = {
+  name: 'MiningClaimRouter',
+  version: '3',
   chainId: Number(process.env.CHAIN_ID),
   verifyingContract: process.env.ROUTER_ADDRESS as `0x${string}`,
 } as const;
@@ -657,6 +678,43 @@ export class ClaimProcessor {
     const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V2, claim);
     
     console.log('[CLAIM_SIGN_V2] Signature:', signature);
+    
+    return signature;
+  }
+
+  /**
+   * Sign claimV3 with EIP-712 (V3 - with multipliers and dynamic fees)
+   */
+  private async signClaimV3(claim: {
+    cartridge: string;
+    tokenId: string;
+    wallet: string;
+    nonce: string;
+    tier: number;
+    tries: number;
+    elapsedMs: number;
+    hash: string;
+    expiry: number;
+  }): Promise<string> {
+    const domain = EIP712_DOMAIN_V3;
+    
+    console.log('[CLAIM_SIGN_V3] Domain verifyingContract:', domain.verifyingContract);
+    console.log('[CLAIM_SIGN_V3] Domain chainId:', domain.chainId);
+    console.log('[CLAIM_SIGN_V3] Signer address:', this.signer.address);
+    console.log('[CLAIM_SIGN_V3] Claim cartridge:', claim.cartridge);
+    console.log('[CLAIM_SIGN_V3] Claim tokenId:', claim.tokenId);
+    console.log('[CLAIM_SIGN_V3] Claim wallet:', claim.wallet);
+    console.log('[CLAIM_SIGN_V3] Claim tier:', claim.tier);
+    console.log('[CLAIM_SIGN_V3] Claim tries:', claim.tries);
+    console.log('[CLAIM_SIGN_V3] Claim elapsedMs:', claim.elapsedMs);
+    console.log('[CLAIM_SIGN_V3] Claim hash:', claim.hash);
+    console.log('[CLAIM_SIGN_V3] Claim expiry:', claim.expiry);
+    console.log('[CLAIM_SIGN_V3] Current timestamp:', Math.floor(Date.now() / 1000));
+    console.log('[CLAIM_SIGN_V3] Expiry - now:', claim.expiry - Math.floor(Date.now() / 1000), 'seconds');
+    
+    const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V3, claim);
+    
+    console.log('[CLAIM_SIGN_V3] Signature:', signature);
     
     return signature;
   }
