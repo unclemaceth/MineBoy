@@ -1016,8 +1016,8 @@ function Home() {
           // Submit claim to smart contract
           pushLine('Opening wallet for transaction...');
           
-          // Use the proper MiningClaimRouter contract
-          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
+          // Use the proper MiningClaimRouter contract (V3)
+          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS || '0xf808fC0a027e8F61C24580dda1A43afe3c088354';
           
           // Use the claim data from backend (properly formatted)
           const claimData = {
