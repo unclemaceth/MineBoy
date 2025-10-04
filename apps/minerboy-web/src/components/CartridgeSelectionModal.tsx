@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 
-// Local animation URL for all cartridges
-const CARTRIDGE_ANIMATION_URL = '/apebitcart.mp4';
+// Fallback animation URL for unknown pickaxes
+const FALLBACK_ANIMATION_URL = '/apebitcart.mp4';
 
 interface CartridgeSelectionModalProps {
   isOpen: boolean;
@@ -98,18 +98,18 @@ export default function CartridgeSelectionModal({
           fontFamily: 'Menlo, monospace',
           textAlign: 'center'
         }}>
-          SELECT CARTRIDGE
+          SELECT PICKAXE
         </div>
 
         {!isConnected && (
           <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
-            Connect a wallet to load your cartridges.
+            Connect a wallet to load your pickaxes.
           </div>
         )}
 
         {loading && (
           <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
-            Loading your cartridges...
+            Loading your pickaxes...
           </div>
         )}
 
@@ -121,7 +121,7 @@ export default function CartridgeSelectionModal({
 
         {!loading && !error && isConnected && ownedCartridges.length === 0 && (
           <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
-            No cartridges found in your wallet
+            No pickaxes found in your wallet
             <div style={{ marginTop: 10 }}>
               <button
                 onClick={loadOwnedCartridges}
@@ -270,19 +270,19 @@ export default function CartridgeSelectionModal({
                     />
                     {/* Video overlay (will hide the image when it loads) */}
                     <video
-                      src={CARTRIDGE_ANIMATION_URL}
+                      src={c.metadata?.videoUrl || FALLBACK_ANIMATION_URL}
                       autoPlay
                       loop
                       muted
                       playsInline
-                      onLoadStart={() => console.log('Video loading started:', CARTRIDGE_ANIMATION_URL)}
+                      onLoadStart={() => console.log('Video loading started:', c.metadata?.videoUrl || FALLBACK_ANIMATION_URL)}
                       onCanPlay={() => {
-                        console.log('Video can play:', CARTRIDGE_ANIMATION_URL);
+                        console.log('Video can play:', c.metadata?.videoUrl || FALLBACK_ANIMATION_URL);
                         // Hide the image when video loads
                         const img = document.querySelector('img[alt="Cartridge"]') as HTMLImageElement;
                         if (img) img.style.display = 'none';
                       }}
-                      onError={(e) => console.error('Video error:', e, CARTRIDGE_ANIMATION_URL)}
+                      onError={(e) => console.error('Video error:', e, c.metadata?.videoUrl || FALLBACK_ANIMATION_URL)}
                       style={{
                         width: '100%',
                         height: '100%',
@@ -295,11 +295,16 @@ export default function CartridgeSelectionModal({
                     />
                   </div>
                   
-                  {/* Cartridge Info - Centered underneath */}
+                  {/* Pickaxe Info - Centered underneath */}
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontWeight: 'bold', fontSize: 20, marginBottom: 6 }}>
-                      Cartridge #{decId}
+                      {c.metadata?.type ? c.metadata.type.replace('The ', '').replace('The Morgul ', '') : 'Pickaxe'} #{decId}
                     </div>
+                    {c.metadata?.hashRate && (
+                      <div style={{ fontSize: 16, color: '#64ff8a', marginBottom: 4, fontWeight: 'bold' }}>
+                        {c.metadata.hashRate.toLocaleString()} H/s
+                      </div>
+                    )}
                     <div style={{ fontSize: 14, color: '#4a7d5f' }}>
                       {c.contractAddress.slice(0, 6)}…{c.contractAddress.slice(-4)} • Chain {c.chainId}
                     </div>

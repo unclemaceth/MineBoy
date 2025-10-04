@@ -577,22 +577,27 @@ function Home() {
     
     setShowAlchemyCartridges(false);
     
-    console.log('[ALCHEMY_SELECT] Received cartridge:', ownedCartridge);
+    console.log('[ALCHEMY_SELECT] Received pickaxe:', ownedCartridge);
     console.log('[ALCHEMY_SELECT] tokenId type:', typeof ownedCartridge.tokenId, 'value:', ownedCartridge.tokenId);
     console.log('[ALCHEMY_SELECT] parseInt result:', parseInt(ownedCartridge.tokenId));
+    console.log('[ALCHEMY_SELECT] metadata:', ownedCartridge.metadata);
     
-    // Create a CartridgeConfig from the owned cartridge
+    // Create a CartridgeConfig from the owned pickaxe
+    const pickaxeName = ownedCartridge.metadata?.type 
+      ? ownedCartridge.metadata.type.replace('The ', '').replace('The Morgul ', '')
+      : 'Pickaxe';
+    
     const cartridgeInfo: CartridgeConfig = {
-      name: `Cartridge #${ownedCartridge.tokenId}`,
+      name: `${pickaxeName} #${ownedCartridge.tokenId}`,
       contract: ownedCartridge.contractAddress,
       chainId: ownedCartridge.chainId
     };
     
-    // Use the same flow as the keypad - call handleCartridgeSelect
-    await handleCartridgeSelect(cartridgeInfo, ownedCartridge.tokenId);
+    // Use the same flow as the keypad - call handleCartridgeSelect with metadata
+    await handleCartridgeSelect(cartridgeInfo, ownedCartridge.tokenId, ownedCartridge.metadata);
   };
 
-  const handleCartridgeSelect = async (cartridgeInfo: CartridgeConfig, tokenId: string) => {
+  const handleCartridgeSelect = async (cartridgeInfo: CartridgeConfig, tokenId: string, metadata?: any) => {
     if (!address) return;
     
     setShowCartridgeSelect(false);
@@ -635,7 +640,7 @@ function Home() {
         job: res.job ? normalizeJob(res.job as any) : undefined
       };
       
-      loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId });
+      loadOpenSession(compatibleSession, address, { info: cartridgeInfo, tokenId, metadata });
       pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
       
     } catch (error: any) {

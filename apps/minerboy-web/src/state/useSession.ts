@@ -58,7 +58,7 @@ type SessionState = {
   setMode(mode: 'terminal' | 'visual'): void;
   setJob(job: Job): void;
   
-  loadOpenSession(res: { sessionId: string; job?: Job }, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string }): void;
+  loadOpenSession(res: { sessionId: string; job?: Job }, wallet: `0x${string}`, cartridge: { info: CartridgeConfig; tokenId: string; metadata?: PickaxeMetadata }): void;
   clear(): void;
 };
 
