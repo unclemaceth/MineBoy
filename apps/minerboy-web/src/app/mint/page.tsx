@@ -153,7 +153,7 @@ export default function MintPage() {
           flex: 1,
           textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
         }}>
-          MINT CARTRIDGES
+          PICKAXE MINE CARTS
         </h1>
       </div>
 
@@ -185,182 +185,89 @@ export default function MintPage() {
         )}
       </div>
 
-      {/* Mint Interface */}
+      {/* Sold Out Message */}
       <div style={{
         width: '100%',
         maxWidth: '400px',
-        padding: '20px',
+        padding: '40px 20px',
         background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
         border: '2px solid #4a7d5f',
         borderRadius: '12px',
-        boxShadow: '0 8px 24px rgba(0,0,0,0.6)'
+        boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+        textAlign: 'center'
       }}>
-                 {/* Single Mint Info */}
+                 {/* Sold Out Header */}
                  <div style={{
-                   fontSize: '14px',
+                   fontSize: '32px',
                    fontWeight: 'bold',
-                   marginBottom: '16px',
-                   textAlign: 'center',
-                   color: '#4a7d5f'
+                   marginBottom: '24px',
+                   color: '#ff6b6b',
+                   textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                   letterSpacing: '2px'
                  }}>
-                   SINGLE CARTRIDGE MINT
+                   SOLD OUT
                  </div>
 
-        {/* Price Info */}
+        {/* Description */}
         <div style={{
-          fontSize: '12px',
-          opacity: 0.8,
-          marginBottom: '20px',
-          textAlign: 'center'
+          fontSize: '14px',
+          marginBottom: '24px',
+          lineHeight: '1.6',
+          color: '#c8ffc8',
+          opacity: 0.9
         }}>
-                 MAX PER TX: 1
-          <span style={{ color: '#4a7d5f' }}> • FREE MINT (Backend)</span>
+          All Pickaxe Mine Carts have been minted!
+          <br />
+          <br />
+          Get yours on the secondary market:
         </div>
 
-        {/* Contract State Warnings */}
-        {displayErrorReason && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ff6b6b',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(255, 107, 107, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            border: '1px solid #ff6b6b'
-          }}>
-            ! {displayErrorReason}
-          </div>
-        )}
-
-        {/* ERC20 Approval Warning */}
-        {needsApproval && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ffa500',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(255, 165, 0, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            border: '1px solid #ffa500'
-          }}>
-            ! ERC20 approval required for token payments
-          </div>
-        )}
-
-        {/* ERC20 Payment Info */}
-        {isERC20Payment && (
-          <div style={{
-            fontSize: '12px',
-            color: '#4a7d5f',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(74, 125, 95, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            border: '1px solid #4a7d5f'
-          }}>
-            i This contract uses ERC20 token payments
-          </div>
-        )}
-
-
-
-        {/* Mint Button */}
-        <button
-          disabled={
-            !canMint || 
-            isMinting || 
-            isChecking ||
-            !isReady || 
-            contractLoading ||
-            !!needsApproval ||
-            !!error
-          }
-          onClick={handleMint}
+        {/* Magic Eden Button */}
+        <a
+          href="https://magiceden.io/collections/apechain/npc-picks"
+          target="_blank"
+          rel="noopener noreferrer"
           style={{
+            display: 'inline-block',
             width: '100%',
             padding: '16px',
             borderRadius: '8px',
-            background: canMint && !isMinting && !isChecking && isReady && !error
-              ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)' 
-              : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
+            background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
             color: '#c8ffc8',
             border: '2px solid #8a8a8a',
             fontSize: '16px',
             fontWeight: 'bold',
-            cursor: canMint && !isMinting && !isChecking && isReady && !error ? 'pointer' : 'not-allowed',
-            opacity: canMint && !isMinting && !isChecking && isReady && !error ? 1 : 0.5,
+            cursor: 'pointer',
             boxShadow: '0 4px 8px rgba(0,0,0,0.5)',
-            marginBottom: '16px'
+            textDecoration: 'none',
+            textAlign: 'center',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #1a3d24)';
+            e.currentTarget.style.transform = 'translateY(0)';
           }}
         >
-          {isChecking ? 'CHECKING…' :
-           isMinting ? 'MINTING…' :
-           error ? 'CANNOT MINT' :
-           needsApproval ? 'NEEDS APPROVAL' :
-           displayErrorReason ? 'CANNOT MINT' :
-                     'MINT CARTRIDGE'}
-        </button>
+          BUY ON MAGIC EDEN →
+        </a>
 
-        {/* Transaction Hash */}
-        {hash && (
-          <div style={{
-            fontSize: '12px',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: '4px',
-            textAlign: 'center',
-            wordBreak: 'break-all',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-            maxWidth: '100%'
-          }}>
-            TX: {EXPLORER_BASE ? (
-              <a
-                style={{ color: '#4a7d5f', textDecoration: 'underline' }}
-                href={`${EXPLORER_BASE}/tx/${hash}`}
-                target="_blank"
-              >
-                {hash.slice(0, 8)}…{hash.slice(-6)}
-              </a>
-            ) : (
-              <span style={{ fontFamily: 'monospace' }}>{hash.slice(0, 8)}…{hash.slice(-6)}</span>
-            )}
-          </div>
-        )}
-
-        {/* Token IDs */}
-        {!!mintedTokenIds.length && (
-          <div style={{
-            fontSize: '12px',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: '4px',
-            textAlign: 'center'
-          }}>
-            MINTED: <span style={{ fontFamily: 'monospace' }}>{mintedTokenIds.join(", ")}</span>
-          </div>
-        )}
-
-        {/* Error */}
-        {error && (
-          <div style={{
-            fontSize: '12px',
-            color: '#ff6b6b',
-            marginBottom: '12px',
-            padding: '8px',
-            background: 'rgba(255, 107, 107, 0.1)',
-            borderRadius: '4px',
-            textAlign: 'center'
-          }}>
-            {error}
-          </div>
-        )}
+        {/* Coming Soon Note */}
+        <div style={{
+          fontSize: '12px',
+          marginTop: '24px',
+          padding: '12px',
+          background: 'rgba(74, 125, 95, 0.2)',
+          borderRadius: '8px',
+          border: '1px solid #4a7d5f',
+          color: '#4a7d5f'
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>COMING SOON</div>
+          Basic Pickaxe minting will be available here in the future
+        </div>
 
       </div>
 
@@ -372,7 +279,7 @@ export default function MintPage() {
         textAlign: 'center',
         maxWidth: '400px'
       }}>
-        TIP: Check your wallet&apos;s explorer for ERC-721 transfers to find token IDs
+        TIP: Pickaxe Mine Carts come in 3 types with different mining speeds!
       </div>
         </div>
       </ErrorBoundary>
