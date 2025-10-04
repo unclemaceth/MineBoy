@@ -71,7 +71,7 @@ export default function ClaimOverlayV2() {
     
     try {
       // Submit claim to backend
-      const result = await api.claimV2({
+      const result = await api.claimV3({
         sessionId,
         jobId,
         preimage: lastFound.preimage,

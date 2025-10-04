@@ -70,7 +70,7 @@ export default function ClaimOverlay() {
       pushLine('Creating claim record in DB…');
 
       // 1) Create pending claim + get EIP-712 payload & sig from backend (V2)
-      const createRes = await api.claimV2({
+      const createRes = await api.claimV3({
         sessionId,
         jobId,
         preimage: lastFound.preimage,
@@ -80,7 +80,7 @@ export default function ClaimOverlay() {
         minerId,
       });
 
-      // normalizeClaimRes() already ran in api.claimV2()
+      // normalizeClaimRes() already ran in api.claimV3()
       const packed = createRes?.claim;
       const sig    = createRes?.signature;
       if (!packed || !sig) throw new Error("Backend didn't return claim payload/signature");
