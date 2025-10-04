@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 // Robust interop-safe import
 import * as Mining from '../../shared/src/mining.js';
 import * as Rewards from '../../shared/src/rewards.js';
+import { getPickaxeHashRate } from './pickaxeCache.js';
 
 const getDifficultyForEpoch =
   (Mining as any).getDifficultyForEpoch ??
@@ -129,7 +130,7 @@ export class JobManager {
    * Issue a job with dynamic difficulty based on active miners
    * STRICT MODE: All jobs include required anti-bot fields
    */
-  async issueJob(nonce: string, cartridgeKey: string): Promise<Job> {
+  async issueJob(nonce: string, cartridgeKey: string, pickaxeHashRate: number): Promise<Job> {
     const now = Date.now();
     
     // Get active miners count for dynamic difficulty
@@ -162,8 +163,11 @@ export class JobManager {
     // ANTI-BOT: Use allowed suffixes from difficulty config
     const allowedSuffixes = diff.allowedSuffixes;
     
-    // ANTI-BOT: Get max hashrate from environment
-    const maxHps = parseInt(process.env.MINER_MAX_HPS || '1000000'); // Default: no throttle during testing
+    // SECURITY: Use pickaxe-specific hashrate (server-side source of truth)
+    // This is passed from createJob() after fetching metadata from Alchemy
+    const maxHps = pickaxeHashRate;
+    
+    console.log(`[PICKAXE_HASHRATE] Using ${maxHps} H/s for ${cartridgeKey}`);
     
     // Update counter cursor for next job
     this.counterCursorByKey.set(cartridgeKey, counterEnd);
@@ -296,9 +300,17 @@ export class JobManager {
       return { job: null }; // Frontend should poll /eligibility
     }
     
+    // SECURITY: Fetch pickaxe hashrate from metadata (server-side source of truth)
+    console.log(`[PICKAXE_FETCH] Getting hashrate for ${session.cartridge.contract}:${session.cartridge.tokenId}...`);
+    const pickaxeHashRate = await getPickaxeHashRate(
+      session.cartridge.contract,
+      session.cartridge.tokenId
+    );
+    console.log(`[PICKAXE_FETCH] Hashrate: ${pickaxeHashRate} H/s`);
+    
     // Generate nonce and create job with difficulty
     const nonce = ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`;
-    const job = await this.issueJob(nonce, cartridgeKey);
+    const job = await this.issueJob(nonce, cartridgeKey, pickaxeHashRate);
     
     // Add session-specific fields
     const jobWithSession: InternalJob = {

@@ -20,6 +20,7 @@ import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { useJobTtl } from "@/hooks/useJobTtl";
+import { useNPCBalance } from "@/hooks/useNPCBalance";
 import { api } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
 import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
@@ -145,6 +146,9 @@ function Home() {
   const { open: openWalletModal } = useWalletModal();
   const { writeContract, writeContractAsync, data: hash } = useWriteContract();
   const walletClient = useActiveWalletClient();
+  
+  // Fetch NPC balance for multiplier display
+  const { npcBalance } = useNPCBalance(address);
   
   // Session state
   const { 
@@ -1016,8 +1020,8 @@ function Home() {
           // Submit claim to smart contract
           pushLine('Opening wallet for transaction...');
           
-          // Use the proper MiningClaimRouter contract (V3)
-          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS || '0xf808fC0a027e8F61C24580dda1A43afe3c088354';
+          // Use the proper MiningClaimRouter contract
+          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
           
           // Use the claim data from backend (properly formatted)
           const claimData = {
@@ -1032,13 +1036,13 @@ function Home() {
             expiry: BigInt(claimResponse.claim.expiry)
           };
 
-        const contractConfig = {
-          address: routerAddress as `0x${string}`,
-          abi: RouterV3ABI,
-          functionName: 'claimV3',
-          args: [claimData, to0x(claimResponse.signature)],
-          value: BigInt('10000000000000000'), // 0.01 ETH (0.01 APE) - V3 flywheel fees
-        };
+          const contractConfig = {
+            address: routerAddress as `0x${string}`,
+            abi: RouterV3ABI,
+            functionName: 'claimV3',
+            args: [claimData, to0x(claimResponse.signature)],
+            value: BigInt('6000000000000000'), // 0.006 ETH (0.006 APE) - V3 dynamic fees
+          };
 
 
           // Debug wallet client state
@@ -1486,8 +1490,8 @@ function Home() {
         <HUD
           pickaxeType={cartridge?.metadata?.type}
           pickaxeId={cartridge?.tokenId}
-          multiplier={1.0} // TODO: Get from backend/state
-          multiplierSource="BASE" // TODO: Get from backend/state
+          multiplier={npcBalance >= 1 ? 1.2 : 1.0}
+          multiplierSource={npcBalance >= 1 ? `NAPC (${npcBalance})` : "BASE"}
           seasonPoints={0} // TODO: Get from leaderboard API
           width={390}
         />

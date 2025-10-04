@@ -88,6 +88,53 @@ export async function getNFTBalances(
 }
 
 /**
+ * Get metadata for a specific NFT
+ * @param contractAddress NFT contract address
+ * @param tokenId Token ID
+ * @returns NFT metadata object (including attributes)
+ */
+export async function getNFTMetadata(
+  contractAddress: string,
+  tokenId: number
+): Promise<any> {
+  if (!ALCHEMY_API_KEY) {
+    console.error('[ALCHEMY] Cannot get NFT metadata: ALCHEMY_API_KEY not set');
+    return null;
+  }
+
+  try {
+    const url = `${ALCHEMY_BASE_URL}/${ALCHEMY_API_KEY}/getNFTMetadata`;
+    
+    const params = new URLSearchParams({
+      contractAddress,
+      tokenId: tokenId.toString(),
+      refreshCache: 'false', // Use cached metadata for speed
+    });
+
+    const response = await fetch(`${url}?${params.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error(`[ALCHEMY] Metadata API error: ${response.status} ${response.statusText}`);
+      return null;
+    }
+
+    const data = await response.json();
+    
+    console.log(`[ALCHEMY] Fetched metadata for ${contractAddress}:${tokenId}`);
+
+    return data.metadata || data;
+  } catch (error) {
+    console.error('[ALCHEMY] Error fetching NFT metadata:', error);
+    return null;
+  }
+}
+
+/**
  * Test Alchemy connection
  * @returns True if Alchemy is configured and working
  */
