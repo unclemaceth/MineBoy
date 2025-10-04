@@ -7,12 +7,14 @@ export default function SoundSettings() {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [buttonSoundsEnabled, setButtonSoundsEnabled] = useState(true);
   const [claimSoundsEnabled, setClaimSoundsEnabled] = useState(true);
+  const [failSoundsEnabled, setFailSoundsEnabled] = useState(true);
   const [miningSoundsEnabled, setMiningSoundsEnabled] = useState(true);
   
   useEffect(() => {
     setSoundEnabled(soundManager.isEnabled());
     setButtonSoundsEnabled(soundManager.isButtonSoundsEnabled());
     setClaimSoundsEnabled(soundManager.isClaimSoundsEnabled());
+    setFailSoundsEnabled(soundManager.isFailSoundsEnabled());
     setMiningSoundsEnabled(soundManager.isMiningSoundsEnabled());
   }, []);
   
@@ -43,6 +45,16 @@ export default function SoundSettings() {
     // Play test sound when enabling
     if (enabled && soundEnabled) {
       soundManager.playConfirmSound();
+    }
+  };
+  
+  const handleToggleFailSounds = (enabled: boolean) => {
+    setFailSoundsEnabled(enabled);
+    soundManager.setFailSoundsEnabled(enabled);
+    
+    // Play test sound when enabling
+    if (enabled && soundEnabled) {
+      soundManager.playFailSound();
     }
   };
   
@@ -167,9 +179,26 @@ export default function SoundSettings() {
           color: '#c8ffc8',
           opacity: 0.8
         }}>
-          Claim Sounds
+          Claim Sounds (Success)
         </span>
         <ToggleSwitch enabled={claimSoundsEnabled} onChange={handleToggleClaimSounds} disabled={!soundEnabled} />
+      </div>
+      
+      {/* Fail Sounds */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '12px'
+      }}>
+        <span style={{
+          fontSize: '12px',
+          color: '#c8ffc8',
+          opacity: 0.8
+        }}>
+          Error Sounds (Fail)
+        </span>
+        <ToggleSwitch enabled={failSoundsEnabled} onChange={handleToggleFailSounds} disabled={!soundEnabled} />
       </div>
       
       {/* Mining Sounds */}
@@ -197,7 +226,8 @@ export default function SoundSettings() {
         marginTop: '12px'
       }}>
         • Button sounds play on all interactions<br/>
-        • Claim sounds play when hash found<br/>
+        • Claim sounds play when hash found successfully<br/>
+        • Error sounds play on failures and penalties<br/>
         • Mining sounds loop during active mining<br/>
         • Individual toggles disabled when master sound is off
       </div>

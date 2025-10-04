@@ -6,6 +6,7 @@ export class SoundManager {
   private enabled: boolean = true;
   private buttonSoundsEnabled: boolean = true;
   private claimSoundsEnabled: boolean = true;
+  private failSoundsEnabled: boolean = true;
   private miningSoundsEnabled: boolean = true;
   private audioContext: AudioContext | null = null;
   
@@ -47,6 +48,9 @@ export class SoundManager {
       
       const claimStored = localStorage.getItem('mineboy-claim-sounds-enabled');
       this.claimSoundsEnabled = claimStored ? claimStored === 'true' : true;
+      
+      const failStored = localStorage.getItem('mineboy-fail-sounds-enabled');
+      this.failSoundsEnabled = failStored ? failStored === 'true' : true;
       
       const miningStored = localStorage.getItem('mineboy-mining-sounds-enabled');
       this.miningSoundsEnabled = miningStored ? miningStored === 'true' : true;
@@ -143,6 +147,15 @@ export class SoundManager {
     return this.claimSoundsEnabled;
   }
   
+  public setFailSoundsEnabled(enabled: boolean) {
+    this.failSoundsEnabled = enabled;
+    localStorage.setItem('mineboy-fail-sounds-enabled', enabled.toString());
+  }
+  
+  public isFailSoundsEnabled(): boolean {
+    return this.failSoundsEnabled;
+  }
+  
   public setMiningSoundsEnabled(enabled: boolean) {
     this.miningSoundsEnabled = enabled;
     localStorage.setItem('mineboy-mining-sounds-enabled', enabled.toString());
@@ -205,7 +218,7 @@ export class SoundManager {
   }
   
   public playFailSound() {
-    if (!this.enabled || !this.claimSoundsEnabled) return;
+    if (!this.enabled || !this.failSoundsEnabled) return;
     
     try {
       // Use pre-loaded audio from pool
@@ -250,41 +263,6 @@ export class SoundManager {
     }
   }
   
-  public playHapticFeedback(type: 'light' | 'medium' | 'heavy' = 'light') {
-    if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-      try {
-        // iOS doesn't support vibration patterns (arrays), only single durations
-        // Convert all to simple durations for iOS compatibility
-        let duration: number;
-        switch (type) {
-          case 'light':
-            duration = 10; // Very short pulse
-            break;
-          case 'medium':
-            duration = 20; // Medium pulse
-            break;
-          case 'heavy':
-            duration = 30; // Longer pulse
-            break;
-        }
-        
-        // Detect iOS for debugging
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-        
-        console.log(`[HAPTIC] Attempting ${type} vibration: ${duration}ms (iOS: ${isIOS})`);
-        const result = navigator.vibrate(duration);
-        console.log(`[HAPTIC] Vibration result:`, result);
-        
-        if (!result) {
-          console.warn('[HAPTIC] Vibration API returned false - may be blocked by browser settings');
-        }
-      } catch (error) {
-        console.warn('[HAPTIC] Vibration failed:', error);
-      }
-    } else {
-      console.log('[HAPTIC] Vibration not supported or not in browser context');
-    }
-  }
 }
 
 // Convenience functions
@@ -292,17 +270,14 @@ export const soundManager = SoundManager.getInstance();
 
 export const playButtonSound = () => {
   soundManager.playButtonSound();
-  soundManager.playHapticFeedback('light');
 };
 
 export const playConfirmSound = () => {
   soundManager.playConfirmSound();
-  soundManager.playHapticFeedback('medium');
 };
 
 export const playFailSound = () => {
   soundManager.playFailSound();
-  soundManager.playHapticFeedback('heavy');
 };
 
 export const startMiningSound = () => {

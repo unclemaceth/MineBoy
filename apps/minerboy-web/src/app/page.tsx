@@ -255,7 +255,6 @@ function Home() {
         
         // Reset the dead session state
         miner.resetSession();
-        hapticFeedback();
       } else if (reason === 'manual_stop') {
         // User manually stopped mining
         console.log('[MANUAL_STOP] User stopped mining');
@@ -508,18 +507,9 @@ function Home() {
     };
   }, [mining, sessionId]);
   
-  // Haptic feedback helper
-  const hapticFeedback = () => {
-    try {
-      navigator.vibrate?.(15);
-    } catch {
-      // Ignore vibration errors
-    }
-  };
   
   // Button handlers
   const handleConnect = async () => {
-    hapticFeedback();
     setConnectPressed(true);
     setTimeout(() => setConnectPressed(false), 150);
 
@@ -537,7 +527,6 @@ function Home() {
   };
   
   const handleInsertCartridge = () => {
-    hapticFeedback();
     if (isConnected && !sessionId) {
       setShowCartridgeSelect(true);
     } else if (!isConnected) {
@@ -741,7 +730,6 @@ function Home() {
   
   const handleA = async () => {
     playButtonSound();
-    hapticFeedback();
     
     console.log('A button pressed - Debug info:', {
       isConnected,
@@ -823,7 +811,6 @@ function Home() {
             pushLine(' ');
             pushLine('Mining is a marathon, not a sprint!');
             
-            hapticFeedback();
             return;
           }
           
@@ -1184,7 +1171,6 @@ function Home() {
         pushLine('Press A to try again');
         
         playFailSound();
-        hapticFeedback();
         
         return; // Exit early
       }
@@ -1208,7 +1194,6 @@ function Home() {
         pushLine('Press A to start mining again');
         
         playFailSound(); // Play fail sound for penalty
-        hapticFeedback();
         
         return; // Exit early
       }
@@ -1267,7 +1252,6 @@ function Home() {
 
   const handleB = () => {
     playButtonSound();
-    hapticFeedback();
     
     if (status === 'found' && foundResult) {
       handleClaim(foundResult);
@@ -1283,7 +1267,6 @@ function Home() {
   
   const handleDpad = (direction: string) => {
     playButtonSound();
-    hapticFeedback();
     
     // Handle mode switching with left/right
     if (direction === 'left') {
@@ -1342,7 +1325,6 @@ function Home() {
             miner.stop();
             setMining(false);
             pushLine('Mining stopped');
-            hapticFeedback();
           }
           break;
       }
