@@ -1101,20 +1101,49 @@ function Home() {
           
         } catch (txError: unknown) {
           console.error('[TX_ERROR]', txError);
-          console.error('[TX_ERROR_DETAILS]', {
-            error: txError,
-            message: txError instanceof Error ? txError.message : String(txError),
-            stack: txError instanceof Error ? txError.stack : undefined
-          });
           
-          // Try to extract revert reason if it's a contract error
-          let errorMessage = txError instanceof Error ? txError.message : String(txError);
-          if (errorMessage.includes('execution reverted:')) {
-            const revertReason = errorMessage.split('execution reverted:')[1]?.trim();
-            errorMessage = `Contract reverted: ${revertReason}`;
+          // Parse transaction errors for user-friendly messages
+          const errorMessage = txError instanceof Error ? txError.message : String(txError);
+          
+          // User rejected transaction
+          if (errorMessage.includes('User rejected') || 
+              errorMessage.includes('user rejected') ||
+              errorMessage.includes('User denied') ||
+              errorMessage.includes('rejected the request')) {
+            pushLine('Transaction cancelled');
+            pushLine('You rejected the claim');
+            pushLine(' ');
+            pushLine('Press A to try again');
+            setStatus('idle');
+            return;
           }
           
-          pushLine(`Transaction failed: ${errorMessage}`);
+          // Insufficient funds
+          if (errorMessage.includes('insufficient funds') || errorMessage.includes('InsufficientFunds')) {
+            pushLine('Transaction failed');
+            pushLine('Insufficient APE for gas');
+            pushLine(' ');
+            pushLine('Get more APE and try again');
+            setStatus('error');
+            return;
+          }
+          
+          // Contract revert with reason
+          if (errorMessage.includes('execution reverted:')) {
+            const revertReason = errorMessage.split('execution reverted:')[1]?.split('\n')[0]?.trim();
+            pushLine('Transaction reverted');
+            if (revertReason && revertReason.length < 50) {
+              pushLine(revertReason);
+            }
+            pushLine(' ');
+            pushLine('Contact support if issue persists');
+            setStatus('error');
+            return;
+          }
+          
+          // Generic transaction error
+          pushLine('Transaction failed');
+          pushLine('Check wallet and try again');
           setStatus('error');
         }
       } else {
