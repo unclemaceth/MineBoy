@@ -199,10 +199,7 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
         require(msg.sender == claimData.wallet, "Invalid caller");
         require(allowedCartridge[claimData.cartridge], "Cartridge not allowed");
         require(!nonceUsed[claimData.nonce], "Nonce already used");
-        
-        // Check mine fee
-        uint256 totalFee = getTotalMineFee();
-        require(msg.value >= totalFee, "Insufficient mine fee");
+        require(msg.value >= getTotalMineFee(), "Insufficient mine fee");
         
         // Verify cartridge ownership
         require(
@@ -211,47 +208,37 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
         );
         
         // Verify EIP-712 signature
-        bytes32 structHash = keccak256(abi.encode(
-            CLAIM_V3_TYPEHASH,
-            claimData.cartridge,
-            claimData.tokenId,
-            claimData.wallet,
-            claimData.nonce,
-            claimData.tier,
-            claimData.tries,
-            claimData.elapsedMs,
-            claimData.hash,
-            claimData.expiry
-        ));
-        
-        bytes32 hash = _hashTypedDataV4(structHash);
-        address recoveredSigner = hash.recover(signature);
-        require(hasRole(SIGNER_ROLE, recoveredSigner), "Invalid signature");
+        {
+            bytes32 structHash = keccak256(abi.encode(
+                CLAIM_V3_TYPEHASH,
+                claimData.cartridge,
+                claimData.tokenId,
+                claimData.wallet,
+                claimData.nonce,
+                claimData.tier,
+                claimData.tries,
+                claimData.elapsedMs,
+                claimData.hash,
+                claimData.expiry
+            ));
+            
+            bytes32 hash = _hashTypedDataV4(structHash);
+            require(hasRole(SIGNER_ROLE, hash.recover(signature)), "Invalid signature");
+        }
         
         // Mark nonce as used
         nonceUsed[claimData.nonce] = true;
         
-        // Calculate base reward from tier
+        // Calculate rewards
         require(claimData.tier < 16, "Invalid tier");
         uint256 baseReward = rewardPerTier[claimData.tier];
         require(baseReward > 0, "Tier disabled");
         
-        // Apply multiplier
         uint256 multiplierBps = calculateMultiplier(claimData.wallet);
         uint256 finalReward = (baseReward * multiplierBps) / 10000;
         
-        // Distribute fees to all active recipients (all-or-nothing)
-        uint256 recipientCount = 0;
-        for (uint256 i = 0; i < feeRecipients.length; i++) {
-            if (feeRecipients[i].active) {
-                (bool success, ) = feeRecipients[i].recipient.call{
-                    value: feeRecipients[i].amount,
-                    gas: 50000
-                }("");
-                require(success, "Fee transfer failed");
-                recipientCount++;
-            }
-        }
+        // Distribute fees
+        _distributeFees();
         
         // Mint reward tokens
         IApeBitMintable(rewardToken).mint(claimData.wallet, finalReward);
@@ -276,8 +263,28 @@ contract MiningClaimRouterV3 is AccessControl, EIP712, Pausable {
             baseReward,
             finalReward
         );
+    }
+    
+    /**
+     * @dev Internal function to distribute fees to all active recipients
+     */
+    function _distributeFees() private {
+        uint256 totalFee = 0;
+        uint256 recipientCount = 0;
         
-        emit FeesPaid(claimData.wallet, totalFee, recipientCount);
+        for (uint256 i = 0; i < feeRecipients.length; i++) {
+            if (feeRecipients[i].active) {
+                (bool success, ) = feeRecipients[i].recipient.call{
+                    value: feeRecipients[i].amount,
+                    gas: 50000
+                }("");
+                require(success, "Fee transfer failed");
+                totalFee += feeRecipients[i].amount;
+                recipientCount++;
+            }
+        }
+        
+        emit FeesPaid(msg.sender, totalFee, recipientCount);
     }
     
     // ============= FEE MANAGEMENT =============

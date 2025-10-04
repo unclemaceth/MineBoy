@@ -124,17 +124,18 @@ export const api = {
     }
   },
 
-  async claimV2(body: ClaimReq): Promise<ClaimRes & { tier: number; tierName: string; amountLabel: string }> {
+  async claimV3(body: ClaimReq): Promise<ClaimRes & { tier: number; tierName: string; amountLabel: string; multiplier?: any }> {
     try {
       const { json, headers } = await jfetchEx("/v2/claim/v2", { 
         method: "POST", 
         body: JSON.stringify(body) 
       });
       
-      console.log('[CLAIM_V2_OK]', { 
+      console.log('[CLAIM_V3_OK]', { 
         xInstance: headers['x-instance'], 
         lockOwner: headers['x-lock-owner'],
         tier: json.tier,
+        multiplier: json.multiplier,
         tierName: json.tierName,
         amountLabel: json.amountLabel
       });

@@ -35,6 +35,7 @@ import NavigationModal from '@/components/NavigationModal';
 import StatisticsSection from '@/components/StatisticsSection';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
+import RouterV3ABI from '@/abi/RouterV3.json';
 
 const W = 390; // iPhone 13 CSS pixels
 const H = 844; // iPhone 13 CSS pixels
@@ -934,7 +935,7 @@ function Home() {
       });
       
       // 3) Try claim with reattach + retry on 409
-      const doClaim = () => api.claimV2({
+      const doClaim = () => api.claimV3({
         sessionId,
         jobId,
         preimage: hit.preimage,  // exact string from worker
@@ -1012,42 +1013,23 @@ function Home() {
           
           // Use the claim data from backend (properly formatted)
           const claimData = {
-            wallet: to0x(claimResponse.claim.wallet),
             cartridge: to0x(claimResponse.claim.cartridge),
             tokenId: BigInt(claimResponse.claim.tokenId),
-            rewardToken: to0x(claimResponse.claim.rewardToken),
-            workHash: to0x(claimResponse.claim.workHash),
-            attempts: BigInt(claimResponse.claim.attempts),
+            wallet: to0x(claimResponse.claim.wallet),
             nonce: to0x(claimResponse.claim.nonce),
+            tier: BigInt(claimResponse.claim.tier),
+            tries: BigInt(claimResponse.claim.tries),
+            elapsedMs: BigInt(claimResponse.claim.elapsedMs),
+            hash: to0x(claimResponse.claim.hash),
             expiry: BigInt(claimResponse.claim.expiry)
           };
 
           const contractConfig = {
             address: routerAddress as `0x${string}`,
-            abi: [
-              {
-                name: 'claimV2',
-                type: 'function',
-                stateMutability: 'payable',
-                inputs: [
-                  { name: 'claimData', type: 'tuple', components: [
-                    { name: 'wallet', type: 'address' },
-                    { name: 'cartridge', type: 'address' },
-                    { name: 'tokenId', type: 'uint256' },
-                    { name: 'rewardToken', type: 'address' },
-                    { name: 'workHash', type: 'bytes32' },
-                    { name: 'attempts', type: 'uint64' },
-                    { name: 'nonce', type: 'bytes32' },
-                    { name: 'expiry', type: 'uint64' }
-                  ]},
-                  { name: 'signature', type: 'bytes' }
-                ],
-                outputs: []
-              }
-            ],
-            functionName: 'claimV2',
+            abi: RouterV3ABI,
+            functionName: 'claimV3',
             args: [claimData, to0x(claimResponse.signature)],
-            value: BigInt('1000000000000000'), // 0.001 ETH (0.001 APE)
+            value: BigInt('6000000000000000'), // 0.006 ETH (0.006 APE) - V3 dynamic fees
           };
 
 
@@ -1097,6 +1079,15 @@ function Home() {
           // Note: Transaction confirmation would be handled by wagmi hooks
           setStatus('claimed');
           pushLine('Claim successful!');
+          
+          // Display multiplier if present
+          if (claimResponse.multiplier && claimResponse.multiplier.multiplier > 1.0) {
+            pushLine(' ');
+            pushLine(`🚀 MULTIPLIER BONUS: ${claimResponse.multiplier.multiplier}x`);
+            claimResponse.multiplier.details.forEach((detail: string) => {
+              pushLine(`   ${detail}`);
+            });
+          }
           
           
         } catch (txError: unknown) {
