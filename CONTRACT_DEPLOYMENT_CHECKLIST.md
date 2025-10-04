@@ -1,6 +1,6 @@
-# Contract Deployment Checklist
+# Contract Deployment Checklist - V3 Router
 
-This document outlines **every step** required when redeploying the MineBoy contracts to ensure the system works correctly.
+This document outlines **every step** required when deploying the **MiningClaimRouterV3** with dynamic fees, NFT multipliers, and multi-contract support.
 
 ---
 
@@ -10,6 +10,7 @@ This document outlines **every step** required when redeploying the MineBoy cont
 - [ ] Private key in `.env` file
 - [ ] Foundry installed (`forge`, `cast`)
 - [ ] Access to Vercel (frontend) and Render (backend) dashboards
+- [ ] Alchemy API key for NFT balance checks
 
 ---
 
@@ -96,46 +97,130 @@ Should return: `true`
 
 ---
 
-### 3️⃣ Update Backend Environment Variables (Render)
+### 3️⃣ Configure Router On-Chain
+
+**V3 routers store configuration on-chain, not in env vars!**
+
+#### A. Add Fee Recipients
+
+```bash
+# Example: 0.002 APE to you, 0.002 to vault, 0.002 to gold cap
+cast send <ROUTER_ADDRESS> \
+  "addFeeRecipient(address,uint256)" \
+  0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5 \
+  2000000000000000 \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+
+cast send <ROUTER_ADDRESS> \
+  "addFeeRecipient(address,uint256)" \
+  <VAULT_ADDRESS> \
+  2000000000000000 \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+
+cast send <ROUTER_ADDRESS> \
+  "addFeeRecipient(address,uint256)" \
+  <GOLDCAP_ADDRESS> \
+  2000000000000000 \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+```
+
+**Total mine fee:** 0.006 APE per claim
+
+#### B. Add NFT Multipliers
+
+```bash
+# NAPC: 1+ owned = 1.2x multiplier
+cast send <ROUTER_ADDRESS> \
+  "addMultiplier(address,uint256,uint256,string)" \
+  0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA \
+  1 \
+  12000 \
+  "NAPC" \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+
+# NAPC Whale: 10+ owned = 1.5x multiplier
+cast send <ROUTER_ADDRESS> \
+  "addMultiplier(address,uint256,uint256,string)" \
+  0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA \
+  10 \
+  15000 \
+  "NAPC Whale" \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+```
+
+#### C. Allow Mining NFTs (Cartridges/Pickaxes)
+
+```bash
+# Allow original cartridges
+cast send <ROUTER_ADDRESS> \
+  "setCartridgeAllowed(address,bool)" \
+  0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d \
+  true \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+
+# Allow pickaxes
+cast send <ROUTER_ADDRESS> \
+  "setCartridgeAllowed(address,bool)" \
+  0x3322b37349aefd6f50f7909b641f2177c1d34d25 \
+  true \
+  --private-key <ADMIN_PRIVATE_KEY> \
+  --rpc-url https://rpc.apechain.com
+```
+
+---
+
+### 4️⃣ Update Backend Environment Variables (Render)
 
 Go to **Render Dashboard** → Your Backend Service → **Environment**
 
-Update these 5 variables:
+Update these variables:
 
-| Variable | Value | Example |
-|----------|-------|---------|
-| `ROUTER_ADDRESS` | New router address | `0x9C192037b3EDa88cB4B31Ab1ad2AAD43Df352E43` |
-| `REWARD_TOKEN_ADDRESS` | Token address | `0x5f942B20B8aA905B8F6a46Ae226E7F6bF2F44023` |
-| `ALLOWED_CARTRIDGES` | Cartridge address | `0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d` |
-| `CHAIN_ID` | ApeChain mainnet | `33139` |
-| `RPC_URL` | ApeChain RPC | `https://rpc.apechain.com` |
+| Variable | Value | Example | Notes |
+|----------|-------|---------|-------|
+| `ROUTER_ADDRESS` | New V3 router address | `0x...` | **REQUIRED** |
+| `REWARD_TOKEN_ADDRESS` | ApeBitToken address | `0x5f942B20B8aA905B8F6a46Ae226E7F6bF2F44023` | Keep existing |
+| `ALCHEMY_API_KEY` | Alchemy API key | `3YobnRFCSYEuIC5c1ySEs...` | **NEW - Required for multipliers** |
+| `NAPC_CONTRACT` | NAPC NFT address | `0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA` | **NEW - For balance checks** |
+| `CHAIN_ID` | ApeChain mainnet | `33139` | Keep existing |
+| `RPC_URL` | ApeChain RPC | `https://rpc.apechain.com` | Keep existing |
+
+**REMOVED:**
+- ~~`ALLOWED_CARTRIDGES`~~ - Now managed on-chain via `allowedCartridge` mapping!
 
 **Important Notes:**
-- `SIGNER_PRIVATE_KEY` should remain unchanged (it's your backend signing key)
+- `SIGNER_PRIVATE_KEY` remains unchanged (backend signing key)
 - The public address of `SIGNER_PRIVATE_KEY` must have `SIGNER_ROLE` on the router
-- When deploying router, pass the signer address as the `_signer` parameter
 
 **After updating:** Render will auto-redeploy the backend.
 
 ---
 
-### 4️⃣ Update Frontend Environment Variables (Vercel)
+### 5️⃣ Update Frontend Environment Variables (Vercel)
 
 Go to **Vercel Dashboard** → Your Project → **Settings** → **Environment Variables**
 
-Update these 3 variables:
+Update these variables:
 
-| Variable | Value | Example |
-|----------|-------|---------|
-| `NEXT_PUBLIC_ROUTER_ADDRESS` | New router address | `0x9C192037b3EDa88cB4B31Ab1ad2AAD43Df352E43` |
-| `NEXT_PUBLIC_CARTRIDGE_ADDRESS` | Cartridge address | `0xCA2D7B429248A38b276c8293506f3bE8E1FC2C2d` |
-| `NEXT_PUBLIC_REWARD_TOKEN_ADDRESS` | Token address | `0x5f942B20B8aA905B8F6a46Ae226E7F6bF2F44023` |
+| Variable | Value | Example | Notes |
+|----------|-------|---------|-------|
+| `NEXT_PUBLIC_ROUTER_ADDRESS` | New V3 router address | `0x...` | **REQUIRED** |
+| `NEXT_PUBLIC_PICKAXE_ADDRESS` | Pickaxe NFT address | `0x3322b37349aefd6f50f7909b641f2177c1d34d25` | **NEW - Replaces cartridge** |
+| `NEXT_PUBLIC_REWARD_TOKEN_ADDRESS` | ApeBitToken address | `0x5f942B20B8aA905B8F6a46Ae226E7F6bF2F44023` | Keep existing |
+
+**REMOVED:**
+- ~~`NEXT_PUBLIC_CARTRIDGE_ADDRESS`~~ - Replaced by `NEXT_PUBLIC_PICKAXE_ADDRESS`
 
 **After updating:** Trigger a new deployment or wait for the next git push.
 
 ---
 
-### 5️⃣ Verify Everything Works
+### 6️⃣ Verify Everything Works
 
 #### A. Check Contract Roles
 
@@ -175,14 +260,33 @@ cast call <ROUTER_ADDRESS> \
 
 Should return: `100000000000000000000` (100 ABIT in wei)
 
-#### C. Test a Claim
+#### C. Check Fee Recipients & Multipliers
+
+```bash
+# Check first fee recipient
+cast call <ROUTER_ADDRESS> \
+  "feeRecipients(uint256)(address,uint256,bool)" \
+  0 \
+  --rpc-url https://rpc.apechain.com
+
+# Check first multiplier
+cast call <ROUTER_ADDRESS> \
+  "multipliers(uint256)(address,uint256,uint256,bool,string)" \
+  0 \
+  --rpc-url https://rpc.apechain.com
+```
+
+#### D. Test a Claim
 
 1. Connect wallet to the frontend
-2. Load a cartridge NFT
+2. Load a pickaxe NFT
 3. Mine a hash (press A button)
 4. Claim the reward (press B button)
 5. Check ApeScan for the transaction
-6. Verify ABIT tokens were minted to your wallet
+6. Verify:
+   - ABIT tokens were minted to your wallet (with multiplier if you own NAPC)
+   - Fee was split correctly to all recipients
+   - Total fee deducted from your wallet matches sum of all active fees
 
 ---
 
@@ -299,14 +403,29 @@ Verification:
 
 ---
 
-## 🚨 CRITICAL: Never Do This
+## 🚨 CRITICAL: V3 Migration Notes
 
+### **No Backwards Compatibility**
+- ❌ V3 router does **NOT** support `claimV2`
+- ✅ Only `claimV3` with multipliers and dynamic fees
+- ⚠️ **Frontend and backend must be updated together**
+- ⚠️ **Users must refresh page after deployment**
+
+### **Migration Checklist**
+1. Deploy V3 router
+2. Configure fees/multipliers on-chain
+3. Update backend to use `claimV3` signature format
+4. Update frontend to call `claimV3` on router
+5. Test end-to-end before announcing
+
+### **Never Do This**
 - ❌ **Never** force push to `main` branch
 - ❌ **Never** redeploy all 3 contracts if you only need to update the router
 - ❌ **Never** forget to grant `MINTER_ROLE` after deploying a new router
 - ❌ **Never** forget to update environment variables on Render AND Vercel
 - ❌ **Never** commit private keys to git
 - ❌ **Never** skip the verification steps
+- ❌ **Never** deploy V3 router without updating frontend/backend simultaneously
 
 ---
 
