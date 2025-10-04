@@ -222,21 +222,28 @@ export class ClaimProcessor {
       );
     }
     
-    // SECURITY: Also reject claims that are suspiciously slow (possible cherry-picking)
-    const maxAllowed = minMsForTries(tries, job.maxHps, 0.30); // 30% slower = red flag
-    if (elapsedMs > maxAllowed) {
-      console.warn(`[ANTI-BOT] REJECTED too slow: ${tries} hashes in ${elapsedMs}ms (max: ${maxAllowed}ms) - possible cherry-picking`);
-      throw new Error(
-        `Claim too slow: ${tries} hashes in ${elapsedMs}ms, ` +
-        `maximum ${maxAllowed}ms expected (possible job shopping detected)`
-      );
+    // SECURITY: Reject extremely slow claims ONLY if they searched through most of the window
+    // This prevents cherry-picking full windows, but allows users to wait before claiming lucky finds
+    const windowSize = job.counterEnd - job.counterStart;
+    const percentSearched = tries / windowSize;
+    
+    // Only enforce max-time if user searched >50% of window (prevents cherry-picking entire windows)
+    if (percentSearched > 0.5) {
+      const maxAllowed = minMsForTries(tries, job.maxHps, 0.20); // Allow 5x slower (1/0.2 = 5)
+      if (elapsedMs > maxAllowed) {
+        console.warn(`[ANTI-BOT] REJECTED extremely slow: ${tries} hashes (${(percentSearched * 100).toFixed(1)}% of window) in ${elapsedMs}ms (max: ${maxAllowed}ms)`);
+        throw new Error(
+          `Work took too long to complete: ${tries} hashes in ${elapsedMs}ms, ` +
+          `maximum ${maxAllowed}ms expected (work may be stale)`
+        );
+      }
     }
     
     // Calculate timing ratio for statistical tracking
     const expectedMs = minMsForTries(tries, job.maxHps, 1.0); // Perfect theoretical time
     const timingRatio = elapsedMs / expectedMs;
     
-    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, max: ${maxAllowed}ms, ratio: ${timingRatio.toFixed(2)})`);
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, ratio: ${timingRatio.toFixed(2)})`);
     
     // Validate hash matches preimage (using SHA-256, not keccak256)
     if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
@@ -419,21 +426,28 @@ export class ClaimProcessor {
       );
     }
     
-    // SECURITY: Also reject claims that are suspiciously slow (possible cherry-picking)
-    const maxAllowed = minMsForTries(tries, job.maxHps, 0.30); // 30% slower = red flag
-    if (elapsedMs > maxAllowed) {
-      console.warn(`[ANTI-BOT] REJECTED too slow: ${tries} hashes in ${elapsedMs}ms (max: ${maxAllowed}ms) - possible cherry-picking`);
-      throw new Error(
-        `Claim too slow: ${tries} hashes in ${elapsedMs}ms, ` +
-        `maximum ${maxAllowed}ms expected (possible job shopping detected)`
-      );
+    // SECURITY: Reject extremely slow claims ONLY if they searched through most of the window
+    // This prevents cherry-picking full windows, but allows users to wait before claiming lucky finds
+    const windowSize = job.counterEnd - job.counterStart;
+    const percentSearched = tries / windowSize;
+    
+    // Only enforce max-time if user searched >50% of window (prevents cherry-picking entire windows)
+    if (percentSearched > 0.5) {
+      const maxAllowed = minMsForTries(tries, job.maxHps, 0.20); // Allow 5x slower (1/0.2 = 5)
+      if (elapsedMs > maxAllowed) {
+        console.warn(`[ANTI-BOT] REJECTED extremely slow: ${tries} hashes (${(percentSearched * 100).toFixed(1)}% of window) in ${elapsedMs}ms (max: ${maxAllowed}ms)`);
+        throw new Error(
+          `Work took too long to complete: ${tries} hashes in ${elapsedMs}ms, ` +
+          `maximum ${maxAllowed}ms expected (work may be stale)`
+        );
+      }
     }
     
     // Calculate timing ratio for statistical tracking
     const expectedMs = minMsForTries(tries, job.maxHps, 1.0); // Perfect theoretical time
     const timingRatio = elapsedMs / expectedMs;
     
-    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, max: ${maxAllowed}ms, ratio: ${timingRatio.toFixed(2)})`);
+    console.log(`[ANTI-BOT] Physics check passed: ${tries} hashes in ${elapsedMs}ms (min: ${minRequired}ms, ratio: ${timingRatio.toFixed(2)})`);
 
     // Validate hash matches preimage (using SHA-256, not keccak256)
     if (!this.validatePreimage(claimReq.preimage, claimReq.hash)) {
