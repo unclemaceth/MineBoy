@@ -13,7 +13,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "_teamWallet",
+        "name": "_merchantWallet",
         "type": "address",
         "internalType": "address payable"
       },
@@ -23,17 +23,27 @@
         "internalType": "address payable"
       },
       {
+        "name": "_teamWallet",
+        "type": "address",
+        "internalType": "address payable"
+      },
+      {
         "name": "_lpWallet",
         "type": "address",
         "internalType": "address payable"
       },
       {
-        "name": "_teamBps",
+        "name": "_merchantBps",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
         "name": "_flywheelBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_teamBps",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -194,6 +204,32 @@
   },
   {
     "type": "function",
+    "name": "merchantBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "merchantWallet",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address payable"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "pay",
     "inputs": [
       {
@@ -259,12 +295,17 @@
     "name": "setFeeSplits",
     "inputs": [
       {
-        "name": "_teamBps",
+        "name": "_merchantBps",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
         "name": "_flywheelBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "_teamBps",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -293,6 +334,19 @@
   {
     "type": "function",
     "name": "setLPWallet",
+    "inputs": [
+      {
+        "name": "newWallet",
+        "type": "address",
+        "internalType": "address payable"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setMerchantWallet",
     "inputs": [
       {
         "name": "newWallet",
@@ -379,13 +433,19 @@
     "name": "FeeSplitUpdated",
     "inputs": [
       {
-        "name": "teamBps",
+        "name": "merchantBps",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
       },
       {
         "name": "flywheelBps",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "teamBps",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

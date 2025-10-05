@@ -15,20 +15,22 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
     uint256 public price; // Current price in wei (1 APE = 1 ether)
     
     // Fee recipients and their basis points (100 bps = 1%)
-    address payable public teamWallet;
-    address payable public flywheelWallet;
-    address payable public lpWallet;
+    address payable public merchantWallet;  // NGT/GoldCap
+    address payable public flywheelWallet;  // NPC trading bot
+    address payable public teamWallet;      // Team
+    address payable public lpWallet;        // LP management
     
-    uint256 public teamBps;      // e.g., 5000 = 50%
-    uint256 public flywheelBps;  // e.g., 3000 = 30%
-    uint256 public lpBps;        // e.g., 2000 = 20%
+    uint256 public merchantBps;   // e.g., 2500 = 25%
+    uint256 public flywheelBps;   // e.g., 5000 = 50%
+    uint256 public teamBps;       // e.g., 1500 = 15%
+    uint256 public lpBps;         // e.g., 1000 = 10%
     
     uint256 private constant BPS_DENOMINATOR = 10000;
 
     event Paid(address indexed payer, uint256 amount, bytes32 msgHash);
     event PriceUpdated(uint256 oldPrice, uint256 newPrice);
     event WalletUpdated(string walletType, address oldWallet, address newWallet);
-    event FeeSplitUpdated(uint256 teamBps, uint256 flywheelBps, uint256 lpBps);
+    event FeeSplitUpdated(uint256 merchantBps, uint256 flywheelBps, uint256 teamBps, uint256 lpBps);
 
     error WrongAmount();
     error ForwardFailed();
@@ -38,17 +40,20 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
     constructor(
         address admin,
         uint256 initialPrice,
-        address payable _teamWallet,
+        address payable _merchantWallet,
         address payable _flywheelWallet,
+        address payable _teamWallet,
         address payable _lpWallet,
-        uint256 _teamBps,
+        uint256 _merchantBps,
         uint256 _flywheelBps,
+        uint256 _teamBps,
         uint256 _lpBps
     ) {
-        if (_teamWallet == address(0) || _flywheelWallet == address(0) || _lpWallet == address(0)) {
+        if (_merchantWallet == address(0) || _flywheelWallet == address(0) || 
+            _teamWallet == address(0) || _lpWallet == address(0)) {
             revert InvalidAddress();
         }
-        if (_teamBps + _flywheelBps + _lpBps != BPS_DENOMINATOR) {
+        if (_merchantBps + _flywheelBps + _teamBps + _lpBps != BPS_DENOMINATOR) {
             revert InvalidFeeSplit();
         }
 
@@ -56,11 +61,13 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
         _grantRole(ADMIN_ROLE, admin);
 
         price = initialPrice;
-        teamWallet = _teamWallet;
+        merchantWallet = _merchantWallet;
         flywheelWallet = _flywheelWallet;
+        teamWallet = _teamWallet;
         lpWallet = _lpWallet;
-        teamBps = _teamBps;
+        merchantBps = _merchantBps;
         flywheelBps = _flywheelBps;
+        teamBps = _teamBps;
         lpBps = _lpBps;
     }
 
@@ -72,16 +79,20 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
         if (msg.value != price) revert WrongAmount();
         
         // Calculate splits
-        uint256 teamAmount = (msg.value * teamBps) / BPS_DENOMINATOR;
+        uint256 merchantAmount = (msg.value * merchantBps) / BPS_DENOMINATOR;
         uint256 flywheelAmount = (msg.value * flywheelBps) / BPS_DENOMINATOR;
-        uint256 lpAmount = msg.value - teamAmount - flywheelAmount; // Avoid rounding issues
+        uint256 teamAmount = (msg.value * teamBps) / BPS_DENOMINATOR;
+        uint256 lpAmount = msg.value - merchantAmount - flywheelAmount - teamAmount; // Avoid rounding issues
         
         // Send to recipients
-        (bool teamOk, ) = teamWallet.call{value: teamAmount}("");
-        if (!teamOk) revert ForwardFailed();
+        (bool merchantOk, ) = merchantWallet.call{value: merchantAmount}("");
+        if (!merchantOk) revert ForwardFailed();
         
         (bool flywheelOk, ) = flywheelWallet.call{value: flywheelAmount}("");
         if (!flywheelOk) revert ForwardFailed();
+        
+        (bool teamOk, ) = teamWallet.call{value: teamAmount}("");
+        if (!teamOk) revert ForwardFailed();
         
         (bool lpOk, ) = lpWallet.call{value: lpAmount}("");
         if (!lpOk) revert ForwardFailed();
@@ -97,6 +108,17 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
         uint256 oldPrice = price;
         price = newPrice;
         emit PriceUpdated(oldPrice, newPrice);
+    }
+
+    /**
+     * @notice Update merchant wallet
+     * @param newWallet New merchant wallet address
+     */
+    function setMerchantWallet(address payable newWallet) external onlyRole(ADMIN_ROLE) {
+        if (newWallet == address(0)) revert InvalidAddress();
+        address oldWallet = merchantWallet;
+        merchantWallet = newWallet;
+        emit WalletUpdated("merchant", oldWallet, newWallet);
     }
 
     /**
@@ -134,22 +156,25 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
 
     /**
      * @notice Update fee splits
-     * @param _teamBps Team basis points
+     * @param _merchantBps Merchant basis points
      * @param _flywheelBps Flywheel basis points
+     * @param _teamBps Team basis points
      * @param _lpBps LP basis points
      */
     function setFeeSplits(
-        uint256 _teamBps,
+        uint256 _merchantBps,
         uint256 _flywheelBps,
+        uint256 _teamBps,
         uint256 _lpBps
     ) external onlyRole(ADMIN_ROLE) {
-        if (_teamBps + _flywheelBps + _lpBps != BPS_DENOMINATOR) {
+        if (_merchantBps + _flywheelBps + _teamBps + _lpBps != BPS_DENOMINATOR) {
             revert InvalidFeeSplit();
         }
-        teamBps = _teamBps;
+        merchantBps = _merchantBps;
         flywheelBps = _flywheelBps;
+        teamBps = _teamBps;
         lpBps = _lpBps;
-        emit FeeSplitUpdated(_teamBps, _flywheelBps, _lpBps);
+        emit FeeSplitUpdated(_merchantBps, _flywheelBps, _teamBps, _lpBps);
     }
 
     // Don't accept plain sends; force callers to use pay()

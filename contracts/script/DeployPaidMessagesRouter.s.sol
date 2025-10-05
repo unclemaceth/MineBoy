@@ -11,16 +11,18 @@ contract DeployPaidMessagesRouter is Script {
         address admin = 0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5; // Team wallet is also admin
         uint256 price = 1 ether; // 1 APE
         
-        // Fee recipients (same as MiningClaimRouterV3)
-        address payable teamWallet = payable(0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5);
-        address payable flywheelWallet = payable(0x0B4A0B2F8C59F8E3F8F3F8F3F8F3F8F3F8F3F8F3); // TODO: Set real flywheel wallet
-        address payable lpWallet = payable(0x0C5A0C2F8C59F8E3F8F3F8F3F8F3F8F3F8F3F8F3); // TODO: Set real LP wallet
+        // Fee recipients (matching MiningClaimRouterV3 exactly)
+        address payable merchantWallet = payable(0xFB53Da794d3d4d831255e7AB40F4649791331e75); // Gold Cap (NGT)
+        address payable flywheelWallet = payable(0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4); // NPC trading bot
+        address payable teamWallet = payable(0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5); // Team
+        address payable lpWallet = payable(0xB8bb2C7fDE8FfB6fe2B71d401E5DD2612Fc6A043); // LP management
         
         // Fee splits (basis points, 10000 = 100%)
-        // Example: 50% team, 30% flywheel, 20% LP
-        uint256 teamBps = 5000;
-        uint256 flywheelBps = 3000;
-        uint256 lpBps = 2000;
+        // Same percentages as V3 router: 25% merchant, 50% flywheel, 15% team, 10% LP
+        uint256 merchantBps = 2500;  // 0.25 APE (25%)
+        uint256 flywheelBps = 5000;  // 0.50 APE (50%)
+        uint256 teamBps = 1500;      // 0.15 APE (15%)
+        uint256 lpBps = 1000;        // 0.10 APE (10%)
 
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         
@@ -29,20 +31,25 @@ contract DeployPaidMessagesRouter is Script {
         PaidMessagesRouter router = new PaidMessagesRouter(
             admin,
             price,
-            teamWallet,
+            merchantWallet,
             flywheelWallet,
+            teamWallet,
             lpWallet,
-            teamBps,
+            merchantBps,
             flywheelBps,
+            teamBps,
             lpBps
         );
 
         console2.log("PaidMessagesRouter deployed to:", address(router));
         console2.log("Admin:", admin);
         console2.log("Price:", price);
-        console2.log("Team Wallet:", teamWallet, "(", teamBps, "bps )");
-        console2.log("Flywheel Wallet:", flywheelWallet, "(", flywheelBps, "bps )");
-        console2.log("LP Wallet:", lpWallet, "(", lpBps, "bps )");
+        console2.log("");
+        console2.log("Fee Recipients:");
+        console2.log("  Merchant:", merchantWallet, "(", merchantBps, "bps = 0.25 APE )");
+        console2.log("  Flywheel:", flywheelWallet, "(", flywheelBps, "bps = 0.50 APE )");
+        console2.log("  Team:", teamWallet, "(", teamBps, "bps = 0.15 APE )");
+        console2.log("  LP:", lpWallet, "(", lpBps, "bps = 0.10 APE )");
 
         vm.stopBroadcast();
 
@@ -52,8 +59,8 @@ contract DeployPaidMessagesRouter is Script {
         console2.log("  --watch \\");
         console2.log("  --etherscan-api-key YOUR_APESCAN_KEY \\");
         console2.log("  --verifier-url https://apescan.io/api \\");
-        console2.log("  --constructor-args $(cast abi-encode 'constructor(address,uint256,address,address,address,uint256,uint256,uint256)' %s %s %s %s %s %s %s %s) \\", 
-            admin, price, teamWallet, flywheelWallet, lpWallet, teamBps, flywheelBps, lpBps);
+        console2.log("  --constructor-args $(cast abi-encode 'constructor(address,uint256,address,address,address,address,uint256,uint256,uint256,uint256)' %s %s %s %s %s %s %s %s %s %s) \\", 
+            admin, price, merchantWallet, flywheelWallet, teamWallet, lpWallet, merchantBps, flywheelBps, teamBps, lpBps);
         console2.log("  %s \\", address(router));
         console2.log("  src/PaidMessagesRouter.sol:PaidMessagesRouter");
     }
