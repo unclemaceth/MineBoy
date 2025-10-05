@@ -5,9 +5,14 @@
  */
 
 const ALCHEMY_BASE_URL = 'https://apechain-mainnet.g.alchemy.com/v2';
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY;
 
-if (!ALCHEMY_API_KEY) {
+// Use getter function to ensure env var is always fresh
+function getAlchemyApiKey(): string | undefined {
+  return process.env.ALCHEMY_API_KEY || process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+}
+
+// Warn on startup if not set
+if (!getAlchemyApiKey()) {
   console.warn('[ALCHEMY] Warning: ALCHEMY_API_KEY not set - multipliers will not work');
 }
 
@@ -21,13 +26,14 @@ export async function getNFTBalance(
   walletAddress: string,
   nftContract: string
 ): Promise<number> {
-  if (!ALCHEMY_API_KEY) {
+  const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
     console.error('[ALCHEMY] Cannot check NFT balance: ALCHEMY_API_KEY not set');
     return 0;
   }
 
   try {
-    const url = `${ALCHEMY_BASE_URL}/${ALCHEMY_API_KEY}/getNFTs`;
+    const url = `${ALCHEMY_BASE_URL}/${apiKey}/getNFTs`;
     
     const params = new URLSearchParams({
       owner: walletAddress,
@@ -97,13 +103,14 @@ export async function getNFTMetadata(
   contractAddress: string,
   tokenId: number
 ): Promise<any> {
-  if (!ALCHEMY_API_KEY) {
+  const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
     console.error('[ALCHEMY] Cannot get NFT metadata: ALCHEMY_API_KEY not set');
     return null;
   }
 
   try {
-    const url = `${ALCHEMY_BASE_URL}/${ALCHEMY_API_KEY}/getNFTMetadata`;
+    const url = `${ALCHEMY_BASE_URL}/${apiKey}/getNFTMetadata`;
     
     const params = new URLSearchParams({
       contractAddress,
@@ -139,7 +146,8 @@ export async function getNFTMetadata(
  * @returns True if Alchemy is configured and working
  */
 export async function testAlchemyConnection(): Promise<boolean> {
-  if (!ALCHEMY_API_KEY) {
+  const apiKey = getAlchemyApiKey();
+  if (!apiKey) {
     console.error('[ALCHEMY] Test failed: ALCHEMY_API_KEY not set');
     return false;
   }
