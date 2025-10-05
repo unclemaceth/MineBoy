@@ -361,22 +361,22 @@ function Home() {
   }, [pushLine]);
 
   // Load scrolling messages on mount and refresh every 5 minutes
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const { messages } = await api.getMessages();
-        if (messages && messages.length > 0) {
-          setScrollingMessages(messages);
-        }
-      } catch (err) {
-        console.error('Failed to load messages:', err);
+  const fetchMessages = useCallback(async () => {
+    try {
+      const { messages } = await api.getMessages();
+      if (messages && messages.length > 0) {
+        setScrollingMessages(messages);
       }
-    };
+    } catch (err) {
+      console.error('Failed to load messages:', err);
+    }
+  }, []);
 
+  useEffect(() => {
     fetchMessages();
     const interval = setInterval(fetchMessages, 5 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchMessages]);
   
   // Mine blink effect
   useEffect(() => {
@@ -3201,6 +3201,7 @@ function Home() {
       <PaidMessageModal
         isOpen={showPaidMessageModal}
         onClose={() => setShowPaidMessageModal(false)}
+        onMessageSubmitted={fetchMessages}
       />
     </Stage>
   );

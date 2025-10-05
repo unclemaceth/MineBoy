@@ -11,12 +11,13 @@ import PaidMessagesRouterABI from '@/abi/PaidMessagesRouter.json';
 interface PaidMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onMessageSubmitted?: () => void; // Callback to refresh messages
 }
 
 const ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_PAID_MESSAGES_ROUTER || '') as `0x${string}`;
 const MESSAGE_COST = '1'; // 1 APE
 
-export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalProps) {
+export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }: PaidMessageModalProps) {
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'confirming' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
@@ -47,6 +48,11 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
       
       setStatus('success');
       playConfirmSound();
+      
+      // Trigger message refresh
+      if (onMessageSubmitted) {
+        onMessageSubmitted();
+      }
       
       // Auto-close after 2 seconds
       setTimeout(() => {

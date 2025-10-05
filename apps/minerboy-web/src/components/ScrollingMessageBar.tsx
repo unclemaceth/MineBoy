@@ -14,21 +14,30 @@ export default function ScrollingMessageBar({
   width,
   height = 20,
   speed = 50, // default 50px per second
-  messageGap = 100, // default 100px gap between messages
+  messageGap = 200, // default 200px gap between messages
 }: ScrollingMessageBarProps) {
   const [offset, setOffset] = useState(0);
   const textRef = useRef<HTMLDivElement>(null);
+  const [textWidth, setTextWidth] = useState(0);
 
-  // Join all messages with gaps
-  const fullText = messages.join(' '.repeat(Math.floor(messageGap / 7))); // Approximate character spacing
+  // Measure text width when messages change
+  useEffect(() => {
+    if (textRef.current) {
+      // Get the actual width of the first text block (not including duplicate)
+      const firstChild = textRef.current.firstChild as HTMLElement;
+      if (firstChild) {
+        setTextWidth(firstChild.offsetWidth);
+      }
+    }
+  }, [messages]);
 
   useEffect(() => {
+    if (textWidth === 0) return; // Wait for measurement
+    
     const interval = setInterval(() => {
       setOffset((prev) => {
-        // Get the width of the text element
-        const textWidth = textRef.current?.offsetWidth || 0;
-        
-        // Reset when we've scrolled past the first copy
+        // Reset when we've scrolled the full width of one text block + gap
+        // This creates a seamless loop
         if (prev >= textWidth + messageGap) {
           return 0;
         }
@@ -38,7 +47,7 @@ export default function ScrollingMessageBar({
     }, 1000 / speed); // Update based on speed
 
     return () => clearInterval(interval);
-  }, [speed, messageGap]);
+  }, [speed, messageGap, textWidth]);
 
   return (
     <div
@@ -64,9 +73,26 @@ export default function ScrollingMessageBar({
           willChange: 'transform',
         }}
       >
-        {fullText}
+        {/* First copy with proper gaps between messages */}
+        <span>
+          {messages.map((msg, i) => (
+            <React.Fragment key={`msg-${i}`}>
+              {msg}
+              {i < messages.length - 1 && <span style={{ display: 'inline-block', width: `${messageGap}px` }} />}
+            </React.Fragment>
+          ))}
+        </span>
+        {/* Gap before duplicate */}
+        <span style={{ display: 'inline-block', width: `${messageGap}px` }} />
         {/* Duplicate for seamless loop */}
-        <span style={{ marginLeft: `${messageGap}px` }}>{fullText}</span>
+        <span>
+          {messages.map((msg, i) => (
+            <React.Fragment key={`msg-dup-${i}`}>
+              {msg}
+              {i < messages.length - 1 && <span style={{ display: 'inline-block', width: `${messageGap}px` }} />}
+            </React.Fragment>
+          ))}
+        </span>
       </div>
     </div>
   );
