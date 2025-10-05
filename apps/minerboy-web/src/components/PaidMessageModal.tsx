@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther, keccak256, toBytes } from 'viem';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
+import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
 import { playButtonSound, playConfirmSound, playFailSound } from '@/lib/sounds';
 import PaidMessagesRouterABI from '@/abi/PaidMessagesRouter.json';
 
@@ -19,9 +20,9 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<'idle' | 'sending' | 'confirming' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
-  const { address } = useActiveAccount();
-  
-  const { writeContract, data: txHash, error: txError } = useWriteContract();
+  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const { address, provider } = useActiveAccount();
+  const walletClient = useActiveWalletClient();
   
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -68,7 +69,7 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
     }
   }, [isConfirmed, status, txHash]);
   
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!message.trim()) {
       setErrorMessage('Message cannot be empty');
       playFailSound();
@@ -93,6 +94,12 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
       return;
     }
     
+    if (!walletClient) {
+      setErrorMessage('Wallet client not ready');
+      playFailSound();
+      return;
+    }
+    
     setStatus('sending');
     setErrorMessage('');
     playButtonSound();
@@ -101,8 +108,10 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
       // Calculate message hash (same as backend will verify)
       const msgHash = keccak256(toBytes(message.trim()));
       
-      // Call router contract's pay() function
-      writeContract({
+      console.log('[PAID_MESSAGE] Sending transaction...', { provider, address });
+      
+      // Call router contract's pay() function using walletClient (works with both Glyph and WC)
+      const hash = await walletClient.writeContract({
         address: ROUTER_ADDRESS,
         abi: PaidMessagesRouterABI,
         functionName: 'pay',
@@ -110,11 +119,12 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
         value: parseEther(MESSAGE_COST),
       });
       
-      // Status will be updated to 'confirming' once txHash is available
+      console.log('[PAID_MESSAGE] Transaction sent:', hash);
+      setTxHash(hash);
       setStatus('confirming');
       
     } catch (error: any) {
-      console.error('Transaction failed:', error);
+      console.error('[PAID_MESSAGE] Transaction failed:', error);
       setStatus('error');
       setErrorMessage(error.message || 'Transaction failed');
       playFailSound();

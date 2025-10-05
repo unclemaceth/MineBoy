@@ -1413,6 +1413,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
       }
       
       // Verify transaction on-chain via router contract
+      let verifyResult;
       try {
         verifyResult = await verifyOnChain(txHash as `0x${string}`, wallet, validation.cleaned);
       } catch (e: any) {
