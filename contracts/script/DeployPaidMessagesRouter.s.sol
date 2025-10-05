@@ -46,22 +46,29 @@ contract DeployPaidMessagesRouter is Script {
         console2.log("Price:", price);
         console2.log("");
         console2.log("Fee Recipients:");
-        console2.log("  Merchant:", merchantWallet, "(", merchantBps, "bps = 0.25 APE )");
-        console2.log("  Flywheel:", flywheelWallet, "(", flywheelBps, "bps = 0.50 APE )");
-        console2.log("  Team:", teamWallet, "(", teamBps, "bps = 0.15 APE )");
-        console2.log("  LP:", lpWallet, "(", lpBps, "bps = 0.10 APE )");
+        console2.log("  Merchant:", merchantWallet);
+        console2.log("    Amount: 0.25 APE (2500 bps)");
+        console2.log("  Flywheel:", flywheelWallet);
+        console2.log("    Amount: 0.50 APE (5000 bps)");
+        console2.log("  Team:", teamWallet);
+        console2.log("    Amount: 0.15 APE (1500 bps)");
+        console2.log("  LP:", lpWallet);
+        console2.log("    Amount: 0.10 APE (1000 bps)");
 
         vm.stopBroadcast();
 
-        // Verification command
-        console2.log("\nTo verify on ApeScan:");
-        console2.log("forge verify-contract --chain-id 33139 \\");
-        console2.log("  --watch \\");
-        console2.log("  --etherscan-api-key YOUR_APESCAN_KEY \\");
-        console2.log("  --verifier-url https://apescan.io/api \\");
-        console2.log("  --constructor-args $(cast abi-encode 'constructor(address,uint256,address,address,address,address,uint256,uint256,uint256,uint256)' %s %s %s %s %s %s %s %s %s %s) \\", 
-            admin, price, merchantWallet, flywheelWallet, teamWallet, lpWallet, merchantBps, flywheelBps, teamBps, lpBps);
-        console2.log("  %s \\", address(router));
-        console2.log("  src/PaidMessagesRouter.sol:PaidMessagesRouter");
+        // Verification info
+        console2.log("");
+        console2.log("To verify, use the constructor args:");
+        console2.log("admin:", admin);
+        console2.log("price:", price);
+        console2.log("merchantWallet:", merchantWallet);
+        console2.log("flywheelWallet:", flywheelWallet);
+        console2.log("teamWallet:", teamWallet);
+        console2.log("lpWallet:", lpWallet);
+        console2.log("merchantBps:", merchantBps);
+        console2.log("flywheelBps:", flywheelBps);
+        console2.log("teamBps:", teamBps);
+        console2.log("lpBps:", lpBps);
     }
 }
