@@ -1395,96 +1395,48 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
       
       // Validate message content
       const validation = validateMessage(message);
-      if (!validation.valid) {
+      if (!validation.ok) {
         return res.status(400).send({ 
           code: 'invalid_message', 
-          message: validation.error 
+          message: validation.reason 
         });
       }
       
-      // Check if transaction hash already used
-      if (isPaidMessageTxUsed(txHash)) {
-        return res.status(409).send({ 
-          code: 'tx_already_used', 
-          message: 'This transaction has already been used for a message' 
-        });
-      }
-      
-      // Verify transaction on-chain
-      const ethers = await import('ethers');
-      const provider = new ethers.JsonRpcProvider(config.RPC_URL);
-      
-      let tx;
+      // Rate limit per wallet
       try {
-        tx = await provider.getTransaction(txHash);
-      } catch (error) {
-        return res.status(400).send({ 
-          code: 'tx_not_found', 
-          message: 'Transaction not found on chain' 
+        walletRateLimit(wallet);
+      } catch (e: any) {
+        return res.status(429).send({
+          code: 'rate_limit',
+          message: e.message
         });
       }
       
-      if (!tx) {
-        return res.status(400).send({ 
-          code: 'tx_not_found', 
-          message: 'Transaction not found' 
-        });
-      }
-      
-      // Verify transaction is from the claimed wallet
-      if (tx.from.toLowerCase() !== wallet.toLowerCase()) {
-        return res.status(400).send({ 
-          code: 'wallet_mismatch', 
-          message: 'Transaction sender does not match provided wallet' 
-        });
-      }
-      
-      // Verify transaction is to the team wallet
-      const TEAM_WALLET = '0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5';
-      if (tx.to?.toLowerCase() !== TEAM_WALLET.toLowerCase()) {
-        return res.status(400).send({ 
-          code: 'invalid_recipient', 
-          message: 'Transaction must be sent to team wallet' 
-        });
-      }
-      
-      // Verify amount is exactly 1 APE
-      const ONE_APE = ethers.parseEther('1');
-      if (tx.value !== ONE_APE) {
-        return res.status(400).send({ 
-          code: 'invalid_amount', 
-          message: 'Payment must be exactly 1 APE' 
-        });
-      }
-      
-      // Wait for transaction confirmation (at least 1 block)
-      const receipt = await provider.getTransactionReceipt(txHash);
-      if (!receipt) {
-        return res.status(400).send({ 
-          code: 'tx_not_confirmed', 
-          message: 'Transaction not yet confirmed' 
-        });
-      }
-      
-      if (receipt.status !== 1) {
-        return res.status(400).send({ 
-          code: 'tx_failed', 
-          message: 'Transaction failed on chain' 
+      // Verify transaction on-chain via router contract
+      try {
+        verifyResult = await verifyOnChain(txHash as `0x${string}`, wallet, validation.cleaned);
+      } catch (e: any) {
+        console.error('[PAID_MESSAGE] Verification failed:', e);
+        return res.status(400).send({
+          code: 'verification_failed',
+          message: e.message || 'Transaction verification failed'
         });
       }
       
       // All checks passed - add the paid message
-      const { randomUUID } = await import('crypto');
-      const messageId = `msg_${randomUUID()}`;
+      const result = addPaidMessage({
+        wallet,
+        message: validation.cleaned,
+        txHash: txHash as `0x${string}`,
+        amountWei: verifyResult.amountWei
+      });
       
-      addPaidMessage(messageId, wallet, message, txHash, ONE_APE.toString());
-      
-      console.log(`[PAID_MESSAGE] Added message from ${wallet}: "${message}" (tx: ${txHash})`);
+      console.log(`[PAID_MESSAGE] Added message from ${wallet}: "${validation.cleaned}" (tx: ${txHash})`);
       
       return res.send({ 
         ok: true, 
-        messageId,
-        expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour from now
+        messageId: result.id,
+        expiresAt: result.expiresAt
       });
       
     } catch (error: any) {

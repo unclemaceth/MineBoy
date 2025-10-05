@@ -1,12 +1,15 @@
-// Production-ready paid messages module with on-chain verification
-import { createPublicClient, http, isAddress, parseEther, type Hash, defineChain } from 'viem';
+// Production-ready paid messages module with on-chain verification via router contract
+import { createPublicClient, http, isAddress, parseEther, type Hash, defineChain, decodeEventLog, parseAbiItem, keccak256, toBytes } from 'viem';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 
 const HOUR_MS = 60 * 60 * 1000;
 const ONE_APE_WEI = parseEther('1');
-const TEAM_WALLET = '0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5'.toLowerCase();
+const ROUTER_ADDRESS = (process.env.PAID_MESSAGES_ROUTER || '').toLowerCase();
 const RPC_URL = process.env.ALCHEMY_RPC_URL || 'https://apechain-mainnet.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs';
+
+// Event signature for router's Paid event
+const PAID_EVENT = parseAbiItem('event Paid(address indexed payer, uint256 amount, bytes32 msgHash)');
 
 // Define ApeChain
 const apechain = defineChain({
@@ -145,45 +148,65 @@ export function validateMessage(raw: string): { ok: true; cleaned: string } | { 
 }
 
 /**
- * Verify transaction on-chain
+ * Verify transaction on-chain via router contract event
  */
-export async function verifyOnChain(txHash: Hash, claimedFrom: string) {
-  // Fetch transaction and receipt
-  const [tx, receipt] = await Promise.all([
-    client.getTransaction({ hash: txHash }),
-    client.getTransactionReceipt({ hash: txHash }),
-  ]);
+export async function verifyOnChain(txHash: Hash, claimedFrom: string, messageText: string) {
+  if (!ROUTER_ADDRESS) {
+    throw new Error('PAID_MESSAGES_ROUTER not configured');
+  }
 
-  // Basic checks
+  // 1) fetch receipt
+  const receipt = await client.getTransactionReceipt({ hash: txHash });
+
+  // 2) basic checks
   if (!receipt || receipt.status !== 'success') {
     throw new Error('Transaction not confirmed');
   }
-  
   if (!isAddress(claimedFrom)) {
     throw new Error('Invalid wallet address');
   }
 
-  const from = tx.from.toLowerCase();
-  const to = (tx.to || '').toLowerCase();
+  // 3) find the Paid event from our router
+  const log = receipt.logs.find(l => l.address.toLowerCase() === ROUTER_ADDRESS);
+  if (!log) {
+    throw new Error('Router event not found - did you call the PaidMessagesRouter contract?');
+  }
 
-  if (from !== claimedFrom.toLowerCase()) {
+  // 4) decode the event
+  let decoded;
+  try {
+    decoded = decodeEventLog({
+      abi: [PAID_EVENT],
+      data: log.data,
+      topics: log.topics,
+    });
+  } catch (e) {
+    throw new Error('Failed to decode Paid event');
+  }
+
+  const { payer, amount, msgHash } = decoded.args as { payer: string; amount: bigint; msgHash: string };
+
+  // 5) verify payer matches claimed sender
+  if (payer.toLowerCase() !== claimedFrom.toLowerCase()) {
     throw new Error('Transaction sender mismatch');
   }
-  
-  if (to !== TEAM_WALLET) {
-    throw new Error('Payment did not go to team wallet');
-  }
 
-  // Exact amount check: must be 1 APE
-  if (tx.value !== ONE_APE_WEI) {
+  // 6) verify amount is exactly 1 APE
+  if (amount !== ONE_APE_WEI) {
     throw new Error('Payment must be exactly 1 APE');
   }
 
+  // 7) verify msgHash matches the message
+  const expectedHash = keccak256(toBytes(messageText));
+  if (msgHash.toLowerCase() !== expectedHash.toLowerCase()) {
+    throw new Error('Message hash mismatch');
+  }
+
   return {
-    from,
-    to,
-    amountWei: tx.value.toString(),
+    from: payer.toLowerCase(),
+    amountWei: amount.toString(),
     blockNumber: receipt.blockNumber,
+    msgHash,
   };
 }
 

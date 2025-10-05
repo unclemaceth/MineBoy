@@ -1,17 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
-import { parseEther } from 'viem';
+import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { parseEther, keccak256, toBytes } from 'viem';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { playButtonSound, playConfirmSound, playFailSound } from '@/lib/sounds';
+import PaidMessagesRouterABI from '@/abi/PaidMessagesRouter.json';
 
 interface PaidMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const TEAM_WALLET = '0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5' as `0x${string}`;
+const ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_PAID_MESSAGES_ROUTER || '') as `0x${string}`;
 const MESSAGE_COST = '1'; // 1 APE
 
 export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalProps) {
@@ -20,7 +21,7 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
   const [errorMessage, setErrorMessage] = useState('');
   const { address } = useActiveAccount();
   
-  const { sendTransaction, data: txHash } = useSendTransaction();
+  const { writeContract, data: txHash, error: txError } = useWriteContract();
   
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
@@ -86,14 +87,26 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
       return;
     }
     
+    if (!ROUTER_ADDRESS) {
+      setErrorMessage('Router contract not configured');
+      playFailSound();
+      return;
+    }
+    
     setStatus('sending');
     setErrorMessage('');
     playButtonSound();
     
     try {
-      // This will trigger the wallet popup
-      sendTransaction({
-        to: TEAM_WALLET,
+      // Calculate message hash (same as backend will verify)
+      const msgHash = keccak256(toBytes(message.trim()));
+      
+      // Call router contract's pay() function
+      writeContract({
+        address: ROUTER_ADDRESS,
+        abi: PaidMessagesRouterABI,
+        functionName: 'pay',
+        args: [msgHash],
         value: parseEther(MESSAGE_COST),
       });
       
