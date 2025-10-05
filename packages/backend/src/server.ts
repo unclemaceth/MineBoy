@@ -41,6 +41,16 @@ import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
 import { messageStore } from './messages.js';
+import { 
+  initPaidMessagesTable, 
+  addPaidMessage, 
+  getActivePaidMessages,
+  isPaidMessageTxUsed,
+  removePaidMessage,
+  expireOldMessages,
+  validateMessage,
+  getPaidMessageStats
+} from './paidMessages.js';
 
 // ---- Job serialization helpers ----
 type ApiJob = {
@@ -1020,6 +1030,9 @@ const start = async () => {
     // Initialize database
     await initDb(process.env.DATABASE_URL);
     
+    // Initialize paid messages table
+    initPaidMessagesTable();
+    
     // Start receipt poller after database is initialized
     stopPoller = startReceiptPoller(process.env.RPC_URL!);
     
@@ -1287,9 +1300,18 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 
 // ---- Message Management Routes ----
 
-// Get all messages (public)
+// Get all messages (public) - combines admin and paid messages
 fastify.get('/v2/messages', async (req, res) => {
-  return res.send({ messages: messageStore.getMessages() });
+  const adminMessages = messageStore.getMessages();
+  const paidMessages = getActivePaidMessages();
+  
+  // Format paid messages with prefix
+  const formattedPaidMessages = paidMessages.map(m => `💎 PAID: ${m.message}`);
+  
+  // Combine: admin messages first, then paid messages
+  const allMessages = [...adminMessages, ...formattedPaidMessages];
+  
+  return res.send({ messages: allMessages });
 });
 
 // Get all messages with metadata (admin only)
@@ -1351,6 +1373,171 @@ fastify.delete('/v2/admin/messages', async (req, res) => {
   messageStore.clearAll();
   return res.send({ ok: true });
 });
+
+// ---- Paid Message Routes ----
+
+// Submit a paid message (public, requires payment verification)
+fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
+  '/v2/messages/paid',
+  async (req, res) => {
+    try {
+      const { message, txHash, wallet } = req.body;
+      
+      if (!message || !txHash || !wallet) {
+        return res.status(400).send({ 
+          code: 'bad_request', 
+          message: 'Missing message, txHash, or wallet' 
+        });
+      }
+      
+      // Validate message content
+      const validation = validateMessage(message);
+      if (!validation.valid) {
+        return res.status(400).send({ 
+          code: 'invalid_message', 
+          message: validation.error 
+        });
+      }
+      
+      // Check if transaction hash already used
+      if (isPaidMessageTxUsed(txHash)) {
+        return res.status(409).send({ 
+          code: 'tx_already_used', 
+          message: 'This transaction has already been used for a message' 
+        });
+      }
+      
+      // Verify transaction on-chain
+      const ethers = await import('ethers');
+      const provider = new ethers.JsonRpcProvider(config.RPC_URL);
+      
+      let tx;
+      try {
+        tx = await provider.getTransaction(txHash);
+      } catch (error) {
+        return res.status(400).send({ 
+          code: 'tx_not_found', 
+          message: 'Transaction not found on chain' 
+        });
+      }
+      
+      if (!tx) {
+        return res.status(400).send({ 
+          code: 'tx_not_found', 
+          message: 'Transaction not found' 
+        });
+      }
+      
+      // Verify transaction is from the claimed wallet
+      if (tx.from.toLowerCase() !== wallet.toLowerCase()) {
+        return res.status(400).send({ 
+          code: 'wallet_mismatch', 
+          message: 'Transaction sender does not match provided wallet' 
+        });
+      }
+      
+      // Verify transaction is to the team wallet
+      const TEAM_WALLET = '0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5';
+      if (tx.to?.toLowerCase() !== TEAM_WALLET.toLowerCase()) {
+        return res.status(400).send({ 
+          code: 'invalid_recipient', 
+          message: 'Transaction must be sent to team wallet' 
+        });
+      }
+      
+      // Verify amount is exactly 1 APE
+      const ONE_APE = ethers.parseEther('1');
+      if (tx.value !== ONE_APE) {
+        return res.status(400).send({ 
+          code: 'invalid_amount', 
+          message: 'Payment must be exactly 1 APE' 
+        });
+      }
+      
+      // Wait for transaction confirmation (at least 1 block)
+      const receipt = await provider.getTransactionReceipt(txHash);
+      if (!receipt) {
+        return res.status(400).send({ 
+          code: 'tx_not_confirmed', 
+          message: 'Transaction not yet confirmed' 
+        });
+      }
+      
+      if (receipt.status !== 1) {
+        return res.status(400).send({ 
+          code: 'tx_failed', 
+          message: 'Transaction failed on chain' 
+        });
+      }
+      
+      // All checks passed - add the paid message
+      const { randomUUID } = await import('crypto');
+      const messageId = `msg_${randomUUID()}`;
+      
+      addPaidMessage(messageId, wallet, message, txHash, ONE_APE.toString());
+      
+      console.log(`[PAID_MESSAGE] Added message from ${wallet}: "${message}" (tx: ${txHash})`);
+      
+      return res.send({ 
+        ok: true, 
+        messageId,
+        expiresAt: Date.now() + (60 * 60 * 1000) // 1 hour from now
+      });
+      
+    } catch (error: any) {
+      console.error('[PAID_MESSAGE] Error:', error);
+      return res.status(500).send({ 
+        code: 'internal_error', 
+        message: 'Failed to process paid message' 
+      });
+    }
+  }
+);
+
+// Get all active paid messages (public)
+fastify.get('/v2/messages/paid', async (req, res) => {
+  const messages = getActivePaidMessages();
+  return res.send({ 
+    messages: messages.map(m => ({
+      id: m.id,
+      message: m.message,
+      wallet: m.wallet,
+      createdAt: m.created_at,
+      expiresAt: m.expires_at
+    }))
+  });
+});
+
+// Remove a paid message (admin only)
+fastify.delete<{ Params: { id: string } }>(
+  '/v2/admin/messages/paid/:id',
+  async (req, res) => {
+    if (!requireDebugAuth(req, res)) return;
+    
+    const { id } = req.params;
+    const removed = removePaidMessage(id);
+    
+    if (!removed) {
+      return res.status(404).send({ code: 'not_found', message: 'Message not found' });
+    }
+    
+    return res.send({ ok: true });
+  }
+);
+
+// Get paid message statistics (admin only)
+fastify.get('/v2/admin/messages/paid/stats', async (req, res) => {
+  if (!requireDebugAuth(req, res)) return;
+  return res.send(getPaidMessageStats());
+});
+
+// Cleanup expired messages (runs periodically)
+setInterval(() => {
+  const expired = expireOldMessages();
+  if (expired > 0) {
+    console.log(`[PAID_MESSAGE] Expired ${expired} old messages`);
+  }
+}, 5 * 60 * 1000); // Every 5 minutes
 
 // Graceful shutdown
 process.on('SIGINT', async () => {

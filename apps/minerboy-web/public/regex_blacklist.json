@@ -1,0 +1,24 @@
+{
+  "notes": [
+    "Apply NFKC normalization and lowercase before matching.",
+    "Use re.IGNORECASE | re.UNICODE.",
+    "These patterns use character classes to catch leetspeak and repeated letters."
+  ],
+  "patterns": [
+    "\\b[f𝗳𝖿ｆ]+[\\W_]*[uμv][\\W_]*[cçkq]+[\\W_]*k+\\b",
+    "\\b[s5]+[\\W_]*h+[\\W_]*[i1!|]+[\\W_]*t+\\b",
+    "\\b[a@]+[\\W_]*s+[\\W_]*s+[\\W_]*h+[\\W_]*o+[\\W_]*l+[\\W_]*e+\\b",
+    "\\b[wvv]+[\\W_]*a+[\\W_]*n+[\\W_]*k+[\\W_]*e+[\\W_]*r+\\b",
+    "\\b[cç]+[\\W_]*u+[\\W_]*n+[\\W_]*t+\\b",
+    "\\b(bj|blow[\\W_]*job|hand[\\W_]*job|rim[\\W_]*job)s?\\b",
+    "\\bdeep[\\W_]*throat\\b",
+    "\\bj[i1!|]zz\\b",
+    "\\b(kys|kill[\\W_]*yourself|go[\\W_]*die|die[\\W_]*in[\\W_]*a[\\W_]*fire)\\b",
+    "\\b(pak[i1!|])\\b",
+    "\\b(ch[i1!|]nk)\\b",
+    "\\b(f+a+g+g*o*t+)\\b",
+    "\\b(d+y+k+e+)\\b",
+    "\\b(k[i1!|]ke)\\b",
+    "\\b(sp[a@]z|sp[a@]st[i1!|]c)\\b"
+  ]
+}

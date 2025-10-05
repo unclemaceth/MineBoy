@@ -7,6 +7,7 @@ import ActionButton from "@/components/ui/ActionButton";
 import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
 import SideButton from "@/components/ui/SideButton";
+import PaidMessageModal from "@/components/PaidMessageModal";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
@@ -87,6 +88,7 @@ function Home() {
   const [showEjectConfirm, setShowEjectConfirm] = useState(false);
   const [ejectButtonPressed, setEjectButtonPressed] = useState(false);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
+  const [showPaidMessageModal, setShowPaidMessageModal] = useState(false);
   const [scrollingMessages, setScrollingMessages] = useState<string[]>(["MineBoy it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
 
@@ -362,7 +364,7 @@ function Home() {
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const { messages } = await api.apiGetMessages();
+        const { messages } = await api.getMessages();
         if (messages && messages.length > 0) {
           setScrollingMessages(messages);
         }
@@ -1568,6 +1570,10 @@ function Home() {
           messages={scrollingMessages}
           scrollSpeed={50}
           messageGap={100}
+          onMessageBarClick={() => {
+            playButtonSound();
+            setShowPaidMessageModal(true);
+          }}
         />
       </div>
 
@@ -3190,6 +3196,12 @@ function Home() {
           </div>
         </div>
       )}
+
+      {/* Paid Message Modal */}
+      <PaidMessageModal
+        isOpen={showPaidMessageModal}
+        onClose={() => setShowPaidMessageModal(false)}
+      />
     </Stage>
   );
 }

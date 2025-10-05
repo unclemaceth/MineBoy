@@ -230,6 +230,10 @@ export const api = {
     if (sessionId) usp.set('sessionId', sessionId);
     if (cartridge) usp.set('cartridge', cartridge);
     return jfetch(`/v2/debug/lock?${usp.toString()}`, undefined, (j) => j);
+  },
+
+  async getMessages(): Promise<{ messages: string[] }> {
+    return jfetch('/v2/messages', { cache: 'no-store' } as RequestInit, (j) => j as { messages: string[] });
   }
 };
 
@@ -418,11 +422,5 @@ export async function apiGetIndividualLeaderboard(season: string = 'active', lim
 export async function apiGetTeamLeaderboard(season: string = 'active'): Promise<TeamLeaderboardResponse> {
   const r = await fetch(`${BASE}/v2/leaderboard/team?season=${season}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch team leaderboard');
-  return r.json();
-}
-
-export async function apiGetMessages(): Promise<{ messages: string[] }> {
-  const r = await fetch(`${BASE}/v2/messages`, { cache: 'no-store' });
-  if (!r.ok) throw new Error('Failed to fetch messages');
   return r.json();
 }

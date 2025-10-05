@@ -12,6 +12,7 @@ interface HUDProps {
   messages?: string[];       // Scrolling messages
   scrollSpeed?: number;      // Scroll speed in px/s
   messageGap?: number;       // Gap between messages in px
+  onMessageBarClick?: () => void; // Callback when message bar is clicked
 }
 
 export default function HUD({
@@ -24,6 +25,7 @@ export default function HUD({
   messages = ["MineBoy it Mines stuff!"],
   scrollSpeed = 50,
   messageGap = 100,
+  onMessageBarClick,
 }: HUDProps) {
   const panelWidth = Math.floor(width / 4) - 4; // 4 panels with small gaps
   const panelHeight = 50;
@@ -108,13 +110,29 @@ export default function HUD({
       <div style={{ height: '10px' }} />
 
       {/* Scrolling Message Bar */}
-      <ScrollingMessageBar
-        messages={messages}
-        width={width}
-        height={20}
-        speed={scrollSpeed}
-        messageGap={messageGap}
-      />
+      <div 
+        onClick={onMessageBarClick}
+        style={{ 
+          cursor: onMessageBarClick ? 'pointer' : 'default',
+          transition: 'opacity 0.2s',
+        }}
+        onMouseEnter={(e) => {
+          if (onMessageBarClick) {
+            e.currentTarget.style.opacity = '0.8';
+          }
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.opacity = '1';
+        }}
+      >
+        <ScrollingMessageBar
+          messages={messages}
+          width={width}
+          height={20}
+          speed={scrollSpeed}
+          messageGap={messageGap}
+        />
+      </div>
 
       {/* Bottom padding */}
       <div style={{ height: '10px' }} />
