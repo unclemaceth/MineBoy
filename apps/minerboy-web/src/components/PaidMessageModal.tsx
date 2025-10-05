@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSendTransaction, useWaitForTransactionReceipt } from 'wagmi';
 import { parseEther } from 'viem';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
@@ -25,12 +25,6 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash: txHash,
   });
-  
-  // Handle transaction confirmation
-  if (isConfirmed && status === 'confirming' && txHash) {
-    setStatus('submitting');
-    submitMessageToBackend(txHash);
-  }
   
   const submitMessageToBackend = async (hash: `0x${string}`) => {
     try {
@@ -64,6 +58,14 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
       playFailSound();
     }
   };
+  
+  // Handle transaction confirmation
+  useEffect(() => {
+    if (isConfirmed && status === 'confirming' && txHash) {
+      setStatus('submitting');
+      submitMessageToBackend(txHash);
+    }
+  }, [isConfirmed, status, txHash]);
   
   const handleSubmit = async () => {
     if (!message.trim()) {

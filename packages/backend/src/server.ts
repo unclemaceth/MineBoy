@@ -1306,7 +1306,7 @@ fastify.get('/v2/messages', async (req, res) => {
   const paidMessages = getActivePaidMessages();
   
   // Format paid messages with prefix
-  const formattedPaidMessages = paidMessages.map(m => `💎 PAID: ${m.message}`);
+  const formattedPaidMessages = paidMessages.map(m => `PAID CONTENT: ${m.message}`);
   
   // Combine: admin messages first, then paid messages
   const allMessages = [...adminMessages, ...formattedPaidMessages];
