@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import ScrollingMessageBar from './ScrollingMessageBar';
 
 interface HUDProps {
   pickaxeType?: string;      // "The DripAxe", "The Morgul PickHammer", "Blue Steel"
@@ -8,6 +9,9 @@ interface HUDProps {
   multiplierSource?: string; // "NAPC", "BASE", etc.
   seasonPoints?: number;     // User's season points
   width: number;             // Total width (390px)
+  messages?: string[];       // Scrolling messages
+  scrollSpeed?: number;      // Scroll speed in px/s
+  messageGap?: number;       // Gap between messages in px
 }
 
 export default function HUD({
@@ -17,23 +21,33 @@ export default function HUD({
   multiplierSource = "BASE",
   seasonPoints = 0,
   width,
+  messages = ["MineBoy it Mines stuff!"],
+  scrollSpeed = 50,
+  messageGap = 100,
 }: HUDProps) {
   const panelWidth = Math.floor(width / 4) - 4; // 4 panels with small gaps
-  const panelHeight = 60;
+  const panelHeight = 50;
 
-  // Format pickaxe display name
-  const pickaxeName = pickaxeType 
-    ? pickaxeType.replace("The ", "").replace("The Morgul ", "").toUpperCase()
-    : "NO PICKAXE";
+  // Format pickaxe display name - simplified names without brackets
+  let pickaxeName = "NO MINECART";
+  if (pickaxeType) {
+    if (pickaxeType.includes("DripAxe")) {
+      pickaxeName = "DripAxe";
+    } else if (pickaxeType.includes("PickHammer")) {
+      pickaxeName = "PickHammer";
+    } else if (pickaxeType.includes("Blue Steel")) {
+      pickaxeName = "BlueSteel";
+    } else {
+      pickaxeName = pickaxeType.replace("The ", "").replace("The Morgul ", "");
+    }
+  }
   
-  const pickaxeDisplay = pickaxeId 
-    ? `${pickaxeName} #${pickaxeId}`
-    : pickaxeName;
+  const pickaxeDisplay = pickaxeName;
 
-  // Format multiplier display
+  // Format multiplier display - remove brackets
   const multiplierDisplay = multiplier > 1.0 
     ? `${multiplier.toFixed(1)}x ${multiplierSource}`
-    : `${multiplier.toFixed(1)}x ${multiplierSource}`;
+    : `${multiplier.toFixed(1)}x`;
 
   // Format season points
   const pointsDisplay = seasonPoints.toLocaleString();
@@ -42,46 +56,68 @@ export default function HUD({
     <div
       style={{
         width: `${width}px`,
-        height: `${panelHeight + 20}px`,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        padding: '10px 0',
-        gap: '4px',
-        backgroundColor: 'transparent', // Remove black fill
+        backgroundColor: 'transparent',
       }}
     >
-      {/* Panel 1: Pickaxe Type/ID */}
-      <LCDPanel
-        label="PICKAXE"
-        value={pickaxeDisplay}
-        width={panelWidth}
-        height={panelHeight}
+      {/* Top padding */}
+      <div style={{ height: '10px' }} />
+      
+      {/* LCD Panels */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '4px',
+        }}
+      >
+        {/* Panel 1: MineCart Type */}
+        <LCDPanel
+          label="MINECART"
+          value={pickaxeDisplay}
+          width={panelWidth}
+          height={panelHeight}
+        />
+
+        {/* Panel 2: Multiplier */}
+        <LCDPanel
+          label="MULTIPLIER"
+          value={multiplierDisplay}
+          width={panelWidth}
+          height={panelHeight}
+        />
+
+        {/* Panel 3: Season Points */}
+        <LCDPanel
+          label="SEASON PTS"
+          value={pointsDisplay}
+          width={panelWidth}
+          height={panelHeight}
+        />
+
+        {/* Panel 4: Reserved for future use */}
+        <LCDPanel
+          label="RESERVED"
+          value="---"
+          width={panelWidth}
+          height={panelHeight}
+        />
+      </div>
+
+      {/* Padding between LCDs and message bar */}
+      <div style={{ height: '10px' }} />
+
+      {/* Scrolling Message Bar */}
+      <ScrollingMessageBar
+        messages={messages}
+        width={width}
+        height={20}
+        speed={scrollSpeed}
+        messageGap={messageGap}
       />
 
-      {/* Panel 2: Multiplier */}
-      <LCDPanel
-        label="MULTIPLIER"
-        value={multiplierDisplay}
-        width={panelWidth}
-        height={panelHeight}
-      />
-
-      {/* Panel 3: Season Points */}
-      <LCDPanel
-        label="SEASON PTS"
-        value={pointsDisplay}
-        width={panelWidth}
-        height={panelHeight}
-      />
-
-      {/* Panel 4: Reserved for future use */}
-      <LCDPanel
-        label="RESERVED"
-        value="---"
-        width={panelWidth}
-        height={panelHeight}
-      />
+      {/* Bottom padding */}
+      <div style={{ height: '10px' }} />
     </div>
   );
 }

@@ -40,6 +40,7 @@ import { registerAdminExportRoute } from './routes/adminExport.js';
 import { SessionStore } from './sessionStore.js';
 import { safeStringify } from './jsonSafe.js';
 import { getRedis } from './redis.js';
+import { messageStore } from './messages.js';
 
 // ---- Job serialization helpers ----
 type ApiJob = {
@@ -1282,6 +1283,73 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
   } catch (e) {
     return res.status(500).send({ code: 'debug_error', message: 'Failed to unlock session', details: String(e) });
   }
+});
+
+// ---- Message Management Routes ----
+
+// Get all messages (public)
+fastify.get('/v2/messages', async (req, res) => {
+  return res.send({ messages: messageStore.getMessages() });
+});
+
+// Get all messages with metadata (admin only)
+fastify.get('/v2/admin/messages', async (req, res) => {
+  if (!requireDebugAuth(req, res)) return;
+  return res.send({ messages: messageStore.getAllMessages() });
+});
+
+// Add a new message (admin only)
+fastify.post<{ Body: { text: string } }>('/v2/admin/messages', async (req, res) => {
+  if (!requireDebugAuth(req, res)) return;
+  
+  const { text } = req.body;
+  if (!text || typeof text !== 'string') {
+    return res.status(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
+  }
+  
+  const message = messageStore.addMessage(text);
+  return res.send({ ok: true, message });
+});
+
+// Remove a message (admin only)
+fastify.delete<{ Params: { id: string } }>('/v2/admin/messages/:id', async (req, res) => {
+  if (!requireDebugAuth(req, res)) return;
+  
+  const { id } = req.params;
+  const removed = messageStore.removeMessage(id);
+  
+  if (!removed) {
+    return res.status(404).send({ code: 'not_found', message: 'Message not found' });
+  }
+  
+  return res.send({ ok: true });
+});
+
+// Update a message (admin only)
+fastify.put<{ Params: { id: string }; Body: { text: string } }>('/v2/admin/messages/:id', async (req, res) => {
+  if (!requireDebugAuth(req, res)) return;
+  
+  const { id } = req.params;
+  const { text } = req.body;
+  
+  if (!text || typeof text !== 'string') {
+    return res.status(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
+  }
+  
+  const updated = messageStore.updateMessage(id, text);
+  
+  if (!updated) {
+    return res.status(404).send({ code: 'not_found', message: 'Message not found' });
+  }
+  
+  return res.send({ ok: true });
+});
+
+// Clear all messages (admin only)
+fastify.delete('/v2/admin/messages', async (req, res) => {
+  if (!requireDebugAuth(req, res)) return;
+  messageStore.clearAll();
+  return res.send({ ok: true });
 });
 
 // Graceful shutdown

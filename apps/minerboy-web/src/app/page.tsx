@@ -6,12 +6,13 @@ import HUD from "@/components/HUD";
 import ActionButton from "@/components/ui/ActionButton";
 import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
+import SideButton from "@/components/ui/SideButton";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
 import { useWalletModal } from '@/state/walletModal';
-import { useWriteContract } from 'wagmi';
+import { useWriteContract, useReadContract } from 'wagmi';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
 import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
@@ -83,7 +84,10 @@ function Home() {
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
   const [showNavigationModal, setShowNavigationModal] = useState(false);
   const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | 'welcome' | null>(null);
+  const [showEjectConfirm, setShowEjectConfirm] = useState(false);
+  const [ejectButtonPressed, setEjectButtonPressed] = useState(false);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
+  const [scrollingMessages, setScrollingMessages] = useState<string[]>(["MineBoy it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
 
   // Navigation helpers
@@ -149,6 +153,30 @@ function Home() {
   
   // Fetch NPC balance for multiplier display
   const { npcBalance } = useNPCBalance(address);
+  
+  // Read MNESTR token balance
+  const { data: mnestrBalanceRaw } = useReadContract({
+    address: '0xAe0DfbB1a2b22080F947D1C0234c415FabEEc276' as `0x${string}`, // MNESTR token address
+    abi: [
+      {
+        name: 'balanceOf',
+        type: 'function',
+        stateMutability: 'view',
+        inputs: [{ name: 'account', type: 'address' }],
+        outputs: [{ name: '', type: 'uint256' }],
+      },
+    ] as const,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
+    },
+  });
+  
+  // Format MNESTR balance (18 decimals)
+  const mnestrBalance = mnestrBalanceRaw 
+    ? Number(mnestrBalanceRaw) / 1e18 
+    : 0;
   
   // Session state
   const { 
@@ -329,6 +357,24 @@ function Home() {
       .then(setCartridges)
       .catch(err => pushLine(`Failed to load cartridges: ${err.message}`));
   }, [pushLine]);
+
+  // Load scrolling messages on mount and refresh every 5 minutes
+  useEffect(() => {
+    const fetchMessages = async () => {
+      try {
+        const { messages } = await api.apiGetMessages();
+        if (messages && messages.length > 0) {
+          setScrollingMessages(messages);
+        }
+      } catch (err) {
+        console.error('Failed to load messages:', err);
+      }
+    };
+
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 5 * 60 * 1000); // Refresh every 5 minutes
+    return () => clearInterval(interval);
+  }, []);
   
   // Mine blink effect
   useEffect(() => {
@@ -536,7 +582,7 @@ function Home() {
   
   const handleInsertCartridge = () => {
     if (isConnected && !sessionId) {
-      setShowCartridgeSelect(true);
+      setShowAlchemyCartridges(true); // Open Alchemy modal directly
     } else if (!isConnected) {
       pushLine('Connect wallet first!');
     } else {
@@ -728,7 +774,7 @@ function Home() {
       
       // Fallback for old error format
       if (String(error.message).includes('HTTP 409')) {
-        pushLine('🔒 Cartridge is in use. If you just reloaded, wait a few seconds and try again.');
+        pushLine('🔒 Cartridge is in use. Press Side Button to reset or wait a few seconds.');
         setShowCartridgeSelect(true); // Re-show selection
         return;
       }
@@ -1311,6 +1357,31 @@ function Home() {
       pushLine(`D-Pad: ${direction}`);
     }
   };
+
+  const handleEjectButton = () => {
+    if (!cartridge || !sessionId) {
+      // No cart loaded, button is not clickable
+      return;
+    }
+    
+    playButtonSound();
+    setEjectButtonPressed(true);
+    setTimeout(() => setEjectButtonPressed(false), 150);
+    setShowEjectConfirm(true);
+  };
+
+  const confirmEjectCart = async () => {
+    if (sessionId) {
+      try {
+        await api.close(sessionId);
+      } catch (err) {
+        console.error('Error closing session:', err);
+      }
+    }
+    
+    // Reload the page to fully reset state
+    window.location.reload();
+  };
   
   // Keyboard shortcuts
   useEffect(() => {
@@ -1490,11 +1561,29 @@ function Home() {
         <HUD
           pickaxeType={cartridge?.metadata?.type}
           pickaxeId={cartridge?.tokenId}
-          multiplier={npcBalance >= 1 ? 1.2 : 1.0}
-          multiplierSource={npcBalance >= 1 ? `NAPC (${npcBalance})` : "BASE"}
+          multiplier={npcBalance >= 10 ? 1.5 : npcBalance >= 1 ? 1.2 : 1.0}
+          multiplierSource={npcBalance >= 1 ? `NPC` : "BASE"}
           seasonPoints={0} // TODO: Get from leaderboard API
           width={390}
+          messages={scrollingMessages}
+          scrollSpeed={50}
+          messageGap={100}
         />
+      </div>
+
+      {/* Side Button - top left (eject cart) */}
+      <div style={{
+        position: 'absolute',
+        top: (cartridge && sessionId) ? (ejectButtonPressed ? 246.25 : 210.25) : 246.25,
+        left: 0,
+        zIndex: 100,
+        transition: 'top 150ms ease',
+        cursor: (cartridge && sessionId) ? 'pointer' : 'default',
+        opacity: (cartridge && sessionId) ? 1 : 0.5,
+      }}
+      onClick={handleEjectButton}
+      >
+        <SideButton />
       </div>
 
       {/* Navigation Links */}
@@ -1738,7 +1827,7 @@ function Home() {
       {/* Hash LCD: top 56%, left 7%, width 336px */}
       <div style={{
         position: "absolute", 
-        top: px(56, H) - 25, // 448px (moved up 25px total)
+        top: px(56, H) - 25 + 20, // Moved down 20px for HUD
         left: px(7, W), // 27px
         width: 336, // 390 - 27 - 27
         background: "#0f2c1b", 
@@ -1767,7 +1856,7 @@ function Home() {
       {/* Status LCD: top 61.5%, left 7%, width 148px */}
       <div style={{
         position: "absolute", 
-        top: px(61.5, H) - 25, // 484px (moved up 25px total)
+        top: px(61.5, H) - 25 + 20, // Moved down 20px for HUD
         left: px(7, W), // 27px
         width: 148, // 390 - 27 - 215
         background: "#0f2c1b", 
@@ -1793,7 +1882,7 @@ function Home() {
       {/* HashRate LCD: top 61.5%, left 226px, width 137px */}
       <div style={{
         position: "absolute", 
-        top: px(61.5, H) - 25, // 484px (moved up 25px total)
+        top: px(61.5, H) - 25 + 20, // Moved down 20px for HUD
         left: 226, // 58% of 390
         width: 137, // 390 - 226 - 27
         background: "#0f2c1b", 
@@ -1845,8 +1934,8 @@ function Home() {
         }}
         style={{
           position: "absolute",
-          top: px(7.8, H) - 25 + 80, // Moved down 80px for HUD
-          right: px(54.5, W) - 10,
+          bottom: 775, // Aligned with CONNECT button
+          right: 207, // Same distance from right as CONNECT is from left
           width: 70,
           height: 27,
           borderRadius: 18,
@@ -1875,9 +1964,10 @@ function Home() {
       {/* ANTI-BOT: Progress LCD (replaces Difficulty LCD) */}
       <div style={{
         position: "absolute", 
-        top: px(86.5, H) - 25, 
+        top: px(86.5, H) - 25 + 8, // Moved down 6px (was +2, now +8)
         left: 9, 
         width: 230, 
+        height: 29, // 5px taller (was 34, now 29)
         background: "#0f2c1b", 
         border: "2px solid",
         borderTopColor: "#1a4d2a", 
@@ -1886,11 +1976,13 @@ function Home() {
         borderBottomColor: "#3a8a4d", 
         borderRadius: 6, 
         boxShadow: "inset 0 2px 4px rgba(0,0,0,0.4), inset 0 -1px 0 rgba(255,255,255,0.1)", 
-        padding: "4px 8px"
+        padding: "4px 8px",
+        display: "flex",
+        alignItems: "center"
       }}>
         <div style={{
           color: "#64ff8a", 
-          fontSize: 10, 
+          fontSize: 12, // Changed to 12 (was 13)
           letterSpacing: 0.5, 
           fontFamily: "Menlo, monospace",
           whiteSpace: "nowrap", 
@@ -1936,33 +2028,33 @@ function Home() {
 
 
 
-      {/* D-pad Up: moved up 80px for HUD */}
-      <div style={{ position: "absolute", left: 92, bottom: 253.5 + 80 }}>
+      {/* D-pad Up: moved up 20px for HUD */}
+      <div style={{ position: "absolute", left: 92, bottom: 253.5 + 20 }}>
         <DpadButton direction="up" size={38} onPress={() => handleDpad('up')} />
       </div>
       
-      {/* D-pad Down: moved up 80px for HUD */}
-      <div style={{ position: "absolute", left: 92, bottom: 159.5 + 80 }}>
+      {/* D-pad Down: moved up 20px for HUD */}
+      <div style={{ position: "absolute", left: 92, bottom: 159.5 + 20 }}>
         <DpadButton direction="down" size={38} onPress={() => handleDpad('down')} />
       </div>
       
-      {/* D-pad Left: moved up 80px for HUD */}
-      <div style={{ position: "absolute", left: 45, bottom: 206.5 + 80 }}>
+      {/* D-pad Left: moved up 20px for HUD */}
+      <div style={{ position: "absolute", left: 45, bottom: 206.5 + 20 }}>
         <DpadButton direction="left" size={38} onPress={() => handleDpad('left')} />
       </div>
       
-      {/* D-pad Right: moved up 80px for HUD */}
-      <div style={{ position: "absolute", left: 139, bottom: 206.5 + 80 }}>
+      {/* D-pad Right: moved up 20px for HUD */}
+      <div style={{ position: "absolute", left: 139, bottom: 206.5 + 20 }}>
         <DpadButton direction="right" size={38} onPress={() => handleDpad('right')} />
       </div>
 
-      {/* A button: moved up 80px for HUD */}
-      <div style={{ position: "absolute", right: 37.5, bottom: 200.5 + 80 }}>
+      {/* A button: moved up 20px for HUD */}
+      <div style={{ position: "absolute", right: 37.5, bottom: 200.5 + 20 }}>
         <ActionButton label="A" onPress={handleA} size={80} variant="primary" />
       </div>
 
-      {/* B button: moved up 80px for HUD */}
-      <div style={{ position: "absolute", right: 127.5, bottom: 150.5 + 80 }}>
+      {/* B button: moved up 20px for HUD */}
+      <div style={{ position: "absolute", right: 127.5, bottom: 150.5 + 20 }}>
         <ActionButton label="B" onPress={handleB} size={60} variant="secondary" />
       </div>
 
@@ -2807,6 +2899,21 @@ function Home() {
                   )}
                 </div>
               </div>
+
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  WALLET BALANCE
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  <div><strong>MNESTR:</strong> {mnestrBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div><strong>NPC NFTs:</strong> {npcBalance}</div>
+                </div>
+              </div>
             </div>
 
 
@@ -2986,6 +3093,103 @@ function Home() {
         page={navigationPage}
         onClose={closeNavigationModal}
       />
+
+      {/* Eject Cart Confirmation Modal */}
+      {showEjectConfirm && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 10000,
+          }}
+          onClick={() => setShowEjectConfirm(false)}
+        >
+          <div
+            style={{
+              background: 'linear-gradient(145deg, #1a3d24, #0f2c1b)',
+              border: '3px solid #3a8a4d',
+              borderRadius: 12,
+              padding: '32px',
+              maxWidth: '400px',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              color: '#64ff8a',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              marginBottom: '16px',
+              fontFamily: 'Menlo, monospace',
+            }}>
+              ⚠️ EJECT CARTRIDGE?
+            </div>
+            <div style={{
+              color: '#c8ffc8',
+              fontSize: '14px',
+              marginBottom: '24px',
+              lineHeight: '1.5',
+            }}>
+              This will end your mining session and reload the page.
+            </div>
+            <div style={{
+              display: 'flex',
+              gap: '16px',
+              justifyContent: 'center',
+            }}>
+              <button
+                onClick={confirmEjectCart}
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(145deg, #cc4444, #aa2222)',
+                  border: '2px solid #ff6666',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(145deg, #dd5555, #bb3333)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(145deg, #cc4444, #aa2222)';
+                }}
+              >
+                YES, EJECT
+              </button>
+              <button
+                onClick={() => setShowEjectConfirm(false)}
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '2px solid #3a8a4d',
+                  borderRadius: 8,
+                  color: '#c8ffc8',
+                  fontSize: '14px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #1a3d24)';
+                }}
+              >
+                CANCEL
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </Stage>
   );
 }

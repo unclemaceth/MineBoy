@@ -305,8 +305,14 @@ export type SeasonLeaderboardEntry = {
   rank: number;
   wallet: string;
   walletShort: string;
-  totalABIT: string;
+  totalMNESTR: string;
+  totalABIT?: string; // Deprecated, kept for backwards compatibility
   arcade_name?: string;
+  team_name?: string;
+  team_slug?: string;
+  team_emoji?: string;
+  team_color?: string;
+  members?: number;
 };
 
 export type SeasonLeaderboardResponse = {
@@ -316,8 +322,10 @@ export type SeasonLeaderboardResponse = {
     rank: number;
     wallet: string;
     walletShort: string;
-    totalABIT: string;
+    totalMNESTR: string;
+    totalABIT?: string; // Deprecated, kept for backwards compatibility
     arcade_name?: string;
+    team_name?: string;
   };
   lastUpdated: string;
   nextUpdate: string;
@@ -410,5 +418,11 @@ export async function apiGetIndividualLeaderboard(season: string = 'active', lim
 export async function apiGetTeamLeaderboard(season: string = 'active'): Promise<TeamLeaderboardResponse> {
   const r = await fetch(`${BASE}/v2/leaderboard/team?season=${season}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to fetch team leaderboard');
+  return r.json();
+}
+
+export async function apiGetMessages(): Promise<{ messages: string[] }> {
+  const r = await fetch(`${BASE}/v2/messages`, { cache: 'no-store' });
+  if (!r.ok) throw new Error('Failed to fetch messages');
   return r.json();
 }

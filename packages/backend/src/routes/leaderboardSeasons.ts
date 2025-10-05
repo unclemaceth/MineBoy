@@ -74,7 +74,7 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
             rank: e.rank,
             wallet: e.wallet,
             walletShort: shortAddrLast8(e.wallet),
-            totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+            totalMNESTR: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
             arcade_name: nameMap.get(e.wallet.toLowerCase()) ?? undefined,
             team_slug: team?.team_slug ?? undefined,
             team_name: team?.team_name ?? undefined,
@@ -126,7 +126,7 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
               rank: parseInt(userRow.rank),
               wallet,
               walletShort: shortAddrLast8(wallet),
-              totalABIT: toAbitString(userRow.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+              totalMNESTR: toAbitString(userRow.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
               arcade_name: userArcadeName.rows[0]?.arcade_name ?? undefined,
               team_slug: team?.team_slug ?? undefined,
               team_name: team?.team_name ?? undefined,
@@ -138,7 +138,7 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
               rank: null,
               wallet,
               walletShort: shortAddrLast8(wallet),
-              totalABIT: '0'
+              totalMNESTR: '0'
             };
           }
         }
@@ -208,7 +208,7 @@ export async function registerSeasonLeaderboardRoute(fastify: FastifyInstance) {
             emoji: team?.emoji,
             color: team?.color,
             members: e.members,
-            totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+            totalMNESTR: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
           };
         });
 

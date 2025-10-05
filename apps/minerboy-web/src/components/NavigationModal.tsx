@@ -164,7 +164,7 @@ function LeaderboardContent() {
       console.log('[NavigationModal] Fetching season data for type:', leaderboardType, 'wallet:', address);
       
       if (leaderboardType === 'individual') {
-        const resp = await apiGetIndividualLeaderboard('active', 25, 0, address);
+        const resp = await apiGetIndividualLeaderboard('active', 100, 0, address);
         console.log('[NavigationModal] Received season individual response:', resp);
         setSeasonData(resp);
       } else {
@@ -302,7 +302,7 @@ function LeaderboardContent() {
           <div>#</div>
           <div>{leaderboardType === 'individual' ? 'MINER' : 'TEAM'}</div>
           <div>{leaderboardType === 'individual' ? 'TEAM' : 'MEMBERS'}</div>
-          <div style={{ textAlign: 'right' }}>ABIT</div>
+          <div style={{ textAlign: 'right' }}>MNESTR</div>
         </div>
 
         {/* Table Body */}
@@ -380,7 +380,7 @@ function LeaderboardContent() {
                   : (entry.members ? `${entry.members} members` : '—')
                 }
               </div>
-              <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{entry.totalABIT}</div>
+              <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{entry.totalMNESTR}</div>
             </div>
             );
           })}
@@ -458,7 +458,7 @@ function LeaderboardContent() {
                       : '—'
                     }
                   </div>
-                  <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{meData?.totalABIT}</div>
+                  <div style={{ textAlign: 'right', fontWeight: 'bold' }}>{meData?.totalMNESTR}</div>
                 </>
               );
             })()}
@@ -842,15 +842,36 @@ function InstructionsContent() {
         borderRadius: '8px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
+          ⛏️ PICKS & MINECARTS
+        </h3>
+        <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
+          <p style={{ marginBottom: '8px' }}>Picks from <strong>The Mine</strong> are transformed on entry to the MineBoy dApp. Each Pick becomes a MineCart!</p>
+          <p><strong>The DripAxe:</strong> up to 8000 H/s Mining Speed</p>
+          <p><strong>The Morgul PickHammer:</strong> up to 7000 H/s Mining Speed</p>
+          <p><strong>The Blue Steel:</strong> up to 6000 H/s Mining Speed</p>
+          <p><strong>Ol' Rusty:</strong> COMING SOON - 5000 H/s Mining Speed</p>
+          <p style={{ marginTop: '8px', fontSize: '11px', color: '#8a8a8a' }}>Head to the Mint Page to link to Magic Eden, or Mint an Ol' Rusty - whilst stocks last.</p>
+        </div>
+      </div>
+
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        border: '2px solid #4a7d5f',
+        borderRadius: '8px'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
           🎮 HOW TO PLAY
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p><strong>1. Mint Cartridge:</strong> Get your NFT cartridge (1 per wallet, free mint)</p>
+          <p><strong>1. Get a MineCart:</strong> Own a Pick NFT from The Mine collection, or mint Ol' Rusty</p>
           <p><strong>2. Connect Wallet:</strong> Use CONNECT button (Glyph or WalletConnect)</p>
-          <p><strong>3. Select Cartridge:</strong> Load your cartridge into the MineBoy</p>
+          <p><strong>3. Select MineCart:</strong> Load your MineCart into the MineBoy</p>
           <p><strong>4. Start Mining:</strong> Press A button to begin SHA256 mining</p>
-          <p><strong>5. Find Valid Hash:</strong> Mine until you find a hash with enough zeros (difficulty scales dynamically)</p>
-          <p><strong>6. Claim Rewards:</strong> Press B to submit and earn ABIT tokens (0.001 APE fee per claim)</p>
+          <p><strong>5. Find Valid Hash:</strong> Mine until you find a hash with the required suffix</p>
+          <p><strong>6. Claim Rewards:</strong> Press 'CLAIM' on the popup (or press B to reopen). You have 2 minutes after finding a valid hash to submit!</p>
+          <p><strong>7. Mine Strategy:</strong> Better hashes = more MNESTR tokens. Chase rare suffixes for maximum rewards!</p>
+          <p><strong>8. NPC Multiplier:</strong> Own 1+ Not a Punks Cult NFTs for a 1.2x reward multiplier on all claims!</p>
         </div>
       </div>
 
@@ -868,6 +889,7 @@ function InstructionsContent() {
           <p><strong>B Button:</strong> Open claim overlay (hash found) or re-open if closed</p>
           <p><strong>D-Pad Left/Right:</strong> Switch between terminal and visualizer views</p>
           <p><strong>MENU Button:</strong> Open debug panel with stats and controls</p>
+          <p><strong>Side Button (Left Edge):</strong> Eject cartridge and reset session - the classic "turn it off and on again" tech support solution!</p>
           <p><strong>Navigation:</strong> M=Mint, I=Info, L=Leaderboard (via top buttons)</p>
         </div>
       </div>
@@ -898,7 +920,7 @@ function InstructionsContent() {
           }}>
             <div>HASH</div>
             <div>TIER NAME</div>
-            <div style={{ textAlign: 'right' }}>ABIT</div>
+            <div style={{ textAlign: 'right' }}>MNESTR</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
@@ -960,15 +982,13 @@ function InstructionsContent() {
         borderRadius: '8px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
-          💡 TIPS & INFO
+          🎯 DIFFICULTY & SUFFIXES
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p>• <strong>Dynamic Difficulty:</strong> Adjusts based on active miners (5-8 zeros required)</p>
-          <p>• <strong>Job Timeout:</strong> Each job expires after 2-17 min. Fail = cartridge cooldown (60s)</p>
-          <p>• <strong>Claim Fee:</strong> 0.001 APE per successful claim (goes to project)</p>
-          <p>• <strong>Team Seasons:</strong> Choose a team and compete on leaderboards</p>
-          <p>• <strong>Set Arcade Name:</strong> Personalize your miner name in the leaderboard</p>
-          <p>• <strong>Cartridge Limit:</strong> 2 per wallet</p>
+          <p><strong>Suffix Mining:</strong> Find hashes ending with specific patterns (e.g., ...000000)</p>
+          <p><strong>Variable Difficulty:</strong> Required suffix length adjusts based on active player count - more miners = harder difficulty</p>
+          <p><strong>Rarity = Rewards:</strong> Rarer suffixes (0x0..., 0x1...) pay more MNESTR than common ones (0xe..., 0xf...)</p>
+          <p><strong>Counter Windows:</strong> Each job gives you a specific range of nonces to search - no cherry-picking allowed!</p>
         </div>
       </div>
 
@@ -979,15 +999,38 @@ function InstructionsContent() {
         borderRadius: '8px'
       }}>
         <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
-          🔒 SESSION & COOLDOWNS
+          💡 TIPS & INFO
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p><strong>Session Lock:</strong> One active session per cartridge, prevents multi-window cheating</p>
+          <p>• <strong>Claim Fee:</strong> 0.01 APE per claim (distributed to Merchant, Flywheel, Team, and LP)</p>
+          <p>• <strong>Job Timeout:</strong> Each mining job has a time limit based on difficulty and your MineCart speed</p>
+          <p>• <strong>MineCart Limit:</strong> 3 per wallet (run 3 simultaneous mining sessions!)</p>
+          <p>• <strong>Team Seasons:</strong> Choose a team and compete on leaderboards</p>
+          <p>• <strong>Set Arcade Name:</strong> Personalize your miner name in the leaderboard</p>
+          <p>• <strong>Anti-Cheat:</strong> Multiple security measures prevent botting and cheating (as best as possible)</p>
+          <p>• <strong>Network:</strong> Powered by ApeCoin! on ApeChain!</p>
+        </div>
+      </div>
+
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        border: '2px solid #4a7d5f',
+        borderRadius: '8px'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '12px', color: '#4a7d5f' }}>
+          🔒 SESSIONS & SECURITY
+        </h3>
+        <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
+          <p><strong>Session Limit:</strong> Up to 3 active sessions per wallet (one per MineCart)</p>
+          <p><strong>Session Lock:</strong> One active session per MineCart prevents multi-window cheating</p>
           <p><strong>Heartbeat System:</strong> Backend validates your session every 30s to keep it alive</p>
-          <p><strong>Job Timeout (TTL):</strong> Each mining job has a time limit based on difficulty. Fail to find hash in time = 60s cartridge cooldown</p>
-          <p><strong>Session Conflict:</strong> If cartridge is locked by another session, wait for cooldown or close other tabs</p>
+          <p><strong>Job Timeout:</strong> Each mining job has a time limit based on difficulty and your MineCart's speed. Missing the deadline triggers a brief cooldown</p>
+          <p><strong>Session Conflict:</strong> If your MineCart is locked by another session, use the Side Button to reset or wait for the session to expire</p>
           <p><strong>EIP-712 Signatures:</strong> Secure claim verification using cryptographic signatures</p>
-          <p><strong>Network:</strong> ApeChain mainnet only (Chain ID: 33139)</p>
+          <p><strong>Rate Limiting:</strong> Anti-bot measures limit job requests and claim submissions</p>
+          <p><strong>Physics Validation:</strong> Server validates mining speed and hash discovery timing</p>
+          <p><strong>Work Binding:</strong> Mining jobs are cryptographically bound to your wallet and MineCart to prevent exploits</p>
         </div>
       </div>
     </div>

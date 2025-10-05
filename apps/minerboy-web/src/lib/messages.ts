@@ -45,7 +45,7 @@ export const TERM = {
 
   // mining progress
   TICK:            (hashrate:string) => `mining... hashrate ${hashrate}`,
-  REWARDS_READY:   (amt:string)      => `rewards ready: ${amt} ABIT`,
+  REWARDS_READY:   (amt:string)      => `rewards ready: ${amt} MNESTR`,
   CLAIM_SENT:      (tx:string)       => `claim submitted: ${tx}`,
   CLAIM_CONFIRMED: (tx:string)       => `claim confirmed: ${tx}`,
 

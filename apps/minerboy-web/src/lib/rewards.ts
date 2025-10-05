@@ -4,22 +4,22 @@
  */
 
 export const TIER_NAMES = [
-  "Hashalicious",    // 0 (128 ABIT) - High reward
-  "Hashtalavista, Baby", // 1 (120 ABIT)
-  "Monster Mash",    // 2 (112 ABIT)
-  "Magic Mix",       // 3 (104 ABIT)
-  "Zesty Zap",       // 4 (96 ABIT)
-  "Mythical Hash",   // 5 (88 ABIT)
-  "Epic Hash",       // 6 (80 ABIT)
-  "Hashtastic",      // 7 (72 ABIT)
-  "Juicy Jolt",      // 8 (64 ABIT)
-  "Mega Hash",       // 9 (56 ABIT)
-  "Great Hash",      // 10 (48 ABIT)
-  "Solid Shard",     // 11 (40 ABIT)
-  "Decent Drip",     // 12 (32 ABIT)
-  "Basic Batch",     // 13 (24 ABIT)
-  "Meh Hash",        // 14 (16 ABIT)
-  "Trash Hash"       // 15 (8 ABIT) - Low reward
+  "Hashalicious",    // 0 (128 MNESTR) - High reward
+  "Hashtalavista, Baby", // 1 (120 MNESTR)
+  "Monster Mash",    // 2 (112 MNESTR)
+  "Magic Mix",       // 3 (104 MNESTR)
+  "Zesty Zap",       // 4 (96 MNESTR)
+  "Mythical Hash",   // 5 (88 MNESTR)
+  "Epic Hash",       // 6 (80 MNESTR)
+  "Hashtastic",      // 7 (72 MNESTR)
+  "Juicy Jolt",      // 8 (64 MNESTR)
+  "Mega Hash",       // 9 (56 MNESTR)
+  "Great Hash",      // 10 (48 MNESTR)
+  "Solid Shard",     // 11 (40 MNESTR)
+  "Decent Drip",     // 12 (32 MNESTR)
+  "Basic Batch",     // 13 (24 MNESTR)
+  "Meh Hash",        // 14 (16 MNESTR)
+  "Trash Hash"       // 15 (8 MNESTR) - Low reward
 ];
 
 /**
@@ -82,11 +82,11 @@ export function formatAmount(amountWei: bigint | string, decimals = 18): string 
  * @param powHash The PoW hash
  * @param amountWei The reward amount in wei
  * @param decimals Token decimals (default 18)
- * @returns Display label like "64 ABIT"
+ * @returns Display label like "64 MNESTR"
  */
 export function createRewardLabel(powHash: `0x${string}`, amountWei: bigint | string, decimals = 18): string {
   const amount = formatAmount(amountWei, decimals);
-  return `${amount} ABIT`;
+  return `${amount} MNESTR`;
 }
 
 /**

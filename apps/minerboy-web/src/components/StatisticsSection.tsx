@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 type StatisticsData = {
   totalMiners: number;
   totalCarts: number;
-  totalABIT: string;
+  totalMNESTR: string;
   totalClaims: number;
   activeMiners: number;
   snapshotDayUTC?: string;
@@ -17,7 +17,7 @@ export default function StatisticsSection() {
   const [stats, setStats] = useState<StatisticsData>({
     totalMiners: 0,
     totalCarts: 0,
-    totalABIT: '0',
+    totalMNESTR: '0',
     totalClaims: 0,
     activeMiners: 0
   });
@@ -39,17 +39,17 @@ export default function StatisticsSection() {
         
         const data = await response.json();
         
-        // Convert wei to ABIT (assuming 18 decimals)
-        const weiToABIT = (wei: string) => {
+        // Convert wei to MNESTR (assuming 18 decimals)
+        const weiToMNESTR = (wei: string) => {
           const weiBigInt = BigInt(wei);
-          const abitBigInt = weiBigInt / BigInt(10 ** 18);
-          return abitBigInt.toString();
+          const mnestrBigInt = weiBigInt / BigInt(10 ** 18);
+          return mnestrBigInt.toString();
         };
-        
+
         setStats({
           totalMiners: data.totalMiners || 0,
           totalCarts: data.totalCarts || 0,
-          totalABIT: weiToABIT(data.totalWeiText || '0'),
+          totalMNESTR: weiToMNESTR(data.totalWeiText || '0'),
           totalClaims: data.totalClaims || 0,
           activeMiners: data.activeMiners || 0,
           snapshotDayUTC: data.snapshotDayUTC,
@@ -160,10 +160,10 @@ export default function StatisticsSection() {
           border: '1px solid rgba(74, 125, 95, 0.3)'
         }}>
           <div style={{ color: '#64ff8a', fontWeight: 'bold', marginBottom: '2px' }}>
-            TOTAL APEBIT
+            TOTAL MNESTR
           </div>
           <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
-            {stats.totalABIT}
+            {stats.totalMNESTR}
           </div>
         </div>
 

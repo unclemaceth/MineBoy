@@ -35,7 +35,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
         rank: i + 1,
         wallet: e.wallet,
         walletShort: shortAddrLast8(e.wallet),
-        totalABIT: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+        totalMNESTR: toAbitString(e.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
         team_slug: e.team_slug ?? undefined,
         team_name: e.team_name ?? undefined,
         team_emoji: e.team_emoji ?? undefined,
@@ -74,7 +74,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
             rank: myRank !== -1 ? myRank + 1 : await countWalletsAbove(period, agg.total_wei) + 1,
             wallet,
             walletShort: shortAddrLast8(wallet),
-            totalABIT: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
+            totalMNESTR: toAbitString(agg.total_wei, Number(process.env.TOKEN_DECIMALS || 18)),
             team_slug: meTeam?.slug,
             team_name: meTeam?.name,
             team_emoji: meTeam?.emoji,
@@ -86,7 +86,7 @@ export async function registerLeaderboardRoute(fastify: FastifyInstance) {
             rank: null,
             wallet,
             walletShort: shortAddrLast8(wallet),
-            totalABIT: '0'
+            totalMNESTR: '0'
           };
         }
       }
