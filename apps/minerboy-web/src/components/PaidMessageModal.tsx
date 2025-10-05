@@ -67,7 +67,7 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
     }
   }, [isConfirmed, status, txHash]);
   
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!message.trim()) {
       setErrorMessage('Message cannot be empty');
       playFailSound();
@@ -86,15 +86,18 @@ export default function PaidMessageModal({ isOpen, onClose }: PaidMessageModalPr
       return;
     }
     
+    setStatus('sending');
+    setErrorMessage('');
+    playButtonSound();
+    
     try {
-      setStatus('sending');
-      setErrorMessage('');
-      
+      // This will trigger the wallet popup
       sendTransaction({
         to: TEAM_WALLET,
         value: parseEther(MESSAGE_COST),
       });
       
+      // Status will be updated to 'confirming' once txHash is available
       setStatus('confirming');
       
     } catch (error: any) {
