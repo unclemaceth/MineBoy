@@ -31,23 +31,24 @@ const client = createPublicClient({
 const db = new Database(process.env.DB_PATH || './paid_messages.db');
 db.pragma('journal_mode = WAL');
 
-// Initialize table
+// Initialize table immediately
+db.exec(`
+  CREATE TABLE IF NOT EXISTS paid_messages (
+    id TEXT PRIMARY KEY,
+    wallet TEXT NOT NULL,
+    message TEXT NOT NULL,
+    tx_hash TEXT NOT NULL UNIQUE,
+    amount_wei TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active'
+  );
+  CREATE INDEX IF NOT EXISTS idx_paid_messages_status_expires ON paid_messages(status, expires_at);
+  CREATE INDEX IF NOT EXISTS idx_paid_messages_created ON paid_messages(created_at);
+  CREATE INDEX IF NOT EXISTS idx_paid_messages_wallet ON paid_messages(wallet);
+`);
+
 export function initPaidMessagesTable() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS paid_messages (
-      id TEXT PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      message TEXT NOT NULL,
-      tx_hash TEXT NOT NULL UNIQUE,
-      amount_wei TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      expires_at INTEGER NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active'
-    );
-    CREATE INDEX IF NOT EXISTS idx_paid_messages_status_expires ON paid_messages(status, expires_at);
-    CREATE INDEX IF NOT EXISTS idx_paid_messages_created ON paid_messages(created_at);
-    CREATE INDEX IF NOT EXISTS idx_paid_messages_wallet ON paid_messages(wallet);
-  `);
   console.log('[PaidMessages] Database initialized');
 }
 
