@@ -1041,7 +1041,7 @@ function Home() {
             abi: RouterV3ABI,
             functionName: 'claimV3',
             args: [claimData, to0x(claimResponse.signature)],
-            value: BigInt('6000000000000000'), // 0.006 ETH (0.006 APE) - V3 dynamic fees
+            value: BigInt('10000000000000000'), // 0.01 APE - V3 total fee
           };
 
 
