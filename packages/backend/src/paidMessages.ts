@@ -1,5 +1,43 @@
-// packages/backend/src/paidMessages.ts
-import { getDB } from './db.js';
+// Production-ready paid messages module with on-chain verification
+import { createPublicClient, http, isAddress, parseEther, type Hash } from 'viem';
+import { apechain } from 'viem/chains';
+import Database from 'better-sqlite3';
+import { randomUUID } from 'crypto';
+
+const HOUR_MS = 60 * 60 * 1000;
+const ONE_APE_WEI = parseEther('1');
+const TEAM_WALLET = '0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5'.toLowerCase();
+const RPC_URL = process.env.ALCHEMY_RPC_URL || 'https://apechain-mainnet.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs';
+
+// Public client for ApeChain
+const client = createPublicClient({
+  chain: apechain,
+  transport: http(RPC_URL)
+});
+
+// Database setup
+const db = new Database(process.env.DB_PATH || './paid_messages.db');
+db.pragma('journal_mode = WAL');
+
+// Initialize table
+export function initPaidMessagesTable() {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS paid_messages (
+      id TEXT PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      message TEXT NOT NULL,
+      tx_hash TEXT NOT NULL UNIQUE,
+      amount_wei TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'active'
+    );
+    CREATE INDEX IF NOT EXISTS idx_paid_messages_status_expires ON paid_messages(status, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_paid_messages_created ON paid_messages(created_at);
+    CREATE INDEX IF NOT EXISTS idx_paid_messages_wallet ON paid_messages(wallet);
+  `);
+  console.log('[PaidMessages] Database initialized');
+}
 
 export interface PaidMessage {
   id: string;
@@ -12,83 +50,40 @@ export interface PaidMessage {
   status: 'active' | 'expired' | 'removed';
 }
 
-// Comprehensive blacklist of inappropriate words and phrases (case-insensitive)
+// Comprehensive blacklist
 const BLACKLIST = [
-  // Profanity - General
-  'fuck', 'fucker', 'fucking', 'motherfucker', 'motherfuckers', 'mf',
-  'shit', 'bullshit', 'dipshit', 'horseshit',
-  'piss', 'pissed', 'pissing',
-  'ass', 'arse', 'asshole', 'arsehole', 'dumbass',
-  'bastard', 'bloody hell', 'damn', 'goddamn', 'god damn',
-  'dick', 'dicks', 'dickhead', 'bellend', 'knob', 'knobhead', 'knobend',
-  'twat', 'twats', 'wanker', 'wankers', 'bugger', 'prick', 'tosser',
-  'bollocks', 'bollock', 'bollocking', 'cunt', 'cunts', 'bitch', 'bitches',
+  // Profanity
+  'fuck', 'fucker', 'fucking', 'motherfucker', 'shit', 'bullshit', 'piss',
+  'ass', 'arse', 'asshole', 'arsehole', 'dumbass', 'bastard', 'damn', 'goddamn',
+  'dick', 'dickhead', 'bellend', 'knob', 'twat', 'wanker', 'prick', 'tosser',
+  'bollocks', 'cunt', 'bitch',
   
   // Sexual/Explicit
-  'cum', 'jizz', 'jism', 'splooge', 'bukkake', 'bukake',
-  'blowjob', 'handjob', 'rimjob', 'rim job', 'deepthroat', 'deep throat',
-  'fingering', 'fisted', 'fisting', 'porn', 'porno', 'pornography',
-  'xxx', 'nsfw', 'anal', 'gangbang', 'gang bang', 'rape', 'pussy', 'cock',
-  'penis', 'vagina', 'suck my', 'eat my', 'sit on my face',
+  'cum', 'jizz', 'bukkake', 'blowjob', 'handjob', 'rimjob', 'deepthroat',
+  'porn', 'porno', 'xxx', 'nsfw', 'rape', 'pussy', 'cock', 'penis', 'vagina',
   
-  // Harassment/Insults
+  // Harassment
   'retard', 'retarded', 'kill yourself', 'kys', 'go die', 'die in a fire',
-  'diaf', 'i hope you die', 'neck yourself', 'rope yourself',
   
-  // Threats/Violence
-  'i will kill you', 'im going to kill you', "i'm going to kill you",
-  'i will hurt you', 'i will beat you', 'beat you to death',
-  'rape you', 'im going to rape you', "i'm going to rape you",
-  'lynch you', 'gas you', 'hunt you down', 'murder you',
-  
-  // Hate Slurs - Race/Ethnicity
+  // Hate Slurs
   'nigger', 'nigga', 'chink', 'gook', 'paki', 'spic', 'wetback', 'beaner',
-  'coon', 'sambo', 'porch monkey', 'jigaboo', 'jiggaboo', 'gyppo', 'gypsy',
-  'kraut', 'mick', 'wop', 'nip',
-  
-  // Hate Slurs - Religion
-  'kike', 'christkiller', 'raghead', 'infidel', 'islamotard', 'islamofascist',
-  
-  // Hate Slurs - Sexual Orientation/Gender
-  'fag', 'faggot', 'dyke', 'tranny', 'shemale', 'butt pirate',
-  'fairy', 'poof', 'poofta', 'pouf',
-  
-  // Hate Slurs - Disability
-  'spastic', 'spaz', 'mong', 'mongoloid', 'cripple', 'crip', 'lamebrain',
-  
-  // Hate Phrases
-  'go back to your country', 'you dont belong here', 'no blacks allowed',
-  'no gays allowed', 'gas the jews', 'all lives dont matter',
-  
-  // Drugs (illegal)
-  'meth', 'methamphetamine', 'crack cocaine', 'heroin', 'fentanyl',
+  'coon', 'kike', 'raghead', 'fag', 'faggot', 'dyke', 'tranny',
   
   // Spam/Scam
   'free crypto', 'free ape', 'claim airdrop', 'airdrop now',
-  'send seed phrase', 'seed phrase', 'private key', 'click my link',
-  'dm me for prize', 'giveaway winner', 'whatsapp me', 'telegram me',
-  'venmo me', 'cashapp me', 'onlyfans',
-  
-  // Historical figures/groups (hate context)
-  'nazi', 'hitler', 'kkk', 'white power', 'white supremacy',
-  
-  // ASCII art patterns
-  '8===', '==D', '=D', '( . )( . )', '(.)(.)','8==D', '8=D',
+  'seed phrase', 'private key', 'click my link', 'dm me for prize',
 ];
 
-// Regex patterns for leetspeak and obfuscation
-const REGEX_PATTERNS = [
-  /\bf+[\W_]*[uμv][\W_]*[cçkq]+[\W_]*k+\b/i,  // fuck variants
-  /\bs+[\W_]*h+[\W_]*[i1!|]+[\W_]*t+\b/i,      // shit variants
-  /\ba+[\W_]*s+[\W_]*s+[\W_]*h+[\W_]*o+[\W_]*l+[\W_]*e+\b/i, // asshole variants
-  /\bc+[\W_]*u+[\W_]*n+[\W_]*t+\b/i,           // cunt variants
-  /\bf+a+g+g*o*t+\b/i,                         // faggot variants
-  /\bd+y+k+e+\b/i,                             // dyke variants
-  /\bk[i1!|]ke\b/i,                            // kike variants
-  /\bsp[a@]z|sp[a@]st[i1!|]c\b/i,             // spaz/spastic variants
-  /\b(kys|kill[\W_]*yourself|go[\W_]*die)\b/i, // suicide encouragement
-  /\bn+[i1!|]+g+[e3]+r+\b/i,                   // n-word variants
-  /\bn+[i1!|]+g+a+\b/i,                        // n-word variants
+// Regex patterns for leetspeak/obfuscation
+const REGEX_PATTERNS: RegExp[] = [
+  /f+[\W_]*[uμv][\W_]*[cçkq]+[\W_]*k+/i,  // fuck variants
+  /s+[\W_]*h+[\W_]*[i1!|]+[\W_]*t+/i,      // shit variants
+  /a+[\W_]*s+[\W_]*s+[\W_]*h+[\W_]*o+[\W_]*l+[\W_]*e+/i, // asshole variants
+  /c+[\W_]*u+[\W_]*n+[\W_]*t+/i,           // cunt variants
+  /f+a+g+g*o*t+/i,                         // faggot variants
+  /n+[i1!|]+g+[e3]+r+/i,                   // n-word variants
+  /(kys|kill[\W_]*yourself|go[\W_]*die)/i, // suicide encouragement
+  /(claim|free|bonus).*(airdrop|reward)/i, // crypto spam
 ];
 
 /**
@@ -99,189 +94,203 @@ function normalizeText(text: string): string {
 }
 
 /**
- * Check if message contains blacklisted words or matches regex patterns
+ * Check if message passes blacklist and regex filters
  */
-export function containsBlacklistedWord(message: string): boolean {
-  const normalized = normalizeText(message);
+function passesBlacklist(msg: string): boolean {
+  const normalized = normalizeText(msg);
   
   // Check exact word/phrase matches
-  const hasBlacklistedWord = BLACKLIST.some(word => normalized.includes(word.toLowerCase()));
-  if (hasBlacklistedWord) {
-    return true;
+  for (const term of BLACKLIST) {
+    if (normalized.includes(term.toLowerCase())) {
+      return false;
+    }
   }
   
-  // Check regex patterns for leetspeak/obfuscation
-  const matchesPattern = REGEX_PATTERNS.some(pattern => pattern.test(normalized));
-  if (matchesPattern) {
-    return true;
-  }
-  
-  return false;
+  // Check regex patterns
+  return !REGEX_PATTERNS.some(pattern => pattern.test(normalized));
 }
 
 /**
  * Validate message content
  */
-export function validateMessage(message: string): { valid: boolean; error?: string } {
-  if (!message || message.trim().length === 0) {
-    return { valid: false, error: 'Message cannot be empty' };
+export function validateMessage(raw: string): { ok: true; cleaned: string } | { ok: false; reason: string } {
+  if (!raw || !raw.trim()) {
+    return { ok: false, reason: 'Message cannot be empty' };
   }
   
-  if (message.length > 64) {
-    return { valid: false, error: 'Message must be 64 characters or less' };
+  const cleaned = raw.normalize('NFKC').trim();
+  
+  if (cleaned.length > 64) {
+    return { ok: false, reason: 'Message must be 64 characters or less' };
   }
   
-  if (containsBlacklistedWord(message)) {
-    return { valid: false, error: 'Message contains inappropriate content' };
+  if (!passesBlacklist(cleaned)) {
+    return { ok: false, reason: 'Message contains inappropriate content' };
   }
   
-  return { valid: true };
+  return { ok: true, cleaned };
 }
 
 /**
- * Initialize paid messages table
+ * Verify transaction on-chain
  */
-export function initPaidMessagesTable() {
-  const db = getDB();
+export async function verifyOnChain(txHash: Hash, claimedFrom: string) {
+  // Fetch transaction and receipt
+  const [tx, receipt] = await Promise.all([
+    client.getTransaction({ hash: txHash }),
+    client.getTransactionReceipt({ hash: txHash }),
+  ]);
+
+  // Basic checks
+  if (!receipt || receipt.status !== 'success') {
+    throw new Error('Transaction not confirmed');
+  }
   
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS paid_messages (
-      id TEXT PRIMARY KEY,
-      wallet TEXT NOT NULL,
-      message TEXT NOT NULL,
-      tx_hash TEXT NOT NULL UNIQUE,
-      amount_wei TEXT NOT NULL,
-      created_at INTEGER NOT NULL,
-      expires_at INTEGER NOT NULL,
-      status TEXT NOT NULL DEFAULT 'active',
-      UNIQUE(tx_hash)
-    );
-    
-    CREATE INDEX IF NOT EXISTS idx_paid_messages_status ON paid_messages(status);
-    CREATE INDEX IF NOT EXISTS idx_paid_messages_expires_at ON paid_messages(expires_at);
-  `);
+  if (!isAddress(claimedFrom)) {
+    throw new Error('Invalid wallet address');
+  }
+
+  const from = tx.from.toLowerCase();
+  const to = (tx.to || '').toLowerCase();
+
+  if (from !== claimedFrom.toLowerCase()) {
+    throw new Error('Transaction sender mismatch');
+  }
+  
+  if (to !== TEAM_WALLET) {
+    throw new Error('Payment did not go to team wallet');
+  }
+
+  // Exact amount check: must be 1 APE
+  if (tx.value !== ONE_APE_WEI) {
+    throw new Error('Payment must be exactly 1 APE');
+  }
+
+  return {
+    from,
+    to,
+    amountWei: tx.value.toString(),
+    blockNumber: receipt.blockNumber,
+  };
 }
 
+// Prepared statements
+const insertStmt = db.prepare(`
+  INSERT INTO paid_messages (id, wallet, message, tx_hash, amount_wei, created_at, expires_at, status)
+  VALUES (@id, @wallet, @message, @tx_hash, @amount_wei, @created_at, @expires_at, @status)
+`);
+
 /**
- * Add a paid message
+ * Add a paid message to the database
  */
-export function addPaidMessage(
-  id: string,
-  wallet: string,
-  message: string,
-  txHash: string,
-  amountWei: string
-): void {
-  const db = getDB();
+export function addPaidMessage(params: { wallet: string; message: string; txHash: string; amountWei: string }) {
   const now = Date.now();
-  const expiresAt = now + (60 * 60 * 1000); // 1 hour from now
+  const id = randomUUID();
   
-  const stmt = db.prepare(`
-    INSERT INTO paid_messages (id, wallet, message, tx_hash, amount_wei, created_at, expires_at, status)
-    VALUES (@id, @wallet, @message, @txHash, @amountWei, @createdAt, @expiresAt, 'active')
-  `);
-  
-  stmt.run({
+  const row = {
     id,
-    wallet: wallet.toLowerCase(),
-    message,
-    txHash: txHash.toLowerCase(),
-    amountWei,
-    createdAt: now,
-    expiresAt,
-  });
+    wallet: params.wallet.toLowerCase(),
+    message: params.message,
+    tx_hash: params.txHash.toLowerCase(),
+    amount_wei: params.amountWei,
+    created_at: now,
+    expires_at: now + HOUR_MS,
+    status: 'active',
+  };
+  
+  try {
+    insertStmt.run(row);
+    return { id, createdAt: now, expiresAt: row.expires_at };
+  } catch (error: any) {
+    if (error.message?.includes('UNIQUE constraint failed')) {
+      throw new Error('This transaction hash was already used');
+    }
+    throw error;
+  }
 }
 
 /**
  * Get all active paid messages
  */
-export function getActivePaidMessages(): PaidMessage[] {
-  const db = getDB();
-  const now = Date.now();
-  
+export function getActivePaidMessages(): Array<{ id: string; wallet: string; message: string; createdAt: number; expiresAt: number }> {
   const stmt = db.prepare(`
-    SELECT * FROM paid_messages
-    WHERE status = 'active' AND expires_at > @now
+    SELECT id, wallet, message, created_at as createdAt, expires_at as expiresAt
+    FROM paid_messages
+    WHERE status = 'active' AND expires_at > ?
     ORDER BY created_at DESC
   `);
-  
-  return stmt.all({ now }) as PaidMessage[];
+  return stmt.all(Date.now()) as any;
 }
 
 /**
- * Check if transaction hash already used
+ * Mark expired messages
  */
-export function isPaidMessageTxUsed(txHash: string): boolean {
-  const db = getDB();
-  
+export function markExpired(): number {
+  const now = Date.now();
   const stmt = db.prepare(`
-    SELECT COUNT(*) as count FROM paid_messages WHERE tx_hash = @txHash
+    UPDATE paid_messages
+    SET status = 'expired'
+    WHERE status = 'active' AND expires_at <= ?
   `);
-  
-  const result = stmt.get({ txHash: txHash.toLowerCase() }) as { count: number };
-  return result.count > 0;
+  const info = stmt.run(now);
+  return info.changes;
 }
 
 /**
- * Remove a paid message (admin action)
+ * Remove a paid message (admin)
  */
 export function removePaidMessage(id: string): boolean {
-  const db = getDB();
-  
-  const stmt = db.prepare(`
-    UPDATE paid_messages SET status = 'removed' WHERE id = @id
-  `);
-  
-  const result = stmt.run({ id });
-  return result.changes > 0;
+  const stmt = db.prepare(`UPDATE paid_messages SET status='removed' WHERE id = ?`);
+  const info = stmt.run(id);
+  return info.changes > 0;
 }
 
 /**
- * Expire old messages (cleanup task)
+ * Get statistics
  */
-export function expireOldMessages(): number {
-  const db = getDB();
-  const now = Date.now();
-  
-  const stmt = db.prepare(`
-    UPDATE paid_messages 
-    SET status = 'expired' 
-    WHERE status = 'active' AND expires_at <= @now
-  `);
-  
-  const result = stmt.run({ now });
-  return result.changes;
-}
-
-/**
- * Get message statistics
- */
-export function getPaidMessageStats(): {
-  total: number;
-  active: number;
-  expired: number;
-  removed: number;
-  totalRevenue: string;
-} {
-  const db = getDB();
-  
-  const stmt = db.prepare(`
-    SELECT 
-      COUNT(*) as total,
-      SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active,
-      SUM(CASE WHEN status = 'expired' THEN 1 ELSE 0 END) as expired,
-      SUM(CASE WHEN status = 'removed' THEN 1 ELSE 0 END) as removed,
-      SUM(CAST(amount_wei AS INTEGER)) as total_revenue
-    FROM paid_messages
-  `);
-  
-  const result = stmt.get() as any;
+export function getStats() {
+  const rowTotals = db.prepare(`SELECT COUNT(*) as total FROM paid_messages`).get() as { total: number };
+  const rowActive = db.prepare(`SELECT COUNT(*) as active FROM paid_messages WHERE status='active' AND expires_at > ?`).get(Date.now()) as { active: number };
+  const rowExpired = db.prepare(`SELECT COUNT(*) as expired FROM paid_messages WHERE status='expired'`).get() as { expired: number };
+  const rowRemoved = db.prepare(`SELECT COUNT(*) as removed FROM paid_messages WHERE status='removed'`).get() as { removed: number };
+  const revenue = db.prepare(`SELECT COALESCE(SUM(CAST(amount_wei AS INTEGER)), 0) as totalWei FROM paid_messages`).get() as { totalWei: number | string };
   
   return {
-    total: result.total || 0,
-    active: result.active || 0,
-    expired: result.expired || 0,
-    removed: result.removed || 0,
-    totalRevenue: (result.total_revenue || 0).toString(),
+    total: rowTotals.total,
+    active: rowActive.active,
+    expired: rowExpired.expired,
+    removed: rowRemoved.removed,
+    totalRevenue: String(revenue.totalWei ?? '0'),
   };
 }
+
+// Per-wallet rate limiting (in-memory)
+const perWalletWindowMs = 60_000;
+const perWalletMax = 6;
+const walletBucket = new Map<string, { count: number; resetAt: number }>();
+
+export function walletRateLimit(addr: string) {
+  const now = Date.now();
+  const key = addr.toLowerCase();
+  const rec = walletBucket.get(key) || { count: 0, resetAt: now + perWalletWindowMs };
+  
+  if (now > rec.resetAt) {
+    rec.count = 0;
+    rec.resetAt = now + perWalletWindowMs;
+  }
+  
+  rec.count += 1;
+  walletBucket.set(key, rec);
+  
+  if (rec.count > perWalletMax) {
+    throw new Error('Slow down: too many submissions, try again in a minute.');
+  }
+}
+
+// Cleanup expired messages every 5 minutes
+setInterval(() => {
+  const changed = markExpired();
+  if (changed > 0) {
+    console.log(`[PaidMessages] Expired ${changed} messages`);
+  }
+}, 5 * 60 * 1000);

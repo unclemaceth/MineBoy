@@ -45,11 +45,12 @@ import {
   initPaidMessagesTable, 
   addPaidMessage, 
   getActivePaidMessages,
-  isPaidMessageTxUsed,
   removePaidMessage,
-  expireOldMessages,
+  markExpired,
   validateMessage,
-  getPaidMessageStats
+  verifyOnChain,
+  walletRateLimit,
+  getStats as getPaidMessageStats
 } from './paidMessages.js';
 
 // ---- Job serialization helpers ----
@@ -1535,7 +1536,7 @@ fastify.get('/v2/admin/messages/paid/stats', async (req, res) => {
 
 // Cleanup expired messages (runs periodically)
 setInterval(() => {
-  const expired = expireOldMessages();
+  const expired = markExpired();
   if (expired > 0) {
     console.log(`[PAID_MESSAGE] Expired ${expired} old messages`);
   }
