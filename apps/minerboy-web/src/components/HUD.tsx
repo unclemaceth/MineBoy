@@ -48,7 +48,7 @@ export default function HUD({
         alignItems: 'center',
         padding: '10px 0',
         gap: '4px',
-        backgroundColor: '#000',
+        backgroundColor: 'transparent', // Remove black fill
       }}
     >
       {/* Panel 1: Pickaxe Type/ID */}

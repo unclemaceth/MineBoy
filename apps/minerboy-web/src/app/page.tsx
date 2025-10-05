@@ -1845,7 +1845,7 @@ function Home() {
         }}
         style={{
           position: "absolute",
-          top: px(7.8, H) - 25,
+          top: px(7.8, H) - 25 + 80, // Moved down 80px for HUD
           right: px(54.5, W) - 10,
           width: 70,
           height: 27,
@@ -1936,33 +1936,33 @@ function Home() {
 
 
 
-      {/* D-pad Up: moved 25px right, 50px down */}
-      <div style={{ position: "absolute", left: 92, bottom: 253.5 }}>
+      {/* D-pad Up: moved up 80px for HUD */}
+      <div style={{ position: "absolute", left: 92, bottom: 253.5 + 80 }}>
         <DpadButton direction="up" size={38} onPress={() => handleDpad('up')} />
       </div>
       
-      {/* D-pad Down: moved 25px right, 50px down */}
-      <div style={{ position: "absolute", left: 92, bottom: 159.5 }}>
+      {/* D-pad Down: moved up 80px for HUD */}
+      <div style={{ position: "absolute", left: 92, bottom: 159.5 + 80 }}>
         <DpadButton direction="down" size={38} onPress={() => handleDpad('down')} />
       </div>
       
-      {/* D-pad Left: moved 25px right, 50px down */}
-      <div style={{ position: "absolute", left: 45, bottom: 206.5 }}>
+      {/* D-pad Left: moved up 80px for HUD */}
+      <div style={{ position: "absolute", left: 45, bottom: 206.5 + 80 }}>
         <DpadButton direction="left" size={38} onPress={() => handleDpad('left')} />
       </div>
       
-      {/* D-pad Right: moved 25px right, 50px down */}
-      <div style={{ position: "absolute", left: 139, bottom: 206.5 }}>
+      {/* D-pad Right: moved up 80px for HUD */}
+      <div style={{ position: "absolute", left: 139, bottom: 206.5 + 80 }}>
         <DpadButton direction="right" size={38} onPress={() => handleDpad('right')} />
       </div>
 
-      {/* A button: moved up 7.5px, left 2.5px */}
-      <div style={{ position: "absolute", right: 37.5, bottom: 200.5 }}>
+      {/* A button: moved up 80px for HUD */}
+      <div style={{ position: "absolute", right: 37.5, bottom: 200.5 + 80 }}>
         <ActionButton label="A" onPress={handleA} size={80} variant="primary" />
       </div>
 
-      {/* B button: moved up 7.5px, left 2.5px */}
-      <div style={{ position: "absolute", right: 127.5, bottom: 150.5 }}>
+      {/* B button: moved up 80px for HUD */}
+      <div style={{ position: "absolute", right: 127.5, bottom: 150.5 + 80 }}>
         <ActionButton label="B" onPress={handleB} size={60} variant="secondary" />
       </div>
 
@@ -1974,7 +1974,7 @@ function Home() {
       {/* LEDs: top-right row */}
       <div style={{ 
         position: "absolute", 
-        top: 37.5, 
+        top: 37.5 + 80, // Moved down 80px for HUD
         right: 20, 
         display: "flex", 
         gap: 12 
@@ -2014,7 +2014,7 @@ function Home() {
       {/* LED Clone: white bevel effect */}
       <div style={{ 
         position: "absolute", 
-        top: 38, 
+        top: 38 + 80, // Moved down 80px for HUD
         right: 19.5, 
         display: "flex", 
         gap: 12 
