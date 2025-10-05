@@ -1,6 +1,5 @@
 // Production-ready paid messages module with on-chain verification
-import { createPublicClient, http, isAddress, parseEther, type Hash } from 'viem';
-import { apechain } from 'viem/chains';
+import { createPublicClient, http, isAddress, parseEther, type Hash, defineChain } from 'viem';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 
@@ -8,6 +7,19 @@ const HOUR_MS = 60 * 60 * 1000;
 const ONE_APE_WEI = parseEther('1');
 const TEAM_WALLET = '0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5'.toLowerCase();
 const RPC_URL = process.env.ALCHEMY_RPC_URL || 'https://apechain-mainnet.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs';
+
+// Define ApeChain
+const apechain = defineChain({
+  id: 33139,
+  name: 'ApeChain',
+  nativeCurrency: { name: 'ApeCoin', symbol: 'APE', decimals: 18 },
+  rpcUrls: {
+    default: { http: [RPC_URL] }
+  },
+  blockExplorers: {
+    default: { name: 'ApeScan', url: 'https://apescan.io' }
+  }
+});
 
 // Public client for ApeChain
 const client = createPublicClient({
