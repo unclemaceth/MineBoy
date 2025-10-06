@@ -230,6 +230,7 @@ export default async function routes(app: FastifyInstance) {
       // No Magic Eden API needed - we have the full signed order
       try {
         app.log.info(`[Market] Building fulfillOrder transaction for token ${tokenId}`);
+        app.log.info(`[Market] Listing structure:`, JSON.stringify(listing, null, 2));
         
         const tx = encodeFulfillOrder(listing.order);
         
@@ -245,10 +246,11 @@ export default async function routes(app: FastifyInstance) {
         });
 
       } catch (error: any) {
-        app.log.error('[Market] Error encoding fulfillOrder:', error.message);
+        app.log.error('[Market] Error encoding fulfillOrder:', error);
+        app.log.error('[Market] Error stack:', error.stack);
         return reply.code(500).send({ 
           error: 'Failed to encode transaction',
-          message: error.message
+          message: error.message || String(error)
         });
       }
     }
