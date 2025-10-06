@@ -111,7 +111,26 @@ export default async function routes(app: FastifyInstance) {
       }
       
       try {
-        app.log.info(`[Flywheel] Creating listing for NPC #${tokenId}...`);
+        app.log.info(`[Flywheel] Creating listing for NPC token ID ${tokenId}...`);
+        
+        // Verify we own this token
+        const provider = new JsonRpcProvider(RPC_URL, 33139);
+        const npcContract = new Contract(
+          NPC_COLLECTION,
+          ['function ownerOf(uint256) view returns (address)'],
+          provider
+        );
+        
+        const owner = await npcContract.ownerOf(tokenId);
+        if (owner.toLowerCase() !== FLYWHEEL_WALLET.toLowerCase()) {
+          app.log.error(`[Flywheel] Token ${tokenId} is owned by ${owner}, not flywheel!`);
+          return reply.code(400).send({
+            error: 'Not owned',
+            message: `Token ${tokenId} is not owned by flywheel wallet`
+          });
+        }
+        
+        app.log.info(`[Flywheel] Confirmed ownership of token ${tokenId}`);
         
         // Calculate listing price (floor + 20% markup)
         // For now, use a default price - could fetch floor dynamically
