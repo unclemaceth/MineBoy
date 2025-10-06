@@ -11,7 +11,7 @@ function normalize(addr: string): string {
 }
 
 const SEAPORT_ADDRESS = normalize(process.env.SEAPORT_V16 || '0x0000000000000068f116a894984e2db1123eb395'); // Seaport 1.6
-const CONDUIT_KEY = '0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000'; // OpenSea conduit
+const CONDUIT_KEY = '0x0000000000000000000000000000000000000000000000000000000000000000'; // Zero conduit = Seaport transfers directly
 const ZONE_ADDRESS = '0x0000000000000000000000000000000000000000'; // No zone
 
 interface SeaportOrder {
