@@ -103,13 +103,17 @@ async function createListing(tokenId: string, priceAPE: string): Promise<{ succe
             }
             
             console.log(`[MagicEden] Posting to: ${fullUrl}`);
+            console.log(`[MagicEden] Post body:`, JSON.stringify(postBody, null, 2));
+            
             const postResponse = await axios({
               method: item.data.post?.method || 'POST',
               url: fullUrl,
               data: postBody,
               headers: { 'accept': '*/*', 'Content-Type': 'application/json' }
             });
+            
             console.log(`[MagicEden] Post response status: ${postResponse.status}`);
+            console.log(`[MagicEden] Post response:`, JSON.stringify(postResponse.data, null, 2));
           }
         }
       }
