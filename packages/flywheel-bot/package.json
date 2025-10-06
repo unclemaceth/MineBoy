@@ -15,7 +15,8 @@
     "test:me-full": "tsx scripts/test-magiceden-full.ts",
     "list-owned": "tsx scripts/list-owned-npcs.ts",
     "cancel-listings": "tsx scripts/cancel-listings.ts",
-    "force-relist": "tsx scripts/force-relist.ts"
+    "force-relist": "tsx scripts/force-relist.ts",
+    "force-relist-all": "tsx scripts/force-relist-all.ts"
   },
   "dependencies": {
     "ethers": "^6.15.0",

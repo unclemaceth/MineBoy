@@ -4,7 +4,7 @@
 import { flywheel } from '../src/wallets.js';
 import { createListing } from '../src/market/magiceden.js';
 import { Contract } from 'ethers';
-import { config as cfg } from '../src/config.js';
+import { cfg } from '../src/config.js';
 
 const ERC721_ABI = ['function ownerOf(uint256) view returns (address)'];
 
