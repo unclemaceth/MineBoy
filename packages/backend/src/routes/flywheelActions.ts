@@ -129,19 +129,30 @@ export default async function routes(app: FastifyInstance) {
   app.post<{ Params: { tokenId: string } }>(
     '/v2/flywheel/list/:tokenId',
     async (request, reply) => {
-      // No auth required - it's just listing the bot's own NFTs
-      // If you want to restrict later, use wallet signature instead of admin token
-      
-      const { tokenId } = request.params;
-      
-      if (!tokenId || !/^\d+$/.test(tokenId)) {
-        return reply.code(400).send({ 
-          error: 'Invalid token ID',
-          message: 'Token ID must be a number'
-        });
-      }
-      
       try {
+        app.log.info(`[Flywheel] POST /v2/flywheel/list/:tokenId received`);
+        
+        // Check if private key is set
+        if (!FLYWHEEL_PK) {
+          app.log.error('[Flywheel] FLYWHEEL_PRIVATE_KEY not set in environment!');
+          return reply.code(500).send({
+            error: 'Configuration error',
+            message: 'FLYWHEEL_PRIVATE_KEY not configured on server'
+          });
+        }
+        
+        // No auth required - it's just listing the bot's own NFTs
+        // If you want to restrict later, use wallet signature instead of admin token
+        
+        const { tokenId } = request.params;
+      
+        if (!tokenId || !/^\d+$/.test(tokenId)) {
+          return reply.code(400).send({ 
+            error: 'Invalid token ID',
+            message: 'Token ID must be a number'
+          });
+        }
+        
         app.log.info(`[Flywheel] Creating listing for NPC token ID ${tokenId}...`);
         
         // Verify we own this token
@@ -185,10 +196,10 @@ export default async function routes(app: FastifyInstance) {
         }
         
       } catch (error: any) {
-        app.log.error('[Flywheel] Error creating listing:', error);
+        app.log.error('[Flywheel] Error in list endpoint:', error);
         return reply.code(500).send({
           error: 'Failed to create listing',
-          message: error.message
+          message: error.message || String(error)
         });
       }
     }
