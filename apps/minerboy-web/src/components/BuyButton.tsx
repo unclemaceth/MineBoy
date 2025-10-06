@@ -32,7 +32,7 @@ export function BuyButton({ tokenId, priceLabel, onSuccess, onError }: BuyButton
 
       // 1. Get transaction data from backend
       console.log('[Buy] Building fill for token', tokenId);
-      const fillData = await buildFill(tokenId);
+      const fillData = await buildFill(tokenId, address);
 
       // 2. Ensure correct chain (33139 = ApeChain)
       const currentChainId = await walletClient.getChainId();

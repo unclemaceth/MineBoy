@@ -47,28 +47,29 @@ async function fetchFlywheelOrders(): Promise<Listing[]> {
     for (const order of orders) {
       const tokenId = order?.criteria?.data?.token?.tokenId;
       const price = order?.price?.amount?.raw;
+      const priceDecimal = order?.price?.amount?.decimal;
       const orderId = order?.id;
 
       if (!tokenId || !price) continue;
 
-      // Extract the full Seaport order data from Magic Eden response
-      // Magic Eden returns the order in their format, we need to extract the Seaport components
-      const orderData = order?.rawData;
-      
-      if (orderData) {
-        listings.push({
-          tokenId: String(tokenId),
-          orderId,
-          maker: FLYWHEEL,
-          priceWei: String(price),
-          order: {
-            kind: 'seaport-v1.6',
-            data: orderData // This should include signature and all OrderComponents
+      // Store minimal listing info - we'll fetch full order data on-demand
+      listings.push({
+        tokenId: String(tokenId),
+        orderId,
+        maker: FLYWHEEL,
+        priceWei: String(price),
+        order: {
+          kind: 'seaport-v1.6',
+          data: {
+            // Store the order ID so we can fetch full details later
+            orderId,
+            priceDecimal: String(priceDecimal || (Number(price) / 1e18).toFixed(2))
           }
-        });
-      }
+        }
+      });
     }
 
+    console.log(`[Market] Fetched ${listings.length} flywheel listings from Magic Eden`);
     return listings;
   } catch (error: any) {
     console.error('[Market] Error fetching orders:', error.message);
@@ -177,7 +178,7 @@ export default async function routes(app: FastifyInstance) {
    * POST /market/build-fill
    * Returns transaction data for buying an NPC
    */
-  app.post<{ Body: { tokenId: string } }>(
+  app.post<{ Body: { tokenId: string; buyer?: string } }>(
     '/market/build-fill',
     async (request, reply) => {
       const redis = getRedis();
@@ -185,7 +186,7 @@ export default async function routes(app: FastifyInstance) {
         return reply.code(503).send({ error: 'redis-unavailable' });
       }
 
-      const { tokenId } = request.body;
+      const { tokenId, buyer } = request.body;
       
       if (!tokenId) {
         return reply.code(400).send({ error: 'tokenId required' });
@@ -197,7 +198,7 @@ export default async function routes(app: FastifyInstance) {
         return reply.code(410).send({ error: 'sold', txHash: filled });
       }
 
-      // Get listing
+      // Get listing (to verify it exists)
       const raw = await redis.get(`market:order:${tokenId}`);
       if (!raw) {
         return reply.code(404).send({ error: 'not-listed' });
@@ -220,17 +221,57 @@ export default async function routes(app: FastifyInstance) {
         return reply.code(410).send({ error: 'sold' });
       }
 
-      // Encode Seaport fulfill call
-      const tx = encodeFulfillOrder(listing.order);
+      try {
+        // Use Magic Eden's execute/buy API to get the fulfillment transaction
+        const buyResponse = await axios.post(
+          `${MAGIC_EDEN_API}/apechain/execute/buy/v7`,
+          {
+            taker: buyer || '0x0000000000000000000000000000000000000000', // Placeholder if no buyer provided
+            tokens: [`${NPC}:${tokenId}`],
+            options: {
+              // Use Seaport for native APE payments
+              preferredOrderSource: 'reservoir',
+              usePermit: false,
+              skipBalanceCheck: true
+            }
+          },
+          {
+            headers: {
+              'accept': '*/*',
+              'Content-Type': 'application/json'
+            }
+          }
+        );
 
-      return reply.send({
-        chainId: CHAIN_ID,
-        to: tx.to,
-        data: tx.data,
-        value: tx.value,
-        seaport: SEAPORT_ADDRESS,
-        priceAPE: (Number(listing.priceWei) / 1e18).toFixed(2)
-      });
+        const steps = buyResponse.data?.steps || [];
+        if (steps.length === 0) {
+          return reply.code(500).send({ error: 'No fulfillment steps returned from Magic Eden' });
+        }
+
+        // Find the main fulfillment step (usually the last one)
+        const fulfillStep = steps[steps.length - 1];
+        const fulfillItem = fulfillStep?.items?.[0];
+
+        if (!fulfillItem?.data?.to || !fulfillItem?.data?.data) {
+          return reply.code(500).send({ error: 'Invalid fulfillment data from Magic Eden' });
+        }
+
+        return reply.send({
+          chainId: CHAIN_ID,
+          to: fulfillItem.data.to,
+          data: fulfillItem.data.data,
+          value: fulfillItem.data.value || '0x0',
+          seaport: SEAPORT_ADDRESS,
+          priceAPE: listing.order.data.priceDecimal || (Number(listing.priceWei) / 1e18).toFixed(2)
+        });
+
+      } catch (error: any) {
+        app.log.error('[Market] Error building fill from Magic Eden:', error.response?.data || error.message);
+        return reply.code(500).send({ 
+          error: 'Failed to build transaction',
+          message: error.response?.data?.message || error.message
+        });
+      }
     }
   );
 

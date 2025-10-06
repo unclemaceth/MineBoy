@@ -55,7 +55,7 @@ export async function getOrder(tokenId: string): Promise<any> {
  * Build a fill transaction for buying an NPC
  * Returns: { chainId, to, data, value, seaport, priceAPE }
  */
-export async function buildFill(tokenId: string): Promise<{
+export async function buildFill(tokenId: string, buyer?: string): Promise<{
   chainId: number;
   to: string;
   data: string;
@@ -68,7 +68,7 @@ export async function buildFill(tokenId: string): Promise<{
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify({ tokenId })
+    body: JSON.stringify({ tokenId, buyer })
   });
   
   if (!response.ok) {
