@@ -48,8 +48,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
       const response = await fetch(`${BACKEND_URL}/v2/flywheel/list/${tokenId}`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'X-Admin-Token': process.env.NEXT_PUBLIC_ADMIN_TOKEN || ''
+          'Content-Type': 'application/json'
         }
       });
       

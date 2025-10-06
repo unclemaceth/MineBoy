@@ -19,8 +19,8 @@ export default async function routes(app: FastifyInstance) {
   app.post<{ Params: { tokenId: string } }>(
     '/v2/flywheel/list/:tokenId',
     async (request, reply) => {
-      // Admin only for now (can open up later if you want)
-      if (!requireAdmin(request, reply)) return;
+      // No auth required - it's just listing the bot's own NFTs
+      // If you want to restrict later, use wallet signature instead of admin token
       
       const { tokenId } = request.params;
       
