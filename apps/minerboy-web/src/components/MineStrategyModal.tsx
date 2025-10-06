@@ -13,8 +13,10 @@ type FlywheelStats = {
   apeBalance: string;
   mnestrPrice: string;
   mnestrMarketCap: string;
+  mnestrCap: string;
   mnestrSupply: string;
-  totalBurned: string;
+  mnestrUnminted: string;
+  mnestrBurned: string;
   cheapestNPC: {
     tokenId: string;
     price: string;
@@ -168,10 +170,17 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
             <>
               {/* APE Balance & MNESTR Stats */}
               <StatBox label="FLYWHEEL APE BALANCE" value={`${stats.apeBalance} APE`} />
+              
+              <div style={{ marginTop: '12px', marginBottom: '12px' }}>
+                <SectionTitle>MNESTR TOKEN STATS</SectionTitle>
+              </div>
+              
               <StatBox label="MNESTR PRICE" value={`${stats.mnestrPrice} APE`} />
-              <StatBox label="MNESTR MARKET CAP" value={`${stats.mnestrMarketCap} APE`} />
-              <StatBox label="MNESTR SUPPLY" value={stats.mnestrSupply} />
-              <StatBox label="MNESTR BURNED" value={stats.totalBurned} />
+              <StatBox label="MARKET CAP" value={`${stats.mnestrMarketCap} APE`} />
+              <StatBox label="MAX SUPPLY (CAP)" value={stats.mnestrCap} />
+              <StatBox label="CURRENT SUPPLY" value={stats.mnestrSupply} />
+              <StatBox label="UNMINTED (REMAINING)" value={stats.mnestrUnminted} />
+              <StatBox label="ACTUALLY BURNED" value={`${stats.mnestrBurned} 🔥`} highlight={true} />
 
               {/* Cheapest NPC */}
               {stats.cheapestNPC && (
@@ -277,11 +286,11 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
 }
 
 // Helper Components
-function StatBox({ label, value }: { label: string; value: string }) {
+function StatBox({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return (
     <div style={{
-      backgroundColor: '#1a4d2a',
-      border: '2px solid #2d5a3d',
+      backgroundColor: highlight ? '#2d1a1a' : '#1a4d2a',
+      border: `2px solid ${highlight ? '#5a2d2d' : '#2d5a3d'}`,
       borderRadius: '6px',
       padding: '12px',
       marginBottom: '12px',
@@ -289,8 +298,14 @@ function StatBox({ label, value }: { label: string; value: string }) {
       justifyContent: 'space-between',
       alignItems: 'center'
     }}>
-      <span style={{ fontSize: '12px', color: '#88cc88' }}>{label}</span>
-      <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#c8ffc8' }}>{value}</span>
+      <span style={{ fontSize: '12px', color: highlight ? '#ff8888' : '#88cc88' }}>{label}</span>
+      <span style={{ 
+        fontSize: '14px', 
+        fontWeight: 'bold', 
+        color: highlight ? '#ffcccc' : '#c8ffc8' 
+      }}>
+        {value}
+      </span>
     </div>
   );
 }

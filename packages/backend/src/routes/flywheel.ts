@@ -14,6 +14,10 @@ const ERC20_ABI = [
   'function cap() view returns (uint256)'
 ];
 
+// Common burn addresses
+const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
 const ERC721_ABI = [
   'function ownerOf(uint256) view returns (address)'
 ];
@@ -49,18 +53,22 @@ export default async function routes(app: FastifyInstance) {
 
       // Fetch MNESTR data
       const mnestr = new Contract(MNESTR, ERC20_ABI, provider);
-      const [decimals, totalSupply, cap] = await Promise.all([
+      const [decimals, totalSupply, cap, deadBalance, zeroBalance] = await Promise.all([
         mnestr.decimals(),
         mnestr.totalSupply(),
-        mnestr.cap()
+        mnestr.cap(),
+        mnestr.balanceOf(BURN_ADDRESS),
+        mnestr.balanceOf(ZERO_ADDRESS)
       ]);
 
       const totalSupplyFormatted = formatUnits(totalSupply, decimals);
       const capFormatted = formatUnits(cap, decimals);
       
-      // TODO: Track actual burns in database
-      // For now, calculate as: cap - currentSupply (will increase as bot burns)
-      const totalBurned = parseFloat(capFormatted) - parseFloat(totalSupplyFormatted);
+      // Calculate unminted (available to mint)
+      const unminted = parseFloat(capFormatted) - parseFloat(totalSupplyFormatted);
+      
+      // Calculate actually burned (sent to burn addresses)
+      const actuallyBurned = parseFloat(formatUnits(deadBalance, decimals)) + parseFloat(formatUnits(zeroBalance, decimals));
 
       // Get MNESTR price from Camelot (1 MNESTR = ? APE)
       let mnestrPrice = '0.0001';
@@ -114,8 +122,10 @@ export default async function routes(app: FastifyInstance) {
         apeBalance: apeBalanceFormatted,
         mnestrPrice,
         mnestrMarketCap: marketCap,
-        mnestrSupply: (parseFloat(totalSupplyFormatted) / 1000000).toFixed(2) + 'M', // Show in millions
-        totalBurned: (totalBurned / 1000000).toFixed(2) + 'M', // Show in millions
+        mnestrCap: (parseFloat(capFormatted) / 1000000).toFixed(2) + 'M',
+        mnestrSupply: (parseFloat(totalSupplyFormatted) / 1000000).toFixed(2) + 'M',
+        mnestrUnminted: (unminted / 1000000).toFixed(2) + 'M',
+        mnestrBurned: (actuallyBurned / 1000000).toFixed(2) + 'M',
         cheapestNPC,
         ownedNPCs,
         previousSales
