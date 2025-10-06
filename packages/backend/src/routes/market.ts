@@ -221,54 +221,29 @@ export default async function routes(app: FastifyInstance) {
         return reply.code(410).send({ error: 'sold' });
       }
 
+      // Encode Seaport fulfillOrder transaction ourselves!
+      // No Magic Eden API needed - we have the full signed order
       try {
-        // Use Magic Eden's execute/buy API to get the fulfillment transaction
-        app.log.info(`[Market] Fetching buy transaction for token ${tokenId}, buyer ${buyer || 'none'}`);
+        app.log.info(`[Market] Building fulfillOrder transaction for token ${tokenId}`);
         
-        const buyResponse = await axios.post(
-          `${MAGIC_EDEN_API}/apechain/execute/buy/v5`,
-          {
-            taker: buyer || '0x0000000000000000000000000000000000000000',
-            tokens: [`${NPC}:${tokenId}`],
-            skipBalanceCheck: true
-          },
-          {
-            headers: {
-              'accept': '*/*',
-              'Content-Type': 'application/json'
-            }
-          }
-        );
+        const tx = encodeFulfillOrder(listing.order);
         
-        app.log.info(`[Market] Magic Eden response:`, buyResponse.data);
-
-        const steps = buyResponse.data?.steps || [];
-        if (steps.length === 0) {
-          return reply.code(500).send({ error: 'No fulfillment steps returned from Magic Eden' });
-        }
-
-        // Find the main fulfillment step (usually the last one)
-        const fulfillStep = steps[steps.length - 1];
-        const fulfillItem = fulfillStep?.items?.[0];
-
-        if (!fulfillItem?.data?.to || !fulfillItem?.data?.data) {
-          return reply.code(500).send({ error: 'Invalid fulfillment data from Magic Eden' });
-        }
+        app.log.info(`[Market] Encoded fulfillOrder: to=${tx.to}, value=${tx.value}`);
 
         return reply.send({
           chainId: CHAIN_ID,
-          to: fulfillItem.data.to,
-          data: fulfillItem.data.data,
-          value: fulfillItem.data.value || '0x0',
+          to: tx.to,
+          data: tx.data,
+          value: tx.value,
           seaport: SEAPORT_ADDRESS,
-          priceAPE: listing.order.data.priceDecimal || (Number(listing.priceWei) / 1e18).toFixed(2)
+          priceAPE: (Number(listing.priceWei) / 1e18).toFixed(2)
         });
 
       } catch (error: any) {
-        app.log.error('[Market] Error building fill from Magic Eden:', error.response?.data || error.message);
+        app.log.error('[Market] Error encoding fulfillOrder:', error.message);
         return reply.code(500).send({ 
-          error: 'Failed to build transaction',
-          message: error.response?.data?.message || error.message
+          error: 'Failed to encode transaction',
+          message: error.message
         });
       }
     }
@@ -345,6 +320,57 @@ export default async function routes(app: FastifyInstance) {
       app.log.info(`[Market] NPC #${tokenId} sold to ${buyer} (tx: ${txHash})`);
 
       return reply.send({ ok: true });
+    }
+  );
+
+  /**
+   * POST /market/admin/store-order
+   * Store a full Seaport order (called by bot after creating listing)
+   */
+  app.post<{ Body: { tokenId: string; priceWei: string; signature: string; orderComponents: any; domain: any; expiresAt: number } }>(
+    '/market/admin/store-order',
+    async (request, reply) => {
+      const auth = request.headers.authorization || '';
+      const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+      
+      if (!ADMIN_TOKEN || auth !== `Bearer ${ADMIN_TOKEN}`) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+
+      const redis = getRedis();
+      if (!redis) {
+        return reply.code(503).send({ error: 'redis-unavailable' });
+      }
+
+      const { tokenId, priceWei, signature, orderComponents, domain, expiresAt } = request.body;
+
+      if (!tokenId || !priceWei || !signature || !orderComponents) {
+        return reply.code(400).send({ error: 'Missing required fields' });
+      }
+
+      const listing: Listing = {
+        tokenId,
+        orderId: null,
+        maker: FLYWHEEL,
+        priceWei,
+        order: {
+          kind: 'seaport-v1.6',
+          data: {
+            ...orderComponents,
+            signature,
+            domain
+          }
+        }
+      };
+
+      // Store in Redis
+      const ttl = expiresAt ? Math.max(60, expiresAt - Math.floor(Date.now() / 1000)) : 7 * 24 * 3600;
+      await redis.sadd('market:listings', tokenId);
+      await redis.set(`market:order:${tokenId}`, JSON.stringify(listing), 'EX', ttl);
+
+      app.log.info(`[Market] Stored order for token ${tokenId} at ${(Number(priceWei) / 1e18).toFixed(2)} APE`);
+
+      return reply.send({ ok: true, tokenId });
     }
   );
 

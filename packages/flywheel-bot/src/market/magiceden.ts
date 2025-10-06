@@ -236,6 +236,28 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
           const signature = await flywheel.signTypedData(domain, types, value);
           console.log(`[MagicEden] Generated signature: ${signature.substring(0, 20)}...`);
           
+          // Store the full order in our backend for direct fulfillment
+          try {
+            const backendUrl = process.env.BACKEND_URL || 'https://mineboy-g5xo.onrender.com';
+            await axios.post(`${backendUrl}/market/admin/store-order`, {
+              tokenId,
+              priceWei,
+              signature,
+              orderComponents: value,  // The full Seaport OrderComponents
+              domain,
+              expiresAt: value.endTime
+            }, {
+              headers: {
+                'Authorization': `Bearer ${process.env.ADMIN_TOKEN || ''}`,
+                'Content-Type': 'application/json'
+              }
+            });
+            console.log(`[MagicEden] ✅ Stored order in MineBoy backend`);
+          } catch (err: any) {
+            console.warn(`[MagicEden] Failed to store order in backend: ${err.message}`);
+            // Don't fail the listing if backend storage fails
+          }
+          
           // Post the signature back to Magic Eden
           const postUrl = item.data.post?.endpoint;
           const postMethod = item.data.post?.method || 'POST';
