@@ -52,10 +52,16 @@ async function main() {
   console.log();
   
   try {
+    console.log('📤 Estimating gas...');
+    const gasEstimate = await seaport.fulfillOrder.estimateGas(order, ZERO32, {
+      value: totalValue
+    });
+    console.log(`   Gas estimate: ${gasEstimate}`);
+    
     console.log('📤 Sending test transaction...');
     const tx = await seaport.fulfillOrder(order, ZERO32, {
       value: totalValue,
-      gasLimit: 500000 // High gas limit for testing
+      gasLimit: gasEstimate * 120n / 100n // 20% buffer
     });
     
     console.log(`✅ Transaction sent: ${tx.hash}`);
@@ -67,13 +73,29 @@ async function main() {
   } catch (error: any) {
     console.log('❌ Transaction failed:');
     console.log(`   ${error.message}`);
+    console.log();
     
+    if (error.shortMessage) {
+      console.log(`   Short message: ${error.shortMessage}`);
+    }
     if (error.data) {
       console.log(`   Error data: ${error.data}`);
     }
     if (error.reason) {
       console.log(`   Reason: ${error.reason}`);
     }
+    if (error.code) {
+      console.log(`   Code: ${error.code}`);
+    }
+    
+    // Try to decode the error
+    if (error.error?.data) {
+      console.log(`   Raw error data: ${error.error.data}`);
+    }
+    
+    console.log();
+    console.log('Full error object:');
+    console.log(JSON.stringify(error, null, 2));
   }
 }
 
