@@ -31,8 +31,15 @@ async function createListing(tokenId: string, priceAPE: string): Promise<{ succe
         orderKind: "seaport-v1.6",
         orderbook: "reservoir",
         automatedRoyalties: true,
+        royaltyBps: 690, // 6.9% royalties (explicit)
         currency: "0x0000000000000000000000000000000000000000",
-        expirationTime: String(Math.floor(Date.now() / 1000) + (7 * 24 * 3600))
+        expirationTime: String(Math.floor(Date.now() / 1000) + (7 * 24 * 3600)),
+        options: {
+          "seaport-v1.6": {
+            useOffChainCancellation: false,
+            replaceOrderId: undefined
+          }
+        }
       }]
     }, {
       headers: { 'accept': '*/*', 'Content-Type': 'application/json' }

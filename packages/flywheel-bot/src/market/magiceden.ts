@@ -175,8 +175,15 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
           orderKind: "seaport-v1.6",
           orderbook: "reservoir",
           automatedRoyalties: true,
+          royaltyBps: 690, // 6.9% creator royalties (explicit)
           currency: "0x0000000000000000000000000000000000000000", // Native APE
-          expirationTime: String(Math.floor(Date.now() / 1000) + (7 * 24 * 3600)) // 7 days
+          expirationTime: String(Math.floor(Date.now() / 1000) + (7 * 24 * 3600)), // 7 days
+          options: {
+            "seaport-v1.6": {
+              useOffChainCancellation: false,
+              replaceOrderId: undefined
+            }
+          }
         }
       ]
     }, {
