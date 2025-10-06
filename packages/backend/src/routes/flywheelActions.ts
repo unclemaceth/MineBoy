@@ -1,17 +1,96 @@
 import { FastifyInstance } from 'fastify';
-import { spawn } from 'child_process';
-import path from 'path';
+import { JsonRpcProvider, Wallet, Contract } from 'ethers';
+import axios from 'axios';
 
-// Only allow admin to trigger listing actions
-function requireAdmin(req: any, reply: any) {
-  const token = req.headers['x-admin-token'] || req.headers['authorization'] || '';
-  const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';
-  
-  if (!token || !token.includes(ADMIN_TOKEN)) {
-    reply.code(401).send({ error: 'unauthorized' });
-    return false;
+const RPC_URL = process.env.RPC_URL || 'https://rpc.apechain.com/http';
+const FLYWHEEL_PK = process.env.FLYWHEEL_PRIVATE_KEY || '';
+const FLYWHEEL_WALLET = process.env.FLYWHEEL_WALLET || '0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4';
+const NPC_COLLECTION = '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA';
+const MAGIC_EDEN_API = 'https://api-mainnet.magiceden.dev/v3/rtp';
+
+// Create listing on Magic Eden
+async function createListing(tokenId: string, priceAPE: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const provider = new JsonRpcProvider(RPC_URL, 33139);
+    const wallet = new Wallet(FLYWHEEL_PK, provider);
+    
+    const priceWei = (Number(priceAPE) * 1e18).toString();
+    
+    const response = await axios.post(`${MAGIC_EDEN_API}/apechain/execute/list/v5`, {
+      maker: await wallet.getAddress(),
+      source: "magiceden.io",
+      params: [{
+        token: `${NPC_COLLECTION}:${tokenId}`,
+        weiPrice: priceWei,
+        orderKind: "seaport-v1.6",
+        orderbook: "reservoir",
+        automatedRoyalties: true,
+        currency: "0x0000000000000000000000000000000000000000",
+        expirationTime: String(Math.floor(Date.now() / 1000) + (7 * 24 * 3600))
+      }]
+    }, {
+      headers: { 'accept': '*/*', 'Content-Type': 'application/json' }
+    });
+    
+    const steps = response.data?.steps || [];
+    
+    if (steps.length === 0) {
+      return { success: false, error: 'No steps returned from Magic Eden API' };
+    }
+    
+    // Execute each step (approvals, signatures)
+    for (const step of steps) {
+      for (const item of step.items || []) {
+        // Handle transaction (approval)
+        if (item.data?.to && item.data?.data) {
+          const tx = await wallet.sendTransaction({
+            to: item.data.to,
+            data: item.data.data,
+            value: item.data.value || 0
+          });
+          await tx.wait();
+        }
+        
+        // Handle signature (listing order)
+        if (item.data?.sign) {
+          const signature = await wallet.signTypedData(
+            item.data.sign.domain,
+            item.data.sign.types,
+            item.data.sign.value
+          );
+          
+          const postUrl = item.data.post?.endpoint;
+          if (postUrl) {
+            let fullUrl;
+            if (postUrl.startsWith('http')) {
+              fullUrl = postUrl;
+            } else if (postUrl.startsWith('/apechain/')) {
+              fullUrl = `https://api-mainnet.magiceden.dev/v3/rtp${postUrl}`;
+            } else {
+              fullUrl = `https://api-mainnet.magiceden.dev/v3/rtp/apechain${postUrl}`;
+            }
+            
+            await axios({
+              method: item.data.post?.method || 'POST',
+              url: fullUrl,
+              data: {
+                ...item.data.post?.body,
+                signature
+              },
+              headers: { 'accept': '*/*', 'Content-Type': 'application/json' }
+            });
+          }
+        }
+      }
+    }
+    
+    return { success: true };
+  } catch (error: any) {
+    return { 
+      success: false, 
+      error: error.response?.data?.message || error.message || 'Unknown error'
+    };
   }
-  return true;
 }
 
 export default async function routes(app: FastifyInstance) {
@@ -32,66 +111,33 @@ export default async function routes(app: FastifyInstance) {
       }
       
       try {
-        app.log.info(`[Flywheel] Triggering listing for NPC #${tokenId}...`);
+        app.log.info(`[Flywheel] Creating listing for NPC #${tokenId}...`);
         
-        // Path to flywheel bot
-        const botDir = path.join(process.cwd(), '..', 'flywheel-bot');
+        // Calculate listing price (floor + 20% markup)
+        // For now, use a default price - could fetch floor dynamically
+        const listingPrice = "55.5"; // ~46 APE floor + 20%
         
-        // Run the listing script
-        const child = spawn('npm', ['run', 'list-owned'], {
-          cwd: botDir,
-          env: {
-            ...process.env,
-            OWNED_TOKEN_IDS: tokenId // Override to only list this one
-          }
-        });
-        
-        let output = '';
-        let errorOutput = '';
-        
-        child.stdout.on('data', (data) => {
-          output += data.toString();
-        });
-        
-        child.stderr.on('data', (data) => {
-          errorOutput += data.toString();
-        });
-        
-        // Wait for completion (with timeout)
-        const result = await new Promise<{ success: boolean; output: string }>((resolve) => {
-          const timeout = setTimeout(() => {
-            child.kill();
-            resolve({ success: false, output: 'Timeout after 30 seconds' });
-          }, 30000);
-          
-          child.on('close', (code) => {
-            clearTimeout(timeout);
-            resolve({
-              success: code === 0,
-              output: output + errorOutput
-            });
-          });
-        });
+        const result = await createListing(tokenId, listingPrice);
         
         if (result.success) {
           app.log.info(`[Flywheel] Successfully listed NPC #${tokenId}`);
           return reply.send({
             ok: true,
             tokenId,
-            message: `NPC #${tokenId} listed successfully`
+            message: `NPC #${tokenId} listed at ${listingPrice} APE`
           });
         } else {
-          app.log.error(`[Flywheel] Failed to list NPC #${tokenId}: ${result.output}`);
+          app.log.error(`[Flywheel] Failed to list NPC #${tokenId}: ${result.error}`);
           return reply.code(500).send({
             error: 'Listing failed',
-            message: result.output
+            message: result.error || 'Unknown error'
           });
         }
         
       } catch (error: any) {
-        app.log.error('[Flywheel] Error triggering listing:', error);
+        app.log.error('[Flywheel] Error creating listing:', error);
         return reply.code(500).send({
-          error: 'Failed to trigger listing',
+          error: 'Failed to create listing',
           message: error.message
         });
       }
