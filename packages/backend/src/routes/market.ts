@@ -204,19 +204,40 @@ export default async function routes(app: FastifyInstance) {
         return reply.code(410).send({ error: 'sold', txHash: filled });
       }
 
-      // Get listing (to verify it exists)
-      const raw = await redis.get(`market:order:${tokenId}`);
-      app.log.info(`[Market] Raw Redis data for token ${tokenId}:`, raw?.substring(0, 200));
-      
+      // Read from Redis (handle both string and JSON formats)
+      let raw: any = await redis.get(`market:order:${tokenId}`);
       if (!raw) {
         return reply.code(404).send({ error: 'not-listed' });
       }
 
-      const listing: Listing = JSON.parse(raw);
-      app.log.info(`[Market] Parsed listing:`, { tokenId: listing?.tokenId, hasOrder: !!listing?.order, orderKind: listing?.order?.kind });
+      // If plain string, parse it
+      const stored = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+      
+      // Accept both shapes:
+      //  A) { order: { kind, data: { signature, parameters|components } } }
+      //  B) { kind, data: { signature, parameters|components } }
+      const order = stored?.order ?? stored;
 
-      // Verify maker is flywheel
-      if (getAddress(listing.maker) !== FLYWHEEL) {
+      app.log.info({
+        tag: 'market.build-fill',
+        tokenId,
+        keys: Object.keys(order ?? {}),
+        hasKind: !!order?.kind,
+        hasSig: !!order?.data?.signature,
+        hasParams: !!(order?.data?.parameters || order?.data?.components || order?.data?.offerer),
+        sig: order?.data?.signature ? `${order.data.signature.slice(0,10)}…${order.data.signature.slice(-8)}` : null,
+      }, '[Market] build-fill input');
+
+      if (!order?.kind || !order?.data?.signature) {
+        app.log.error('[Market] Order missing required fields');
+        return reply.code(500).send({
+          error: 'encode-failed',
+          detail: 'Order missing required fields (kind/signature/parameters). See server logs.'
+        });
+      }
+
+      // Verify maker if we have the full listing structure
+      if (stored.maker && getAddress(stored.maker) !== FLYWHEEL) {
         return reply.code(409).send({ error: 'bad-maker' });
       }
 
@@ -231,19 +252,10 @@ export default async function routes(app: FastifyInstance) {
       }
 
       // Encode Seaport fulfillOrder transaction ourselves!
-      // No Magic Eden API needed - we have the full signed order
       try {
-        app.log.info(`[Market] Building fulfillOrder transaction for token ${tokenId}`);
-        app.log.info(`[Market] Order structure:`, {
-          kind: listing?.order?.kind,
-          hasSig: !!listing?.order?.data?.signature,
-          hasParams: !!(listing?.order?.data?.parameters || listing?.order?.data?.components || listing?.order?.data?.offerer),
-          dataKeys: listing?.order?.data ? Object.keys(listing.order.data).slice(0, 10) : []
-        });
-        
         const tx = encodeFulfillOrder({
-          order: listing.order,
-          fulfiller: buyer,
+          order,
+          fulfiller: buyer ?? '0x0000000000000000000000000000000000000000',
           fulfillerConduitKey: ZERO32
         });
         
@@ -255,15 +267,19 @@ export default async function routes(app: FastifyInstance) {
           data: tx.data,
           value: tx.value,
           seaport: SEAPORT_ADDRESS,
-          priceAPE: (Number(listing.priceWei) / 1e18).toFixed(2)
+          priceAPE: stored.priceWei ? (Number(stored.priceWei) / 1e18).toFixed(2) : '0'
         });
 
       } catch (error: any) {
-        app.log.error('[Market] Error encoding fulfillOrder:', error);
-        app.log.error('[Market] Error stack:', error.stack);
+        app.log.error({
+          tag: 'market.build-fill',
+          err: error?.stack ?? String(error),
+          tokenId
+        }, '[Market] Error encoding fulfillOrder');
+        
         return reply.code(500).send({ 
-          error: 'Failed to encode transaction',
-          message: error.message || String(error)
+          error: 'encode-failed',
+          detail: String(error?.message ?? error)
         });
       }
     }
@@ -340,6 +356,37 @@ export default async function routes(app: FastifyInstance) {
       app.log.info(`[Market] NPC #${tokenId} sold to ${buyer} (tx: ${txHash})`);
 
       return reply.send({ ok: true });
+    }
+  );
+
+  /**
+   * GET /market/admin/raw/:tokenId
+   * Debug endpoint to see exactly what's stored in Redis
+   */
+  app.get<{ Params: { tokenId: string } }>(
+    '/market/admin/raw/:tokenId',
+    async (request, reply) => {
+      const adminToken = request.headers['x-admin-token'];
+      const ADMIN_TOKEN = process.env.ADMIN_TOKEN;
+      
+      if (!ADMIN_TOKEN || adminToken !== ADMIN_TOKEN) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+
+      const redis = getRedis();
+      if (!redis) {
+        return reply.code(503).send({ error: 'redis-unavailable' });
+      }
+
+      const { tokenId } = request.params;
+      let raw: any = await redis.get(`market:order:${tokenId}`);
+      
+      if (!raw) {
+        return reply.code(404).send({ error: 'not-found' });
+      }
+
+      const stored = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+      return reply.send({ raw: stored });
     }
   );
 
