@@ -2,10 +2,10 @@
  * Direct Seaport order creation (NO MAGIC EDEN)
  * Create signed Seaport 1.6 orders for NFT listings
  */
-import { ethers, Wallet } from 'ethers';
+import { ethers, Wallet, getAddress } from 'ethers';
 import axios from 'axios';
 
-const SEAPORT_ADDRESS = '0x0000000000000068F116a894984e2Db1123eB395'; // Seaport 1.6
+const SEAPORT_ADDRESS = getAddress('0x0000000000000068F116a894984e2DB1123eB395'); // Seaport 1.6 (checksummed)
 const CONDUIT_KEY = '0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000'; // OpenSea conduit
 const ZONE_ADDRESS = '0x0000000000000000000000000000000000000000'; // No zone
 
