@@ -9,7 +9,7 @@ import { treasury } from '../wallets.js';
 import { executeBurn } from './burn.js';
 
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
-const MIN_APE_TO_BURN = '1.0'; // Minimum 1 APE to trigger burn
+const MIN_APE_TO_BURN = '2.0'; // Minimum 2 APE to trigger burn (need 0.5 for gas + 1.5 to swap)
 
 let burnInProgress = false;
 

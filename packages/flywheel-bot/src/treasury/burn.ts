@@ -51,8 +51,8 @@ export async function executeBurn(): Promise<{
     throw new Error('No APE in treasury to process');
   }
   
-  // 2. Reserve gas FIRST (0.1 APE for swap transaction), then calculate swap amount
-  const gasReserve = parseEther('0.1'); // Keep 0.1 APE for gas
+  // 2. Reserve gas FIRST (0.5 APE for swap transaction), then calculate swap amount
+  const gasReserve = parseEther('0.5'); // Keep 0.5 APE for gas (DEX swaps are expensive)
   
   if (apeBalance <= gasReserve) {
     throw new Error(`Insufficient balance for swap (need > ${formatEther(gasReserve)} APE for gas)`);
