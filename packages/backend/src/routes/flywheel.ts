@@ -55,36 +55,18 @@ export default async function routes(app: FastifyInstance) {
       app.log.info(`[Flywheel] Order fulfilled: NPC #${tokenId} sold to ${buyer} (tx: ${txHash})`);
 
       try {
-        // Trigger the flywheel burn bot asynchronously
-        // The bot's treasury service will:
-        // 1. Detect APE in treasury wallet
-        // 2. Swap 99% APE → MNESTR
-        // 3. Burn MNESTR to 0xdead
-        // 4. Send 1% APE to trading wallet for gas
-        
-        const BOT_WEBHOOK = process.env.FLYWHEEL_BOT_WEBHOOK;
-        if (BOT_WEBHOOK) {
-          fetch(BOT_WEBHOOK, {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              event: 'npc-sold',
-              tokenId,
-              buyer,
-              txHash
-            })
-          }).catch((err) => {
-            app.log.error('[Flywheel] Bot webhook failed:', err);
-          });
-        } else {
-          app.log.warn('[Flywheel] No bot webhook configured - burn will not execute automatically');
-        }
+        // The flywheel bot polls the treasury wallet balance automatically
+        // When it detects APE from sales, it will:
+        // 1. Swap 99% APE → MNESTR on Camelot DEX
+        // 2. Burn MNESTR to 0xdead
+        // 3. Send 1% APE to trading wallet for gas
         
         app.log.info(`[Flywheel] Sale recorded: tokenId=${tokenId}, buyer=${buyer}, tx=${txHash}`);
+        app.log.info(`[Flywheel] Treasury poller will automatically burn the proceeds within 30s`);
 
         return reply.send({ 
           ok: true, 
-          message: 'Flywheel burn triggered',
+          message: 'Sale confirmed - treasury will auto-burn',
           tokenId,
           buyer,
           txHash

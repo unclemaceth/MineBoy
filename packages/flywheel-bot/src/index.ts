@@ -160,9 +160,9 @@ async function loop() {
   }
 }
 
-// Start the treasury webhook server (for burn triggers)
-import { startWebhookServer } from './treasury/webhook.js';
-startWebhookServer();
+// Start the treasury balance poller (auto-burns when APE detected)
+import { startTreasuryPoller } from './treasury/poller.js';
+startTreasuryPoller().catch(console.error);
 
 // Start the trading bot
 loop().catch(console.error);
