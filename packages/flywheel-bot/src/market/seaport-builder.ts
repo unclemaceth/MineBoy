@@ -100,14 +100,14 @@ export async function createSeaportListing(
       }
     ],
     consideration: [
-      // Seller gets price minus royalty
+      // Treasury wallet gets price minus royalty (for burning)
       {
         itemType: 0, // Native token (APE)
         token: '0x0000000000000000000000000000000000000000',
         identifierOrCriteria: '0',
         startAmount: sellerAmount.toString(),
         endAmount: sellerAmount.toString(),
-        recipient: offerer
+        recipient: treasuryAddress || offerer // Treasury receives proceeds for burning
       },
       // Creator gets royalty
       {
@@ -219,7 +219,8 @@ export async function createListing(
   wallet: Wallet,
   nftContract: string,
   tokenId: string,
-  priceAPE: string
+  priceAPE: string,
+  treasuryAddress?: string
 ): Promise<boolean> {
   try {
     const priceWei = ethers.parseEther(priceAPE).toString();

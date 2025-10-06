@@ -160,5 +160,9 @@ async function loop() {
   }
 }
 
-// Start the bot
+// Start the treasury webhook server (for burn triggers)
+import { startWebhookServer } from './treasury/webhook.js';
+startWebhookServer();
+
+// Start the trading bot
 loop().catch(console.error);

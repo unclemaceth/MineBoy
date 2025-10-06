@@ -55,25 +55,36 @@ export default async function routes(app: FastifyInstance) {
       app.log.info(`[Flywheel] Order fulfilled: NPC #${tokenId} sold to ${buyer} (tx: ${txHash})`);
 
       try {
-        // Here's where the flywheel logic would execute:
-        // 1. Confirm NPC ownership transferred
-        // 2. Receive APE payment (already in wallet)
-        // 3. Swap 99% APE → MNESTR
-        // 4. Burn MNESTR
-        // 5. Keep 1% APE for gas
-        // 6. Log the sale for stats
-
-        // For now, just log and acknowledge
-        app.log.info(`[Flywheel] Sale recorded: tokenId=${tokenId}, buyer=${buyer}, tx=${txHash}`);
+        // Trigger the flywheel burn bot asynchronously
+        // The bot's treasury service will:
+        // 1. Detect APE in treasury wallet
+        // 2. Swap 99% APE → MNESTR
+        // 3. Burn MNESTR to 0xdead
+        // 4. Send 1% APE to trading wallet for gas
         
-        // TODO: Implement actual flywheel logic here
-        // - Call bot to execute burn sequence
-        // - Update stats in DB
-        // - Clear this NPC from owned inventory
+        const BOT_WEBHOOK = process.env.FLYWHEEL_BOT_WEBHOOK;
+        if (BOT_WEBHOOK) {
+          fetch(BOT_WEBHOOK, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              event: 'npc-sold',
+              tokenId,
+              buyer,
+              txHash
+            })
+          }).catch((err) => {
+            app.log.error('[Flywheel] Bot webhook failed:', err);
+          });
+        } else {
+          app.log.warn('[Flywheel] No bot webhook configured - burn will not execute automatically');
+        }
+        
+        app.log.info(`[Flywheel] Sale recorded: tokenId=${tokenId}, buyer=${buyer}, tx=${txHash}`);
 
         return reply.send({ 
           ok: true, 
-          message: 'Flywheel triggered',
+          message: 'Flywheel burn triggered',
           tokenId,
           buyer,
           txHash

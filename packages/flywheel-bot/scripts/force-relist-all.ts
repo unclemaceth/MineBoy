@@ -55,7 +55,7 @@ async function main() {
     console.log(`\n📤 [${i + 1}/${owned.length}] Relisting NPC #${tokenId} at ${price} APE...`);
     
     try {
-      const success = await createListing(flywheel, cfg.npc, tokenId, price);
+      const success = await createListing(flywheel, cfg.npc, tokenId, price, cfg.treasuryAddr);
       if (success) {
         console.log(`  ✅ Successfully relisted NPC #${tokenId}`);
       } else {

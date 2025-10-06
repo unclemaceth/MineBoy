@@ -18,9 +18,14 @@ export const cfg = {
   dexRouter: process.env.DEX_ROUTER!,     // Camelot v2 for swaps
   wape: process.env.WAPE!,                // Wrapped APE token
 
-  // Flywheel wallet (bot's wallet)
+  // Flywheel trading wallet (buys/sells NPCs)
   flywheelAddr: process.env.FLYWHEEL_WALLET!,
   flywheelPk: process.env.FLYWHEEL_PRIVATE_KEY!,
+
+  // Treasury wallet (receives sales, burns MNESTR)
+  // Note: handling typo in env var name (BUEANDBURN vs BUYANDBURN)
+  treasuryAddr: process.env.FLYWHEEL_BUYANDBURN_PUBLIC || process.env.FLYWHEEL_BUEANDBURN_PUBLIC!,
+  treasuryPk: process.env.FLYWHEEL_BUYANDBURN_PRIVATE || process.env.FLYWHEEL_BUEANDBURN_PRIVATE!,
 
   // Policy knobs
   knobs: {
