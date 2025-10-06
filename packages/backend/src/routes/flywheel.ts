@@ -190,45 +190,53 @@ export default async function routes(app: FastifyInstance) {
         const results = await Promise.all(checkPromises);
         const owned = results.filter(id => id !== null);
         
-        // Query ALL active listings by flywheel wallet at once (more efficient)
+        // Query OUR stored listings from Redis (not Magic Eden!)
         const listingsByToken = new Map<string, string>(); // tokenId -> price
         
         try {
-          app.log.info(`[Flywheel] Checking Magic Eden for active listings by ${FLYWHEEL_WALLET}...`);
+          app.log.info(`[Flywheel] Checking Redis for active listings...`);
           
-          const ordersResponse = await axios.get(
-            `https://api-mainnet.magiceden.dev/v3/rtp/apechain/orders/asks/v5`,
-            {
-              params: {
-                contracts: [NPC_COLLECTION],
-                maker: FLYWHEEL_WALLET,
-                status: 'active',
-                sortBy: 'price',
-                limit: 50 // Get up to 50 listings
-              },
-              headers: {
-                'accept': '*/*'
+          const redis = await import('../redis.js').then(m => m.getRedis());
+          if (redis) {
+            // Get all market:order:* keys
+            const orderKeys = await redis.keys('market:order:*');
+            app.log.info(`[Flywheel] Found ${orderKeys.length} stored orders in Redis`);
+            
+            for (const key of orderKeys) {
+              const tokenId = key.replace('market:order:', '');
+              
+              // Only include if flywheel owns this token
+              if (!owned.includes(Number(tokenId))) {
+                continue;
               }
-            }
-          );
-          
-          const orders = ordersResponse.data?.orders || [];
-          app.log.info(`[Flywheel] Found ${orders.length} active listings from flywheel wallet`);
-          
-          // Map each listing to its tokenId
-          for (const order of orders) {
-            const criteria = order?.criteria;
-            if (criteria?.data?.token?.tokenId) {
-              const tokenId = String(criteria.data.token.tokenId);
-              const priceDecimal = order?.price?.amount?.decimal;
-              if (priceDecimal) {
-                listingsByToken.set(tokenId, priceDecimal.toFixed(2));
-                app.log.info(`[Flywheel] Token ${tokenId} listed at ${priceDecimal.toFixed(2)} APE`);
+              
+              const rawOrder = await redis.get(key);
+              if (!rawOrder) continue;
+              
+              try {
+                const stored = typeof rawOrder === 'string' ? JSON.parse(rawOrder) : rawOrder;
+                
+                // Calculate price from consideration amounts
+                let priceWei = stored.priceWei;
+                if (!priceWei && stored.order?.data?.consideration) {
+                  const consideration = stored.order.data.consideration;
+                  priceWei = consideration.reduce((sum: bigint, c: any) => {
+                    return sum + BigInt(c.endAmount || c.startAmount || 0);
+                  }, 0n);
+                }
+                
+                if (priceWei) {
+                  const priceAPE = (Number(priceWei) / 1e18).toFixed(2);
+                  listingsByToken.set(tokenId, priceAPE);
+                  app.log.info(`[Flywheel] Token ${tokenId} listed at ${priceAPE} APE (from Redis)`);
+                }
+              } catch (e: any) {
+                app.log.warn(`[Flywheel] Failed to parse order for token ${tokenId}: ${e.message}`);
               }
             }
           }
         } catch (err: any) {
-          app.log.error(`[Flywheel] Error fetching listings from Magic Eden: ${err.message}`);
+          app.log.error(`[Flywheel] Error fetching listings from Redis: ${err.message}`);
         }
         
         // Build owned NPCs array with listing status
