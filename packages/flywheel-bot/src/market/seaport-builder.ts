@@ -38,6 +38,7 @@ interface SeaportOrder {
   zoneHash: string;
   salt: string;
   conduitKey: string;
+  totalOriginalConsiderationItems: number;
   counter: string;
 }
 
@@ -124,6 +125,7 @@ export async function createSeaportListing(
     zoneHash: '0x' + '0'.repeat(64),
     salt: '0x' + ethers.hexlify(ethers.randomBytes(32)).slice(2),
     conduitKey: CONDUIT_KEY,
+    totalOriginalConsiderationItems: 2, // REQUIRED by Seaport 1.6! Must equal consideration.length
     counter: counter.toString()
   };
   
