@@ -223,17 +223,14 @@ export default async function routes(app: FastifyInstance) {
 
       try {
         // Use Magic Eden's execute/buy API to get the fulfillment transaction
+        app.log.info(`[Market] Fetching buy transaction for token ${tokenId}, buyer ${buyer || 'none'}`);
+        
         const buyResponse = await axios.post(
-          `${MAGIC_EDEN_API}/apechain/execute/buy/v7`,
+          `${MAGIC_EDEN_API}/apechain/execute/buy/v5`,
           {
-            taker: buyer || '0x0000000000000000000000000000000000000000', // Placeholder if no buyer provided
+            taker: buyer || '0x0000000000000000000000000000000000000000',
             tokens: [`${NPC}:${tokenId}`],
-            options: {
-              // Use Seaport for native APE payments
-              preferredOrderSource: 'reservoir',
-              usePermit: false,
-              skipBalanceCheck: true
-            }
+            skipBalanceCheck: true
           },
           {
             headers: {
@@ -242,6 +239,8 @@ export default async function routes(app: FastifyInstance) {
             }
           }
         );
+        
+        app.log.info(`[Market] Magic Eden response:`, buyResponse.data);
 
         const steps = buyResponse.data?.steps || [];
         if (steps.length === 0) {
