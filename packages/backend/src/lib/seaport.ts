@@ -1,6 +1,11 @@
-import { JsonRpcProvider, Interface, Contract } from 'ethers';
+import { JsonRpcProvider, Interface, Contract, getAddress } from 'ethers';
 
-const SEAPORT = process.env.SEAPORT_V16 || '0x0000000000000068F116a894984e2Db1123eB395';
+// Normalize address to avoid checksum errors (lowercase then checksum)
+function normalize(addr: string): string {
+  return getAddress(addr.toLowerCase());
+}
+
+const SEAPORT = normalize(process.env.SEAPORT_V16 || '0x0000000000000068f116a894984e2db1123eb395');
 const RPC = process.env.APECHAIN_RPC || process.env.RPC_URL || 'https://rpc.apechain.com/http';
 const CHAIN_ID = Number(process.env.CHAIN_ID || 33139);
 

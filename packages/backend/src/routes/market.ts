@@ -5,9 +5,14 @@ import { provider, encodeFulfillOrder, checkOwnership, waitForOrderFulfilled, CH
 import { getAddress } from 'ethers';
 import axios from 'axios';
 
+// Normalize address to avoid checksum errors
+function normalize(addr: string): string {
+  return getAddress(addr.toLowerCase());
+}
+
 const CHAIN_ID = CHAIN_ID_VALUE;
-const NPC = getAddress(process.env.NPC_COLLECTION || '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA');
-const FLYWHEEL = getAddress(process.env.FLYWHEEL_WALLET || '0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4');
+const NPC = normalize(process.env.NPC_COLLECTION || '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA');
+const FLYWHEEL = normalize(process.env.FLYWHEEL_WALLET || '0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4');
 const WEBHOOK = process.env.MARKET_WEBHOOK || `${process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8787'}/v2/flywheel/confirm`;
 const MAGIC_EDEN_API = 'https://api-mainnet.magiceden.dev/v3/rtp';
 

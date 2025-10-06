@@ -5,7 +5,12 @@
 import { ethers, Wallet, getAddress } from 'ethers';
 import axios from 'axios';
 
-const SEAPORT_ADDRESS = getAddress('0x0000000000000068F116a894984e2DB1123eB395'); // Seaport 1.6 (checksummed)
+// Normalize address to avoid checksum errors (lowercase then checksum)
+function normalize(addr: string): string {
+  return getAddress(addr.toLowerCase());
+}
+
+const SEAPORT_ADDRESS = normalize(process.env.SEAPORT_V16 || '0x0000000000000068f116a894984e2db1123eb395'); // Seaport 1.6
 const CONDUIT_KEY = '0x0000007b02230091a7ed01230072f7006a004d60a8d4e71d599b8104250f0000'; // OpenSea conduit
 const ZONE_ADDRESS = '0x0000000000000000000000000000000000000000'; // No zone
 
@@ -78,7 +83,7 @@ export async function createSeaportListing(
   const royaltyAmount = (priceWeiBigInt * BigInt(royaltyBps)) / BigInt(10000);
   const sellerAmount = priceWeiBigInt - royaltyAmount;
   
-  const royaltyRecipient = '0xd05a86b9f803a4e68a0967e85947ce616be78cf5'; // NPC creator
+  const royaltyRecipient = normalize('0xd05a86b9f803a4e68a0967e85947ce616be78cf5'); // NPC creator
   
   // Build Seaport OrderComponents
   const order: SeaportOrder = {
