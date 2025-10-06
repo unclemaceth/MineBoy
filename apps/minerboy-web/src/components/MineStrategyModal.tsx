@@ -39,6 +39,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [listingNPC, setListingNPC] = useState<string | null>(null); // Track which NPC is being listed
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   // Function to trigger listing for a specific NPC
   const handleListNPC = async (tokenId: string) => {
@@ -57,7 +58,8 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         throw new Error('Failed to list NPC');
       }
       
-      alert(`NPC #${tokenId} listed successfully!`);
+      setNotification({ message: `NPC #${tokenId} listed successfully!`, type: 'success' });
+      setTimeout(() => setNotification(null), 3000);
       
       // Refresh stats
       const statsResponse = await fetch(`${BACKEND_URL}/v2/flywheel/stats`);
@@ -68,7 +70,8 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
       
     } catch (err) {
       console.error('Error listing NPC:', err);
-      alert(`Failed to list NPC #${tokenId}`);
+      setNotification({ message: `Failed to list NPC #${tokenId}`, type: 'error' });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setListingNPC(null);
     }
@@ -237,9 +240,12 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
               )}
 
               {/* Owned NPCs */}
-              {stats.ownedNPCs.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                  <SectionTitle>OWNED NPCs ({stats.ownedNPCs.length})</SectionTitle>
+                  {stats.ownedNPCs.length > 0 && (
+                    <div style={{ marginTop: '20px' }}>
+                      <SectionTitle>OWNED NPCs ({stats.ownedNPCs.length})</SectionTitle>
+                      <div style={{ fontSize: '10px', color: '#88cc88', marginTop: '4px', marginBottom: '8px' }}>
+                        ✓ Bot auto-lists after purchase. Manual button available if needed.
+                      </div>
                   <div style={{ marginTop: '10px', maxHeight: '200px', overflowY: 'auto' }}>
                     {stats.ownedNPCs.map((npc) => (
                       <div
@@ -255,39 +261,51 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
                           <span style={{ fontSize: '13px', fontWeight: 'bold' }}>NPC #{npc.tokenId}</span>
                           
-                          {!npc.listedPrice && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {npc.listedPrice && (
+                              <span style={{ color: '#ffd700', fontSize: '12px' }}>
+                                {npc.listedPrice} APE
+                              </span>
+                            )}
+                            
                             <button
                               onClick={() => handleListNPC(npc.tokenId)}
-                              disabled={listingNPC === npc.tokenId}
+                              disabled={listingNPC === npc.tokenId || !!npc.listedPrice}
+                              title={
+                                npc.listedPrice 
+                                  ? 'Already listed on marketplace'
+                                  : 'Bot auto-lists after purchase. Use this for manual override.'
+                              }
                               style={{
-                                backgroundColor: listingNPC === npc.tokenId ? '#666' : '#ffd700',
-                                color: '#000',
+                                backgroundColor: (listingNPC === npc.tokenId || npc.listedPrice) ? '#444' : '#ffd700',
+                                color: (listingNPC === npc.tokenId || npc.listedPrice) ? '#888' : '#000',
                                 border: 'none',
                                 borderRadius: '4px',
                                 padding: '6px 12px',
                                 fontSize: '11px',
                                 fontWeight: 'bold',
-                                cursor: listingNPC === npc.tokenId ? 'not-allowed' : 'pointer',
-                                transition: 'opacity 0.2s'
+                                cursor: (listingNPC === npc.tokenId || npc.listedPrice) ? 'not-allowed' : 'pointer',
+                                transition: 'opacity 0.2s',
+                                opacity: (listingNPC === npc.tokenId || npc.listedPrice) ? 0.5 : 1
                               }}
                               onMouseEnter={(e) => {
-                                if (listingNPC !== npc.tokenId) {
+                                if (listingNPC !== npc.tokenId && !npc.listedPrice) {
                                   e.currentTarget.style.opacity = '0.8';
                                 }
                               }}
                               onMouseLeave={(e) => {
-                                e.currentTarget.style.opacity = '1';
+                                if (!npc.listedPrice) {
+                                  e.currentTarget.style.opacity = '1';
+                                }
                               }}
                             >
-                              {listingNPC === npc.tokenId ? 'Listing...' : 'List for Sale'}
+                              {listingNPC === npc.tokenId 
+                                ? 'Listing...' 
+                                : npc.listedPrice 
+                                  ? 'Listed ✓' 
+                                  : 'Manual List'}
                             </button>
-                          )}
-                          
-                          {npc.listedPrice && (
-                            <span style={{ color: '#ffd700', fontSize: '12px' }}>
-                              Listed: {npc.listedPrice} APE
-                            </span>
-                          )}
+                          </div>
                         </div>
                         <div style={{ fontSize: '11px', color: '#88cc88' }}>
                           Status: {npc.listedPrice ? 'Listed on marketplace' : 'Not listed yet'}
@@ -349,6 +367,58 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
           )}
         </div>
       </div>
+      
+      {/* Custom Notification */}
+      {notification && (
+        <div 
+          className="notification-slide-in"
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            right: '20px',
+            backgroundColor: notification.type === 'success' ? '#1a4d2a' : '#4d1a1a',
+            border: `3px solid ${notification.type === 'success' ? '#2d5a3d' : '#5a2d2d'}`,
+            borderRadius: '8px',
+            padding: '16px 24px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.5)',
+            zIndex: 10001,
+            minWidth: '300px'
+          }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '20px' }}>
+              {notification.type === 'success' ? '✓' : '✗'}
+            </span>
+            <span style={{
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: notification.type === 'success' ? '#c8ffc8' : '#ffcccc',
+              fontFamily: 'monospace'
+            }}>
+              {notification.message}
+            </span>
+          </div>
+        </div>
+      )}
+      
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes notificationSlideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .notification-slide-in {
+          animation: notificationSlideIn 0.3s ease-out;
+        }
+      `}} />
     </div>
   );
 }

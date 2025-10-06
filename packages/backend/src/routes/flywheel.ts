@@ -138,11 +138,42 @@ export default async function routes(app: FastifyInstance) {
         const results = await Promise.all(checkPromises);
         const owned = results.filter(id => id !== null);
         
+        // Check Magic Eden for listing status of each owned NPC
         for (const tokenId of owned) {
+          let listedPrice: string | null = null;
+          
+          try {
+            // Query Magic Eden for this specific token
+            const meResponse = await axios.get(
+              `https://api-mainnet.magiceden.dev/v3/rtp/apechain/tokens/v7`,
+              {
+                params: {
+                  collection: NPC_COLLECTION,
+                  tokens: `${NPC_COLLECTION}:${tokenId}`
+                },
+                headers: {
+                  'accept': '*/*'
+                }
+              }
+            );
+            
+            const token = meResponse.data?.tokens?.[0];
+            if (token?.market?.floorAsk?.maker?.toLowerCase() === FLYWHEEL_WALLET.toLowerCase()) {
+              // This token is listed by us!
+              const priceDecimal = token.market.floorAsk.price?.amount?.decimal;
+              if (priceDecimal) {
+                listedPrice = priceDecimal.toFixed(2);
+              }
+            }
+          } catch (err) {
+            // Ignore errors, just leave listedPrice as null
+            app.log.debug(`Could not check listing status for token ${tokenId}`);
+          }
+          
           ownedNPCs.push({
             tokenId: String(tokenId),
             acquired: 'Unknown', // Could track this in DB
-            listedPrice: null // Would need to check marketplace
+            listedPrice
           });
         }
       } catch (err) {
