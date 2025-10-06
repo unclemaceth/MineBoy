@@ -34,6 +34,7 @@ import { registerHealthRoute } from './routes/health.js';
 import teamsRoutes from './routes/teams.js';
 import adminSeasonsRoutes from './routes/adminSeasons.js';
 import statsRoutes from './routes/stats.js';
+import flywheelRoutes from './routes/flywheel.js';
 import { registerMaintenance } from './routes/maintenance.js';
 import { registerJobRoutes } from './routes/job.js';
 import { registerAdminExportRoute } from './routes/adminExport.js';
@@ -187,6 +188,7 @@ await registerHealthRoute(fastify);
 await fastify.register(teamsRoutes);
 await fastify.register(adminSeasonsRoutes);
 await fastify.register(statsRoutes);
+await fastify.register(flywheelRoutes);
 registerJobRoutes(fastify); // ANTI-BOT: Job eligibility endpoint
 
 // Health check
@@ -1458,8 +1460,8 @@ fastify.get('/v2/messages/paid', async (req, res) => {
       id: m.id,
       message: m.message,
       wallet: m.wallet,
-      createdAt: m.created_at,
-      expiresAt: m.expires_at
+      createdAt: m.createdAt,
+      expiresAt: m.expiresAt
     }))
   });
 });

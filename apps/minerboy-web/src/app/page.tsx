@@ -8,6 +8,7 @@ import DpadButton from "@/components/ui/DpadButton";
 import FanSandwich from "@/components/ui/FanSandwich";
 import SideButton from "@/components/ui/SideButton";
 import PaidMessageModal from "@/components/PaidMessageModal";
+import MineStrategyModal from "@/components/MineStrategyModal";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
@@ -89,6 +90,7 @@ function Home() {
   const [ejectButtonPressed, setEjectButtonPressed] = useState(false);
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
   const [showPaidMessageModal, setShowPaidMessageModal] = useState(false);
+  const [showMineStrategyModal, setShowMineStrategyModal] = useState(false);
   const [scrollingMessages, setScrollingMessages] = useState<string[]>(["MineBoy it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
 
@@ -1573,6 +1575,10 @@ function Home() {
           onMessageBarClick={() => {
             playButtonSound();
             setShowPaidMessageModal(true);
+          }}
+          onMnestrClick={() => {
+            playButtonSound();
+            setShowMineStrategyModal(true);
           }}
         />
       </div>
@@ -3202,6 +3208,12 @@ function Home() {
         isOpen={showPaidMessageModal}
         onClose={() => setShowPaidMessageModal(false)}
         onMessageSubmitted={fetchMessages}
+      />
+
+      {/* MineStrategy Flywheel Modal */}
+      <MineStrategyModal
+        isOpen={showMineStrategyModal}
+        onClose={() => setShowMineStrategyModal(false)}
       />
     </Stage>
   );

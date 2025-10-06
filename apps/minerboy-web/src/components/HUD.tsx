@@ -13,6 +13,7 @@ interface HUDProps {
   scrollSpeed?: number;      // Scroll speed in px/s
   messageGap?: number;       // Gap between messages in px
   onMessageBarClick?: () => void; // Callback when message bar is clicked
+  onMnestrClick?: () => void;     // Callback when MNESTR panel is clicked
 }
 
 export default function HUD({
@@ -26,6 +27,7 @@ export default function HUD({
   scrollSpeed = 50,
   messageGap = 100,
   onMessageBarClick,
+  onMnestrClick,
 }: HUDProps) {
   const panelWidth = Math.floor(width / 4) - 4; // 4 panels with small gaps
   const panelHeight = 50;
@@ -97,12 +99,14 @@ export default function HUD({
           height={panelHeight}
         />
 
-        {/* Panel 4: Reserved for future use */}
+        {/* Panel 4: MNESTR Flywheel */}
         <LCDPanel
-          label="RESERVED"
-          value="---"
+          label="MNESTR"
+          value="FLYWHEEL"
           width={panelWidth}
           height={panelHeight}
+          onClick={onMnestrClick}
+          clickable={!!onMnestrClick}
         />
       </div>
 
@@ -145,11 +149,14 @@ interface LCDPanelProps {
   value: string;
   width: number;
   height: number;
+  onClick?: () => void;
+  clickable?: boolean;
 }
 
-function LCDPanel({ label, value, width, height }: LCDPanelProps) {
+function LCDPanel({ label, value, width, height, onClick, clickable }: LCDPanelProps) {
   return (
     <div
+      onClick={onClick}
       style={{
         width: `${width}px`,
         height: `${height}px`,
@@ -162,6 +169,28 @@ function LCDPanel({ label, value, width, height }: LCDPanelProps) {
         alignItems: 'center',
         padding: '4px',
         boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.5)',
+        cursor: clickable ? 'pointer' : 'default',
+        transition: clickable ? 'opacity 0.2s, transform 0.1s' : 'none',
+      }}
+      onMouseEnter={(e) => {
+        if (clickable) {
+          e.currentTarget.style.opacity = '0.8';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (clickable) {
+          e.currentTarget.style.opacity = '1';
+        }
+      }}
+      onMouseDown={(e) => {
+        if (clickable) {
+          e.currentTarget.style.transform = 'scale(0.98)';
+        }
+      }}
+      onMouseUp={(e) => {
+        if (clickable) {
+          e.currentTarget.style.transform = 'scale(1)';
+        }
       }}
     >
       {/* Label */}
