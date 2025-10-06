@@ -14,7 +14,7 @@ export const provider = new JsonRpcProvider(RPC, CHAIN_ID);
 // Seaport 1.6 interface
 export const seaportIface = new Interface([
   'event OrderFulfilled(bytes32 orderHash, address offerer, address zone, address recipient, tuple(uint8 itemType, address token, uint256 identifier, uint256 amount)[] offer, tuple(uint8 itemType, address token, uint256 identifier, uint256 amount, address recipient)[] consideration)',
-  'function fulfillOrder((address offerer, address zone, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount)[] offer, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount, address recipient)[] consideration, uint8 orderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 conduitKey, uint256 counter) order, bytes32 fulfillerConduitKey) payable returns (bool fulfilled)'
+  'function fulfillOrder((address offerer, address zone, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount)[] offer, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount, address recipient)[] consideration, uint8 orderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 conduitKey, uint256 totalOriginalConsiderationItems, uint256 counter) order, bytes32 fulfillerConduitKey) payable returns (bool fulfilled)'
 ]);
 
 export const SEAPORT_ADDRESS = SEAPORT as `0x${string}`;
