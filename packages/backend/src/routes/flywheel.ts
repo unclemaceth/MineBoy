@@ -57,7 +57,10 @@ export default async function routes(app: FastifyInstance) {
 
       const totalSupplyFormatted = formatUnits(totalSupply, decimals);
       const capFormatted = formatUnits(cap, decimals);
-      const burned = parseFloat(capFormatted) - parseFloat(totalSupplyFormatted);
+      
+      // TODO: Track actual burns in database
+      // For now, calculate as: cap - currentSupply (will increase as bot burns)
+      const totalBurned = parseFloat(capFormatted) - parseFloat(totalSupplyFormatted);
 
       // Get MNESTR price from Camelot (1 MNESTR = ? APE)
       let mnestrPrice = '0.0001';
@@ -111,7 +114,8 @@ export default async function routes(app: FastifyInstance) {
         apeBalance: apeBalanceFormatted,
         mnestrPrice,
         mnestrMarketCap: marketCap,
-        totalBurned: burned.toFixed(0),
+        mnestrSupply: (parseFloat(totalSupplyFormatted) / 1000000).toFixed(2) + 'M', // Show in millions
+        totalBurned: (totalBurned / 1000000).toFixed(2) + 'M', // Show in millions
         cheapestNPC,
         ownedNPCs,
         previousSales

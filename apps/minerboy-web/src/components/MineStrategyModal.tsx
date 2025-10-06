@@ -13,6 +13,7 @@ type FlywheelStats = {
   apeBalance: string;
   mnestrPrice: string;
   mnestrMarketCap: string;
+  mnestrSupply: string;
   totalBurned: string;
   cheapestNPC: {
     tokenId: string;
@@ -169,6 +170,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
               <StatBox label="FLYWHEEL APE BALANCE" value={`${stats.apeBalance} APE`} />
               <StatBox label="MNESTR PRICE" value={`${stats.mnestrPrice} APE`} />
               <StatBox label="MNESTR MARKET CAP" value={`${stats.mnestrMarketCap} APE`} />
+              <StatBox label="MNESTR SUPPLY" value={stats.mnestrSupply} />
               <StatBox label="MNESTR BURNED" value={stats.totalBurned} />
 
               {/* Cheapest NPC */}
@@ -263,8 +265,8 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                 <div>• Bot accumulates APE from 0.005 claim fees</div>
                 <div>• Buys cheapest NPCs from marketplace</div>
                 <div>• Relists at +20% markup</div>
-                <div>• When sold: 70% → MNESTR burn 🔥</div>
-                <div>• Remaining 30% → Buy next NPC</div>
+                <div>• When sold: 99% APE → MNESTR → BURN</div>
+                <div>• Remaining 1% APE → Gas & next purchase</div>
               </div>
             </>
           )}
