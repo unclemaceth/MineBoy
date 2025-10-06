@@ -1,0 +1,30 @@
+{
+  "name": "npc-flywheel-bot",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p .",
+    "script:grant-role": "tsx scripts/00-grant-minter-role.ts",
+    "script:mint": "tsx scripts/01-mint-mnestr.ts",
+    "script:add-liquidity": "tsx scripts/02-add-liquidity.ts",
+    "test:alchemy": "tsx scripts/test-alchemy.ts",
+    "test:opensea": "tsx scripts/test-opensea.ts",
+    "test:magiceden": "tsx scripts/test-magiceden.ts",
+    "test:me-full": "tsx scripts/test-magiceden-full.ts"
+  },
+  "dependencies": {
+    "ethers": "^6.15.0",
+    "pino": "^9.3.2",
+    "p-queue": "^7.4.1",
+    "p-retry": "^6.1.0",
+    "axios": "^1.7.4",
+    "dotenv": "^17.2.2"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2",
+    "tsx": "^4.20.5",
+    "@types/node": "^24.4.0"
+  }
+}
