@@ -11,10 +11,10 @@ const CHAIN_ID = Number(process.env.CHAIN_ID || 33139);
 
 export const provider = new JsonRpcProvider(RPC, CHAIN_ID);
 
-// Seaport 1.6 interface
+// Seaport 1.6 interface - fulfillOrder takes an Order struct (parameters + signature)
 export const seaportIface = new Interface([
   'event OrderFulfilled(bytes32 orderHash, address offerer, address zone, address recipient, tuple(uint8 itemType, address token, uint256 identifier, uint256 amount)[] offer, tuple(uint8 itemType, address token, uint256 identifier, uint256 amount, address recipient)[] consideration)',
-  'function fulfillOrder((address offerer, address zone, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount)[] offer, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount, address recipient)[] consideration, uint8 orderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 conduitKey, uint256 totalOriginalConsiderationItems, uint256 counter) order, bytes32 fulfillerConduitKey) payable returns (bool fulfilled)'
+  'function fulfillOrder(tuple(tuple(address offerer, address zone, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount)[] offer, tuple(uint8 itemType, address token, uint256 identifierOrCriteria, uint256 startAmount, uint256 endAmount, address recipient)[] consideration, uint8 orderType, uint256 startTime, uint256 endTime, bytes32 zoneHash, uint256 salt, bytes32 conduitKey, uint256 totalOriginalConsiderationItems) parameters, bytes signature) order, bytes32 fulfillerConduitKey) payable returns (bool fulfilled)'
 ]);
 
 export const SEAPORT_ADDRESS = SEAPORT as `0x${string}`;
@@ -35,6 +35,7 @@ const ZERO32 = '0x' + '00'.repeat(32);
 
 /**
  * Encode a Seaport fulfillOrder call with full validation
+ * fulfillOrder expects an Order struct containing { parameters, signature }
  */
 export function encodeFulfillOrder(input: {
   order: {
@@ -59,7 +60,7 @@ export function encodeFulfillOrder(input: {
   expect(typeof signature === 'string' && signature.length > 0, 'Missing or invalid signature');
   
   // Accept both `parameters`, `components`, or direct order data
-  const params: any = order?.data?.parameters ?? order?.data?.components ?? order?.data;
+  let params: any = order?.data?.parameters ?? order?.data?.components ?? order?.data;
   expect(!!params && typeof params === 'object', 'Missing order parameters');
   
   // Normalize addresses (ethers v6 strict)
@@ -95,7 +96,10 @@ export function encodeFulfillOrder(input: {
   params.totalOriginalConsiderationItems = Number(
     params.totalOriginalConsiderationItems ?? params.consideration.length
   );
-  params.counter = String(params.counter ?? '0');
+  // NOTE: counter is NOT part of OrderParameters - it's only used for EIP-712 signing
+  if (params.counter !== undefined) {
+    delete params.counter;
+  }
   
   // 32-byte hex fields
   params.zoneHash = (params.zoneHash && typeof params.zoneHash === 'string') ? params.zoneHash : ZERO32;
@@ -108,11 +112,17 @@ export function encodeFulfillOrder(input: {
     .map((c: any) => BigInt(c.endAmount))
     .reduce((a: bigint, b: bigint) => a + b, 0n);
   
+  // Construct the Order struct (parameters + signature)
+  const orderStruct = {
+    parameters: params,
+    signature: signature
+  };
+  
   // Encode fulfillOrder call
   let data: string;
   try {
     data = seaportIface.encodeFunctionData('fulfillOrder', [
-      params,
+      orderStruct,  // ← Order struct containing parameters and signature
       input.fulfillerConduitKey ?? ZERO32
     ]);
   } catch (e: any) {
