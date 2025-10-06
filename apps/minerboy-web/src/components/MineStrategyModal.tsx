@@ -233,25 +233,9 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                     padding: '12px',
                     marginTop: '10px'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '14px', fontWeight: 'bold' }}>NPC #{stats.cheapestNPC.tokenId}</span>
-                      <span style={{ color: '#ffd700', fontSize: '14px' }}>{stats.cheapestNPC.price} APE</span>
-                    </div>
-                    <div style={{ marginTop: '12px' }}>
-                      <BuyButton 
-                        tokenId={stats.cheapestNPC.tokenId}
-                        priceLabel={`${stats.cheapestNPC.price} APE`}
-                        onSuccess={() => {
-                          setNotification({ message: 'Purchase successful! 🎉', type: 'success' });
-                          setTimeout(() => setNotification(null), 5000);
-                          // Refresh stats after purchase
-                          fetchStats();
-                        }}
-                        onError={(err) => {
-                          setNotification({ message: err, type: 'error' });
-                          setTimeout(() => setNotification(null), 5000);
-                        }}
-                      />
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span>NPC #{stats.cheapestNPC.tokenId}</span>
+                      <span style={{ color: '#ffd700' }}>{stats.cheapestNPC.price} APE</span>
                     </div>
                   </div>
                 </div>
@@ -260,9 +244,9 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
               {/* Owned NPCs */}
                   {stats.ownedNPCs.length > 0 && (
                     <div style={{ marginTop: '20px' }}>
-                      <SectionTitle>OWNED NPCs ({stats.ownedNPCs.length})</SectionTitle>
+                      <SectionTitle>OWNED NPCs FOR SALE ({stats.ownedNPCs.length})</SectionTitle>
                       <div style={{ fontSize: '10px', color: '#88cc88', marginTop: '4px', marginBottom: '8px' }}>
-                        ✓ Bot auto-lists after purchase. Manual button available if needed.
+                        Buy directly from the flywheel! Your purchase fuels the MNESTR burn 🔥
                       </div>
                   <div style={{ marginTop: '10px', maxHeight: '200px', overflowY: 'auto' }}>
                     {stats.ownedNPCs.map((npc) => (
@@ -281,53 +265,33 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                           
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {npc.listedPrice && (
-                              <span style={{ color: '#ffd700', fontSize: '12px' }}>
+                              <span style={{ color: '#ffd700', fontSize: '13px', fontWeight: 'bold' }}>
                                 {npc.listedPrice} APE
                               </span>
                             )}
-                            
-                            <button
-                              onClick={() => handleListNPC(npc.tokenId)}
-                              disabled={listingNPC === npc.tokenId || !!npc.listedPrice}
-                              title={
-                                npc.listedPrice 
-                                  ? 'Already listed on marketplace'
-                                  : 'Bot auto-lists after purchase. Use this for manual override.'
-                              }
-                              style={{
-                                backgroundColor: (listingNPC === npc.tokenId || npc.listedPrice) ? '#444' : '#ffd700',
-                                color: (listingNPC === npc.tokenId || npc.listedPrice) ? '#888' : '#000',
-                                border: 'none',
-                                borderRadius: '4px',
-                                padding: '6px 12px',
-                                fontSize: '11px',
-                                fontWeight: 'bold',
-                                cursor: (listingNPC === npc.tokenId || npc.listedPrice) ? 'not-allowed' : 'pointer',
-                                transition: 'opacity 0.2s',
-                                opacity: (listingNPC === npc.tokenId || npc.listedPrice) ? 0.5 : 1
-                              }}
-                              onMouseEnter={(e) => {
-                                if (listingNPC !== npc.tokenId && !npc.listedPrice) {
-                                  e.currentTarget.style.opacity = '0.8';
-                                }
-                              }}
-                              onMouseLeave={(e) => {
-                                if (!npc.listedPrice) {
-                                  e.currentTarget.style.opacity = '1';
-                                }
-                              }}
-                            >
-                              {listingNPC === npc.tokenId 
-                                ? 'Listing...' 
-                                : npc.listedPrice 
-                                  ? 'Listed ✓' 
-                                  : 'Manual List'}
-                            </button>
                           </div>
                         </div>
-                        <div style={{ fontSize: '11px', color: '#88cc88' }}>
-                          Status: {npc.listedPrice ? 'Listed on marketplace' : 'Not listed yet'}
+                        <div style={{ fontSize: '11px', color: '#88cc88', marginBottom: '8px' }}>
+                          Status: {npc.listedPrice ? 'Available for purchase!' : 'Being prepared for sale...'}
                         </div>
+                        
+                        {npc.listedPrice && (
+                          <div style={{ marginTop: '8px' }}>
+                            <BuyButton 
+                              tokenId={npc.tokenId}
+                              priceLabel={`${npc.listedPrice} APE`}
+                              onSuccess={() => {
+                                setNotification({ message: 'Purchase successful! 🎉 You now own this NPC!', type: 'success' });
+                                setTimeout(() => setNotification(null), 5000);
+                                fetchStats();
+                              }}
+                              onError={(err) => {
+                                setNotification({ message: err, type: 'error' });
+                                setTimeout(() => setNotification(null), 5000);
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
