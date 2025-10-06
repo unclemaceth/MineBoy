@@ -184,15 +184,52 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
 
     const steps = response.data?.steps || [];
     
-    if (steps.length > 0 && steps[0].items) {
-      console.log(`[MagicEden] ✅ Listing created!`);
-      // Note: May need to sign transactions depending on the response
-      // For now, we'll consider this successful if we get steps back
-      return true;
+    if (steps.length === 0) {
+      console.error('[MagicEden] No steps returned from listing API');
+      return false;
     }
 
-    console.error('[MagicEden] Failed to create listing');
-    return false;
+    // Execute each step (approvals, signatures, etc.)
+    for (const step of steps) {
+      console.log(`[MagicEden] Step: ${step.action || step.id}`);
+      
+      for (const item of step.items || []) {
+        // If there's a transaction to execute (approval)
+        if (item.data?.to && item.data?.data) {
+          console.log(`[MagicEden] Executing transaction...`);
+          const tx = await flywheel.sendTransaction({
+            to: item.data.to,
+            data: item.data.data,
+            value: item.data.value || 0
+          });
+          console.log(`[MagicEden] Approval tx: ${tx.hash}`);
+          await tx.wait();
+        }
+        
+        // If there's a signature to create (listing order)
+        if (item.data?.sign) {
+          console.log(`[MagicEden] Signing listing order...`);
+          const signature = await flywheel.signTypedData(
+            item.data.sign.domain,
+            item.data.sign.types,
+            item.data.sign.value
+          );
+          
+          // Post the signature back to Magic Eden
+          const postUrl = item.data.post?.endpoint;
+          if (postUrl) {
+            console.log(`[MagicEden] Submitting signature to ${postUrl}...`);
+            await axios.post(postUrl, {
+              ...item.data.post?.body,
+              signature
+            }, { headers });
+          }
+        }
+      }
+    }
+    
+    console.log(`[MagicEden] ✅ Listing created and submitted!`);
+    return true;
 
   } catch (error: any) {
     console.error('[MagicEden] Error creating listing:', error.response?.data || error.message);
