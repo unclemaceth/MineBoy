@@ -143,13 +143,16 @@ export default async function routes(app: FastifyInstance) {
           let listedPrice: string | null = null;
           
           try {
-            // Query Magic Eden for this specific token
-            const meResponse = await axios.get(
-              `https://api-mainnet.magiceden.dev/v3/rtp/apechain/tokens/v7`,
+            // Query Magic Eden orders API for active listings by this wallet
+            const ordersResponse = await axios.get(
+              `https://api-mainnet.magiceden.dev/v3/rtp/apechain/orders/asks/v5`,
               {
                 params: {
-                  collection: NPC_COLLECTION,
-                  tokens: `${NPC_COLLECTION}:${tokenId}`
+                  contracts: NPC_COLLECTION,
+                  maker: FLYWHEEL_WALLET,
+                  tokenSetId: `token:${NPC_COLLECTION}:${tokenId}`,
+                  status: 'active',
+                  sortBy: 'price'
                 },
                 headers: {
                   'accept': '*/*'
@@ -157,17 +160,18 @@ export default async function routes(app: FastifyInstance) {
               }
             );
             
-            const token = meResponse.data?.tokens?.[0];
-            if (token?.market?.floorAsk?.maker?.toLowerCase() === FLYWHEEL_WALLET.toLowerCase()) {
-              // This token is listed by us!
-              const priceDecimal = token.market.floorAsk.price?.amount?.decimal;
+            const orders = ordersResponse.data?.orders || [];
+            if (orders.length > 0) {
+              // Found an active listing for this token!
+              const priceDecimal = orders[0]?.price?.amount?.decimal;
               if (priceDecimal) {
                 listedPrice = priceDecimal.toFixed(2);
+                app.log.info(`Token ${tokenId} listed at ${listedPrice} APE`);
               }
             }
-          } catch (err) {
-            // Ignore errors, just leave listedPrice as null
-            app.log.debug(`Could not check listing status for token ${tokenId}`);
+          } catch (err: any) {
+            // Log error for debugging
+            app.log.warn(`Could not check listing status for token ${tokenId}: ${err.message}`);
           }
           
           ownedNPCs.push({
