@@ -1,8 +1,9 @@
 /**
  * Force relist all owned NPCs to populate backend with full orders
+ * Using PURE SEAPORT - NO MAGIC EDEN
  */
 import { flywheel } from '../src/wallets.js';
-import { createListing } from '../src/market/magiceden.js';
+import { createListing } from '../src/market/seaport-builder.js';
 import { Contract } from 'ethers';
 import { cfg } from '../src/config.js';
 
@@ -45,7 +46,7 @@ async function main() {
     console.log(`\n📤 [${i + 1}/${owned.length}] Relisting NPC #${tokenId} at ${price} APE...`);
     
     try {
-      const success = await createListing(tokenId, price);
+      const success = await createListing(flywheel, cfg.npc, tokenId, price);
       if (success) {
         console.log(`  ✅ Successfully relisted NPC #${tokenId}`);
       } else {
