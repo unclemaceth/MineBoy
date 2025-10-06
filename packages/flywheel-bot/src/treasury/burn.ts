@@ -84,6 +84,21 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Executing swap: APE → MNESTR...`);
   console.log(`[Treasury] Sending ${formatEther(apeForSwap)} APE as msg.value`);
   
+  // Manually estimate gas first to get detailed error
+  try {
+    const gasEstimate = await dexRouter.swapExactETHForTokens.estimateGas(
+      minMNESTR,
+      path,
+      treasuryAddr,
+      deadline,
+      { value: apeForSwap }
+    );
+    console.log(`[Treasury] Gas estimate: ${gasEstimate.toString()}`);
+  } catch (estimateError: any) {
+    console.error(`[Treasury] Gas estimation failed:`, estimateError);
+    throw new Error(`Swap estimate failed: ${estimateError.message}`);
+  }
+  
   const swapTx = await dexRouter.swapExactETHForTokens(
     minMNESTR,
     path,
