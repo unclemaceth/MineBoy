@@ -3,21 +3,22 @@ import { flywheel } from "./wallets.js";
 import { getNextListing } from "./market/manualListings.js";
 import { canAfford, executeListingRaw, verifyOwnership } from "./market/buy.js";
 import { relistAtMarkup } from "./market/list.js";
-import { wasSold } from "./market/sale.js";
-import { settleBurn99 } from "./settle/settle.js";
 import { parseEther } from "ethers";
 import { setTimeout as wait } from "timers/promises";
 
 /**
  * NPC Flywheel Trading Bot
  * 
- * Main loop that:
- * 1. Checks for cheap NPC listings
+ * Trading loop:
+ * 1. Checks for cheap NPC listings on Magic Eden
  * 2. Buys them if we have enough APE
- * 3. Relists at +20% markup
- * 4. Waits for sale
- * 5. Burns 99% of proceeds into MNESTR
- * 6. Repeats forever
+ * 3. Relists at +20% markup (proceeds → treasury wallet)
+ * 4. Continues to next purchase (60s delay)
+ * 
+ * Treasury poller (runs in parallel):
+ * - Checks treasury balance every 30s
+ * - When ≥1 APE detected: swaps 99% → MNESTR → burns 🔥
+ * - Sends 1% APE to trading wallet for gas
  */
 
 // Daily spend tracking
@@ -126,32 +127,13 @@ async function loop() {
         markupBps: cfg.knobs.markupBps
       });
       console.log(`[List:OK] Listed tokenId=${listing.tokenId} at ${ask} APE`);
-
-      // ============ WATCH FOR SALE ============
-      console.log(`[Watch] Monitoring tokenId=${listing.tokenId} for sale...`);
-      let sold = false;
-      for (let i = 0; i < 180; i++) { // ~30 min at 10s intervals
-        await wait(10_000);
-        sold = await wasSold(listing.tokenId);
-        if (sold) {
-          console.log(`[Watch:SOLD] tokenId=${listing.tokenId} has been sold!`);
-          break;
-        }
-        // Log progress every minute
-        if ((i + 1) % 6 === 0) {
-          console.log(`[Watch] Still listed (${Math.floor((i + 1) / 6)} min elapsed)...`);
-        }
-      }
-
-      if (!sold) {
-        console.log(`[Watch:TIMEOUT] tokenId=${listing.tokenId} did not sell in 30 min`);
-        continue;
-      }
-
-      // ============ SETTLE & BURN ============
-      console.log(`\n[Settle] Processing sale proceeds...`);
-      const res = await settleBurn99();
-      console.log(`[Settle:OK] Burned ${res.burned} wei of MNESTR! 🔥\n`);
+      console.log(`[List:OK] When sold, proceeds will go to treasury → auto-burn! 🔥`);
+      
+      // ============ CONTINUE TO NEXT BUY ============
+      // No need to wait for sale - treasury handles burns automatically!
+      // Just wait a bit before buying next one to avoid rapid-fire purchases
+      console.log(`[Bot] Waiting 60s before next purchase cycle...\n`);
+      await wait(60_000);
       
     } catch (e) {
       console.error(`[Error]`, e);
