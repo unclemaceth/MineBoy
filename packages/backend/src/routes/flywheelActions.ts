@@ -11,8 +11,14 @@ const MAGIC_EDEN_API = 'https://api-mainnet.magiceden.dev/v3/rtp';
 // Create listing on Magic Eden
 async function createListing(tokenId: string, priceAPE: string): Promise<{ success: boolean; error?: string }> {
   try {
+    if (!FLYWHEEL_PK) {
+      return { success: false, error: 'FLYWHEEL_PRIVATE_KEY not set in environment' };
+    }
+    
     const provider = new JsonRpcProvider(RPC_URL, 33139);
     const wallet = new Wallet(FLYWHEEL_PK, provider);
+    
+    console.log(`[MagicEden] Listing token ${tokenId} at ${priceAPE} APE`);
     
     const priceWei = (Number(priceAPE) * 1e18).toString();
     
@@ -53,12 +59,24 @@ async function createListing(tokenId: string, priceAPE: string): Promise<{ succe
         
         // Handle signature (listing order)
         if (item.data?.sign) {
-          const signature = await wallet.signTypedData(
-            item.data.sign.domain,
-            item.data.sign.types,
-            item.data.sign.value
-          );
+          const { domain, types, value } = item.data.sign;
           
+          // Validate before signing (prevent invalid signatures)
+          if (domain.chainId !== 33139) {
+            return { success: false, error: `Wrong chainId: ${domain.chainId}, expected 33139` };
+          }
+          
+          const maker = (value.maker || value.offerer || '').toLowerCase();
+          const walletAddr = (await wallet.getAddress()).toLowerCase();
+          if (maker !== walletAddr) {
+            return { success: false, error: `Maker mismatch: ${maker} vs ${walletAddr}` };
+          }
+          
+          // Sign typed data (DO NOT modify domain/types/value - sign exactly as provided)
+          const signature = await wallet.signTypedData(domain, types, value);
+          console.log(`[MagicEden] Generated signature: ${signature.substring(0, 20)}...`);
+          
+          // Build the POST URL
           const postUrl = item.data.post?.endpoint;
           if (postUrl) {
             let fullUrl;
@@ -70,15 +88,28 @@ async function createListing(tokenId: string, priceAPE: string): Promise<{ succe
               fullUrl = `https://api-mainnet.magiceden.dev/v3/rtp/apechain${postUrl}`;
             }
             
-            await axios({
+            // CRITICAL: Place signature in exact location API expects
+            // The template has signature at order.data.signature
+            const postBody = JSON.parse(JSON.stringify(item.data.post?.body || {}));
+            
+            // Replace the placeholder signature with our real one
+            if (postBody.order?.data) {
+              postBody.order.data.signature = signature;
+              console.log(`[MagicEden] Placed signature in order.data.signature`);
+            } else {
+              // Fallback: if structure is different, put at root
+              postBody.signature = signature;
+              console.log(`[MagicEden] Placed signature at root level (fallback)`);
+            }
+            
+            console.log(`[MagicEden] Posting to: ${fullUrl}`);
+            const postResponse = await axios({
               method: item.data.post?.method || 'POST',
               url: fullUrl,
-              data: {
-                ...item.data.post?.body,
-                signature
-              },
+              data: postBody,
               headers: { 'accept': '*/*', 'Content-Type': 'application/json' }
             });
+            console.log(`[MagicEden] Post response status: ${postResponse.status}`);
           }
         }
       }

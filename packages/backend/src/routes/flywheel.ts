@@ -121,8 +121,8 @@ export default async function routes(app: FastifyInstance) {
         const npcContract = new Contract(NPC_COLLECTION, ERC721_ABI, provider);
         const checkPromises = [];
         
-        // Check first 1200 tokens (covers most NPCs the bot will buy)
-        for (let i = 1; i <= 1200; i++) {
+        // Check all 2222 NPC tokens
+        for (let i = 1; i <= 2222; i++) {
           checkPromises.push(
             npcContract.ownerOf(i)
               .then((owner: string) => {

@@ -209,16 +209,28 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
         
         // If there's a signature to create (listing order)
         if (item.data?.sign) {
+          const { domain, types, value } = item.data.sign;
+          
+          // Validate before signing
+          if (domain.chainId !== 33139) {
+            console.error(`[MagicEden] Wrong chainId: ${domain.chainId}, expected 33139`);
+            return false;
+          }
+          
+          const maker = (value.maker || value.offerer || '').toLowerCase();
+          const walletAddr = (await flywheel.getAddress()).toLowerCase();
+          if (maker !== walletAddr) {
+            console.error(`[MagicEden] Maker mismatch: ${maker} vs ${walletAddr}`);
+            return false;
+          }
+          
           console.log(`[MagicEden] Signing listing order...`);
-          const signature = await flywheel.signTypedData(
-            item.data.sign.domain,
-            item.data.sign.types,
-            item.data.sign.value
-          );
+          // Sign typed data (DO NOT modify domain/types/value)
+          const signature = await flywheel.signTypedData(domain, types, value);
+          console.log(`[MagicEden] Generated signature: ${signature.substring(0, 20)}...`);
           
           // Post the signature back to Magic Eden
           const postUrl = item.data.post?.endpoint;
-          const postBody = item.data.post?.body || {};
           const postMethod = item.data.post?.method || 'POST';
           
           if (postUrl) {
@@ -231,19 +243,31 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
             } else {
               fullUrl = `https://api-mainnet.magiceden.dev/v3/rtp/apechain${postUrl}`;
             }
-            console.log(`[MagicEden] Submitting signature to ${fullUrl}...`);
-            console.log(`[MagicEden] Signature: ${signature.substring(0, 20)}...`);
             
-            // Submit exactly as Magic Eden API expects
-            await axios({
+            // CRITICAL: Place signature in exact location API expects
+            const postBodyTemplate = item.data.post?.body || {};
+            const postBody = JSON.parse(JSON.stringify(postBodyTemplate));
+            
+            // Replace placeholder signature with our real one
+            if (postBody.order?.data) {
+              postBody.order.data.signature = signature;
+              console.log(`[MagicEden] Placed signature in order.data.signature`);
+            } else {
+              // Fallback
+              postBody.signature = signature;
+              console.log(`[MagicEden] Placed signature at root level (fallback)`);
+            }
+            
+            console.log(`[MagicEden] Submitting to ${fullUrl}...`);
+            
+            const postResponse = await axios({
               method: postMethod,
               url: fullUrl,
-              data: {
-                ...postBody,
-                signature
-              },
+              data: postBody,
               headers
             });
+            
+            console.log(`[MagicEden] Post response status: ${postResponse.status}`);
           }
         }
       }
