@@ -17,7 +17,8 @@
     "cancel-listings": "tsx scripts/cancel-listings.ts",
     "force-relist": "tsx scripts/force-relist.ts",
     "force-relist-all": "tsx scripts/force-relist-all.ts",
-    "relist-quick": "tsx scripts/relist-quick.ts"
+    "relist-quick": "tsx scripts/relist-quick.ts",
+    "cleanup-redis": "tsx scripts/cleanup-redis.ts"
   },
   "dependencies": {
     "ethers": "^6.15.0",
