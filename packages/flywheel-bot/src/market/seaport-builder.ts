@@ -55,13 +55,22 @@ export async function createSeaportListing(
   const provider = wallet.provider;
   if (!provider) throw new Error('Wallet has no provider');
   
-  const seaportContract = new ethers.Contract(
-    SEAPORT_ADDRESS,
-    ['function getCounter(address) view returns (uint256)'],
-    provider
-  );
+  console.log(`[Seaport] Getting counter for ${offerer}...`);
   
-  const counter = await seaportContract.getCounter(offerer);
+  let counter;
+  try {
+    const seaportContract = new ethers.Contract(
+      SEAPORT_ADDRESS,
+      ['function getCounter(address) view returns (uint256)'],
+      provider
+    );
+    
+    counter = await seaportContract.getCounter(offerer);
+    console.log(`[Seaport] Counter: ${counter.toString()}`);
+  } catch (error) {
+    console.warn(`[Seaport] Failed to get counter, using 0:`, error);
+    counter = 0n;
+  }
   
   // Calculate royalty (6.9% = 690 bps)
   const royaltyBps = 690;

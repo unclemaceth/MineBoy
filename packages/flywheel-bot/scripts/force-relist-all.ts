@@ -2,10 +2,19 @@
  * Force relist all owned NPCs to populate backend with full orders
  * Using PURE SEAPORT - NO MAGIC EDEN
  */
+console.log('[DEBUG] Starting script...');
+
 import { flywheel } from '../src/wallets.js';
+console.log('[DEBUG] Imported wallet');
+
 import { createListing } from '../src/market/seaport-builder.js';
+console.log('[DEBUG] Imported seaport builder');
+
 import { Contract } from 'ethers';
+console.log('[DEBUG] Imported ethers');
+
 import { cfg } from '../src/config.js';
+console.log('[DEBUG] Imported config');
 
 const ERC721_ABI = ['function ownerOf(uint256) view returns (address)'];
 
