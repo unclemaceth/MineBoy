@@ -166,7 +166,7 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
 
     const response = await axios.post(url, {
       maker: cfg.flywheelAddr,
-      source: "reservoir.tools",
+      source: "magiceden.io",
       params: [
         {
           token: `${cfg.npc}:${tokenId}`,
