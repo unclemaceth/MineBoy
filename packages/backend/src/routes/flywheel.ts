@@ -1,5 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { JsonRpcProvider, Contract, formatEther, formatUnits } from 'ethers';
+import axios from 'axios';
 
 const RPC_URL = process.env.RPC_URL || 'https://rpc.apechain.com/http';
 const MNESTR = '0xAe0DfbB1a2b22080F947D1C0234c415FabEEc276';
