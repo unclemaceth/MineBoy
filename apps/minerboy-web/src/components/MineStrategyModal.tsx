@@ -49,7 +49,8 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({})  // Empty body required by Fastify
       });
       
       if (!response.ok) {
