@@ -13,15 +13,23 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-const DEX_ROUTER_ABI = [
-  'function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline) external payable returns (uint[] memory amounts)',
-  'function getAmountsOut(uint amountIn, address[] path) view returns (uint[])'
+// Camelot V3 / Algebra Router ABI
+const ALGEBRA_ROUTER_ABI = [
+  'function exactInputSingle(tuple(address tokenIn, address tokenOut, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice)) payable returns (uint256 amountOut)'
+];
+
+// Algebra Quoter V2 ABI (for getting expected output)
+const ALGEBRA_QUOTER_ABI = [
+  'function quoteExactInputSingle(address tokenIn, address tokenOut, uint256 amountIn, uint160 limitSqrtPrice) external returns (uint256 amountOut, uint16 fee)'
 ];
 
 const ERC20_ABI = [
   'function transfer(address to, uint amount) returns (bool)',
   'function balanceOf(address) view returns (uint256)'
 ];
+
+// Camelot V3 Quoter address on ApeChain (need to verify this)
+const QUOTER_V3 = '0x0Fc73040b26E9bC8514fA028D998E73A254Fa76E'; // Camelot Algebra Quoter
 
 /**
  * Execute the burn flywheel:
@@ -67,45 +75,48 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Will swap: ${formatEther(apeForSwap)} APE (99% of swappable)`);
   console.log(`[Treasury] Will send to trading: ${formatEther(apeForTradingWallet)} APE (1% of swappable)`);
   
-  // 3. Swap APE → MNESTR via Camelot DEX
-  const dexRouter = new Contract(cfg.dexRouter, DEX_ROUTER_ABI, treasury);
+  // 3. Swap APE → MNESTR via Camelot V3 (Algebra)
+  const router = new Contract(cfg.dexRouter, ALGEBRA_ROUTER_ABI, treasury);
+  const quoter = new Contract(QUOTER_V3, ALGEBRA_QUOTER_ABI, treasury.provider);
   
-  // Get expected MNESTR output
-  const path = [cfg.wape, cfg.mnestr]; // WAPE → MNESTR
-  const amountsOut = await dexRouter.getAmountsOut(apeForSwap, path);
-  const expectedMNESTR = amountsOut[1];
+  console.log(`[Treasury] Using Camelot V3 (Algebra) router`);
+  console.log(`[Treasury] Path: WAPE → MNESTR`);
+  
+  // Get quote from Algebra Quoter
+  const [expectedMNESTR, fee] = await quoter.quoteExactInputSingle(
+    cfg.wape,
+    cfg.mnestr,
+    apeForSwap,
+    0n // limitSqrtPrice = 0 (no price limit)
+  );
+  
   const minMNESTR = (expectedMNESTR * 95n) / 100n; // 5% slippage tolerance
   
   console.log(`[Treasury] Expected MNESTR: ${formatEther(expectedMNESTR)}`);
+  console.log(`[Treasury] Pool fee: ${fee} (${Number(fee) / 100}%)`);
   console.log(`[Treasury] Min MNESTR (5% slippage): ${formatEther(minMNESTR)}`);
   
-  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 300); // 5 minutes
   
-  console.log(`[Treasury] Executing swap: APE → MNESTR...`);
+  console.log(`[Treasury] Executing V3 swap: APE → MNESTR...`);
   console.log(`[Treasury] Sending ${formatEther(apeForSwap)} APE as msg.value`);
   
-  // Manually estimate gas first to get detailed error
-  try {
-    const gasEstimate = await dexRouter.swapExactETHForTokens.estimateGas(
-      minMNESTR,
-      path,
-      treasuryAddr,
-      deadline,
-      { value: apeForSwap }
-    );
-    console.log(`[Treasury] Gas estimate: ${gasEstimate.toString()}`);
-  } catch (estimateError: any) {
-    console.error(`[Treasury] Gas estimation failed:`, estimateError);
-    throw new Error(`Swap estimate failed: ${estimateError.message}`);
-  }
-  
-  const swapTx = await dexRouter.swapExactETHForTokens(
-    minMNESTR,
-    path,
-    treasuryAddr, // MNESTR goes to treasury
+  // Algebra V3 swap parameters
+  const params = {
+    tokenIn: cfg.wape,
+    tokenOut: cfg.mnestr,
+    recipient: treasuryAddr,
     deadline,
-    { value: apeForSwap } // ← CRITICAL: Send native APE as msg.value!
-  );
+    amountIn: apeForSwap,
+    amountOutMinimum: minMNESTR,
+    limitSqrtPrice: 0n // No price limit
+  };
+  
+  // Execute V3 swap (payable, router auto-wraps native APE → WAPE)
+  const swapTx = await router.exactInputSingle(params, { 
+    value: apeForSwap,
+    gasLimit: 500000 // V3 uses more gas than V2
+  });
   
   console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait();
