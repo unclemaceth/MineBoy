@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://mineboy-g5xo.onrender.com';
+
 type MineStrategyModalProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -43,7 +45,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/flywheel/stats');
+        const response = await fetch(`${BACKEND_URL}/v2/flywheel/stats`);
         if (!response.ok) {
           throw new Error('Failed to fetch flywheel stats');
         }
