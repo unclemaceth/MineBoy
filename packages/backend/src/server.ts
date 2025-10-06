@@ -1030,13 +1030,15 @@ setInterval(() => {
   jobManager.cleanupExpiredJobs();
 }, 60000); // Every minute
 
-// Refresh market listings periodically
-import { refreshListingsCache } from './routes/market.js';
-setInterval(() => {
-  refreshListingsCache().catch(err => 
-    console.error('[Market] Refresh failed:', err)
-  );
-}, 30_000); // Every 30 seconds
+// DISABLED: Magic Eden refresh overwrites our bot-created orders
+// The bot stores full orders via /market/admin/store-order
+// We don't want Magic Eden's incomplete data overwriting them
+// import { refreshListingsCache } from './routes/market.js';
+// setInterval(() => {
+//   refreshListingsCache().catch(err =>
+//     console.error('[Market] Refresh failed:', err)
+//   );
+// }, 30_000); // Every 30 seconds
 
 // Declare stopPoller outside start function for signal handler access
 let stopPoller: (() => void) | null = null;
@@ -1053,11 +1055,12 @@ const start = async () => {
     // Start receipt poller after database is initialized
     stopPoller = startReceiptPoller(process.env.RPC_URL!);
     
-    // Initialize market listings cache
-    console.log('[Market] Initializing listings cache...');
-    await refreshListingsCache().catch(err => 
-      console.error('[Market] Initial refresh failed:', err)
-    );
+    // DISABLED: We don't fetch from Magic Eden anymore
+    // The bot creates and stores full orders via /market/admin/store-order
+    // console.log('[Market] Initializing listings cache...');
+    // await refreshListingsCache().catch(err =>
+    //   console.error('[Market] Initial refresh failed:', err)
+    // );
     
     await fastify.listen({ 
       port: config.PORT, 
