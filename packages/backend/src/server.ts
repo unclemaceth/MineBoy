@@ -35,6 +35,7 @@ import teamsRoutes from './routes/teams.js';
 import adminSeasonsRoutes from './routes/adminSeasons.js';
 import statsRoutes from './routes/stats.js';
 import flywheelRoutes from './routes/flywheel.js';
+import flywheelActionsRoutes from './routes/flywheelActions.js';
 import { registerMaintenance } from './routes/maintenance.js';
 import { registerJobRoutes } from './routes/job.js';
 import { registerAdminExportRoute } from './routes/adminExport.js';
@@ -189,6 +190,7 @@ await fastify.register(teamsRoutes);
 await fastify.register(adminSeasonsRoutes);
 await fastify.register(statsRoutes);
 await fastify.register(flywheelRoutes);
+await fastify.register(flywheelActionsRoutes);
 registerJobRoutes(fastify); // ANTI-BOT: Job eligibility endpoint
 
 // Health check

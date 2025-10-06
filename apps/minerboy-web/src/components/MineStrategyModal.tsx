@@ -23,7 +23,7 @@ type FlywheelStats = {
   } | null;
   ownedNPCs: Array<{
     tokenId: string;
-    listedPrice: string;
+    listedPrice: string | null;
     acquired: string;
   }>;
   previousSales: Array<{
@@ -38,6 +38,41 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
   const [stats, setStats] = useState<FlywheelStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [listingNPC, setListingNPC] = useState<string | null>(null); // Track which NPC is being listed
+
+  // Function to trigger listing for a specific NPC
+  const handleListNPC = async (tokenId: string) => {
+    try {
+      setListingNPC(tokenId);
+      
+      const response = await fetch(`${BACKEND_URL}/v2/flywheel/list/${tokenId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Admin-Token': process.env.NEXT_PUBLIC_ADMIN_TOKEN || ''
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to list NPC');
+      }
+      
+      alert(`NPC #${tokenId} listed successfully!`);
+      
+      // Refresh stats
+      const statsResponse = await fetch(`${BACKEND_URL}/v2/flywheel/stats`);
+      if (statsResponse.ok) {
+        const data = await statsResponse.json();
+        setStats(data);
+      }
+      
+    } catch (err) {
+      console.error('Error listing NPC:', err);
+      alert(`Failed to list NPC #${tokenId}`);
+    } finally {
+      setListingNPC(null);
+    }
+  };
 
   // Fetch flywheel stats from backend
   useEffect(() => {
@@ -204,7 +239,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
               {/* Owned NPCs */}
               {stats.ownedNPCs.length > 0 && (
                 <div style={{ marginTop: '20px' }}>
-                  <SectionTitle>OWNED & LISTED NPCs ({stats.ownedNPCs.length})</SectionTitle>
+                  <SectionTitle>OWNED NPCs ({stats.ownedNPCs.length})</SectionTitle>
                   <div style={{ marginTop: '10px', maxHeight: '200px', overflowY: 'auto' }}>
                     {stats.ownedNPCs.map((npc) => (
                       <div
@@ -217,12 +252,45 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                           marginBottom: '8px'
                         }}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '13px' }}>NPC #{npc.tokenId}</span>
-                          <span style={{ color: '#ffd700', fontSize: '13px' }}>{npc.listedPrice} APE</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: 'bold' }}>NPC #{npc.tokenId}</span>
+                          
+                          {!npc.listedPrice && (
+                            <button
+                              onClick={() => handleListNPC(npc.tokenId)}
+                              disabled={listingNPC === npc.tokenId}
+                              style={{
+                                backgroundColor: listingNPC === npc.tokenId ? '#666' : '#ffd700',
+                                color: '#000',
+                                border: 'none',
+                                borderRadius: '4px',
+                                padding: '6px 12px',
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                cursor: listingNPC === npc.tokenId ? 'not-allowed' : 'pointer',
+                                transition: 'opacity 0.2s'
+                              }}
+                              onMouseEnter={(e) => {
+                                if (listingNPC !== npc.tokenId) {
+                                  e.currentTarget.style.opacity = '0.8';
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.opacity = '1';
+                              }}
+                            >
+                              {listingNPC === npc.tokenId ? 'Listing...' : 'List for Sale'}
+                            </button>
+                          )}
+                          
+                          {npc.listedPrice && (
+                            <span style={{ color: '#ffd700', fontSize: '12px' }}>
+                              Listed: {npc.listedPrice} APE
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '11px', color: '#88cc88' }}>
-                          Acquired: {npc.acquired}
+                          Status: {npc.listedPrice ? 'Listed on marketplace' : 'Not listed yet'}
                         </div>
                       </div>
                     ))}

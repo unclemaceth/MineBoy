@@ -12,7 +12,8 @@
     "test:alchemy": "tsx scripts/test-alchemy.ts",
     "test:opensea": "tsx scripts/test-opensea.ts",
     "test:magiceden": "tsx scripts/test-magiceden.ts",
-    "test:me-full": "tsx scripts/test-magiceden-full.ts"
+    "test:me-full": "tsx scripts/test-magiceden-full.ts",
+    "list-owned": "tsx scripts/list-owned-npcs.ts"
   },
   "dependencies": {
     "ethers": "^6.15.0",

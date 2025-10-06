@@ -113,9 +113,43 @@ export default async function routes(app: FastifyInstance) {
         app.log.warn('Failed to fetch cheapest NPC:', err);
       }
 
-      // TODO: Track owned NPCs and sales in database
-      // For now, return empty arrays - you can add DB tracking later
+      // Check owned NPCs on-chain
       const ownedNPCs: any[] = [];
+      try {
+        // Check a reasonable range of token IDs (1-2000)
+        // This is a simple approach - could optimize with events/indexing later
+        const npcContract = new Contract(NPC_COLLECTION, ERC721_ABI, provider);
+        const checkPromises = [];
+        
+        // Only check first 100 for now to avoid rate limits
+        for (let i = 1; i <= 100; i++) {
+          checkPromises.push(
+            npcContract.ownerOf(i)
+              .then((owner: string) => {
+                if (owner.toLowerCase() === FLYWHEEL_WALLET.toLowerCase()) {
+                  return i;
+                }
+                return null;
+              })
+              .catch(() => null) // Token doesn't exist or error
+          );
+        }
+        
+        const results = await Promise.all(checkPromises);
+        const owned = results.filter(id => id !== null);
+        
+        for (const tokenId of owned) {
+          ownedNPCs.push({
+            tokenId: String(tokenId),
+            acquired: 'Unknown', // Could track this in DB
+            listedPrice: null // Would need to check marketplace
+          });
+        }
+      } catch (err) {
+        app.log.warn('Failed to check owned NPCs:', err);
+      }
+      
+      // TODO: Track sales in database
       const previousSales: any[] = [];
 
       const stats = {

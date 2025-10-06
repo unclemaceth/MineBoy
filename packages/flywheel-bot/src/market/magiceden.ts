@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { cfg } from '../config.js';
+import { flywheel } from '../wallets.js';
 import type { ManualListing } from './manualListings.js';
 
 /**
@@ -171,11 +172,11 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
         {
           token: `${cfg.npc}:${tokenId}`,
           weiPrice: priceWei,
-          orderKind: "seaport-v1.5",
+          orderKind: "seaport-v1.6",
           orderbook: "reservoir",
           automatedRoyalties: true,
           currency: "0x0000000000000000000000000000000000000000", // Native APE
-          expirationTime: Math.floor(Date.now() / 1000) + (7 * 24 * 3600) // 7 days
+          expirationTime: String(Math.floor(Date.now() / 1000) + (7 * 24 * 3600)) // 7 days
         }
       ]
     }, {
@@ -217,12 +218,32 @@ export async function createListing(tokenId: string, priceAPE: string): Promise<
           
           // Post the signature back to Magic Eden
           const postUrl = item.data.post?.endpoint;
+          const postBody = item.data.post?.body || {};
+          const postMethod = item.data.post?.method || 'POST';
+          
           if (postUrl) {
-            console.log(`[MagicEden] Submitting signature to ${postUrl}...`);
-            await axios.post(postUrl, {
-              ...item.data.post?.body,
-              signature
-            }, { headers });
+            // Build full URL - ensure it includes /apechain/ in the path
+            let fullUrl;
+            if (postUrl.startsWith('http')) {
+              fullUrl = postUrl;
+            } else if (postUrl.startsWith('/apechain/')) {
+              fullUrl = `https://api-mainnet.magiceden.dev/v3/rtp${postUrl}`;
+            } else {
+              fullUrl = `https://api-mainnet.magiceden.dev/v3/rtp/apechain${postUrl}`;
+            }
+            console.log(`[MagicEden] Submitting signature to ${fullUrl}...`);
+            console.log(`[MagicEden] Signature: ${signature.substring(0, 20)}...`);
+            
+            // Submit exactly as Magic Eden API expects
+            await axios({
+              method: postMethod,
+              url: fullUrl,
+              data: {
+                ...postBody,
+                signature
+              },
+              headers
+            });
           }
         }
       }

@@ -38,6 +38,12 @@ function capHit(amountWei: bigint): boolean {
   return (spentTodayWei + amountWei) > capWei;
 }
 
+async function checkOwnedNPCs(): Promise<string[]> {
+  // Check if we own any NPCs that need to be listed
+  // For now, we'll just return empty - can enhance later with on-chain checks
+  return [];
+}
+
 async function loop() {
   console.log(`
 ╔════════════════════════════════════════════════════════╗
@@ -48,6 +54,24 @@ async function loop() {
   console.log(`[Init] Daily spend cap: ${cfg.knobs.dailySpendCapApe} APE`);
   console.log(`[Init] Markup: +${cfg.knobs.markupBps / 100}%`);
   console.log(`[Init] Burn rate: 99%\n`);
+
+  // Check for any NFTs we already own and try to list them
+  console.log('[Resume] Checking for NFTs already owned...');
+  const ownedTokenIds = await checkOwnedNPCs();
+  
+  for (const tokenId of ownedTokenIds) {
+    console.log(`[Resume] Found owned tokenId=${tokenId}, attempting to list...`);
+    try {
+      const ask = await relistAtMarkup({
+        tokenId,
+        costNative: "0", // Unknown cost, just list at current floor + markup
+        markupBps: cfg.knobs.markupBps
+      });
+      console.log(`[Resume:OK] Listed tokenId=${tokenId} at ${ask} APE`);
+    } catch (e) {
+      console.error(`[Resume:FAIL] Could not list tokenId=${tokenId}:`, e);
+    }
+  }
 
   while (true) {
     try {
