@@ -230,7 +230,11 @@ export default async function routes(app: FastifyInstance) {
       // No Magic Eden API needed - we have the full signed order
       try {
         app.log.info(`[Market] Building fulfillOrder transaction for token ${tokenId}`);
-        app.log.info(`[Market] Listing structure:`, JSON.stringify(listing, null, 2));
+        app.log.info(`[Market] Listing exists:`, !!listing);
+        app.log.info(`[Market] Listing type:`, typeof listing);
+        app.log.info(`[Market] Listing keys:`, listing ? Object.keys(listing) : 'null');
+        app.log.info(`[Market] Listing.order:`, listing?.order);
+        app.log.info(`[Market] Full listing:`, listing);
         
         const tx = encodeFulfillOrder(listing.order);
         
