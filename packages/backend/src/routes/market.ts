@@ -206,11 +206,14 @@ export default async function routes(app: FastifyInstance) {
 
       // Get listing (to verify it exists)
       const raw = await redis.get(`market:order:${tokenId}`);
+      app.log.info(`[Market] Raw Redis data for token ${tokenId}:`, raw?.substring(0, 200));
+      
       if (!raw) {
         return reply.code(404).send({ error: 'not-listed' });
       }
 
       const listing: Listing = JSON.parse(raw);
+      app.log.info(`[Market] Parsed listing:`, { tokenId: listing?.tokenId, hasOrder: !!listing?.order, orderKind: listing?.order?.kind });
 
       // Verify maker is flywheel
       if (getAddress(listing.maker) !== FLYWHEEL) {
