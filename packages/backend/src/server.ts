@@ -36,6 +36,7 @@ import adminSeasonsRoutes from './routes/adminSeasons.js';
 import statsRoutes from './routes/stats.js';
 import flywheelRoutes from './routes/flywheel.js';
 import flywheelActionsRoutes from './routes/flywheelActions.js';
+import marketRoutes from './routes/market.js';
 import { registerMaintenance } from './routes/maintenance.js';
 import { registerJobRoutes } from './routes/job.js';
 import { registerAdminExportRoute } from './routes/adminExport.js';
@@ -191,6 +192,7 @@ await fastify.register(adminSeasonsRoutes);
 await fastify.register(statsRoutes);
 await fastify.register(flywheelRoutes);
 await fastify.register(flywheelActionsRoutes);
+await fastify.register(marketRoutes);
 registerJobRoutes(fastify); // ANTI-BOT: Job eligibility endpoint
 
 // Health check
@@ -1028,6 +1030,14 @@ setInterval(() => {
   jobManager.cleanupExpiredJobs();
 }, 60000); // Every minute
 
+// Refresh market listings periodically
+import { refreshListingsCache } from './routes/market.js';
+setInterval(() => {
+  refreshListingsCache().catch(err => 
+    console.error('[Market] Refresh failed:', err)
+  );
+}, 30_000); // Every 30 seconds
+
 // Declare stopPoller outside start function for signal handler access
 let stopPoller: (() => void) | null = null;
 
@@ -1042,6 +1052,12 @@ const start = async () => {
     
     // Start receipt poller after database is initialized
     stopPoller = startReceiptPoller(process.env.RPC_URL!);
+    
+    // Initialize market listings cache
+    console.log('[Market] Initializing listings cache...');
+    await refreshListingsCache().catch(err => 
+      console.error('[Market] Initial refresh failed:', err)
+    );
     
     await fastify.listen({ 
       port: config.PORT, 

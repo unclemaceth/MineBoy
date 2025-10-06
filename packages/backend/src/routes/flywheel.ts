@@ -38,6 +38,57 @@ let cache: {
 const CACHE_TTL = 30000; // 30 seconds
 
 export default async function routes(app: FastifyInstance) {
+  /**
+   * POST /v2/flywheel/confirm
+   * Webhook endpoint for order fulfillment
+   * Triggered when an NPC is sold via the market
+   */
+  app.post<{ Body: { tokenId: string; txHash: string; buyer: string; event: string } }>(
+    '/v2/flywheel/confirm',
+    async (request, reply) => {
+      const { tokenId, txHash, buyer, event } = request.body;
+
+      if (event !== 'order-fulfilled') {
+        return reply.code(400).send({ error: 'Invalid event type' });
+      }
+
+      app.log.info(`[Flywheel] Order fulfilled: NPC #${tokenId} sold to ${buyer} (tx: ${txHash})`);
+
+      try {
+        // Here's where the flywheel logic would execute:
+        // 1. Confirm NPC ownership transferred
+        // 2. Receive APE payment (already in wallet)
+        // 3. Swap 99% APE → MNESTR
+        // 4. Burn MNESTR
+        // 5. Keep 1% APE for gas
+        // 6. Log the sale for stats
+
+        // For now, just log and acknowledge
+        app.log.info(`[Flywheel] Sale recorded: tokenId=${tokenId}, buyer=${buyer}, tx=${txHash}`);
+        
+        // TODO: Implement actual flywheel logic here
+        // - Call bot to execute burn sequence
+        // - Update stats in DB
+        // - Clear this NPC from owned inventory
+
+        return reply.send({ 
+          ok: true, 
+          message: 'Flywheel triggered',
+          tokenId,
+          buyer,
+          txHash
+        });
+
+      } catch (error: any) {
+        app.log.error(`[Flywheel] Error processing sale: ${error.message}`);
+        return reply.code(500).send({ 
+          error: 'Failed to process sale',
+          message: error.message 
+        });
+      }
+    }
+  );
+
   app.get('/v2/flywheel/stats', async (request, reply) => {
     try {
       // Return cached data if fresh

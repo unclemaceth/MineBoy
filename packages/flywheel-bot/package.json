@@ -13,7 +13,9 @@
     "test:opensea": "tsx scripts/test-opensea.ts",
     "test:magiceden": "tsx scripts/test-magiceden.ts",
     "test:me-full": "tsx scripts/test-magiceden-full.ts",
-    "list-owned": "tsx scripts/list-owned-npcs.ts"
+    "list-owned": "tsx scripts/list-owned-npcs.ts",
+    "cancel-listings": "tsx scripts/cancel-listings.ts",
+    "force-relist": "tsx scripts/force-relist.ts"
   },
   "dependencies": {
     "ethers": "^6.15.0",

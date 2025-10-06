@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { BuyButton } from './BuyButton';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://mineboy-g5xo.onrender.com';
 
@@ -77,29 +78,30 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
     }
   };
 
+  // Function to fetch stats (can be called externally)
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch(`${BACKEND_URL}/v2/flywheel/stats`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch flywheel stats');
+      }
+      
+      const data = await response.json();
+      setStats(data);
+    } catch (err) {
+      console.error('Error fetching flywheel stats:', err);
+      setError('Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch flywheel stats from backend
   useEffect(() => {
     if (!isOpen) return;
-
-    async function fetchStats() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await fetch(`${BACKEND_URL}/v2/flywheel/stats`);
-        if (!response.ok) {
-          throw new Error('Failed to fetch flywheel stats');
-        }
-        
-        const data = await response.json();
-        setStats(data);
-      } catch (err) {
-        console.error('Error fetching flywheel stats:', err);
-        setError('Failed to load data');
-      } finally {
-        setLoading(false);
-      }
-    }
 
     fetchStats();
     
@@ -231,9 +233,25 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                     padding: '12px',
                     marginTop: '10px'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span>NPC #{stats.cheapestNPC.tokenId}</span>
-                      <span style={{ color: '#ffd700' }}>{stats.cheapestNPC.price} APE</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 'bold' }}>NPC #{stats.cheapestNPC.tokenId}</span>
+                      <span style={{ color: '#ffd700', fontSize: '14px' }}>{stats.cheapestNPC.price} APE</span>
+                    </div>
+                    <div style={{ marginTop: '12px' }}>
+                      <BuyButton 
+                        tokenId={stats.cheapestNPC.tokenId}
+                        priceLabel={`${stats.cheapestNPC.price} APE`}
+                        onSuccess={() => {
+                          setNotification({ message: 'Purchase successful! 🎉', type: 'success' });
+                          setTimeout(() => setNotification(null), 5000);
+                          // Refresh stats after purchase
+                          fetchStats();
+                        }}
+                        onError={(err) => {
+                          setNotification({ message: err, type: 'error' });
+                          setTimeout(() => setNotification(null), 5000);
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
