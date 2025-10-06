@@ -82,12 +82,14 @@ export async function executeBurn(): Promise<{
   const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
   
   console.log(`[Treasury] Executing swap: APE → MNESTR...`);
+  console.log(`[Treasury] Sending ${formatEther(apeForSwap)} APE as msg.value`);
+  
   const swapTx = await dexRouter.swapExactETHForTokens(
     minMNESTR,
     path,
     treasuryAddr, // MNESTR goes to treasury
     deadline,
-    { value: apeForSwap }
+    { value: apeForSwap } // ← CRITICAL: Send native APE as msg.value!
   );
   
   console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
