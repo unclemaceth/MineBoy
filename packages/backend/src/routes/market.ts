@@ -10,6 +10,7 @@ function normalize(addr: string): string {
   return getAddress(addr.toLowerCase());
 }
 
+const ZERO32 = '0x' + '00'.repeat(32);
 const CHAIN_ID = CHAIN_ID_VALUE;
 const NPC = normalize(process.env.NPC_COLLECTION || '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA');
 const FLYWHEEL = normalize(process.env.FLYWHEEL_WALLET || '0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4');
@@ -230,13 +231,18 @@ export default async function routes(app: FastifyInstance) {
       // No Magic Eden API needed - we have the full signed order
       try {
         app.log.info(`[Market] Building fulfillOrder transaction for token ${tokenId}`);
-        app.log.info(`[Market] Listing exists:`, !!listing);
-        app.log.info(`[Market] Listing type:`, typeof listing);
-        app.log.info(`[Market] Listing keys:`, listing ? Object.keys(listing) : 'null');
-        app.log.info(`[Market] Listing.order:`, listing?.order);
-        app.log.info(`[Market] Full listing:`, listing);
+        app.log.info(`[Market] Order structure:`, {
+          kind: listing?.order?.kind,
+          hasSig: !!listing?.order?.data?.signature,
+          hasParams: !!(listing?.order?.data?.parameters || listing?.order?.data?.components || listing?.order?.data?.offerer),
+          dataKeys: listing?.order?.data ? Object.keys(listing.order.data).slice(0, 10) : []
+        });
         
-        const tx = encodeFulfillOrder(listing.order);
+        const tx = encodeFulfillOrder({
+          order: listing.order,
+          fulfiller: buyer,
+          fulfillerConduitKey: ZERO32
+        });
         
         app.log.info(`[Market] Encoded fulfillOrder: to=${tx.to}, value=${tx.value}`);
 

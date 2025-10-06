@@ -30,59 +30,99 @@ function expect(cond: boolean, msg: string): asserts cond {
   if (!cond) throw new Error(msg);
 }
 
+const ZERO20 = '0x' + '00'.repeat(20);
+const ZERO32 = '0x' + '00'.repeat(32);
+
 /**
  * Encode a Seaport fulfillOrder call with full validation
  */
-export function encodeFulfillOrder(order: any): { to: string; data: string; value: string } {
-  // Basic shape checks
+export function encodeFulfillOrder(input: {
+  order: {
+    kind: string;
+    data: {
+      signature: string;
+      parameters?: any;
+      components?: any;
+      [key: string]: any; // Allow direct order components at data level
+    };
+  };
+  fulfiller?: string;
+  fulfillerConduitKey?: string;
+}): { to: string; data: string; value: string } {
+  
+  const { order, fulfiller = ZERO20 } = input;
+  
+  // Basic checks
   expect(order?.kind === 'seaport-v1.6', 'Unsupported order kind (expected seaport-v1.6)');
   
   const signature = order?.data?.signature;
   expect(typeof signature === 'string' && signature.length > 0, 'Missing or invalid signature');
   
-  // Support both `parameters` and direct data (our bot stores order directly in data)
-  const params = order?.data || {};
-  expect(!!params, 'Missing order parameters');
+  // Accept both `parameters`, `components`, or direct order data
+  const params: any = order?.data?.parameters ?? order?.data?.components ?? order?.data;
+  expect(!!params && typeof params === 'object', 'Missing order parameters');
   
-  // Normalize addresses
-  if (params.offerer) params.offerer = normalize(params.offerer);
-  if (params.zone) params.zone = normalize(params.zone);
+  // Normalize addresses (ethers v6 strict)
+  params.offerer = normalize(params.offerer ?? ZERO20);
+  params.zone = normalize(params.zone ?? ZERO20);
   
-  // Normalize offer items
-  if (params.offer) {
-    params.offer.forEach((o: any, idx: number) => {
-      expect(typeof o.itemType === 'number', `offer[${idx}].itemType missing`);
-      if (o.token) o.token = normalize(o.token);
-    });
-  }
+  // Lists - must exist
+  expect(Array.isArray(params.offer) && params.offer.length > 0, 'offer[] missing/empty');
+  expect(Array.isArray(params.consideration) && params.consideration.length > 0, 'consideration[] missing/empty');
   
-  // Normalize consideration items  
-  if (params.consideration) {
-    params.consideration.forEach((c: any, idx: number) => {
-      expect(typeof c.itemType === 'number', `consideration[${idx}].itemType missing`);
-      if (c.token) c.token = normalize(c.token);
-      if (c.recipient) c.recipient = normalize(c.recipient);
-    });
-  }
+  params.offer.forEach((o: any, i: number) => {
+    expect(typeof o.itemType === 'number', `offer[${i}].itemType missing`);
+    o.token = normalize(o.token ?? ZERO20);
+    o.identifierOrCriteria = String(o.identifierOrCriteria ?? '0');
+    o.startAmount = String(o.startAmount ?? '0');
+    o.endAmount = String(o.endAmount ?? '0');
+  });
   
-  // Calculate total native APE value from consideration
-  const totalWei = (params.consideration || [])
-    .filter((c: any) => 
-      c.itemType === 0 && 
-      /^0x0{40}$/i.test(c.token)
-    )
-    .reduce((acc: bigint, c: any) => acc + BigInt(c.endAmount || c.startAmount), 0n);
-
+  params.consideration.forEach((c: any, i: number) => {
+    expect(typeof c.itemType === 'number', `consideration[${i}].itemType missing`);
+    c.token = normalize(c.token ?? ZERO20);
+    c.recipient = normalize(c.recipient ?? fulfiller);
+    c.identifierOrCriteria = String(c.identifierOrCriteria ?? '0');
+    c.startAmount = String(c.startAmount ?? '0');
+    c.endAmount = String(c.endAmount ?? '0');
+  });
+  
+  // Scalar fields
+  params.orderType = Number(params.orderType ?? 0);
+  params.startTime = String(params.startTime ?? '0');
+  params.endTime = String(params.endTime ?? '0');
+  params.salt = String(params.salt ?? '0');
+  params.totalOriginalConsiderationItems = Number(
+    params.totalOriginalConsiderationItems ?? params.consideration.length
+  );
+  params.counter = String(params.counter ?? '0');
+  
+  // 32-byte hex fields
+  params.zoneHash = (params.zoneHash && typeof params.zoneHash === 'string') ? params.zoneHash : ZERO32;
+  params.conduitKey = (params.conduitKey && typeof params.conduitKey === 'string') ? params.conduitKey : ZERO32;
+  
+  // Calculate value = sum of native consideration endAmounts
+  const isNative = (c: any) => c.itemType === 0 && /^0x0{40}$/i.test(c.token);
+  const totalWei = params.consideration
+    .filter(isNative)
+    .map((c: any) => BigInt(c.endAmount))
+    .reduce((a: bigint, b: bigint) => a + b, 0n);
+  
   // Encode fulfillOrder call
-  const data = seaportIface.encodeFunctionData('fulfillOrder', [
-    params,
-    '0x' + '0'.repeat(64) // fulfillerConduitKey = zero
-  ]);
-
+  let data: string;
+  try {
+    data = seaportIface.encodeFunctionData('fulfillOrder', [
+      params,
+      input.fulfillerConduitKey ?? ZERO32
+    ]);
+  } catch (e: any) {
+    throw new Error(`encode fulfillOrder failed: ${e?.message ?? e}`);
+  }
+  
   return {
     to: SEAPORT,
     data,
-    value: '0x' + totalWei.toString(16)
+    value: totalWei.toString()
   };
 }
 
