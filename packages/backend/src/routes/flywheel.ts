@@ -139,41 +139,50 @@ export default async function routes(app: FastifyInstance) {
         const results = await Promise.all(checkPromises);
         const owned = results.filter(id => id !== null);
         
-        // Check Magic Eden for listing status of each owned NPC
-        for (const tokenId of owned) {
-          let listedPrice: string | null = null;
+        // Query ALL active listings by flywheel wallet at once (more efficient)
+        const listingsByToken = new Map<string, string>(); // tokenId -> price
+        
+        try {
+          app.log.info(`[Flywheel] Checking Magic Eden for active listings by ${FLYWHEEL_WALLET}...`);
           
-          try {
-            // Query Magic Eden orders API for active listings by this wallet
-            const ordersResponse = await axios.get(
-              `https://api-mainnet.magiceden.dev/v3/rtp/apechain/orders/asks/v5`,
-              {
-                params: {
-                  contracts: NPC_COLLECTION,
-                  maker: FLYWHEEL_WALLET,
-                  tokenSetId: `token:${NPC_COLLECTION}:${tokenId}`,
-                  status: 'active',
-                  sortBy: 'price'
-                },
-                headers: {
-                  'accept': '*/*'
-                }
-              }
-            );
-            
-            const orders = ordersResponse.data?.orders || [];
-            if (orders.length > 0) {
-              // Found an active listing for this token!
-              const priceDecimal = orders[0]?.price?.amount?.decimal;
-              if (priceDecimal) {
-                listedPrice = priceDecimal.toFixed(2);
-                app.log.info(`Token ${tokenId} listed at ${listedPrice} APE`);
+          const ordersResponse = await axios.get(
+            `https://api-mainnet.magiceden.dev/v3/rtp/apechain/orders/asks/v5`,
+            {
+              params: {
+                contracts: [NPC_COLLECTION],
+                maker: FLYWHEEL_WALLET,
+                status: 'active',
+                sortBy: 'price',
+                limit: 50 // Get up to 50 listings
+              },
+              headers: {
+                'accept': '*/*'
               }
             }
-          } catch (err: any) {
-            // Log error for debugging
-            app.log.warn(`Could not check listing status for token ${tokenId}: ${err.message}`);
+          );
+          
+          const orders = ordersResponse.data?.orders || [];
+          app.log.info(`[Flywheel] Found ${orders.length} active listings from flywheel wallet`);
+          
+          // Map each listing to its tokenId
+          for (const order of orders) {
+            const criteria = order?.criteria;
+            if (criteria?.data?.token?.tokenId) {
+              const tokenId = String(criteria.data.token.tokenId);
+              const priceDecimal = order?.price?.amount?.decimal;
+              if (priceDecimal) {
+                listingsByToken.set(tokenId, priceDecimal.toFixed(2));
+                app.log.info(`[Flywheel] Token ${tokenId} listed at ${priceDecimal.toFixed(2)} APE`);
+              }
+            }
           }
+        } catch (err: any) {
+          app.log.error(`[Flywheel] Error fetching listings from Magic Eden: ${err.message}`);
+        }
+        
+        // Build owned NPCs array with listing status
+        for (const tokenId of owned) {
+          const listedPrice = listingsByToken.get(String(tokenId)) || null;
           
           ownedNPCs.push({
             tokenId: String(tokenId),
