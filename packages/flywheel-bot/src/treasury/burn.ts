@@ -51,12 +51,21 @@ export async function executeBurn(): Promise<{
     throw new Error('No APE in treasury to process');
   }
   
-  // 2. Calculate 99% for swap, 1% for gas
-  const apeForSwap = (apeBalance * 99n) / 100n;
-  const apeForGas = apeBalance - apeForSwap;
+  // 2. Reserve gas FIRST (0.1 APE for swap transaction), then calculate swap amount
+  const gasReserve = parseEther('0.1'); // Keep 0.1 APE for gas
   
-  console.log(`[Treasury] Swap amount: ${formatEther(apeForSwap)} APE (99%)`);
-  console.log(`[Treasury] Gas reserve: ${formatEther(apeForGas)} APE (1%)`);
+  if (apeBalance <= gasReserve) {
+    throw new Error(`Insufficient balance for swap (need > ${formatEther(gasReserve)} APE for gas)`);
+  }
+  
+  const swappableBalance = apeBalance - gasReserve; // Remaining after gas reserve
+  const apeForSwap = (swappableBalance * 99n) / 100n; // 99% of swappable
+  const apeForTradingWallet = swappableBalance - apeForSwap; // 1% to trading wallet
+  
+  console.log(`[Treasury] Gas reserve: ${formatEther(gasReserve)} APE (kept in treasury)`);
+  console.log(`[Treasury] Swappable: ${formatEther(swappableBalance)} APE`);
+  console.log(`[Treasury] Will swap: ${formatEther(apeForSwap)} APE (99% of swappable)`);
+  console.log(`[Treasury] Will send to trading: ${formatEther(apeForTradingWallet)} APE (1% of swappable)`);
   
   // 3. Swap APE → MNESTR via Camelot DEX
   const dexRouter = new Contract(cfg.dexRouter, DEX_ROUTER_ABI, treasury);
@@ -101,22 +110,22 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] 🔥 Burned ${formatEther(mnestrBalance)} MNESTR!`);
   
   // 6. Send 1% APE to trading wallet for gas
-  if (apeForGas > 0n) {
-    console.log(`[Treasury] Sending gas reserve to trading wallet...`);
+  if (apeForTradingWallet > 0n) {
+    console.log(`[Treasury] Sending 1% to trading wallet...`);
     const gasTx = await treasury.sendTransaction({
       to: cfg.flywheelAddr,
-      value: apeForGas
+      value: apeForTradingWallet
     });
     
-    console.log(`[Treasury] Gas tx: ${gasTx.hash}`);
+    console.log(`[Treasury] Transfer tx: ${gasTx.hash}`);
     await gasTx.wait();
-    console.log(`[Treasury] Gas sent: ${formatEther(apeForGas)} APE → ${cfg.flywheelAddr}`);
+    console.log(`[Treasury] Sent: ${formatEther(apeForTradingWallet)} APE → ${cfg.flywheelAddr}`);
   }
   
   return {
     apeReceived: formatEther(apeBalance),
     apeForSwap: formatEther(apeForSwap),
-    apeForGas: formatEther(apeForGas),
+    apeForGas: formatEther(gasReserve),
     mnestrBurned: formatEther(mnestrBalance),
     txHash: burnTx.hash
   };
