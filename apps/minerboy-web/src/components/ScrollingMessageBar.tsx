@@ -48,8 +48,9 @@ export default function ScrollingMessageBar({
     
     const interval = setInterval(() => {
       setOffset((prev) => {
-        // When we've scrolled past all content + gap, pause before loop
-        if (prev >= textWidth + messageGap) {
+        // When message has traveled full banner width + full message width + gap, pause before loop
+        // This ensures message enters from right, crosses entire banner, and exits left before looping
+        if (prev >= width + textWidth + messageGap) {
           setIsPaused(true);
           return prev; // Hold position during pause
         }
