@@ -21,7 +21,14 @@ type DiscordMsg = {
 };
 
 async function postDiscord(payload: DiscordMsg, attempt = 1): Promise<void> {
-  if (!WEBHOOK) return; // quietly do nothing if not configured
+  if (!WEBHOOK) {
+    console.log('[Discord] Webhook not configured (DISCORD_WEBHOOK_URL missing)');
+    return;
+  }
+  
+  if (attempt === 1) {
+    console.log('[Discord] Sending notification...');
+  }
   
   try {
     const res = await fetch(WEBHOOK, {
@@ -40,6 +47,10 @@ async function postDiscord(payload: DiscordMsg, attempt = 1): Promise<void> {
     if (!res.ok && attempt <= 3) {
       await sleep(300 * attempt); // tiny backoff
       return postDiscord(payload, attempt + 1);
+    }
+    
+    if (res.ok && attempt === 1) {
+      console.log('[Discord] ✅ Notification sent');
     }
   } catch (e) {
     // Silently fail - don't crash bot if Discord is down
