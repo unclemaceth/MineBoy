@@ -85,13 +85,13 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Router: ${YAK_ROUTER}`);
   console.log(`[Treasury] Path: WAPE → MNESTR (via adapter)`);
   
-  // Use conservative slippage based on observed rate (~61k MNESTR per APE)
+  // Use very conservative slippage based on observed rate (~61k MNESTR per APE)
   const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
   const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
-  const minMNESTR = (expectedMNESTR * 90n) / 100n; // 10% slippage
+  const minMNESTR = (expectedMNESTR * 70n) / 100n; // 30% slippage (very conservative)
   
   console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
-  console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
+  console.log(`[Treasury] Min MNESTR (30% slippage): ${formatEther(minMNESTR)}`);
   
   // Step 1: Wrap native APE → WAPE
   console.log(`[Treasury] Step 1: Wrapping ${formatEther(apeForSwap)} APE → WAPE...`);
