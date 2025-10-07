@@ -77,11 +77,9 @@ export async function executeBurn(): Promise<{
   // 3. Swap WAPE → MNESTR via YakRouter (token-in variant)
   // Use the proven working path from successful on-chain tx
   
-  const { getAddress } = await import('ethers');
-  
   const YAK_ROUTER = '0x2b59Eb03865D18d8B62a5956BBbFaE352fc1C148';
-  const ADAPTER = '0xF05902D8EB53a354c9dDC67175df3D9BEe1F9581'; // Proven working adapter
-  const POOL = getAddress('0x7101842054d75e8f2b15c0026254b0d7c525d594'); // The actual WAPE/MNESTR pool (properly checksummed)
+  const ADAPTER = '0xf05902d8eb53a354c9ddc67175df3d9bee1f9581'; // Proven working adapter (lowercase)
+  const POOL = '0x7101842054d75e8f2b15c0026254b0d7c525d594'; // The actual WAPE/MNESTR pool (lowercase)
   
   console.log(`[Treasury] Using YakRouter (token-in swap)`);
   console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
@@ -126,12 +124,13 @@ export async function executeBurn(): Promise<{
   
   // Encode: swapNoSplit(Trade _trade, uint256 _fee, address _to)
   // Trade struct: (uint256 amountIn, uint256 amountOut, address[] path, address[] adapters, address[] pools)
+  // Use lowercase addresses to avoid checksum issues in AbiCoder
   const paramsEncoded = abiCoder.encode(
     ['tuple(uint256,uint256,address[],address[],address[])', 'uint256', 'address'],
     [
-      [apeForSwap, minMNESTR, [cfg.wape, cfg.mnestr], [ADAPTER], [POOL]],
+      [apeForSwap, minMNESTR, [cfg.wape.toLowerCase(), cfg.mnestr.toLowerCase()], [ADAPTER], [POOL]],
       0n,
-      treasuryAddr
+      treasuryAddr.toLowerCase()
     ]
   );
   
