@@ -55,6 +55,7 @@ import {
   walletRateLimit,
   getStats as getPaidMessageStats
 } from './paidMessages.js';
+import { startMessageScheduler, getCurrentlyPlaying } from './messageScheduler.js';
 
 // ---- Job serialization helpers ----
 type ApiJob = {
@@ -1052,6 +1053,9 @@ const start = async () => {
     // Initialize paid messages table
     initPaidMessagesTable();
     
+    // Start message scheduler (fair queueing system)
+    startMessageScheduler();
+    
     // Start receipt poller after database is initialized
     stopPoller = startReceiptPoller(process.env.RPC_URL!);
     
@@ -1326,13 +1330,18 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 
 // ---- Message Management Routes ----
 
-// Get all messages (public) - combines admin and paid messages
+// Get all messages (public) - combines admin and currently playing paid messages
 fastify.get('/v2/messages', async (req, res) => {
   const adminMessages = messageStore.getMessages();
-  const paidMessages = getActivePaidMessages();
+  const playingPaidMessages = getCurrentlyPlaying();
   
-  // Format paid messages with prefix
-  const formattedPaidMessages = paidMessages.map(m => `PAID CONTENT: ${m.message}`);
+  // Format paid messages with prefix and color
+  const formattedPaidMessages = playingPaidMessages.map(m => {
+    const prefix = m.message_type === 'PAID' ? 'PAID CONTENT: ' 
+                 : m.message_type === 'SHILL' ? 'Shilled Content: '
+                 : 'MineBoy: ';
+    return `${prefix}${m.message}`;
+  });
   
   // Combine: admin messages first, then paid messages
   const allMessages = [...adminMessages, ...formattedPaidMessages];

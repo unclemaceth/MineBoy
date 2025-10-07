@@ -247,13 +247,15 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
               border: '2px solid #4a7d5f',
               borderRadius: '6px',
               color: '#c8ffc8',
-              fontSize: '14px',
+              fontSize: '13px',
               fontFamily: 'Menlo, monospace',
               cursor: 'pointer',
+              whiteSpace: 'normal',
+              lineHeight: '1.4',
             }}
           >
-            <option value="PAID">💬 Paid Message (1 APE • 64 chars • 1 hour)</option>
-            <option value="SHILL" disabled>🔥 Shill Message (Coming Soon - Contract Upgrade Needed)</option>
+            <option value="PAID">💬 Paid (1 APE • 64ch • 1hr)</option>
+            <option value="SHILL" disabled>🔥 Shill (Coming Soon)</option>
           </select>
         </div>
         
@@ -280,7 +282,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           )}
         </div>
         
-        {/* Beta Disclaimer */}
+        {/* Beta Disclaimer - Conditional based on message type */}
         <div style={{
           marginBottom: '16px',
           padding: '12px',
@@ -291,16 +293,28 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           lineHeight: '1.5',
           color: '#fbbf24',
         }}>
-          ⚠️ <strong>Beta Testing:</strong> If your message doesn't appear within 10 minutes, 
-          please reach out in <a 
-            href="https://discord.gg/yourserver" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            style={{ color: '#60a5fa', textDecoration: 'underline' }}
-          >
-            Discord
-          </a>. 
-          This feature is meant to be fun and useful for founders to share announcements. <strong>Non-refundable.</strong>
+          {messageType === 'PAID' ? (
+            <>
+              💬 <strong>Community Chat:</strong> This is meant to be fun for the community to banter and chat in the message banner. 
+              Be respectful and keep it fun! <strong>Non-refundable.</strong>
+            </>
+          ) : (
+            <>
+              🔥 <strong>Founder Announcements:</strong> Shill messages are designed for founders to share important announcements 
+              and updates with the community. Your message will be prominently displayed. <strong>Non-refundable.</strong>
+            </>
+          )}
+          <div style={{ marginTop: '8px', fontSize: '10px', color: '#888' }}>
+            ⚠️ <strong>Beta:</strong> If your message doesn't appear within 10 minutes, reach out in{' '}
+            <a 
+              href="https://discord.gg/yourserver" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              style={{ color: '#60a5fa', textDecoration: 'underline' }}
+            >
+              Discord
+            </a>.
+          </div>
         </div>
         
         {/* Message Input */}
