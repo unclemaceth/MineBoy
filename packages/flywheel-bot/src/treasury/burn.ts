@@ -122,6 +122,23 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} APE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
   
+  // Debug: Check if function exists and log the populated transaction
+  console.log(`[Treasury] Router functions available:`, Object.keys(router));
+  console.log(`[Treasury] swapNoSplitFromETH exists:`, !!router.swapNoSplitFromETH);
+  
+  try {
+    const populated = await router.swapNoSplitFromETH.populateTransaction(
+      trade,
+      0,
+      treasuryAddr,
+      { value: apeForSwap }
+    );
+    console.log(`[Treasury] Populated tx data:`, populated.data?.substring(0, 20));
+    console.log(`[Treasury] Method selector:`, populated.data?.substring(0, 10));
+  } catch (e: any) {
+    console.error(`[Treasury] Failed to populate transaction:`, e.message);
+  }
+  
   // Execute swap with native APE (payable function)
   const swapTx = await router.swapNoSplitFromETH(
     trade,
