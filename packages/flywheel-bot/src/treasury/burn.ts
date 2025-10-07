@@ -95,14 +95,16 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Step 1: Wrapping ${formatEther(apeForSwap)} APE → WAPE...`);
   const wape = new Contract(cfg.wape, WAPE_ABI, treasury);
   const wrapTx = await wape.deposit({ value: apeForSwap, gasLimit: 100000 });
-  await wrapTx.wait();
-  console.log(`[Treasury] ✅ Wrapped (tx: ${wrapTx.hash})`);
+  console.log(`[Treasury] Wrap tx submitted: ${wrapTx.hash}`);
+  await wrapTx.wait(1); // Wait for 1 confirmation only
+  console.log(`[Treasury] ✅ Wrapped`);
   
   // Step 2: Approve V3 Router to spend WAPE
   console.log(`[Treasury] Step 2: Approving V3 Router...`);
   const approveTx = await wape.approve(V3_ROUTER, apeForSwap);
-  await approveTx.wait();
-  console.log(`[Treasury] ✅ Approved (tx: ${approveTx.hash})`);
+  console.log(`[Treasury] Approve tx submitted: ${approveTx.hash}`);
+  await approveTx.wait(1);
+  console.log(`[Treasury] ✅ Approved`);
   
   // Step 3: Execute V3 swap
   console.log(`[Treasury] Step 3: Executing V3 swap WAPE → MNESTR...`);
@@ -124,13 +126,13 @@ export async function executeBurn(): Promise<{
     amountOutMinimum: minMNESTR
   };
   
-  console.log(`[Treasury] Path encoded: ${encodedPath.substring(0, 20)}...`);
+  console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
+  console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
   
   const swapTx = await router.exactInput(params, { gasLimit: 500000 });
-  
-  console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
-  const swapReceipt = await swapTx.wait();
-  console.log(`[Treasury] Swap confirmed in block ${swapReceipt!.blockNumber}`);
+  console.log(`[Treasury] Swap tx submitted: ${swapTx.hash}`);
+  const swapReceipt = await swapTx.wait(1);
+  console.log(`[Treasury] ✅ Swap confirmed in block ${swapReceipt!.blockNumber}`);
   
   // 4. Check MNESTR balance
   const mnestrContract = new Contract(cfg.mnestr, ERC20_ABI, treasury);
@@ -139,25 +141,27 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] MNESTR Balance: ${formatEther(mnestrBalance)} MNESTR`);
   
   // 5. Burn MNESTR to 0xdead
-  console.log(`[Treasury] Burning MNESTR...`);
-  const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance);
-  
-  console.log(`[Treasury] Burn tx: ${burnTx.hash}`);
-  const burnReceipt = await burnTx.wait();
-  console.log(`[Treasury] Burn confirmed in block ${burnReceipt!.blockNumber}`);
-  console.log(`[Treasury] 🔥 Burned ${formatEther(mnestrBalance)} MNESTR!`);
+  if (mnestrBalance > 0n) {
+    console.log(`[Treasury] Burning ${formatEther(mnestrBalance)} MNESTR...`);
+    const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance);
+    console.log(`[Treasury] Burn tx submitted: ${burnTx.hash}`);
+    await burnTx.wait(1);
+    console.log(`[Treasury] 🔥 Burned ${formatEther(mnestrBalance)} MNESTR!`);
+  } else {
+    console.log(`[Treasury] ⚠️ No MNESTR to burn (swap may have failed)`);
+  }
   
   // 6. Send 1% APE to trading wallet for gas
   if (apeForTradingWallet > 0n) {
-    console.log(`[Treasury] Sending 1% to trading wallet...`);
+    console.log(`[Treasury] Sending ${formatEther(apeForTradingWallet)} APE to trading wallet...`);
     const gasTx = await treasury.sendTransaction({
       to: cfg.flywheelAddr,
-      value: apeForTradingWallet
+      value: apeForTradingWallet,
+      gasLimit: 100000
     });
-    
-    console.log(`[Treasury] Transfer tx: ${gasTx.hash}`);
-    await gasTx.wait();
-    console.log(`[Treasury] Sent: ${formatEther(apeForTradingWallet)} APE → ${cfg.flywheelAddr}`);
+    console.log(`[Treasury] Gas transfer tx submitted: ${gasTx.hash}`);
+    await gasTx.wait(1);
+    console.log(`[Treasury] ✅ Sent to trading wallet`);
   }
   
   return {
