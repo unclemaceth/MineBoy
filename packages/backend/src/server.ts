@@ -54,8 +54,7 @@ import {
   validateMessage,
   verifyOnChain,
   walletRateLimit,
-  getStats as getPaidMessageStats,
-  getPaidMessagesDb
+  getStats as getPaidMessageStats
 } from './paidMessages.js';
 import { startMessageScheduler, getCurrentlyPlaying } from './messageScheduler.js';
 
