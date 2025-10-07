@@ -255,7 +255,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
             }}
           >
             <option value="PAID">💬 Paid (1 APE • 64ch • 1hr)</option>
-            <option value="SHILL" disabled>🔥 Shill (Coming Soon)</option>
+            <option value="SHILL">🔥 Shill (15 APE • 128ch • 4hr)</option>
           </select>
         </div>
         

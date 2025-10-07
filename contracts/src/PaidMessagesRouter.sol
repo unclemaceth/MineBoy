@@ -12,7 +12,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
-    uint256 public price; // Current price in wei (1 APE = 1 ether)
+    uint256 public minPrice; // Minimum price in wei (1 APE = 1 ether)
     
     // Fee recipients and their basis points (100 bps = 1%)
     address payable public merchantWallet;  // NGT/GoldCap
@@ -39,7 +39,7 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
 
     constructor(
         address admin,
-        uint256 initialPrice,
+        uint256 initialMinPrice,
         address payable _merchantWallet,
         address payable _flywheelWallet,
         address payable _teamWallet,
@@ -60,7 +60,7 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ADMIN_ROLE, admin);
 
-        price = initialPrice;
+        minPrice = initialMinPrice;
         merchantWallet = _merchantWallet;
         flywheelWallet = _flywheelWallet;
         teamWallet = _teamWallet;
@@ -76,7 +76,7 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
      * @param msgHash Hash of the message content (keccak256)
      */
     function pay(bytes32 msgHash) external payable nonReentrant {
-        if (msg.value != price) revert WrongAmount();
+        if (msg.value < minPrice) revert WrongAmount();
         
         // Calculate splits
         uint256 merchantAmount = (msg.value * merchantBps) / BPS_DENOMINATOR;
@@ -101,13 +101,13 @@ contract PaidMessagesRouter is ReentrancyGuard, AccessControl {
     }
 
     /**
-     * @notice Update the price
-     * @param newPrice New price in wei
+     * @notice Update the minimum price
+     * @param newMinPrice New minimum price in wei
      */
-    function setPrice(uint256 newPrice) external onlyRole(ADMIN_ROLE) {
-        uint256 oldPrice = price;
-        price = newPrice;
-        emit PriceUpdated(oldPrice, newPrice);
+    function setMinPrice(uint256 newMinPrice) external onlyRole(ADMIN_ROLE) {
+        uint256 oldPrice = minPrice;
+        minPrice = newMinPrice;
+        emit PriceUpdated(oldPrice, newMinPrice);
     }
 
     /**

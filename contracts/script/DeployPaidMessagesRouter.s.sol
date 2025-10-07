@@ -9,7 +9,7 @@ contract DeployPaidMessagesRouter is Script {
     function run() external {
         // ApeChain mainnet configuration
         address admin = 0x46Cd74Aac482cf6CE9eaAa0418AEB2Ae71E2FAc5; // Team wallet is also admin
-        uint256 price = 1 ether; // 1 APE
+        uint256 minPrice = 1 ether; // 1 APE minimum
         
         // Fee recipients (matching MiningClaimRouterV3 exactly)
         address payable merchantWallet = payable(0xFB53Da794d3d4d831255e7AB40F4649791331e75); // Gold Cap (NGT)
@@ -30,7 +30,7 @@ contract DeployPaidMessagesRouter is Script {
 
         PaidMessagesRouter router = new PaidMessagesRouter(
             admin,
-            price,
+            minPrice,
             merchantWallet,
             flywheelWallet,
             teamWallet,
@@ -43,7 +43,7 @@ contract DeployPaidMessagesRouter is Script {
 
         console2.log("PaidMessagesRouter deployed to:", address(router));
         console2.log("Admin:", admin);
-        console2.log("Price:", price);
+        console2.log("Min Price:", minPrice);
         console2.log("");
         console2.log("Fee Recipients:");
         console2.log("  Merchant:", merchantWallet);
@@ -61,7 +61,7 @@ contract DeployPaidMessagesRouter is Script {
         console2.log("");
         console2.log("To verify, use the constructor args:");
         console2.log("admin:", admin);
-        console2.log("price:", price);
+        console2.log("minPrice:", minPrice);
         console2.log("merchantWallet:", merchantWallet);
         console2.log("flywheelWallet:", flywheelWallet);
         console2.log("teamWallet:", teamWallet);
