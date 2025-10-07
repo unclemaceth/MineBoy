@@ -16,10 +16,10 @@ export default async function routes(app: FastifyInstance) {
       
       const dailyStats = dailyStatsResult.rows[0];
       
-      // Compute active miners (last 10 minutes) - only new contract data
+      // Compute active miners (last 10 minutes) - only V3/MNESTR data
       const now = Date.now();
       const activeWindowMs = 10 * 60 * 1000; // 10 minutes
-      const migrationDate = new Date('2025-09-29T15:00:53Z').getTime();
+      const v3DeploymentDate = new Date('2025-10-04T00:00:00Z').getTime(); // V3/MNESTR deployment
       
       // Count distinct wallets from recent ApeChain claims (last 10 minutes)
       const activeMinersResult = await db.pool.query(`
@@ -28,7 +28,7 @@ export default async function routes(app: FastifyInstance) {
         WHERE status='confirmed' 
           AND confirmed_at >= $1
           AND created_at >= $2
-      `, [now - activeWindowMs, migrationDate]);
+      `, [now - activeWindowMs, v3DeploymentDate]);
       
       const activeMiners = parseInt(activeMinersResult.rows[0]?.active_miners || '0');
       
@@ -36,9 +36,7 @@ export default async function routes(app: FastifyInstance) {
       if (!dailyStats) {
         console.log('⚠️ No daily stats found, computing on-the-fly...');
         
-        // Only show claims from after new cartridge contract deployment (Sept 29, 2025 15:00:53 UTC)
-        const migrationDate = new Date('2025-09-29T15:00:53Z').getTime();
-        
+        // Only show claims from after V3/MNESTR deployment (Oct 4, 2025)
         const result = await db.pool.query(`
           WITH confirmed AS (
             SELECT wallet, cartridge_id, amount_wei
@@ -48,17 +46,19 @@ export default async function routes(app: FastifyInstance) {
           )
           SELECT
             COUNT(DISTINCT wallet) AS total_miners,
-            COUNT(DISTINCT cartridge_id) AS total_carts,
+            COUNT(DISTINCT cartridge_id) AS total_pickaxes,
             COALESCE(SUM(amount_wei::numeric), 0)::text AS total_wei_text,
             COUNT(*) AS total_claims
           FROM confirmed
-        `, [migrationDate]);
+        `, [v3DeploymentDate]);
         
         const stats = result.rows[0];
+        const totalPickaxes = parseInt(stats.total_pickaxes);
         
         return reply.send({
           totalMiners: parseInt(stats.total_miners),
-          totalCarts: parseInt(stats.total_carts),
+          totalPickaxes,
+          totalCarts: totalPickaxes, // Backwards compatibility (deprecated)
           totalWeiText: stats.total_wei_text,
           totalClaims: parseInt(stats.total_claims),
           snapshotDayUTC: null,
@@ -69,9 +69,12 @@ export default async function routes(app: FastifyInstance) {
         });
       }
       
+      const totalPickaxes = parseInt(dailyStats.total_carts); // Still uses 'total_carts' column name in DB
+      
       return reply.send({
         totalMiners: parseInt(dailyStats.total_miners),
-        totalCarts: parseInt(dailyStats.total_carts),
+        totalPickaxes,
+        totalCarts: totalPickaxes, // Backwards compatibility (deprecated)
         totalWeiText: dailyStats.total_wei_text,
         totalClaims: parseInt(dailyStats.total_claims),
         snapshotDayUTC: dailyStats.day_utc,

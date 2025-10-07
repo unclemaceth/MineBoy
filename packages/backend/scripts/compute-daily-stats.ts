@@ -17,12 +17,16 @@ async function computeDailyStats() {
     const dayUtc = format(today, 'yyyy-MM-dd');
     const computedAtMs = Date.now();
 
+    // Only count claims from after V3/MNESTR deployment (Oct 4, 2025)
+    const v3DeploymentDate = new Date('2025-10-04T00:00:00Z').getTime();
+    
     // Compute stats from confirmed claims
     const result = await pool.query(`
       WITH confirmed AS (
         SELECT wallet, cartridge_id, amount_wei
         FROM claims
         WHERE status='confirmed'
+          AND created_at >= $1
       )
       SELECT
         COUNT(DISTINCT wallet) AS total_miners,
@@ -30,7 +34,7 @@ async function computeDailyStats() {
         COALESCE(SUM(amount_wei::numeric), 0)::text AS total_wei_text,
         COUNT(*) AS total_claims
       FROM confirmed
-    `);
+    `, [v3DeploymentDate]);
 
     const stats = result.rows[0];
     

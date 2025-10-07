@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 
 type StatisticsData = {
   totalMiners: number;
-  totalCarts: number;
+  totalPickaxes: number;
+  totalCarts?: number; // Deprecated, kept for backwards compatibility
   totalMNESTR: string;
   totalClaims: number;
   activeMiners: number;
@@ -16,7 +17,7 @@ type StatisticsData = {
 export default function StatisticsSection() {
   const [stats, setStats] = useState<StatisticsData>({
     totalMiners: 0,
-    totalCarts: 0,
+    totalPickaxes: 0,
     totalMNESTR: '0',
     totalClaims: 0,
     activeMiners: 0
@@ -48,7 +49,7 @@ export default function StatisticsSection() {
 
         setStats({
           totalMiners: data.totalMiners || 0,
-          totalCarts: data.totalCarts || 0,
+          totalPickaxes: data.totalPickaxes || data.totalCarts || 0, // Fallback to old field name
           totalMNESTR: weiToMNESTR(data.totalWeiText || '0'),
           totalClaims: data.totalClaims || 0,
           activeMiners: data.activeMiners || 0,
@@ -146,10 +147,10 @@ export default function StatisticsSection() {
           border: '1px solid rgba(74, 125, 95, 0.3)'
         }}>
           <div style={{ color: '#64ff8a', fontWeight: 'bold', marginBottom: '2px' }}>
-            TOTAL CARTS
+            TOTAL PICKAXES
           </div>
           <div style={{ fontSize: '13px', fontWeight: 'bold' }}>
-            {stats.totalCarts.toLocaleString()}
+            {stats.totalPickaxes.toLocaleString()}
           </div>
         </div>
 
