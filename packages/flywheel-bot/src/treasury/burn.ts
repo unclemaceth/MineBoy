@@ -13,14 +13,25 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-// Camelot V3 SwapRouter ABI (Algebra interface with deadline in struct)
+// Camelot V3 SwapRouter ABI (Algebra interface - bytes path for multi-hop support)
 const V3_SWAP_ROUTER_ABI = [
-  "function exactInputSingle((address tokenIn,address tokenOut,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 limitSqrtPrice)) payable returns (uint256 amountOut)"
+  "function exactInput((bytes path,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum)) payable returns (uint256 amountOut)"
 ];
 
-// Algebra Quoter ABI (for getting accurate amountOut with correct decimals)
+// Algebra Quoter ABI (supports both single and multi-hop)
 const QUOTER_ABI = [
-  "function quoteExactInputSingle(address tokenIn,address tokenOut,uint256 amountIn,uint160 limitSqrtPrice) view returns (uint256 amountOut)"
+  "function quoteExactInputSingle(address tokenIn,address tokenOut,uint256 amountIn,uint160 limitSqrtPrice) view returns (uint256 amountOut)",
+  "function quoteExactInput(bytes path,uint256 amountIn) view returns (uint256 amountOut)"
+];
+
+// Algebra Factory ABI (to check if pool exists)
+const FACTORY_ABI = [
+  "function poolByPair(address tokenA,address tokenB) view returns (address pool)"
+];
+
+// Algebra Pool ABI (to check if initialized)
+const POOL_ABI = [
+  "function globalState() view returns (uint160 price, int24 tick, uint16 fee, uint16 timepointIndex, uint16 timepointIndexSwapWithinBlock, bool unlocked)"
 ];
 
 // WAPE ABI for wrapping
@@ -79,18 +90,27 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Will swap: ${formatEther(apeForSwap)} APE (99% of swappable)`);
   console.log(`[Treasury] Will send to trading: ${formatEther(apeForTradingWallet)} APE (1% of swappable)`);
   
-  // 3. Swap APE → MNESTR via Camelot V3 SwapRouter
-  // Use Quoter to get accurate amountOut with correct decimals
+  // 3. Swap APE → MNESTR via Camelot V3 SwapRouter (Algebra)
+  // Check pool existence and use multi-hop if needed
   
   const V3_ROUTER = '0xC69Dc28924930583024E067b2B3d773018F4EB52';
   const QUOTER = '0x60A186019F81bFD04aFc16c9C01804a04E79e68B';
+  const FACTORY = '0x10aA510d94E094Bd643677bd2964c3EE085Daffc';
+  const APEUSD = '0xA2235d059F80e176D931Ef76b6C51953Eb3fBEf4'; // Intermediate token for routing
   
   console.log(`[Treasury] Using Camelot V3 SwapRouter (Algebra)`);
   console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
   console.log(`[Treasury] V3 Router: ${V3_ROUTER}`);
-  console.log(`[Treasury] Path: WAPE → MNESTR`);
   
-  // Read token decimals to ensure correct scaling
+  // Check if direct WAPE → MNESTR pool exists
+  const factory = new Contract(FACTORY, FACTORY_ABI, treasury);
+  const poolAddr = await factory.poolByPair(cfg.wape, cfg.mnestr);
+  console.log(`[Treasury] Direct pool WAPE→MNESTR: ${poolAddr}`);
+  
+  const poolCode = await treasury.provider!.getCode(poolAddr);
+  const poolExists = poolCode !== '0x' && poolAddr.toLowerCase() !== '0x0000000000000000000000000000000000000000';
+  
+  // Read token decimals
   const wapeContract = new Contract(cfg.wape, ERC20_ABI, treasury);
   const mnestrContract = new Contract(cfg.mnestr, ERC20_ABI, treasury);
   const [wapeDecimals, mnestrDecimals] = await Promise.all([
@@ -99,10 +119,36 @@ export async function executeBurn(): Promise<{
   ]);
   console.log(`[Treasury] WAPE decimals: ${wapeDecimals}, MNESTR decimals: ${mnestrDecimals}`);
   
-  // Use Quoter to get accurate expected output in MNESTR's native decimals
+  // Determine path (single-hop or multi-hop via apeUSD)
+  const { solidityPacked } = await import('ethers');
+  let swapPath: string;
+  let pathDescription: string;
+  
+  if (poolExists) {
+    // Try direct single-hop path
+    swapPath = solidityPacked(['address', 'address'], [cfg.wape, cfg.mnestr]);
+    pathDescription = 'WAPE → MNESTR (direct)';
+    console.log(`[Treasury] ✅ Direct pool exists, using single-hop`);
+  } else {
+    // Use multi-hop via apeUSD
+    swapPath = solidityPacked(['address', 'address', 'address'], [cfg.wape, APEUSD, cfg.mnestr]);
+    pathDescription = 'WAPE → apeUSD → MNESTR';
+    console.log(`[Treasury] ⚠️ No direct pool, routing via apeUSD`);
+  }
+  
+  console.log(`[Treasury] Path: ${pathDescription}`);
+  
+  // Get quote using bytes path (works for both single and multi-hop)
   const quoter = new Contract(QUOTER, QUOTER_ABI, treasury);
-  const quotedOut = await quoter.quoteExactInputSingle(cfg.wape, cfg.mnestr, apeForSwap, 0n);
-  console.log(`[Treasury] Quoter says we'll receive: ${formatEther(quotedOut)} MNESTR`);
+  let quotedOut: bigint;
+  
+  try {
+    quotedOut = await quoter.quoteExactInput(swapPath, apeForSwap);
+    console.log(`[Treasury] Quoter says we'll receive: ${formatEther(quotedOut)} MNESTR`);
+  } catch (e: any) {
+    console.error(`[Treasury] ❌ Quoter failed:`, e.message);
+    throw new Error(`Quoter failed for path ${pathDescription}`);
+  }
   
   // Apply 10% slippage to quoted amount
   const slippageBps = 1000n; // 10% = 1000 basis points
@@ -126,23 +172,20 @@ export async function executeBurn(): Promise<{
   await approveTx.wait(1);
   console.log(`[Treasury] ✅ Approved`);
   
-  // Step 3: Execute V3 swap (Algebra single-hop)
-  console.log(`[Treasury] Step 3: Executing Algebra exactInputSingle...`);
+  // Step 3: Execute V3 swap (Algebra exactInput with bytes path)
+  console.log(`[Treasury] Step 3: Executing Algebra exactInput...`);
   const router = new Contract(V3_ROUTER, V3_SWAP_ROUTER_ABI, treasury);
   
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // +10 minutes
   const params = {
-    tokenIn: cfg.wape,
-    tokenOut: cfg.mnestr,
+    path: swapPath,
     recipient: treasuryAddr,
     deadline,
     amountIn: apeForSwap,
-    amountOutMinimum: minMNESTR,
-    limitSqrtPrice: 0n  // 0 = no price limit on Algebra
+    amountOutMinimum: minMNESTR
   };
   
-  console.log(`[Treasury] TokenIn: ${cfg.wape}`);
-  console.log(`[Treasury] TokenOut: ${cfg.mnestr}`);
+  console.log(`[Treasury] Path: ${pathDescription}`);
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
   console.log(`[Treasury] Deadline: ${deadline}`);
@@ -151,7 +194,7 @@ export async function executeBurn(): Promise<{
   try {
     await treasury.provider!.call({
       to: V3_ROUTER,
-      data: router.interface.encodeFunctionData("exactInputSingle", [params])
+      data: router.interface.encodeFunctionData("exactInput", [params])
     });
     console.log(`[Treasury] ✅ Simulation passed`);
   } catch (e: any) {
@@ -166,7 +209,7 @@ export async function executeBurn(): Promise<{
     throw e;
   }
   
-  const swapTx = await router.exactInputSingle(params, { gasLimit: 500000 });
+  const swapTx = await router.exactInput(params, { gasLimit: 500000 });
   console.log(`[Treasury] Swap tx submitted: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait(1);
   console.log(`[Treasury] ✅ Swap confirmed in block ${swapReceipt!.blockNumber}`);
