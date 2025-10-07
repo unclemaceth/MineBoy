@@ -53,12 +53,10 @@ export default async function routes(app: FastifyInstance) {
         `, [v3DeploymentDate]);
         
         const stats = result.rows[0];
-        const totalPickaxes = parseInt(stats.total_pickaxes);
         
         return reply.send({
           totalMiners: parseInt(stats.total_miners),
-          totalPickaxes,
-          totalCarts: totalPickaxes, // Backwards compatibility (deprecated)
+          totalPickaxes: parseInt(stats.total_pickaxes),
           totalWeiText: stats.total_wei_text,
           totalClaims: parseInt(stats.total_claims),
           snapshotDayUTC: null,
@@ -69,12 +67,9 @@ export default async function routes(app: FastifyInstance) {
         });
       }
       
-      const totalPickaxes = parseInt(dailyStats.total_carts); // Still uses 'total_carts' column name in DB
-      
       return reply.send({
         totalMiners: parseInt(dailyStats.total_miners),
-        totalPickaxes,
-        totalCarts: totalPickaxes, // Backwards compatibility (deprecated)
+        totalPickaxes: parseInt(dailyStats.total_carts), // DB column still named 'total_carts'
         totalWeiText: dailyStats.total_wei_text,
         totalClaims: parseInt(dailyStats.total_claims),
         snapshotDayUTC: dailyStats.day_utc,

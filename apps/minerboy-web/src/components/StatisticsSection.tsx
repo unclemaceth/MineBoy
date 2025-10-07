@@ -5,7 +5,6 @@ import { useState, useEffect } from 'react';
 type StatisticsData = {
   totalMiners: number;
   totalPickaxes: number;
-  totalCarts?: number; // Deprecated, kept for backwards compatibility
   totalMNESTR: string;
   totalClaims: number;
   activeMiners: number;
@@ -49,7 +48,7 @@ export default function StatisticsSection() {
 
         setStats({
           totalMiners: data.totalMiners || 0,
-          totalPickaxes: data.totalPickaxes || data.totalCarts || 0, // Fallback to old field name
+          totalPickaxes: data.totalPickaxes || 0,
           totalMNESTR: weiToMNESTR(data.totalWeiText || '0'),
           totalClaims: data.totalClaims || 0,
           activeMiners: data.activeMiners || 0,
