@@ -1,7 +1,12 @@
 -- Paid Messages System (includes MINEBOY, PAID, SHILL)
 -- All messages persist until expired or manually deleted
 
-CREATE TABLE IF NOT EXISTS paid_messages (
+-- Drop old table if it exists with wrong schema (safe - auto-recreates)
+DROP TABLE IF EXISTS paid_messages CASCADE;
+DROP TABLE IF EXISTS blacklisted_wallets CASCADE;
+
+-- Create fresh table with correct schema
+CREATE TABLE paid_messages (
   id TEXT PRIMARY KEY,
   wallet TEXT NOT NULL,
   message TEXT NOT NULL,
@@ -31,7 +36,7 @@ CREATE INDEX IF NOT EXISTS idx_paid_messages_type_status_priority ON paid_messag
 CREATE INDEX IF NOT EXISTS idx_paid_messages_played_at ON paid_messages(played_at) WHERE played_at IS NOT NULL;
 
 -- Blacklist table for wallet bans
-CREATE TABLE IF NOT EXISTS blacklisted_wallets (
+CREATE TABLE blacklisted_wallets (
   wallet TEXT PRIMARY KEY,
   reason TEXT,
   blocked_at BIGINT NOT NULL,
