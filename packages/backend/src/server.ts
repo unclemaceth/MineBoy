@@ -53,7 +53,8 @@ import {
   validateMessage,
   verifyOnChain,
   walletRateLimit,
-  getStats as getPaidMessageStats
+  getStats as getPaidMessageStats,
+  getPaidMessagesDb
 } from './paidMessages.js';
 import { startMessageScheduler, getCurrentlyPlaying } from './messageScheduler.js';
 
@@ -1591,9 +1592,10 @@ fastify.get<{ Querystring: { wallet?: string } }>(
   async (req, res) => {
     try {
       const { wallet } = req.query;
+      const paidDb = getPaidMessagesDb();
       
       // Total active messages
-      const totalActive = db.prepare(`
+      const totalActive = paidDb.prepare(`
         SELECT COUNT(*) as count 
         FROM paid_messages 
         WHERE status = 'active'
@@ -1603,7 +1605,7 @@ fastify.get<{ Querystring: { wallet?: string } }>(
       let yourPosition = null;
       if (wallet) {
         const walletLower = wallet.toLowerCase();
-        const result = db.prepare(`
+        const result = paidDb.prepare(`
           SELECT COUNT(*) + 1 as position 
           FROM paid_messages 
           WHERE status = 'active' 
@@ -1613,7 +1615,7 @@ fastify.get<{ Querystring: { wallet?: string } }>(
         `).get(walletLower, walletLower, walletLower) as { position: number };
         
         // Check if wallet has any active messages
-        const hasActive = db.prepare(`
+        const hasActive = paidDb.prepare(`
           SELECT 1 FROM paid_messages WHERE wallet = ? AND status = 'active' LIMIT 1
         `).get(walletLower);
         

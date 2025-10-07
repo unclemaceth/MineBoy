@@ -34,6 +34,11 @@ const client = createPublicClient({
 const db = new Database(process.env.DB_PATH || './paid_messages.db');
 db.pragma('journal_mode = WAL');
 
+// Export db for use in server.ts
+export function getPaidMessagesDb() {
+  return db;
+}
+
 // Initialize table with enhanced schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS paid_messages (
