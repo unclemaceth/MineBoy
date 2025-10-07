@@ -1052,8 +1052,27 @@ const start = async () => {
     // Initialize database
     await initDb(process.env.DATABASE_URL);
     
-    // Initialize paid messages table
-    initPaidMessagesTable();
+    // Run paid messages migration (PostgreSQL only)
+    if (process.env.DATABASE_URL?.startsWith('postgresql://')) {
+      try {
+        const fs = await import('fs');
+        const path = await import('path');
+        const { Pool } = await import('pg');
+        const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+        const migrationPath = path.join(process.cwd(), 'migrations', '2025-paid-messages.sql');
+        if (fs.existsSync(migrationPath)) {
+          const migration = fs.readFileSync(migrationPath, 'utf8');
+          await pool.query(migration);
+          console.log('✅ Paid messages migration applied');
+        }
+        await pool.end();
+      } catch (err) {
+        console.error('❌ Paid messages migration failed:', err);
+      }
+    }
+    
+    // Initialize paid messages table (creates if not exists)
+    await initPaidMessagesTable();
     
     // Start message scheduler (fair queueing system)
     startMessageScheduler();
