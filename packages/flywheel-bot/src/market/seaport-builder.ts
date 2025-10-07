@@ -50,7 +50,8 @@ export async function createSeaportListing(
   nftContract: string,
   tokenId: string,
   priceWei: string,
-  durationSeconds: number = 7 * 24 * 3600 // 7 days default
+  durationSeconds: number = 7 * 24 * 3600, // 7 days default
+  treasuryAddress?: string // Optional: send proceeds to treasury instead of offerer
 ): Promise<{ order: SeaportOrder; signature: string; domain: any }> {
   
   const offerer = await wallet.getAddress();

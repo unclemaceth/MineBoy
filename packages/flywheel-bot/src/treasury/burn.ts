@@ -13,9 +13,9 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-// Camelot V3 / Algebra Router ABI
-const ALGEBRA_ROUTER_ABI = [
-  'function exactInputSingle(tuple(address tokenIn, address tokenOut, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum, uint160 limitSqrtPrice)) returns (uint256 amountOut)'
+// UniswapV2-style Router ABI (works with V2 pools)
+const ROUTER_V2_ABI = [
+  'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)'
 ];
 
 // WAPE ABI (for wrapping native APE)
@@ -103,39 +103,27 @@ export async function executeBurn(): Promise<{
   await approveTx.wait();
   console.log(`[Treasury] ✅ Approved router (tx: ${approveTx.hash})`);
   
-  // Step 3: Execute V3 swap (NO msg.value here!)
-  console.log(`[Treasury] Step 3: Executing V3 swap WAPE → MNESTR...`);
-  const router = new Contract(cfg.dexRouter, ALGEBRA_ROUTER_ABI, treasury);
+  // Step 3: Execute V2 swap (WAPE → MNESTR)
+  console.log(`[Treasury] Step 3: Executing V2 swap WAPE → MNESTR...`);
+  const router = new Contract(cfg.dexRouter, ROUTER_V2_ABI, treasury);
   
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 300); // 5 minutes
-  const params = {
-    tokenIn: cfg.wape,
-    tokenOut: cfg.mnestr,
-    recipient: treasuryAddr,
-    deadline,
-    amountIn: apeForSwap,
-    amountOutMinimum: minMNESTR,
-    limitSqrtPrice: 0n // No price limit
-  };
+  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+  const path = [cfg.wape, cfg.mnestr]; // WAPE → MNESTR
   
-  // Validate calldata is being generated correctly
-  console.log(`[Treasury] Validating swap parameters...`);
-  console.log(`[Treasury] tokenIn: ${params.tokenIn}`);
-  console.log(`[Treasury] tokenOut: ${params.tokenOut}`);
-  console.log(`[Treasury] amountIn: ${params.amountIn.toString()}`);
-  console.log(`[Treasury] amountOutMinimum: ${params.amountOutMinimum.toString()}`);
+  console.log(`[Treasury] Router: ${cfg.dexRouter}`);
+  console.log(`[Treasury] Path: ${path.join(' → ')}`);
+  console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
+  console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
+  console.log(`[Treasury] Deadline: ${new Date(deadline * 1000).toISOString()}`);
   
-  const populated = await router.exactInputSingle.populateTransaction(params);
-  console.log(`[Treasury] Calldata length: ${populated.data?.length ?? 0} bytes`);
-  
-  if (!populated.data || populated.data === '0x' || populated.data.length < 10) {
-    throw new Error('Router calldata is empty - ABI/params mismatch!');
-  }
-  
-  console.log(`[Treasury] Calldata: ${populated.data.substring(0, 66)}...`);
-  
-  // Execute V3 swap with NO value (WAPE is already wrapped and approved)
-  const swapTx = await router.exactInputSingle(params);
+  // Execute V2 swap (WAPE already wrapped and approved)
+  const swapTx = await router.swapExactTokensForTokens(
+    apeForSwap,
+    minMNESTR,
+    path,
+    treasuryAddr,
+    deadline
+  );
   
   console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait();
