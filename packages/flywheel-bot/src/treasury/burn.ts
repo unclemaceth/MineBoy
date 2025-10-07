@@ -79,19 +79,20 @@ export async function executeBurn(): Promise<{
   
   const YAK_ROUTER = '0x2b59Eb03865D18d8B62a5956BBbFaE352fc1C148';
   const ADAPTER = '0xF05902D8EB53a354c9dDC67175df3D9BEe1F9581'; // Proven working adapter
+  const POOL = '0x7101842054d75E8f2b15c0026254B0d7c525D594'; // The actual WAPE/MNESTR pool
   
   console.log(`[Treasury] Using YakRouter (token-in swap)`);
   console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
   console.log(`[Treasury] Router: ${YAK_ROUTER}`);
   console.log(`[Treasury] Path: WAPE → MNESTR (via adapter)`);
   
-  // Use very conservative slippage based on observed rate (~61k MNESTR per APE)
+  // Use reasonable slippage based on observed rate (~61k MNESTR per APE)
   const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
   const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
-  const minMNESTR = (expectedMNESTR * 70n) / 100n; // 30% slippage (very conservative)
+  const minMNESTR = (expectedMNESTR * 85n) / 100n; // 15% slippage
   
   console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
-  console.log(`[Treasury] Min MNESTR (30% slippage): ${formatEther(minMNESTR)}`);
+  console.log(`[Treasury] Min MNESTR (15% slippage): ${formatEther(minMNESTR)}`);
   
   // Step 1: Wrap native APE → WAPE
   console.log(`[Treasury] Step 1: Wrapping ${formatEther(apeForSwap)} APE → WAPE...`);
@@ -115,21 +116,24 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
   console.log(`[Treasury] Adapter: ${ADAPTER}`);
+  console.log(`[Treasury] Pool: ${POOL}`);
   
   // Manually encode the calldata with correct selector (0xce6e28f2)
   const { AbiCoder } = await import('ethers');
   const abiCoder = AbiCoder.defaultAbiCoder();
   
   // Encode: swapNoSplit(Trade _trade, uint256 _fee, address _to)
-  // Trade struct: (uint256 amountIn, uint256 amountOut, address[] path, address[] adapters)
+  // Trade struct: (uint256 amountIn, uint256 amountOut, address[] path, address[] adapters, address[] pools)
   const paramsEncoded = abiCoder.encode(
-    ['tuple(uint256,uint256,address[],address[])', 'uint256', 'address'],
+    ['tuple(uint256,uint256,address[],address[],address[])', 'uint256', 'address'],
     [
-      [apeForSwap, minMNESTR, [cfg.wape, cfg.mnestr], [ADAPTER]],
+      [apeForSwap, minMNESTR, [cfg.wape, cfg.mnestr], [ADAPTER], [POOL]],
       0n,
       treasuryAddr
     ]
   );
+  
+  console.log(`[Treasury] Arrays: path[2], adapters[1], pools[1]`);
   
   // Build calldata with correct method selector
   const methodSelector = '0xce6e28f2'; // swapNoSplit selector
