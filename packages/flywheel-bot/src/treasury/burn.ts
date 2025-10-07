@@ -162,10 +162,12 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] MNESTR Balance: ${formatEther(mnestrBalance)} MNESTR`);
   
   // 5. Burn MNESTR to 0xdead
+  let burnTxHash = '';
   if (mnestrBalance > 0n) {
     console.log(`[Treasury] Burning ${formatEther(mnestrBalance)} MNESTR...`);
     const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance);
-    console.log(`[Treasury] Burn tx submitted: ${burnTx.hash}`);
+    burnTxHash = burnTx.hash;
+    console.log(`[Treasury] Burn tx submitted: ${burnTxHash}`);
     await burnTx.wait(1);
     console.log(`[Treasury] 🔥 Burned ${formatEther(mnestrBalance)} MNESTR!`);
   } else {
@@ -185,11 +187,13 @@ export async function executeBurn(): Promise<{
     console.log(`[Treasury] ✅ Sent to trading wallet`);
   }
   
+  console.log(`[Treasury] ✅✅✅ FLYWHEEL BURN COMPLETE! ✅✅✅`);
+  
   return {
     apeReceived: formatEther(apeBalance),
     apeForSwap: formatEther(apeForSwap),
     apeForGas: formatEther(gasReserve),
     mnestrBurned: formatEther(mnestrBalance),
-    txHash: burnTx.hash
+    burnTxHash
   };
 }
