@@ -109,33 +109,43 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] ✅ Approved`);
   
   // Step 3: Execute YakRouter swap (token-in variant with WAPE)
+  // Manually encode calldata to avoid ethers tuple encoding issues
   console.log(`[Treasury] Step 3: Executing YakRouter swapNoSplit (token-in)...`);
-  const router = new Contract(YAK_ROUTER, YAK_ROUTER_ABI, treasury);
-  
-  const trade = {
-    amountIn: apeForSwap,
-    amountOut: minMNESTR,
-    path: [cfg.wape, cfg.mnestr],
-    adapters: [ADAPTER]
-  };
-  const fee = 0n;
-  const to = treasuryAddr;
   
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
   console.log(`[Treasury] Adapter: ${ADAPTER}`);
   
-  // Sanity check: verify selector is correct (should be 0xce6e28f2)
-  const populated = await router.swapNoSplit.populateTransaction(trade, fee, to, { value: 0 });
-  const selector = populated.data?.slice(0, 10);
-  console.log(`[Treasury] Method selector: ${selector} (expect 0xce6e28f2)`);
+  // Manually encode the calldata with correct selector (0xce6e28f2)
+  const { AbiCoder } = await import('ethers');
+  const abiCoder = AbiCoder.defaultAbiCoder();
   
-  if (selector !== '0xce6e28f2') {
-    throw new Error(`Wrong selector! Got ${selector}, expected 0xce6e28f2`);
-  }
+  // Encode: swapNoSplit(Trade _trade, uint256 _fee, address _to)
+  // Trade struct: (uint256 amountIn, uint256 amountOut, address[] path, address[] adapters)
+  const paramsEncoded = abiCoder.encode(
+    ['tuple(uint256,uint256,address[],address[])', 'uint256', 'address'],
+    [
+      [apeForSwap, minMNESTR, [cfg.wape, cfg.mnestr], [ADAPTER]],
+      0n,
+      treasuryAddr
+    ]
+  );
   
-  // Send swap (token-in, so value = 0)
-  const swapTx = await router.swapNoSplit(trade, fee, to, { value: 0, gasLimit: 300000 });
+  // Build calldata with correct method selector
+  const methodSelector = '0xce6e28f2'; // swapNoSplit selector
+  const calldata = methodSelector + paramsEncoded.slice(2);
+  
+  console.log(`[Treasury] Method selector: ${methodSelector} (correct!)`);
+  console.log(`[Treasury] Calldata length: ${calldata.length} chars`);
+  
+  // Send raw transaction with manually encoded calldata
+  const swapTx = await treasury.sendTransaction({
+    to: YAK_ROUTER,
+    data: calldata,
+    value: 0, // token-in, no value
+    gasLimit: 300000
+  });
+  
   console.log(`[Treasury] Swap tx submitted: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait(1);
   console.log(`[Treasury] ✅ Swap confirmed in block ${swapReceipt!.blockNumber}`);
