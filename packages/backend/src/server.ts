@@ -1353,8 +1353,8 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 
 // Get all messages (public) - combines admin and currently playing paid messages
 fastify.get('/v2/messages', async (req, res) => {
-  const adminMessages = messageStore.getMessages();
-  const playingPaidMessages = getCurrentlyPlaying();
+  const adminMessages = await messageStore.getMessages();
+  const playingPaidMessages = await getCurrentlyPlaying();
   
   // DEBUG: Check messages from database
   if (playingPaidMessages.length > 0) {
@@ -1387,7 +1387,8 @@ fastify.get('/v2/messages', async (req, res) => {
 // Get all messages with metadata (admin only)
 fastify.get('/v2/admin/messages', async (req, res) => {
   if (!requireDebugAuth(req, res)) return;
-  return res.send({ messages: messageStore.getAllMessages() });
+  const messages = await messageStore.getAllMessages();
+  return res.send({ messages });
 });
 
 // Add a new message (admin only)
@@ -1399,8 +1400,8 @@ fastify.post<{ Body: { text: string } }>('/v2/admin/messages', async (req, res) 
     return res.status(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
   }
   
-  const message = messageStore.addMessage(text);
-  return res.send({ ok: true, message });
+  const id = await messageStore.addMessage(text);
+  return res.send({ ok: true, id });
 });
 
 // Remove a message (admin only)
@@ -1408,7 +1409,7 @@ fastify.delete<{ Params: { id: string } }>('/v2/admin/messages/:id', async (req,
   if (!requireDebugAuth(req, res)) return;
   
   const { id } = req.params;
-  const removed = messageStore.removeMessage(id);
+  const removed = await messageStore.removeMessage(id);
   
   if (!removed) {
     return res.status(404).send({ code: 'not_found', message: 'Message not found' });
@@ -1505,7 +1506,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
       }
       
       // All checks passed - add the paid message
-      const result = addPaidMessage({
+      const result = await addPaidMessage({
         wallet,
         message: validation.cleaned,
         txHash: txHash as `0x${string}`,
@@ -1534,7 +1535,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
 
 // Get all active paid messages (public)
 fastify.get('/v2/messages/paid', async (req, res) => {
-  const messages = getActivePaidMessages();
+  const messages = await getActivePaidMessages();
   return res.send({ 
     messages: messages.map(m => ({
       id: m.id,
@@ -1557,7 +1558,7 @@ fastify.delete<{ Params: { id: string } }>(
     if (!requireDebugAuth(req, res)) return;
     
     const { id } = req.params;
-    const removed = removePaidMessage(id);
+    const removed = await removePaidMessage(id);
     
     if (!removed) {
       return res.status(404).send({ code: 'not_found', message: 'Message not found' });
@@ -1692,8 +1693,8 @@ fastify.get<{ Querystring: { wallet?: string } }>(
 );
 
 // Cleanup expired messages (runs periodically)
-setInterval(() => {
-  const expired = markExpired();
+setInterval(async () => {
+  const expired = await markExpired();
   if (expired > 0) {
     console.log(`[PAID_MESSAGE] Expired ${expired} old messages`);
   }

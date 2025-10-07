@@ -1,5 +1,5 @@
 /**
- * Message Scheduler
+ * Message Scheduler (PostgreSQL version)
  * 
  * Fair queueing system for paid messages:
  * - Round-robin across message types (PAID, SHILL, MINEBOY)
@@ -8,9 +8,7 @@
  * - Prevents wallet spam
  */
 
-import Database from 'better-sqlite3';
-
-const db = new Database(process.env.DB_PATH || './paid_messages.db');
+import { getDB } from './db.js';
 
 // Interleaved round-robin lanes for better distribution
 // Pattern: SHILL > PAID > MINEBOY (priority order)
@@ -51,8 +49,9 @@ function calculatePriority(createdAt: number, basePriority: number): number {
 /**
  * Update priorities for all active messages based on age
  */
-export function updatePriorities(): number {
-  const messages = db.prepare(`
+export async function updatePriorities(): Promise<number> {
+  const db = getDB();
+  const messages = await db.prepare(`
     SELECT id, created_at, priority
     FROM paid_messages
     WHERE status = 'active'
@@ -61,13 +60,13 @@ export function updatePriorities(): number {
   let updated = 0;
   
   const updateStmt = db.prepare(`
-    UPDATE paid_messages SET priority = ? WHERE id = ?
+    UPDATE paid_messages SET priority = @priority WHERE id = @id
   `);
   
   for (const msg of messages) {
     const newPriority = calculatePriority(msg.created_at, 0);
     if (newPriority !== msg.priority) {
-      updateStmt.run(newPriority, msg.id);
+      await updateStmt.run({ priority: newPriority, id: msg.id });
       updated++;
     }
   }
@@ -79,25 +78,28 @@ export function updatePriorities(): number {
  * Pick next message to play from a specific lane (message type)
  * Respects per-wallet cooldown
  */
-function pickNextFromLane(messageType: string): {
+async function pickNextFromLane(messageType: string): Promise<{
   id: string;
   wallet: string;
   message: string;
   banner_duration_sec: number;
-} | null {
+} | null> {
+  const db = getDB();
   const cooldownSec = PER_WALLET_COOLDOWN[messageType as keyof typeof PER_WALLET_COOLDOWN] || 0;
   const cooldownStart = Date.now() - (cooldownSec * 1000);
   
   // Get wallets that are in cooldown
-  const recentWallets = db.prepare(`
+  const recentWallets = await db.prepare(`
     SELECT DISTINCT wallet
     FROM paid_messages
-    WHERE played_at > ? AND message_type = ?
-  `).all(cooldownStart, messageType).map((r: any) => r.wallet);
+    WHERE played_at > @cooldownStart AND message_type = @messageType
+  `).all({ cooldownStart, messageType });
+  
+  const walletList = recentWallets.map((r: any) => r.wallet);
   
   // Build exclusion clause
-  const exclusionClause = recentWallets.length > 0
-    ? `AND wallet NOT IN (${recentWallets.map(() => '?').join(',')})`
+  const exclusionClause = walletList.length > 0
+    ? `AND wallet NOT IN (${walletList.map(() => '?').join(',')})`
     : '';
   
   // Find next eligible message
@@ -111,36 +113,63 @@ function pickNextFromLane(messageType: string): {
     LIMIT 1
   `;
   
-  const params = [messageType, ...recentWallets];
-  const result = db.prepare(query).get(...params) as any;
+  const params = [messageType, ...walletList];
+  // For PostgreSQL adapter, we need to handle this differently
+  // Let's use a simpler query without dynamic params
+  const result = walletList.length > 0 
+    ? await db.prepare(`
+        SELECT id, wallet, message, banner_duration_sec
+        FROM paid_messages
+        WHERE status = 'active' 
+          AND message_type = @messageType
+          AND wallet NOT IN (${walletList.map((_, i) => `@wallet${i}`).join(',')})
+        ORDER BY priority ASC, created_at ASC
+        LIMIT 1
+      `).get({
+        messageType,
+        ...Object.fromEntries(walletList.map((w, i) => [`wallet${i}`, w]))
+      })
+    : await db.prepare(`
+        SELECT id, wallet, message, banner_duration_sec
+        FROM paid_messages
+        WHERE status = 'active' 
+          AND message_type = @messageType
+        ORDER BY priority ASC, created_at ASC
+        LIMIT 1
+      `).get({ messageType });
   
-  return result || null;
+  return result as any || null;
 }
 
 /**
  * Play a message (mark as playing, schedule expiration)
  */
-function playMessage(msg: { id: string; banner_duration_sec: number }): void {
+async function playMessage(msg: { id: string; banner_duration_sec: number }): Promise<void> {
+  const db = getDB();
   const now = Date.now();
   const expiresAt = now + (msg.banner_duration_sec * 1000);
   
-  db.prepare(`
+  await db.prepare(`
     UPDATE paid_messages
-    SET status = 'playing', played_at = ?, expires_at = ?
-    WHERE id = ?
-  `).run(now, expiresAt, msg.id);
+    SET status = 'playing', played_at = @played_at, expires_at = @expires_at
+    WHERE id = @id
+  `).run({ played_at: now, expires_at: expiresAt, id: msg.id });
   
   console.log(`[MessageScheduler] Playing message ${msg.id} for ${msg.banner_duration_sec}s`);
   
   // Schedule automatic expiration
-  setTimeout(() => {
-    db.prepare(`
-      UPDATE paid_messages
-      SET status = 'expired'
-      WHERE id = ? AND status = 'playing'
-    `).run(msg.id);
-    
-    console.log(`[MessageScheduler] Message ${msg.id} expired`);
+  setTimeout(async () => {
+    try {
+      await db.prepare(`
+        UPDATE paid_messages
+        SET status = 'expired'
+        WHERE id = @id AND status = 'playing'
+      `).run({ id: msg.id });
+      
+      console.log(`[MessageScheduler] Message ${msg.id} expired`);
+    } catch (error) {
+      console.error(`[MessageScheduler] Error expiring message ${msg.id}:`, error);
+    }
   }, msg.banner_duration_sec * 1000);
 }
 
@@ -148,16 +177,16 @@ function playMessage(msg: { id: string; banner_duration_sec: number }): void {
  * Main scheduler tick - pick and play next message
  * Returns true if a message was played, false otherwise
  */
-export function schedulerTick(): boolean {
+export async function schedulerTick(): Promise<boolean> {
   // Update priorities based on age
-  updatePriorities();
+  await updatePriorities();
   
   // Try each lane in weighted sequence
   for (const lane of LANE_SEQUENCE) {
-    const next = pickNextFromLane(lane);
+    const next = await pickNextFromLane(lane);
     
     if (next) {
-      playMessage(next);
+      await playMessage(next);
       console.log(`[MessageScheduler] Played from ${lane} lane: "${next.message.substring(0, 40)}..."`);
       return true;
     }
@@ -170,7 +199,7 @@ export function schedulerTick(): boolean {
 /**
  * Get currently playing messages
  */
-export function getCurrentlyPlaying(): Array<{
+export async function getCurrentlyPlaying(): Promise<Array<{
   id: string;
   wallet: string;
   message: string;
@@ -178,26 +207,28 @@ export function getCurrentlyPlaying(): Array<{
   color: string;
   played_at: number;
   expires_at: number;
-}> {
-  return db.prepare(`
+}>> {
+  const db = getDB();
+  return await db.prepare(`
     SELECT id, wallet, message, message_type, color, played_at, expires_at
     FROM paid_messages
-    WHERE status = 'playing' AND expires_at > ?
+    WHERE status = 'playing' AND expires_at > @now
     ORDER BY played_at DESC
-  `).all(Date.now()) as any[];
+  `).all({ now: Date.now() }) as any[];
 }
 
 /**
  * Force expire old playing messages (cleanup)
  */
-export function cleanupExpiredPlaying(): number {
+export async function cleanupExpiredPlaying(): Promise<number> {
+  const db = getDB();
   const now = Date.now();
   
-  const result = db.prepare(`
+  const result = await db.prepare(`
     UPDATE paid_messages
     SET status = 'expired'
-    WHERE status = 'playing' AND expires_at <= ?
-  `).run(now);
+    WHERE status = 'playing' AND expires_at <= @now
+  `).run({ now });
   
   return result.changes;
 }
@@ -206,32 +237,38 @@ export function cleanupExpiredPlaying(): number {
  * Start the message scheduler (runs every 10 seconds)
  */
 export function startMessageScheduler(): void {
-  console.log('[MessageScheduler] Starting scheduler...');
+  console.log('[MessageScheduler] Starting scheduler (PostgreSQL)...');
   console.log('[MessageScheduler] Tick interval: 10 seconds');
   console.log('[MessageScheduler] Lane weights: PAID(5) MINEBOY(2) SHILL(1)');
   
-  // Run immediately
-  schedulerTick();
+  // Run immediately (async)
+  schedulerTick().catch(err => 
+    console.error('[MessageScheduler] Error in initial tick:', err)
+  );
   
   // Then run every 10 seconds
   setInterval(() => {
-    try {
-      cleanupExpiredPlaying();
-      schedulerTick();
-    } catch (error) {
-      console.error('[MessageScheduler] Error in tick:', error);
-    }
+    (async () => {
+      try {
+        await cleanupExpiredPlaying();
+        await schedulerTick();
+      } catch (error) {
+        console.error('[MessageScheduler] Error in tick:', error);
+      }
+    })();
   }, 10_000); // 10 seconds
   
   // Update priorities every minute
   setInterval(() => {
-    try {
-      const updated = updatePriorities();
-      if (updated > 0) {
-        console.log(`[MessageScheduler] Updated ${updated} message priorities`);
+    (async () => {
+      try {
+        const updated = await updatePriorities();
+        if (updated > 0) {
+          console.log(`[MessageScheduler] Updated ${updated} message priorities`);
+        }
+      } catch (error) {
+        console.error('[MessageScheduler] Error updating priorities:', error);
       }
-    } catch (error) {
-      console.error('[MessageScheduler] Error updating priorities:', error);
-    }
+    })();
   }, 60_000); // 1 minute
 }

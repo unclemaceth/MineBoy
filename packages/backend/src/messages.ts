@@ -1,84 +1,112 @@
 /**
- * Scrolling message management
- * Stores messages that will be displayed in the HUD scrolling banner
+ * MINEBOY Admin Messages (PostgreSQL version)
+ * 
+ * Stores admin-created messages in database for persistence across deploys
  */
 
-interface Message {
-  id: string;
-  text: string;
-  createdAt: number;
+import { randomUUID } from 'crypto';
+import { getDB } from './db.js';
+import { MESSAGE_TYPES } from './paidMessages.js';
+
+/**
+ * Add a MINEBOY admin message
+ * These are free messages from the admin that persist in the database
+ */
+export async function addMineboyMessage(text: string): Promise<string> {
+  const db = getDB();
+  const id = randomUUID();
+  const now = Date.now();
+  const config = MESSAGE_TYPES.MINEBOY;
+  const expiresAt = now + (config.duration * 1000); // 24 hours
+  
+  await db.prepare(`
+    INSERT INTO paid_messages (
+      id, wallet, message, tx_hash, amount_wei,
+      created_at, expires_at, status, message_type,
+      color, banner_duration_sec, priority
+    ) VALUES (
+      @id, @wallet, @message, @tx_hash, @amount_wei,
+      @created_at, @expires_at, @status, @message_type,
+      @color, @banner_duration_sec, @priority
+    )
+  `).run({
+    id,
+    wallet: 'admin',
+    message: text,
+    tx_hash: `admin-${id}`, // pseudo tx_hash for admin messages
+    amount_wei: '0',
+    created_at: now,
+    expires_at: expiresAt,
+    status: 'active',
+    message_type: 'MINEBOY',
+    color: config.color,
+    banner_duration_sec: config.duration,
+    priority: 0,
+  });
+  
+  console.log(`[MineboyMessages] Added admin message: "${text.substring(0, 50)}..."`);
+  return id;
 }
 
+/**
+ * Remove a MINEBOY admin message
+ */
+export async function removeMineboyMessage(id: string): Promise<boolean> {
+  const db = getDB();
+  const result = await db.prepare(`
+    UPDATE paid_messages 
+    SET status = 'removed'
+    WHERE id = @id AND message_type = 'MINEBOY'
+  `).run({ id });
+  
+  return result.changes > 0;
+}
+
+/**
+ * Get all active MINEBOY messages
+ */
+export async function getMineboyMessages(): Promise<Array<{
+  id: string;
+  message: string;
+  created_at: number;
+  expires_at: number;
+}>> {
+  const db = getDB();
+  return await db.prepare(`
+    SELECT id, message, created_at, expires_at
+    FROM paid_messages
+    WHERE message_type = 'MINEBOY' 
+      AND status = 'active'
+      AND expires_at > @now
+    ORDER BY created_at DESC
+  `).all({ now: Date.now() }) as any[];
+}
+
+/**
+ * Legacy in-memory message store (kept for backward compatibility)
+ * Now just a wrapper around PostgreSQL
+ */
 class MessageStore {
-  private messages: Message[] = [
-    {
-      id: 'welcome',
-      text: 'MineBoy it Mines stuff!',
-      createdAt: Date.now(),
-    },
-  ];
-
-  /**
-   * Get all active messages
-   */
-  getMessages(): string[] {
-    return this.messages.map(m => m.text);
+  async getMessages(): Promise<string[]> {
+    const messages = await getMineboyMessages();
+    return messages.map(m => `MineBoy: ${m.message}`);
   }
 
-  /**
-   * Get all messages with metadata
-   */
-  getAllMessages(): Message[] {
-    return [...this.messages];
+  async addMessage(text: string): Promise<string> {
+    return await addMineboyMessage(text);
   }
 
-  /**
-   * Add a new message
-   */
-  addMessage(text: string): Message {
-    const message: Message = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      text,
-      createdAt: Date.now(),
-    };
-    this.messages.push(message);
-    console.log(`[Messages] Added: "${text}" (${message.id})`);
-    return message;
+  async removeMessage(id: string): Promise<void> {
+    await removeMineboyMessage(id);
   }
 
-  /**
-   * Remove a message by ID
-   */
-  removeMessage(id: string): boolean {
-    const index = this.messages.findIndex(m => m.id === id);
-    if (index !== -1) {
-      const removed = this.messages.splice(index, 1)[0];
-      console.log(`[Messages] Removed: "${removed.text}" (${id})`);
-      return true;
-    }
-    return false;
-  }
-
-  /**
-   * Clear all messages
-   */
-  clearAll(): void {
-    this.messages = [];
-    console.log('[Messages] Cleared all messages');
-  }
-
-  /**
-   * Update a message by ID
-   */
-  updateMessage(id: string, newText: string): boolean {
-    const message = this.messages.find(m => m.id === id);
-    if (message) {
-      const oldText = message.text;
-      message.text = newText;
-      console.log(`[Messages] Updated: "${oldText}" -> "${newText}" (${id})`);
-      return true;
-    }
-    return false;
+  async getAllMessages(): Promise<Array<{ id: string; text: string; addedAt: number }>> {
+    const messages = await getMineboyMessages();
+    return messages.map(m => ({
+      id: m.id,
+      text: m.message,
+      addedAt: m.created_at,
+    }));
   }
 }
 

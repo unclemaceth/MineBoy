@@ -1,4 +1,4 @@
-// Production-ready paid messages module with PostgreSQL persistence
+// Production-ready paid messages module with on-chain verification via router contract
 import { createPublicClient, http, isAddress, parseEther, formatEther, type Hash, defineChain, decodeEventLog, parseAbiItem, keccak256, toBytes } from 'viem';
 import { randomUUID } from 'crypto';
 import { getDB } from './db.js';
@@ -43,62 +43,74 @@ export interface PaidMessage {
   amount_wei: string;
   created_at: number;
   expires_at: number;
-  status: 'active' | 'playing' | 'expired' | 'removed';
-  messageType: 'PAID' | 'SHILL' | 'MINEBOY';
-  nonce?: number | null;
-  msg_hash?: string | null;
+  status: 'active' | 'expired' | 'removed' | 'playing' | 'queued';
+  message_type: 'PAID' | 'SHILL' | 'MINEBOY';
+  nonce?: number;
+  msg_hash?: string;
   color: string;
-  bannerDurationSec: number;
+  banner_duration_sec: number;
   priority: number;
-  scheduled_at?: number | null;
-  played_at?: number | null;
+  scheduled_at?: number;
+  played_at?: number;
 }
 
 // Message type configurations
 export const MESSAGE_TYPES = {
   PAID: {
-    cost: '1',      // 1 APE
-    maxLen: 64,     // characters
+    price: parseEther('1'),
+    maxLen: 64,
     duration: 3600, // 1 hour
     color: '#4ade80', // green
     prefix: 'PAID CONTENT: ',
   },
   SHILL: {
-    cost: '15',     // 15 APE
-    maxLen: 128,    // characters
+    price: parseEther('15'),
+    maxLen: 128,
     duration: 14400, // 4 hours
-    color: '#ff4444', // red
+    color: '#ef4444', // red
     prefix: 'Shilled Content: ',
   },
   MINEBOY: {
-    cost: '0',      // free (admin only)
-    maxLen: 256,    // characters
-    duration: 86400, // 24 hours (or until manually removed)
+    price: parseEther('0'),
+    maxLen: 256,
+    duration: 7200, // 2 hours
     color: '#ffffff', // white
     prefix: 'MineBoy: ',
   },
 } as const;
 
-// Profanity/abuse blacklist
+// Comprehensive blacklist
 const BLACKLIST = [
-  // Racial slurs
-  'nigger', 'nigga', 'chink', 'spic', 'kike', 'faggot', 'tranny',
-  // Sexual content
-  'porn', 'xxx', 'sex', 'dick', 'cock', 'pussy', 'tits', 'ass', 'fuck',
-  // Scam keywords
-  'free mint', 'airdrop', 'claim now', 'limited time', 'act fast',
-  // Crypto scams
-  'metamask', 'wallet connect', 'seed phrase', 'private key',
-  // Violence
-  'kill yourself', 'suicide', 'die', 'death threats',
+  // Profanity
+  'fuck', 'fucker', 'fucking', 'motherfucker', 'shit', 'bullshit', 'piss',
+  'ass', 'arse', 'asshole', 'arsehole', 'dumbass', 'bastard', 'damn', 'goddamn',
+  'dick', 'dickhead', 'bellend', 'knob', 'twat', 'wanker', 'prick', 'tosser',
+  'bollocks', 'cunt', 'bitch',
+  
+  // Sexual/Explicit
+  'cum', 'jizz', 'bukkake', 'blowjob', 'handjob', 'rimjob', 'deepthroat',
+  'porn', 'porno', 'xxx', 'nsfw', 'rape', 'pussy', 'cock', 'penis', 'vagina',
+  
+  // Harassment
+  'retard', 'retarded', 'kill yourself', 'kys', 'go die', 'die in a fire',
+  
+  // Hate Slurs
+  'nigger', 'nigga', 'chink', 'gook', 'paki', 'spic', 'wetback', 'beaner',
+  'coon', 'kike', 'raghead', 'fag', 'faggot', 'dyke', 'tranny',
+  
+  // Spam/Scam
+  'free crypto', 'free ape', 'claim airdrop', 'airdrop now',
+  'seed phrase', 'private key', 'click my link', 'dm me for prize',
 ];
 
-// Regex patterns for advanced filtering
-const REGEX_PATTERNS = [
-  /n[i1!]gg[e3]r/i,                      // n-word variants
-  /f[a4]gg[o0]t/i,                       // slur variants
-  /(buy|sell|trade).*(discord|telegram)/i, // external trading
-  /(click|visit).*(http|www|\.(com|io|xyz))/i, // suspicious links
+// Regex patterns for leetspeak/obfuscation
+const REGEX_PATTERNS: RegExp[] = [
+  /f+[\W_]*[uμv][\W_]*[cçkq]+[\W_]*k+/i,  // fuck variants
+  /s+[\W_]*h+[\W_]*[i1!|]+[\W_]*t+/i,      // shit variants
+  /a+[\W_]*s+[\W_]*s+[\W_]*h+[\W_]*o+[\W_]*l+[\W_]*e+/i, // asshole variants
+  /c+[\W_]*u+[\W_]*n+[\W_]*t+/i,           // cunt variants
+  /f+a+g+g*o*t+/i,                         // faggot variants
+  /n+[i1!|]+g+[e3]+r+/i,                   // n-word variants
   /(kys|kill[\W_]*yourself|go[\W_]*die)/i, // suicide encouragement
   /(claim|free|bonus).*(airdrop|reward)/i, // crypto spam
 ];
@@ -131,6 +143,7 @@ function passesBlacklist(msg: string): boolean {
  * Validate message content
  */
 export function validateMessage(raw: string, messageType: 'PAID' | 'SHILL' | 'MINEBOY' = 'PAID'): { ok: true; cleaned: string } | { ok: false; reason: string } {
+  // DEBUG: Check message in validateMessage
   console.log('[PM:VALIDATE] Raw input:', JSON.stringify(raw));
   
   if (!raw || !raw.trim()) {
@@ -147,19 +160,13 @@ export function validateMessage(raw: string, messageType: 'PAID' | 'SHILL' | 'MI
     return { ok: false, reason: `Message must be ${maxLen} characters or less` };
   }
   
-  // Unicode hygiene: reject if too many special chars
-  const specialCharCount = (cleaned.match(/[^\w\s.,!?@#$%&*()[\]{}<>:;'"\/\\|-]/g) || []).length;
-  if (specialCharCount / cleaned.length > 0.3) {
-    return { ok: false, reason: 'Too many special characters' };
-  }
-  
-  // Check blacklist
   if (!passesBlacklist(cleaned)) {
-    return { ok: false, reason: 'Message contains prohibited content' };
+    return { ok: false, reason: 'Message contains inappropriate content' };
   }
   
   console.log('[PM:VALIDATE] Final cleaned (returning):', JSON.stringify(cleaned));
   console.log('[PM:VALIDATE] Contains "d" in final?', cleaned.includes('d') || cleaned.includes('D'));
+  
   return { ok: true, cleaned };
 }
 
@@ -201,45 +208,59 @@ export async function verifyOnChain(
       data: log.data,
       topics: log.topics,
     });
-  } catch (e: any) {
-    throw new Error(`Failed to decode Paid event: ${e.message}`);
+  } catch (e) {
+    throw new Error('Failed to decode Paid event');
   }
 
-  // 5) validate event data
-  const eventPayer = decoded.args.payer as string;
-  const eventAmount = decoded.args.amount as bigint;
-  const eventMsgHash = decoded.args.msgHash as string;
+  const { payer, amount, msgHash } = decoded.args as { payer: string; amount: bigint; msgHash: string };
 
-  if (eventPayer.toLowerCase() !== claimedFrom.toLowerCase()) {
-    throw new Error('Wallet mismatch');
+  // 5) verify payer matches claimed sender
+  if (payer.toLowerCase() !== claimedFrom.toLowerCase()) {
+    throw new Error('Transaction sender mismatch');
   }
 
-  // Check minimum amount for message type
-  const minAmount = parseEther(MESSAGE_TYPES[messageType].cost);
-  if (eventAmount < minAmount) {
-    throw new Error(`Insufficient payment: ${formatEther(eventAmount)} APE (minimum ${MESSAGE_TYPES[messageType].cost} APE)`);
+  // 6) verify amount matches message type
+  const expectedAmount = MESSAGE_TYPES[messageType].price;
+  if (amount !== expectedAmount) {
+    throw new Error(`Payment must be exactly ${formatEther(expectedAmount)} APE for ${messageType} messages`);
   }
 
-  // (Optional) Verify msgHash matches keccak256(messageText)
-  // For now we trust the frontend computed the hash correctly
+  // 7) verify msgHash matches the message
+  const expectedHash = keccak256(toBytes(messageText));
+  if (msgHash.toLowerCase() !== expectedHash.toLowerCase()) {
+    throw new Error('Message hash mismatch');
+  }
 
   return {
-    wallet: eventPayer,
-    amount: eventAmount.toString(),
-    msgHash: eventMsgHash,
+    from: payer.toLowerCase(),
+    amountWei: amount.toString(),
+    blockNumber: receipt.blockNumber,
+    msgHash,
+    messageType,
   };
 }
+
+// Prepared statements
+const insertStmt = db.prepare(`
+  INSERT INTO paid_messages (
+    id, wallet, message, tx_hash, amount_wei, created_at, expires_at, status,
+    message_type, nonce, msg_hash, color, banner_duration_sec, priority
+  )
+  VALUES (
+    @id, @wallet, @message, @tx_hash, @amount_wei, @created_at, @expires_at, @status,
+    @message_type, @nonce, @msg_hash, @color, @banner_duration_sec, @priority
+  )
+`);
 
 /**
  * Get next nonce for a wallet
  */
-export async function getNextNonce(wallet: string): Promise<number> {
-  const db = getDB();
-  const result = await db.prepare(`
+export function getNextNonce(wallet: string): number {
+  const result = db.prepare(`
     SELECT MAX(nonce) as max_nonce 
     FROM paid_messages 
-    WHERE wallet = @wallet
-  `).get({ wallet: wallet.toLowerCase() }) as { max_nonce: number | null };
+    WHERE wallet = ?
+  `).get(wallet.toLowerCase()) as { max_nonce: number | null };
   
   return (result.max_nonce || 0) + 1;
 }
@@ -254,11 +275,10 @@ export function computeMsgHash(wallet: string, content: string, nonce: number): 
 /**
  * Check if wallet is blacklisted
  */
-export async function isBlacklisted(wallet: string): Promise<boolean> {
-  const db = getDB();
-  const result = await db.prepare(`
-    SELECT 1 FROM blacklisted_wallets WHERE wallet = @wallet
-  `).get({ wallet: wallet.toLowerCase() });
+export function isBlacklisted(wallet: string): boolean {
+  const result = db.prepare(`
+    SELECT 1 FROM blacklisted_wallets WHERE wallet = ?
+  `).get(wallet.toLowerCase());
   
   return !!result;
 }
@@ -268,11 +288,9 @@ export async function isBlacklisted(wallet: string): Promise<boolean> {
  * Limit: 50 total active messages per hour (system-wide)
  * Limit: 3 pending per wallet
  */
-export async function checkPendingLimit(wallet: string): Promise<void> {
-  const db = getDB();
-  
+export function checkPendingLimit(wallet: string): void {
   // Check system-wide active message limit (50 messages max)
-  const systemResult = await db.prepare(`
+  const systemResult = db.prepare(`
     SELECT COUNT(*) as count 
     FROM paid_messages 
     WHERE status IN ('active', 'playing', 'queued')
@@ -283,11 +301,11 @@ export async function checkPendingLimit(wallet: string): Promise<void> {
   }
   
   // Check per-wallet limit (3 pending)
-  const result = await db.prepare(`
+  const result = db.prepare(`
     SELECT COUNT(*) as count 
     FROM paid_messages 
-    WHERE wallet = @wallet AND status IN ('active', 'playing', 'queued')
-  `).get({ wallet: wallet.toLowerCase() }) as { count: number };
+    WHERE wallet = ? AND status IN ('active', 'playing', 'queued')
+  `).get(wallet.toLowerCase()) as { count: number };
   
   if (result.count >= 3) {
     throw new Error('You already have 3 pending messages. Wait for one to play.');
@@ -297,15 +315,14 @@ export async function checkPendingLimit(wallet: string): Promise<void> {
 /**
  * Check daily message limit per wallet (limit: 10)
  */
-export async function checkDailyLimit(wallet: string): Promise<void> {
-  const db = getDB();
+export function checkDailyLimit(wallet: string): void {
   const dayStart = Date.now() - (24 * 3600 * 1000);
   
-  const result = await db.prepare(`
+  const result = db.prepare(`
     SELECT COUNT(*) as count 
     FROM paid_messages 
-    WHERE wallet = @wallet AND created_at > @dayStart
-  `).get({ wallet: wallet.toLowerCase(), dayStart }) as { count: number };
+    WHERE wallet = ? AND created_at > ?
+  `).get(wallet.toLowerCase(), dayStart) as { count: number };
   
   if (result.count >= 10) {
     throw new Error('Daily limit reached (10 messages per 24 hours)');
@@ -315,78 +332,73 @@ export async function checkDailyLimit(wallet: string): Promise<void> {
 /**
  * Add a paid message to the database
  */
-export async function addPaidMessage(params: { 
+export function addPaidMessage(params: { 
   wallet: string; 
   message: string; 
   txHash: string; 
   amountWei: string;
   messageType: 'PAID' | 'SHILL' | 'MINEBOY';
 }) {
-  const db = getDB();
   const now = Date.now();
   const id = randomUUID();
   const wallet = params.wallet.toLowerCase();
   
   // Check blacklist
-  if (await isBlacklisted(wallet)) {
+  if (isBlacklisted(wallet)) {
     throw new Error('This wallet is blacklisted');
   }
   
   // Check pending limit
-  await checkPendingLimit(wallet);
+  checkPendingLimit(wallet);
   
   // Check daily limit
-  await checkDailyLimit(wallet);
+  checkDailyLimit(wallet);
   
   // Get next nonce
-  const nonce = await getNextNonce(wallet);
+  const nonce = getNextNonce(wallet);
   
   // Compute msg hash
   const msg_hash = computeMsgHash(wallet, params.message, nonce);
   
   // Get config for message type
   const config = MESSAGE_TYPES[params.messageType];
-  const expiresAt = now + (config.duration * 1000);
+  const duration_ms = config.duration * 1000;
   
+  // DEBUG: Check message before DB insert
   console.log('[PM:DB] Message before insert:', JSON.stringify(params.message));
   console.log('[PM:DB] Contains "d" before insert?', params.message?.includes('d') || params.message?.includes('D'));
   
-  const stmt = db.prepare(`
-    INSERT INTO paid_messages (
-      id, wallet, message, tx_hash, amount_wei, 
-      created_at, expires_at, status, message_type,
-      nonce, msg_hash, color, banner_duration_sec, priority
-    ) VALUES (
-      @id, @wallet, @message, @tx_hash, @amount_wei,
-      @created_at, @expires_at, @status, @message_type,
-      @nonce, @msg_hash, @color, @banner_duration_sec, @priority
-    )
-  `);
+  const row = {
+    id,
+    wallet,
+    message: params.message,
+    tx_hash: params.txHash.toLowerCase(),
+    amount_wei: params.amountWei,
+    created_at: now,
+    expires_at: now + duration_ms,
+    status: 'active',
+    message_type: params.messageType,
+    nonce,
+    msg_hash,
+    color: config.color,
+    banner_duration_sec: config.duration,
+    priority: 0, // Default priority, can be adjusted later
+  };
   
   try {
-    await stmt.run({
-      id,
-      wallet,
-      message: params.message,
-      tx_hash: params.txHash,
-      amount_wei: params.amountWei,
-      created_at: now,
-      expires_at: expiresAt,
-      status: 'active',
-      message_type: params.messageType,
-      nonce,
-      msg_hash,
-      color: config.color,
-      banner_duration_sec: config.duration,
-      priority: 0,
-    });
-    
-    console.log(`[PaidMessages] Message added: ${id} (${params.messageType}, expires in ${config.duration}s)`);
-    
-    return { id, expiresAt };
+    insertStmt.run(row);
+    return { id, createdAt: now, expiresAt: row.expires_at, nonce, msgHash: msg_hash };
   } catch (error: any) {
-    if (error.message?.includes('UNIQUE') || error.code === 'SQLITE_CONSTRAINT') {
-      throw new Error('Duplicate message (already submitted)');
+    if (error.message?.includes('UNIQUE constraint failed')) {
+      if (error.message.includes('tx_hash')) {
+        throw new Error('This transaction hash was already used');
+      }
+      if (error.message.includes('msg_hash')) {
+        throw new Error('You already submitted this exact message');
+      }
+      if (error.message.includes('nonce')) {
+        throw new Error('Nonce conflict - please try again');
+      }
     }
     throw error;
   }
@@ -395,7 +407,7 @@ export async function addPaidMessage(params: {
 /**
  * Get all active paid messages with full metadata
  */
-export async function getActivePaidMessages(): Promise<Array<{ 
+export function getActivePaidMessages(): Array<{ 
   id: string; 
   wallet: string; 
   message: string; 
@@ -405,8 +417,7 @@ export async function getActivePaidMessages(): Promise<Array<{
   color: string;
   bannerDurationSec: number;
   prefix: string;
-}>> {
-  const db = getDB();
+}> {
   const stmt = db.prepare(`
     SELECT 
       id, wallet, message, 
@@ -416,10 +427,10 @@ export async function getActivePaidMessages(): Promise<Array<{
       color,
       banner_duration_sec as bannerDurationSec
     FROM paid_messages
-    WHERE status = 'active' AND expires_at > @now
+    WHERE status = 'active' AND expires_at > ?
     ORDER BY priority ASC, created_at ASC
   `);
-  const rows = await stmt.all({ now: Date.now() }) as any[];
+  const rows = stmt.all(Date.now()) as any[];
   
   // Add prefix based on message type
   return rows.map(row => ({
@@ -431,59 +442,72 @@ export async function getActivePaidMessages(): Promise<Array<{
 /**
  * Mark expired messages
  */
-export async function markExpired(): Promise<number> {
-  const db = getDB();
+export function markExpired(): number {
   const now = Date.now();
-  
-  const result = await db.prepare(`
+  const stmt = db.prepare(`
     UPDATE paid_messages
     SET status = 'expired'
-    WHERE status IN ('active', 'playing') AND expires_at <= @now
-  `).run({ now });
-  
-  return result.changes;
+    WHERE status = 'active' AND expires_at <= ?
+  `);
+  const info = stmt.run(now);
+  return info.changes;
 }
 
 /**
- * Remove a paid message (admin only)
+ * Remove a paid message (admin)
  */
-export async function removePaidMessage(id: string): Promise<boolean> {
-  const db = getDB();
-  const stmt = db.prepare(`UPDATE paid_messages SET status='removed' WHERE id = @id`);
-  const result = await stmt.run({ id });
-  return result.changes > 0;
+export function removePaidMessage(id: string): boolean {
+  const stmt = db.prepare(`UPDATE paid_messages SET status='removed' WHERE id = ?`);
+  const info = stmt.run(id);
+  return info.changes > 0;
 }
 
 /**
- * Get message statistics (admin only)
+ * Get statistics
  */
-export async function getStats() {
-  const db = getDB();
-  const rowTotals = await db.prepare(`SELECT COUNT(*) as total FROM paid_messages`).get() as { total: number };
-  const rowActive = await db.prepare(`SELECT COUNT(*) as active FROM paid_messages WHERE status='active'`).get() as { active: number };
-  const rowPlaying = await db.prepare(`SELECT COUNT(*) as playing FROM paid_messages WHERE status='playing'`).get() as { playing: number };
-  const rowExpired = await db.prepare(`SELECT COUNT(*) as expired FROM paid_messages WHERE status='expired'`).get() as { expired: number };
-  const rowRemoved = await db.prepare(`SELECT COUNT(*) as removed FROM paid_messages WHERE status='removed'`).get() as { removed: number };
+export function getStats() {
+  const rowTotals = db.prepare(`SELECT COUNT(*) as total FROM paid_messages`).get() as { total: number };
+  const rowActive = db.prepare(`SELECT COUNT(*) as active FROM paid_messages WHERE status='active' AND expires_at > ?`).get(Date.now()) as { active: number };
+  const rowExpired = db.prepare(`SELECT COUNT(*) as expired FROM paid_messages WHERE status='expired'`).get() as { expired: number };
+  const rowRemoved = db.prepare(`SELECT COUNT(*) as removed FROM paid_messages WHERE status='removed'`).get() as { removed: number };
+  const revenue = db.prepare(`SELECT COALESCE(SUM(CAST(amount_wei AS INTEGER)), 0) as totalWei FROM paid_messages`).get() as { totalWei: number | string };
   
   return {
     total: rowTotals.total,
     active: rowActive.active,
-    playing: rowPlaying.playing,
     expired: rowExpired.expired,
     removed: rowRemoved.removed,
+    totalRevenue: String(revenue.totalWei ?? '0'),
   };
 }
 
-export async function walletRateLimit(addr: string) {
-  const db = getDB();
+// Per-wallet rate limiting (in-memory)
+const perWalletWindowMs = 60_000;
+const perWalletMax = 6;
+const walletBucket = new Map<string, { count: number; resetAt: number }>();
+
+export function walletRateLimit(addr: string) {
   const now = Date.now();
-  const hourAgo = now - 3600_000;
+  const key = addr.toLowerCase();
+  const rec = walletBucket.get(key) || { count: 0, resetAt: now + perWalletWindowMs };
   
-  const result = await db.prepare(`
-    SELECT COUNT(*) as count 
-    FROM paid_messages 
-    WHERE wallet = @wallet AND created_at > @hourAgo
-  `).get({ wallet: addr.toLowerCase(), hourAgo }) as { count: number };
+  if (now > rec.resetAt) {
+    rec.count = 0;
+    rec.resetAt = now + perWalletWindowMs;
+  }
   
-  return result.count >= 3;
+  rec.count += 1;
+  walletBucket.set(key, rec);
+  
+  if (rec.count > perWalletMax) {
+    throw new Error('Slow down: too many submissions, try again in a minute.');
+  }
 }
+
+// Cleanup expired messages every 5 minutes
+setInterval(() => {
+  const changed = markExpired();
+  if (changed > 0) {
+    console.log(`[PaidMessages] Expired ${changed} messages`);
+  }
+}, 5 * 60 * 1000);
