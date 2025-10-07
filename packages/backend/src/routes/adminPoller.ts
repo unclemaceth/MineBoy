@@ -47,6 +47,53 @@ export async function registerAdminPollerRoute(fastify: FastifyInstance) {
     }
   });
 
+  // Pickaxe breakdown - which pickaxe token IDs have been used
+  fastify.get('/v2/admin/pickaxe-breakdown', async (req, reply) => {
+    const adminToken = process.env.ADMIN_TOKEN;
+    const authHeader = req.headers.authorization;
+    
+    if (!adminToken || authHeader !== `Bearer ${adminToken}`) {
+      return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    try {
+      const { getDB } = await import('../db.js');
+      const db = getDB();
+
+      const v3DeploymentDate = new Date('2025-10-04T00:00:00Z').getTime();
+
+      const result = await db.pool.query(`
+        SELECT 
+          cartridge_id AS pickaxe_token_id,
+          COUNT(*) AS total_claims,
+          COUNT(DISTINCT wallet) AS unique_miners,
+          MIN(created_at) AS first_claim_ms,
+          MAX(created_at) AS last_claim_ms
+        FROM claims
+        WHERE status = 'confirmed'
+          AND created_at >= $1
+        GROUP BY cartridge_id
+        ORDER BY total_claims DESC
+      `, [v3DeploymentDate]);
+
+      return {
+        ok: true,
+        v3DeploymentDate,
+        totalUniquePickaxes: result.rows.length,
+        pickaxes: result.rows.map(row => ({
+          tokenId: row.pickaxe_token_id,
+          totalClaims: parseInt(row.total_claims),
+          uniqueMiners: parseInt(row.unique_miners),
+          firstClaim: new Date(parseInt(row.first_claim_ms)).toISOString(),
+          lastClaim: new Date(parseInt(row.last_claim_ms)).toISOString()
+        }))
+      };
+    } catch (error) {
+      console.error('Pickaxe breakdown error:', error);
+      return reply.code(500).send({ error: 'Failed to get pickaxe breakdown', details: String(error) });
+    }
+  });
+
   // Test RPC connection
   fastify.get('/v2/admin/test-rpc', async (req, reply) => {
     try {
