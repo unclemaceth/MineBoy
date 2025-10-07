@@ -253,7 +253,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
             }}
           >
             <option value="PAID">💬 Paid Message (1 APE • 64 chars • 1 hour)</option>
-            <option value="SHILL">🔥 Shill Message (15 APE • 128 chars • 4 hours)</option>
+            <option value="SHILL" disabled>🔥 Shill Message (Coming Soon - Contract Upgrade Needed)</option>
           </select>
         </div>
         
@@ -435,7 +435,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
             opacity: status !== 'idle' && status !== 'error' ? 0.5 : 1,
           }}
         >
-          {status === 'idle' || status === 'error' ? `PAY ${MESSAGE_COST} APE & POST` : 'PROCESSING...'}
+          {status === 'idle' || status === 'error' ? `PAY ${MESSAGE_TYPES[messageType].cost} APE & POST` : 'PROCESSING...'}
         </button>
       </div>
     </div>
