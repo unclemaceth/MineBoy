@@ -13,29 +13,9 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-// YakRouter (aggregator) ABI - uses native APE, no wrapping needed!
+// YakRouter (aggregator) ABI - simpler string format
 const YAK_ROUTER_ABI = [
-  {
-    "inputs": [
-      {
-        "components": [
-          {"internalType": "uint256", "name": "amountIn", "type": "uint256"},
-          {"internalType": "uint256", "name": "amountOut", "type": "uint256"},
-          {"internalType": "address[]", "name": "path", "type": "address[]"},
-          {"internalType": "address[]", "name": "adapters", "type": "address[]"}
-        ],
-        "internalType": "struct YakRouter.Trade",
-        "name": "_trade",
-        "type": "tuple"
-      },
-      {"internalType": "uint256", "name": "_fee", "type": "uint256"},
-      {"internalType": "address", "name": "_to", "type": "address"}
-    ],
-    "name": "swapNoSplitFromETH",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  }
+  "function swapNoSplitFromETH((uint256 amountIn,uint256 amountOut,address[] path,address[] adapters),uint256 fee,address to) payable"
 ];
 
 const ERC20_ABI = [
