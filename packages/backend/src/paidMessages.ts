@@ -1,5 +1,5 @@
 // Production-ready paid messages module with on-chain verification via router contract
-import { createPublicClient, http, isAddress, parseEther, type Hash, defineChain, decodeEventLog, parseAbiItem, keccak256, toBytes } from 'viem';
+import { createPublicClient, http, isAddress, parseEther, formatEther, type Hash, defineChain, decodeEventLog, parseAbiItem, keccak256, toBytes } from 'viem';
 import Database from 'better-sqlite3';
 import { randomUUID } from 'crypto';
 
@@ -34,7 +34,7 @@ const client = createPublicClient({
 const db = new Database(process.env.DB_PATH || './paid_messages.db');
 db.pragma('journal_mode = WAL');
 
-// Initialize table immediately
+// Initialize table with enhanced schema
 db.exec(`
   CREATE TABLE IF NOT EXISTS paid_messages (
     id TEXT PRIMARY KEY,
@@ -44,11 +44,56 @@ db.exec(`
     amount_wei TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL,
-    status TEXT NOT NULL DEFAULT 'active'
+    status TEXT NOT NULL DEFAULT 'active',
+    message_type TEXT NOT NULL DEFAULT 'PAID',
+    nonce INTEGER,
+    msg_hash TEXT,
+    color TEXT NOT NULL DEFAULT '#4ade80',
+    banner_duration_sec INTEGER NOT NULL DEFAULT 3600,
+    priority INTEGER NOT NULL DEFAULT 0,
+    scheduled_at INTEGER,
+    played_at INTEGER
   );
   CREATE INDEX IF NOT EXISTS idx_paid_messages_status_expires ON paid_messages(status, expires_at);
   CREATE INDEX IF NOT EXISTS idx_paid_messages_created ON paid_messages(created_at);
   CREATE INDEX IF NOT EXISTS idx_paid_messages_wallet ON paid_messages(wallet);
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_paid_messages_wallet_nonce ON paid_messages(wallet, nonce) WHERE nonce IS NOT NULL;
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_paid_messages_msg_hash ON paid_messages(msg_hash) WHERE msg_hash IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_paid_messages_type_status_priority ON paid_messages(message_type, status, priority, created_at);
+  CREATE INDEX IF NOT EXISTS idx_paid_messages_played_at ON paid_messages(played_at) WHERE played_at IS NOT NULL;
+`);
+
+// Migrate existing tables (add new columns if they don't exist)
+try {
+  db.exec(`
+    ALTER TABLE paid_messages ADD COLUMN message_type TEXT NOT NULL DEFAULT 'PAID';
+  `);
+} catch (e) {
+  // Column already exists
+}
+
+try {
+  db.exec(`
+    ALTER TABLE paid_messages ADD COLUMN nonce INTEGER;
+    ALTER TABLE paid_messages ADD COLUMN msg_hash TEXT;
+    ALTER TABLE paid_messages ADD COLUMN color TEXT NOT NULL DEFAULT '#4ade80';
+    ALTER TABLE paid_messages ADD COLUMN banner_duration_sec INTEGER NOT NULL DEFAULT 3600;
+    ALTER TABLE paid_messages ADD COLUMN priority INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE paid_messages ADD COLUMN scheduled_at INTEGER;
+    ALTER TABLE paid_messages ADD COLUMN played_at INTEGER;
+  `);
+} catch (e) {
+  // Columns already exist
+}
+
+// Blacklist table for wallet bans
+db.exec(`
+  CREATE TABLE IF NOT EXISTS blacklisted_wallets (
+    wallet TEXT PRIMARY KEY,
+    reason TEXT,
+    blocked_at INTEGER NOT NULL,
+    blocked_by TEXT
+  );
 `);
 
 export function initPaidMessagesTable() {
@@ -63,8 +108,41 @@ export interface PaidMessage {
   amount_wei: string;
   created_at: number;
   expires_at: number;
-  status: 'active' | 'expired' | 'removed';
+  status: 'active' | 'expired' | 'removed' | 'playing' | 'queued';
+  message_type: 'PAID' | 'SHILL' | 'MINEBOY';
+  nonce?: number;
+  msg_hash?: string;
+  color: string;
+  banner_duration_sec: number;
+  priority: number;
+  scheduled_at?: number;
+  played_at?: number;
 }
+
+// Message type configurations
+export const MESSAGE_TYPES = {
+  PAID: {
+    price: parseEther('1'),
+    maxLen: 64,
+    duration: 3600, // 1 hour
+    color: '#4ade80', // green
+    prefix: 'PAID CONTENT: ',
+  },
+  SHILL: {
+    price: parseEther('15'),
+    maxLen: 128,
+    duration: 14400, // 4 hours
+    color: '#ef4444', // red
+    prefix: 'Shilled Content: ',
+  },
+  MINEBOY: {
+    price: parseEther('0'),
+    maxLen: 256,
+    duration: 7200, // 2 hours
+    color: '#ffffff', // white
+    prefix: 'MineBoy: ',
+  },
+} as const;
 
 // Comprehensive blacklist
 const BLACKLIST = [
@@ -129,15 +207,16 @@ function passesBlacklist(msg: string): boolean {
 /**
  * Validate message content
  */
-export function validateMessage(raw: string): { ok: true; cleaned: string } | { ok: false; reason: string } {
+export function validateMessage(raw: string, messageType: 'PAID' | 'SHILL' | 'MINEBOY' = 'PAID'): { ok: true; cleaned: string } | { ok: false; reason: string } {
   if (!raw || !raw.trim()) {
     return { ok: false, reason: 'Message cannot be empty' };
   }
   
   const cleaned = raw.normalize('NFKC').trim();
+  const maxLen = MESSAGE_TYPES[messageType].maxLen;
   
-  if (cleaned.length > 64) {
-    return { ok: false, reason: 'Message must be 64 characters or less' };
+  if (cleaned.length > maxLen) {
+    return { ok: false, reason: `Message must be ${maxLen} characters or less` };
   }
   
   if (!passesBlacklist(cleaned)) {
@@ -150,7 +229,12 @@ export function validateMessage(raw: string): { ok: true; cleaned: string } | { 
 /**
  * Verify transaction on-chain via router contract event
  */
-export async function verifyOnChain(txHash: Hash, claimedFrom: string, messageText: string) {
+export async function verifyOnChain(
+  txHash: Hash, 
+  claimedFrom: string, 
+  messageText: string,
+  messageType: 'PAID' | 'SHILL' | 'MINEBOY' = 'PAID'
+) {
   if (!ROUTER_ADDRESS) {
     throw new Error('PAID_MESSAGES_ROUTER not configured');
   }
@@ -191,9 +275,10 @@ export async function verifyOnChain(txHash: Hash, claimedFrom: string, messageTe
     throw new Error('Transaction sender mismatch');
   }
 
-  // 6) verify amount is exactly 1 APE
-  if (amount !== ONE_APE_WEI) {
-    throw new Error('Payment must be exactly 1 APE');
+  // 6) verify amount matches message type
+  const expectedAmount = MESSAGE_TYPES[messageType].price;
+  if (amount !== expectedAmount) {
+    throw new Error(`Payment must be exactly ${formatEther(expectedAmount)} APE for ${messageType} messages`);
   }
 
   // 7) verify msgHash matches the message
@@ -207,55 +292,189 @@ export async function verifyOnChain(txHash: Hash, claimedFrom: string, messageTe
     amountWei: amount.toString(),
     blockNumber: receipt.blockNumber,
     msgHash,
+    messageType,
   };
 }
 
 // Prepared statements
 const insertStmt = db.prepare(`
-  INSERT INTO paid_messages (id, wallet, message, tx_hash, amount_wei, created_at, expires_at, status)
-  VALUES (@id, @wallet, @message, @tx_hash, @amount_wei, @created_at, @expires_at, @status)
+  INSERT INTO paid_messages (
+    id, wallet, message, tx_hash, amount_wei, created_at, expires_at, status,
+    message_type, nonce, msg_hash, color, banner_duration_sec, priority
+  )
+  VALUES (
+    @id, @wallet, @message, @tx_hash, @amount_wei, @created_at, @expires_at, @status,
+    @message_type, @nonce, @msg_hash, @color, @banner_duration_sec, @priority
+  )
 `);
+
+/**
+ * Get next nonce for a wallet
+ */
+export function getNextNonce(wallet: string): number {
+  const result = db.prepare(`
+    SELECT MAX(nonce) as max_nonce 
+    FROM paid_messages 
+    WHERE wallet = ?
+  `).get(wallet.toLowerCase()) as { max_nonce: number | null };
+  
+  return (result.max_nonce || 0) + 1;
+}
+
+/**
+ * Compute message hash for deduplication
+ */
+export function computeMsgHash(wallet: string, content: string, nonce: number): string {
+  return keccak256(toBytes(`${wallet.toLowerCase()}:${content}:${nonce}`));
+}
+
+/**
+ * Check if wallet is blacklisted
+ */
+export function isBlacklisted(wallet: string): boolean {
+  const result = db.prepare(`
+    SELECT 1 FROM blacklisted_wallets WHERE wallet = ?
+  `).get(wallet.toLowerCase());
+  
+  return !!result;
+}
+
+/**
+ * Check max pending messages per wallet (limit: 3)
+ */
+export function checkPendingLimit(wallet: string): void {
+  const result = db.prepare(`
+    SELECT COUNT(*) as count 
+    FROM paid_messages 
+    WHERE wallet = ? AND status IN ('active', 'playing', 'queued')
+  `).get(wallet.toLowerCase()) as { count: number };
+  
+  if (result.count >= 3) {
+    throw new Error('You already have 3 pending messages. Wait for one to play.');
+  }
+}
+
+/**
+ * Check daily message limit per wallet (limit: 10)
+ */
+export function checkDailyLimit(wallet: string): void {
+  const dayStart = Date.now() - (24 * 3600 * 1000);
+  
+  const result = db.prepare(`
+    SELECT COUNT(*) as count 
+    FROM paid_messages 
+    WHERE wallet = ? AND created_at > ?
+  `).get(wallet.toLowerCase(), dayStart) as { count: number };
+  
+  if (result.count >= 10) {
+    throw new Error('Daily limit reached (10 messages per 24 hours)');
+  }
+}
 
 /**
  * Add a paid message to the database
  */
-export function addPaidMessage(params: { wallet: string; message: string; txHash: string; amountWei: string }) {
+export function addPaidMessage(params: { 
+  wallet: string; 
+  message: string; 
+  txHash: string; 
+  amountWei: string;
+  messageType: 'PAID' | 'SHILL' | 'MINEBOY';
+}) {
   const now = Date.now();
   const id = randomUUID();
+  const wallet = params.wallet.toLowerCase();
+  
+  // Check blacklist
+  if (isBlacklisted(wallet)) {
+    throw new Error('This wallet is blacklisted');
+  }
+  
+  // Check pending limit
+  checkPendingLimit(wallet);
+  
+  // Check daily limit
+  checkDailyLimit(wallet);
+  
+  // Get next nonce
+  const nonce = getNextNonce(wallet);
+  
+  // Compute msg hash
+  const msg_hash = computeMsgHash(wallet, params.message, nonce);
+  
+  // Get config for message type
+  const config = MESSAGE_TYPES[params.messageType];
+  const duration_ms = config.duration * 1000;
   
   const row = {
     id,
-    wallet: params.wallet.toLowerCase(),
+    wallet,
     message: params.message,
     tx_hash: params.txHash.toLowerCase(),
     amount_wei: params.amountWei,
     created_at: now,
-    expires_at: now + HOUR_MS,
+    expires_at: now + duration_ms,
     status: 'active',
+    message_type: params.messageType,
+    nonce,
+    msg_hash,
+    color: config.color,
+    banner_duration_sec: config.duration,
+    priority: 0, // Default priority, can be adjusted later
   };
   
   try {
     insertStmt.run(row);
-    return { id, createdAt: now, expiresAt: row.expires_at };
+    return { id, createdAt: now, expiresAt: row.expires_at, nonce, msgHash: msg_hash };
   } catch (error: any) {
     if (error.message?.includes('UNIQUE constraint failed')) {
-      throw new Error('This transaction hash was already used');
+      if (error.message.includes('tx_hash')) {
+        throw new Error('This transaction hash was already used');
+      }
+      if (error.message.includes('msg_hash')) {
+        throw new Error('You already submitted this exact message');
+      }
+      if (error.message.includes('nonce')) {
+        throw new Error('Nonce conflict - please try again');
+      }
     }
     throw error;
   }
 }
 
 /**
- * Get all active paid messages
+ * Get all active paid messages with full metadata
  */
-export function getActivePaidMessages(): Array<{ id: string; wallet: string; message: string; createdAt: number; expiresAt: number }> {
+export function getActivePaidMessages(): Array<{ 
+  id: string; 
+  wallet: string; 
+  message: string; 
+  createdAt: number; 
+  expiresAt: number;
+  messageType: string;
+  color: string;
+  bannerDurationSec: number;
+  prefix: string;
+}> {
   const stmt = db.prepare(`
-    SELECT id, wallet, message, created_at as createdAt, expires_at as expiresAt
+    SELECT 
+      id, wallet, message, 
+      created_at as createdAt, 
+      expires_at as expiresAt,
+      message_type as messageType,
+      color,
+      banner_duration_sec as bannerDurationSec
     FROM paid_messages
     WHERE status = 'active' AND expires_at > ?
-    ORDER BY created_at DESC
+    ORDER BY priority ASC, created_at ASC
   `);
-  return stmt.all(Date.now()) as any;
+  const rows = stmt.all(Date.now()) as any[];
+  
+  // Add prefix based on message type
+  return rows.map(row => ({
+    ...row,
+    prefix: MESSAGE_TYPES[row.messageType as 'PAID' | 'SHILL' | 'MINEBOY']?.prefix || '',
+  }));
 }
 
 /**

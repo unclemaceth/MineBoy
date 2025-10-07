@@ -1403,11 +1403,11 @@ fastify.delete('/v2/admin/messages', async (req, res) => {
 // ---- Paid Message Routes ----
 
 // Submit a paid message (public, requires payment verification)
-fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
+fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageType?: 'PAID' | 'SHILL' } }>(
   '/v2/messages/paid',
   async (req, res) => {
     try {
-      const { message, txHash, wallet } = req.body;
+      const { message, txHash, wallet, messageType = 'PAID' } = req.body;
       
       if (!message || !txHash || !wallet) {
         return res.status(400).send({ 
@@ -1416,8 +1416,16 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
         });
       }
       
+      // Validate message type
+      if (messageType !== 'PAID' && messageType !== 'SHILL') {
+        return res.status(400).send({
+          code: 'invalid_message_type',
+          message: 'messageType must be PAID or SHILL'
+        });
+      }
+      
       // Validate message content
-      const validation = validateMessage(message);
+      const validation = validateMessage(message, messageType);
       if (!validation.ok) {
         return res.status(400).send({ 
           code: 'invalid_message', 
@@ -1438,7 +1446,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
       // Verify transaction on-chain via router contract
       let verifyResult;
       try {
-        verifyResult = await verifyOnChain(txHash as `0x${string}`, wallet, validation.cleaned);
+        verifyResult = await verifyOnChain(txHash as `0x${string}`, wallet, validation.cleaned, messageType);
       } catch (e: any) {
         console.error('[PAID_MESSAGE] Verification failed:', e);
         return res.status(400).send({
@@ -1452,15 +1460,17 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string } }>(
         wallet,
         message: validation.cleaned,
         txHash: txHash as `0x${string}`,
-        amountWei: verifyResult.amountWei
+        amountWei: verifyResult.amountWei,
+        messageType,
       });
       
-      console.log(`[PAID_MESSAGE] Added message from ${wallet}: "${validation.cleaned}" (tx: ${txHash})`);
+      console.log(`[PAID_MESSAGE] Added ${messageType} message from ${wallet}: "${validation.cleaned}" (tx: ${txHash})`);
       
       return res.send({ 
         ok: true, 
         messageId: result.id,
-        expiresAt: result.expiresAt
+        expiresAt: result.expiresAt,
+        messageType,
       });
       
     } catch (error: any) {
@@ -1482,7 +1492,11 @@ fastify.get('/v2/messages/paid', async (req, res) => {
       message: m.message,
       wallet: m.wallet,
       createdAt: m.createdAt,
-      expiresAt: m.expiresAt
+      expiresAt: m.expiresAt,
+      messageType: m.messageType,
+      color: m.color,
+      prefix: m.prefix,
+      bannerDurationSec: m.bannerDurationSec,
     }))
   });
 });
@@ -1509,6 +1523,123 @@ fastify.get('/v2/admin/messages/paid/stats', async (req, res) => {
   if (!requireDebugAuth(req, res)) return;
   return res.send(getPaidMessageStats());
 });
+
+// Post MINEBOY message (admin only)
+fastify.post<{ Body: { message: string } }>(
+  '/v2/admin/messages/mineboy',
+  async (req, res) => {
+    if (!requireDebugAuth(req, res)) return;
+    
+    try {
+      const { message } = req.body;
+      
+      if (!message || !message.trim()) {
+        return res.status(400).send({
+          code: 'bad_request',
+          message: 'Message is required'
+        });
+      }
+      
+      // Validate message content
+      const validation = validateMessage(message, 'MINEBOY');
+      if (!validation.ok) {
+        return res.status(400).send({
+          code: 'invalid_message',
+          message: validation.reason
+        });
+      }
+      
+      // Add MINEBOY message directly (no TX required)
+      const result = addPaidMessage({
+        wallet: 'SYSTEM',
+        message: validation.cleaned,
+        txHash: `mineboy-${randomUUID()}` as `0x${string}`,
+        amountWei: '0',
+        messageType: 'MINEBOY',
+      });
+      
+      console.log(`[MINEBOY] Added system message: "${validation.cleaned}"`);
+      
+      return res.send({
+        ok: true,
+        messageId: result.id,
+        expiresAt: result.expiresAt,
+      });
+      
+    } catch (error: any) {
+      console.error('[MINEBOY] Error:', error);
+      return res.status(500).send({
+        code: 'internal_error',
+        message: error.message || 'Failed to add system message'
+      });
+    }
+  }
+);
+
+// Get queue status (public)
+fastify.get<{ Querystring: { wallet?: string } }>(
+  '/v2/messages/queue',
+  async (req, res) => {
+    try {
+      const { wallet } = req.query;
+      
+      // Total active messages
+      const totalActive = db.prepare(`
+        SELECT COUNT(*) as count 
+        FROM paid_messages 
+        WHERE status = 'active'
+      `).get() as { count: number };
+      
+      // Your position (if wallet provided)
+      let yourPosition = null;
+      if (wallet) {
+        const walletLower = wallet.toLowerCase();
+        const result = db.prepare(`
+          SELECT COUNT(*) + 1 as position 
+          FROM paid_messages 
+          WHERE status = 'active' 
+            AND (priority < (SELECT COALESCE(MIN(priority), 999999) FROM paid_messages WHERE wallet = ? AND status = 'active')
+            OR (priority = (SELECT COALESCE(MIN(priority), 999999) FROM paid_messages WHERE wallet = ? AND status = 'active') 
+                AND created_at < (SELECT COALESCE(MIN(created_at), 0) FROM paid_messages WHERE wallet = ? AND status = 'active')))
+        `).get(walletLower, walletLower, walletLower) as { position: number };
+        
+        // Check if wallet has any active messages
+        const hasActive = db.prepare(`
+          SELECT 1 FROM paid_messages WHERE wallet = ? AND status = 'active' LIMIT 1
+        `).get(walletLower);
+        
+        yourPosition = hasActive ? result.position : null;
+      }
+      
+      // Estimate wait time (assuming 10 seconds per message)
+      const estimatedWaitMin = Math.ceil(totalActive.count * 10 / 60);
+      
+      // Backlog status
+      let backlog: 'LOW' | 'MEDIUM' | 'HIGH';
+      if (totalActive.count > 300) {
+        backlog = 'HIGH';
+      } else if (totalActive.count > 100) {
+        backlog = 'MEDIUM';
+      } else {
+        backlog = 'LOW';
+      }
+      
+      return res.send({
+        totalActive: totalActive.count,
+        yourPosition,
+        estimatedWaitMin,
+        backlog,
+      });
+      
+    } catch (error: any) {
+      console.error('[QUEUE] Error:', error);
+      return res.status(500).send({
+        code: 'internal_error',
+        message: 'Failed to get queue status'
+      });
+    }
+  }
+);
 
 // Cleanup expired messages (runs periodically)
 setInterval(() => {
