@@ -26,6 +26,9 @@ const LANE_SEQUENCE = [
   // But interleaved throughout instead of grouped
 ];
 
+console.log(`[MessageScheduler] Lane sequence: ${LANE_SEQUENCE.join(' → ')}`);
+console.log(`[MessageScheduler] Distribution: SHILL=${LANE_SEQUENCE.filter(l => l === 'SHILL').length}/8, PAID=${LANE_SEQUENCE.filter(l => l === 'PAID').length}/8, MINEBOY=${LANE_SEQUENCE.filter(l => l === 'MINEBOY').length}/8`);
+
 // Per-wallet cooldown (seconds between plays for the same wallet)
 const PER_WALLET_COOLDOWN = {
   PAID: 600,    // 10 minutes
@@ -187,12 +190,13 @@ export async function schedulerTick(): Promise<boolean> {
     
     if (next) {
       await playMessage(next);
-      console.log(`[MessageScheduler] Played from ${lane} lane: "${next.message.substring(0, 40)}..."`);
+      console.log(`[MessageScheduler] ✅ Played from ${lane} lane: "${next.message.substring(0, 40)}..."`);
       return true;
     }
   }
   
-  // No messages available in any lane
+  // No messages available in any lane - helps explain perceived lulls
+  console.log('[MessageScheduler] ℹ️  No eligible messages in any lane (all playing, on cooldown, or queue empty)');
   return false;
 }
 
