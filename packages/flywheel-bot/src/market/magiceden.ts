@@ -16,7 +16,8 @@ const MAGIC_EDEN_KEY = process.env.MAGICEDEN_API_KEY;
 
 // Security: Whitelist of trusted router/marketplace addresses
 const ROUTER_WHITELIST = new Set([
-  '0x00000000000000adc04c56bf30ac9d3c0aaf14dc', // Seaport 1.6
+  '0x0000000000000068f116a894984e2db1123eb395', // Seaport 1.6 (actual)
+  '0x00000000000000adc04c56bf30ac9d3c0aaf14dc', // Seaport 1.5 (fallback)
   '0x2b59eb03865d18d8b62a5956bbbfae352fc1c148', // YakRouter (if used for purchases)
 ].map(a => a.toLowerCase()));
 
