@@ -13,9 +13,9 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-// Camelot V3 SwapRouter ABI (standard Algebra/UniV3 interface)
+// Camelot V3 SwapRouter ABI (Algebra interface with deadline in struct)
 const V3_SWAP_ROUTER_ABI = [
-  "function exactInput((bytes path, address recipient, uint256 deadline, uint256 amountIn, uint256 amountOutMinimum)) payable returns (uint256 amountOut)"
+  "function exactInputSingle((address tokenIn,address tokenOut,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 limitSqrtPrice)) payable returns (uint256 amountOut)"
 ];
 
 // WAPE ABI for wrapping
@@ -106,30 +106,40 @@ export async function executeBurn(): Promise<{
   await approveTx.wait(1);
   console.log(`[Treasury] ✅ Approved`);
   
-  // Step 3: Execute V3 swap
-  console.log(`[Treasury] Step 3: Executing V3 swap WAPE → MNESTR...`);
+  // Step 3: Execute V3 swap (Algebra single-hop)
+  console.log(`[Treasury] Step 3: Executing Algebra exactInputSingle...`);
   const router = new Contract(V3_ROUTER, V3_SWAP_ROUTER_ABI, treasury);
   
-  // Encode path for V3: tokenIn + tokenOut (no fee needed for Algebra)
-  const { solidityPacked } = await import('ethers');
-  const encodedPath = solidityPacked(
-    ['address', 'address'],
-    [cfg.wape, cfg.mnestr]
-  );
-  
-  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
+  const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // +10 minutes
   const params = {
-    path: encodedPath,
+    tokenIn: cfg.wape,
+    tokenOut: cfg.mnestr,
     recipient: treasuryAddr,
     deadline,
     amountIn: apeForSwap,
-    amountOutMinimum: minMNESTR
+    amountOutMinimum: minMNESTR,
+    limitSqrtPrice: 0n  // 0 = no price limit on Algebra
   };
   
+  console.log(`[Treasury] TokenIn: ${cfg.wape}`);
+  console.log(`[Treasury] TokenOut: ${cfg.mnestr}`);
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
+  console.log(`[Treasury] Deadline: ${deadline}`);
   
-  const swapTx = await router.exactInput(params, { gasLimit: 500000 });
+  // Pre-simulate to catch revert reasons
+  try {
+    await treasury.provider!.call({
+      to: V3_ROUTER,
+      data: router.interface.encodeFunctionData("exactInputSingle", [params])
+    });
+    console.log(`[Treasury] ✅ Simulation passed`);
+  } catch (e: any) {
+    console.error(`[Treasury] ❌ Simulation failed:`, e.data);
+    throw e;
+  }
+  
+  const swapTx = await router.exactInputSingle(params, { gasLimit: 500000 });
   console.log(`[Treasury] Swap tx submitted: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait(1);
   console.log(`[Treasury] ✅ Swap confirmed in block ${swapReceipt!.blockNumber}`);
