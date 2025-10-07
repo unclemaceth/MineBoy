@@ -64,8 +64,8 @@ function sessionMetaKey(sessionId: string) {
 }
 
 // Session limit configuration
-// Limit to 2 sessions per wallet (matching maxPerWallet = 2 cartridges)
-const WALLET_SESSION_LIMIT = Number(process.env.WALLET_SESSION_LIMIT ?? 2);
+// Limit to 3 sessions per wallet (allows 3 concurrent mining sessions)
+const WALLET_SESSION_LIMIT = Number(process.env.WALLET_SESSION_LIMIT ?? 3);
 
 export const SessionStore = r
   ? {
