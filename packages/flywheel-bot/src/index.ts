@@ -6,6 +6,9 @@ import { relistAtMarkup } from "./market/list.js";
 import { parseEther } from "ethers";
 import { setTimeout as wait } from "timers/promises";
 import { checkRateLimit } from "./redis.js";
+import { alertInfo, alertWarning, alertSuccess, alertErrorDeduped } from "./utils/discord.js";
+import { recordBuy, recordBuyFailure, recordListFailure } from "./utils/health.js";
+import { recordDailyBuy, recordDailySale, recordDailyFailure } from "./utils/dailySummary.js";
 
 /**
  * NPC Flywheel Trading Bot
@@ -90,6 +93,10 @@ async function loop() {
       // Security Fix #4: Check emergency stop
       if (shouldStop()) {
         console.warn('⚠️  [EMERGENCY STOP] Bot is paused. Set EMERGENCY_STOP=0 to resume.');
+        await alertWarning('Emergency Stop Enabled', {
+          'Status': 'Bot paused',
+          'Action': 'Set EMERGENCY_STOP=0 to resume',
+        });
         await wait(10000); // Wait 10s before checking again
         continue;
       }
@@ -141,10 +148,26 @@ async function loop() {
       const gotIt = await verifyOwnership(listing.tokenId);
       if (!gotIt) {
         console.warn(`[Verify:FAIL] Did not receive tokenId=${listing.tokenId}!`);
+        recordBuyFailure();
+        recordDailyFailure('buy_verify');
+        await alertErrorDeduped('Buy verification failed', {
+          'Token ID': listing.tokenId,
+          'Price': listing.priceNative + ' APE',
+          'Transaction': rc?.hash || 'N/A',
+        });
         await wait(10_000);
         continue;
       }
       console.log(`[Verify:OK] We now own tokenId=${listing.tokenId}`);
+      
+      // Record successful buy
+      recordBuy();
+      recordDailyBuy(Number(listing.priceNative));
+      await alertSuccess('NPC Purchased', {
+        'Token ID': listing.tokenId,
+        'Price': listing.priceNative + ' APE',
+        'Transaction': `https://apescan.io/tx/${rc?.hash}`,
+      });
 
       // ============ RELIST ============
       // Security Fix #8: Rate limit listings (max 10 per hour)
@@ -168,8 +191,15 @@ async function loop() {
       console.log(`[Bot] Waiting 60s before next purchase cycle...\n`);
       await wait(60_000);
       
-    } catch (e) {
+    } catch (e: any) {
       console.error(`[Error]`, e);
+      
+      // Alert error to Discord (de-duped)
+      await alertErrorDeduped('Bot loop error', {
+        'Error': e?.message || String(e),
+        'Type': e?.code || 'unknown',
+      });
+      
       await wait(15_000); // Wait 15 seconds before retry
     }
   }
@@ -178,6 +208,13 @@ async function loop() {
 // Start the treasury balance poller (auto-burns when APE detected)
 import { startTreasuryPoller } from './treasury/poller.js';
 startTreasuryPoller().catch(console.error);
+
+// Start the daily summary job (posts stats to Discord at UTC midnight)
+import { startDailySummaryJob } from './utils/dailySummary.js';
+startDailySummaryJob().catch(console.error);
+
+// Send startup notification
+alertInfo('Flywheel Bot Started', `Emergency Stop: ${process.env.EMERGENCY_STOP === '1' ? '🛑 ENABLED' : '✅ Disabled'}\nDaily Cap: ${cfg.knobs.dailySpendCapApe} APE\nMarkup: +${cfg.knobs.markupBps / 100}%`).catch(console.error);
 
 // Start the trading bot
 loop().catch(console.error);

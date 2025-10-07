@@ -6,6 +6,7 @@
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "build": "tsc -p .",
+    "health": "tsx scripts/health-check.ts",
     "script:grant-role": "tsx scripts/00-grant-minter-role.ts",
     "script:mint": "tsx scripts/01-mint-mnestr.ts",
     "script:add-liquidity": "tsx scripts/02-add-liquidity.ts",

@@ -1,6 +1,9 @@
 import { cfg } from "../config.js";
 import { flywheel } from '../wallets.js';
 import { createListing } from './seaport-builder.js';
+import { recordList, recordListFailure } from '../utils/health.js';
+import { recordDailyFailure } from '../utils/dailySummary.js';
+import { alertErrorDeduped } from '../utils/discord.js';
 
 /**
  * Relist an NFT at a markup
@@ -28,8 +31,15 @@ export async function relistAtMarkup({
   
   if (success) {
     console.log(`[Relist:OK] Successfully listed tokenId=${tokenId} at ${ask} APE`);
+    recordList();
   } else {
     console.error(`[Relist:FAIL] Failed to create listing for tokenId=${tokenId}`);
+    recordListFailure();
+    recordDailyFailure('list');
+    await alertErrorDeduped('Listing failed', {
+      'Token ID': tokenId,
+      'Price': ask + ' APE',
+    });
   }
   
   return ask;

@@ -10,6 +10,9 @@
 import { parseEther, formatEther, Contract } from 'ethers';
 import { treasury } from '../wallets.js';
 import { cfg } from '../config.js';
+import { alertSuccess, alertErrorDeduped } from '../utils/discord.js';
+import { recordBurn, recordSwapFailure } from '../utils/health.js';
+import { recordDailyBurn, recordDailyGas, recordDailyFailure } from '../utils/dailySummary.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
@@ -221,6 +224,17 @@ export async function executeBurn(): Promise<{
   }
   
   console.log(`[Treasury] ✅✅✅ FLYWHEEL BURN COMPLETE! ✅✅✅`);
+  
+  // Record success metrics
+  recordBurn();
+  recordDailyBurn(Number(formatEther(mnestrBalance)));
+  
+  // Alert success to Discord
+  await alertSuccess('Burn completed', {
+    'MNESTR Burned': formatEther(mnestrBalance),
+    'APE Swapped': formatEther(apeForSwap),
+    'Transaction': `https://apescan.io/tx/${burnTxHash}`,
+  });
   
   return {
     apeReceived: formatEther(apeBalance),

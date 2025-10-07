@@ -8,6 +8,9 @@ import { formatEther } from 'ethers';
 import { treasury } from '../wallets.js';
 import { executeBurn } from './burn.js';
 import { acquireLock, releaseLock, hasLock } from '../redis.js';
+import { alertErrorDeduped, alertWarning } from '../utils/discord.js';
+import { recordSwapFailure } from '../utils/health.js';
+import { recordDailyFailure } from '../utils/dailySummary.js';
 
 const POLL_INTERVAL_MS = 30_000; // 30 seconds
 const MIN_APE_TO_BURN = '2.0'; // Minimum 2 APE to trigger burn (need 0.5 for gas + 1.5 to swap)
@@ -66,6 +69,17 @@ export async function startTreasuryPoller() {
         console.log(`  Tx: ${result.txHash}\n`);
       } catch (error: any) {
         console.error(`[Treasury Poller] ❌ Burn failed: ${error.message}`);
+        
+        // Record failure metrics
+        recordSwapFailure();
+        recordDailyFailure('swap');
+        
+        // Alert to Discord (de-duped for 10 minutes)
+        await alertErrorDeduped('Swap/Burn failed', {
+          'Error': error.message || 'Unknown error',
+          'Balance': balanceAPE + ' APE',
+          'Transaction': error.transaction?.hash || 'N/A',
+        });
       } finally {
         await releaseLock(BURN_LOCK_KEY);
       }
