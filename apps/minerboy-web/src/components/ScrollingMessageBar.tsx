@@ -16,10 +16,9 @@ export default function ScrollingMessageBar({
   height = 20,
   speed = 50, // default 50px per second
   messageGap = 200, // default 200px gap between messages
-  loopPause = 2000, // default 2 second pause between loops
+  loopPause = 2000, // not used anymore - continuous seamless scrolling
 }: ScrollingMessageBarProps) {
   const [offset, setOffset] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
   const textRef = useRef<HTMLDivElement>(null);
   const [textWidth, setTextWidth] = useState(0);
 
@@ -37,22 +36,12 @@ export default function ScrollingMessageBar({
   useEffect(() => {
     if (textWidth === 0) return; // Wait for measurement
     
-    // If paused, wait for pause duration then resume
-    if (isPaused) {
-      const pauseTimeout = setTimeout(() => {
-        setIsPaused(false);
-        setOffset(0);
-      }, loopPause);
-      return () => clearTimeout(pauseTimeout);
-    }
-    
     const interval = setInterval(() => {
       setOffset((prev) => {
-        // When message has traveled full banner width + full message width + gap, pause before loop
-        // This ensures message enters from right, crosses entire banner, and exits left before looping
-        if (prev >= width + textWidth + messageGap) {
-          setIsPaused(true);
-          return prev; // Hold position during pause
+        // For seamless loop: reset when we've scrolled exactly one message block + gap
+        // The duplicate will then appear to be the "new" first message
+        if (prev >= textWidth + messageGap) {
+          return 0; // Instant reset for seamless scrolling
         }
         
         return prev + 1;
@@ -60,7 +49,7 @@ export default function ScrollingMessageBar({
     }, 1000 / speed); // Update based on speed
 
     return () => clearInterval(interval);
-  }, [speed, messageGap, textWidth, loopPause, isPaused]);
+  }, [speed, messageGap, textWidth]);
 
   return (
     <div
