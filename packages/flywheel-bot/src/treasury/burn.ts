@@ -13,25 +13,9 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-// Camelot V3 SwapRouter ABI (Algebra interface - bytes path for multi-hop support)
-const V3_SWAP_ROUTER_ABI = [
-  "function exactInput((bytes path,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum)) payable returns (uint256 amountOut)"
-];
-
-// Algebra Quoter ABI (supports both single and multi-hop)
-const QUOTER_ABI = [
-  "function quoteExactInputSingle(address tokenIn,address tokenOut,uint256 amountIn,uint160 limitSqrtPrice) view returns (uint256 amountOut)",
-  "function quoteExactInput(bytes path,uint256 amountIn) view returns (uint256 amountOut)"
-];
-
-// Algebra Factory ABI (to check if pool exists)
-const FACTORY_ABI = [
-  "function poolByPair(address tokenA,address tokenB) view returns (address pool)"
-];
-
-// Algebra Pool ABI (to check if initialized)
-const POOL_ABI = [
-  "function globalState() view returns (uint160 price, int24 tick, uint16 fee, uint16 timepointIndex, uint16 timepointIndexSwapWithinBlock, bool unlocked)"
+// YakRouter ABI (token-in variant - swapNoSplit, NOT swapNoSplitFromETH)
+const YAK_ROUTER_ABI = [
+  "function swapNoSplit((uint256 amountIn,uint256 amountOut,address[] path,address[] adapters),uint256 fee,address to) payable returns (uint256)"
 ];
 
 // WAPE ABI for wrapping
@@ -90,71 +74,23 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Will swap: ${formatEther(apeForSwap)} APE (99% of swappable)`);
   console.log(`[Treasury] Will send to trading: ${formatEther(apeForTradingWallet)} APE (1% of swappable)`);
   
-  // 3. Swap APE → MNESTR via Camelot V3 SwapRouter (Algebra)
-  // Check pool existence and use multi-hop if needed
+  // 3. Swap WAPE → MNESTR via YakRouter (token-in variant)
+  // Use the proven working path from successful on-chain tx
   
-  const V3_ROUTER = '0xC69Dc28924930583024E067b2B3d773018F4EB52';
-  const QUOTER = '0x60A186019F81bFD04aFc16c9C01804a04E79e68B';
-  const FACTORY = '0x10aA510d94E094Bd643677bd2964c3EE085Daffc';
-  const APEUSD = '0xA2235d059F80e176D931Ef76b6C51953Eb3fBEf4'; // Intermediate token for routing
+  const YAK_ROUTER = '0x2b59Eb03865D18d8B62a5956BBbFaE352fc1C148';
+  const ADAPTER = '0xF05902D8EB53a354c9dDC67175df3D9BEe1F9581'; // Proven working adapter
   
-  console.log(`[Treasury] Using Camelot V3 SwapRouter (Algebra)`);
+  console.log(`[Treasury] Using YakRouter (token-in swap)`);
   console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
-  console.log(`[Treasury] V3 Router: ${V3_ROUTER}`);
+  console.log(`[Treasury] Router: ${YAK_ROUTER}`);
+  console.log(`[Treasury] Path: WAPE → MNESTR (via adapter)`);
   
-  // Check if direct WAPE → MNESTR pool exists
-  const factory = new Contract(FACTORY, FACTORY_ABI, treasury);
-  const poolAddr = await factory.poolByPair(cfg.wape, cfg.mnestr);
-  console.log(`[Treasury] Direct pool WAPE→MNESTR: ${poolAddr}`);
+  // Use conservative slippage based on observed rate (~61k MNESTR per APE)
+  const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
+  const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
+  const minMNESTR = (expectedMNESTR * 90n) / 100n; // 10% slippage
   
-  const poolCode = await treasury.provider!.getCode(poolAddr);
-  const poolExists = poolCode !== '0x' && poolAddr.toLowerCase() !== '0x0000000000000000000000000000000000000000';
-  
-  // Read token decimals
-  const wapeContract = new Contract(cfg.wape, ERC20_ABI, treasury);
-  const mnestrContract = new Contract(cfg.mnestr, ERC20_ABI, treasury);
-  const [wapeDecimals, mnestrDecimals] = await Promise.all([
-    wapeContract.decimals(),
-    mnestrContract.decimals()
-  ]);
-  console.log(`[Treasury] WAPE decimals: ${wapeDecimals}, MNESTR decimals: ${mnestrDecimals}`);
-  
-  // Determine path (single-hop or multi-hop via apeUSD)
-  const { solidityPacked } = await import('ethers');
-  let swapPath: string;
-  let pathDescription: string;
-  
-  if (poolExists) {
-    // Try direct single-hop path
-    swapPath = solidityPacked(['address', 'address'], [cfg.wape, cfg.mnestr]);
-    pathDescription = 'WAPE → MNESTR (direct)';
-    console.log(`[Treasury] ✅ Direct pool exists, using single-hop`);
-  } else {
-    // Use multi-hop via apeUSD
-    swapPath = solidityPacked(['address', 'address', 'address'], [cfg.wape, APEUSD, cfg.mnestr]);
-    pathDescription = 'WAPE → apeUSD → MNESTR';
-    console.log(`[Treasury] ⚠️ No direct pool, routing via apeUSD`);
-  }
-  
-  console.log(`[Treasury] Path: ${pathDescription}`);
-  
-  // Get quote using bytes path (works for both single and multi-hop)
-  const quoter = new Contract(QUOTER, QUOTER_ABI, treasury);
-  let quotedOut: bigint;
-  
-  try {
-    quotedOut = await quoter.quoteExactInput(swapPath, apeForSwap);
-    console.log(`[Treasury] Quoter says we'll receive: ${formatEther(quotedOut)} MNESTR`);
-  } catch (e: any) {
-    console.error(`[Treasury] ❌ Quoter failed:`, e.message);
-    throw new Error(`Quoter failed for path ${pathDescription}`);
-  }
-  
-  // Apply 10% slippage to quoted amount
-  const slippageBps = 1000n; // 10% = 1000 basis points
-  const minMNESTR = (quotedOut * (10000n - slippageBps)) / 10000n;
-  
-  console.log(`[Treasury] Expected MNESTR (from Quoter): ${formatEther(quotedOut)}`);
+  console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
   console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
   
   // Step 1: Wrap native APE → WAPE
@@ -165,56 +101,47 @@ export async function executeBurn(): Promise<{
   await wrapTx.wait(1); // Wait for 1 confirmation only
   console.log(`[Treasury] ✅ Wrapped`);
   
-  // Step 2: Approve V3 Router to spend WAPE
-  console.log(`[Treasury] Step 2: Approving V3 Router...`);
-  const approveTx = await wape.approve(V3_ROUTER, apeForSwap);
+  // Step 2: Approve YakRouter to spend WAPE
+  console.log(`[Treasury] Step 2: Approving YakRouter...`);
+  const approveTx = await wape.approve(YAK_ROUTER, apeForSwap);
   console.log(`[Treasury] Approve tx submitted: ${approveTx.hash}`);
   await approveTx.wait(1);
   console.log(`[Treasury] ✅ Approved`);
   
-  // Step 3: Execute V3 swap (Algebra exactInput with bytes path)
-  console.log(`[Treasury] Step 3: Executing Algebra exactInput...`);
-  const router = new Contract(V3_ROUTER, V3_SWAP_ROUTER_ABI, treasury);
+  // Step 3: Execute YakRouter swap (token-in variant with WAPE)
+  console.log(`[Treasury] Step 3: Executing YakRouter swapNoSplit (token-in)...`);
+  const router = new Contract(YAK_ROUTER, YAK_ROUTER_ABI, treasury);
   
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 600); // +10 minutes
-  const params = {
-    path: swapPath,
-    recipient: treasuryAddr,
-    deadline,
+  const trade = {
     amountIn: apeForSwap,
-    amountOutMinimum: minMNESTR
+    amountOut: minMNESTR,
+    path: [cfg.wape, cfg.mnestr],
+    adapters: [ADAPTER]
   };
+  const fee = 0n;
+  const to = treasuryAddr;
   
-  console.log(`[Treasury] Path: ${pathDescription}`);
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
-  console.log(`[Treasury] Deadline: ${deadline}`);
+  console.log(`[Treasury] Adapter: ${ADAPTER}`);
   
-  // Pre-simulate to catch revert reasons
-  try {
-    await treasury.provider!.call({
-      to: V3_ROUTER,
-      data: router.interface.encodeFunctionData("exactInput", [params])
-    });
-    console.log(`[Treasury] ✅ Simulation passed`);
-  } catch (e: any) {
-    console.error(`[Treasury] ❌ Simulation failed!`);
-    console.error(`[Treasury] Revert data:`, e.data);
-    try {
-      const decoded = router.interface.parseError(e.data);
-      console.error(`[Treasury] Decoded error:`, decoded);
-    } catch (decodeErr) {
-      console.error(`[Treasury] Could not decode error (likely empty revert)`);
-    }
-    throw e;
+  // Sanity check: verify selector is correct (should be 0xce6e28f2)
+  const populated = await router.swapNoSplit.populateTransaction(trade, fee, to, { value: 0 });
+  const selector = populated.data?.slice(0, 10);
+  console.log(`[Treasury] Method selector: ${selector} (expect 0xce6e28f2)`);
+  
+  if (selector !== '0xce6e28f2') {
+    throw new Error(`Wrong selector! Got ${selector}, expected 0xce6e28f2`);
   }
   
-  const swapTx = await router.exactInput(params, { gasLimit: 500000 });
+  // Send swap (token-in, so value = 0)
+  const swapTx = await router.swapNoSplit(trade, fee, to, { value: 0, gasLimit: 300000 });
   console.log(`[Treasury] Swap tx submitted: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait(1);
   console.log(`[Treasury] ✅ Swap confirmed in block ${swapReceipt!.blockNumber}`);
   
-  // 4. Check MNESTR balance (reuse contract from earlier)
+  // 4. Check MNESTR balance
+  const mnestrContract = new Contract(cfg.mnestr, ERC20_ABI, treasury);
   const mnestrBalance = await mnestrContract.balanceOf(treasuryAddr);
   
   console.log(`[Treasury] MNESTR Balance: ${formatEther(mnestrBalance)} MNESTR`);
