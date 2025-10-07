@@ -27,7 +27,8 @@
     "p-queue": "^7.4.1",
     "p-retry": "^6.1.0",
     "axios": "^1.7.4",
-    "dotenv": "^17.2.2"
+    "dotenv": "^17.2.2",
+    "ioredis": "^5.3.2"
   },
   "devDependencies": {
     "typescript": "^5.9.2",

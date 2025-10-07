@@ -5,6 +5,7 @@ import { canAfford, executeListingRaw, verifyOwnership } from "./market/buy.js";
 import { relistAtMarkup } from "./market/list.js";
 import { parseEther } from "ethers";
 import { setTimeout as wait } from "timers/promises";
+import { checkRateLimit } from "./redis.js";
 
 /**
  * NPC Flywheel Trading Bot
@@ -119,6 +120,14 @@ async function loop() {
       }
 
       // ============ BUY ============
+      // Security Fix #8: Rate limit purchases (max 1 per minute)
+      const purchaseLimit = await checkRateLimit('flywheel:purchases', 1, 60);
+      if (!purchaseLimit.allowed) {
+        console.log(`[RateLimit] Purchase rate limit hit (${purchaseLimit.current}/${purchaseLimit.limit} per minute). Waiting...`);
+        await wait(30_000); // Wait 30s and try again
+        continue;
+      }
+      
       console.log(`\n[Buy] Attempting to buy tokenId=${listing.tokenId} for ${listing.priceNative} APE`);
       const rc = await executeListingRaw({
         to: listing.to,
@@ -138,13 +147,20 @@ async function loop() {
       console.log(`[Verify:OK] We now own tokenId=${listing.tokenId}`);
 
       // ============ RELIST ============
-      const ask = await relistAtMarkup({
-        tokenId: listing.tokenId,
-        costNative: listing.priceNative,
-        markupBps: cfg.knobs.markupBps
-      });
-      console.log(`[List:OK] Listed tokenId=${listing.tokenId} at ${ask} APE`);
-      console.log(`[List:OK] When sold, proceeds will go to treasury → auto-burn! 🔥`);
+      // Security Fix #8: Rate limit listings (max 10 per hour)
+      const listingLimit = await checkRateLimit('flywheel:listings', 10, 3600);
+      if (!listingLimit.allowed) {
+        console.log(`[RateLimit] Listing rate limit hit (${listingLimit.current}/${listingLimit.limit} per hour). Deferring...`);
+        // Don't block the loop - we'll try to list it later
+      } else {
+        const ask = await relistAtMarkup({
+          tokenId: listing.tokenId,
+          costNative: listing.priceNative,
+          markupBps: cfg.knobs.markupBps
+        });
+        console.log(`[List:OK] Listed tokenId=${listing.tokenId} at ${ask} APE`);
+        console.log(`[List:OK] When sold, proceeds will go to treasury → auto-burn! 🔥`);
+      }
       
       // ============ CONTINUE TO NEXT BUY ============
       // No need to wait for sale - treasury handles burns automatically!

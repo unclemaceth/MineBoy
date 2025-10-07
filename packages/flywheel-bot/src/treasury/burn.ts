@@ -186,16 +186,25 @@ export async function executeBurn(): Promise<{
   
   // 5. Burn MNESTR to 0xdead
   let burnTxHash = '';
-  if (mnestrBalance > 0n) {
-    console.log(`[Treasury] Burning ${formatEther(mnestrBalance)} MNESTR...`);
-    const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance, gasCaps);
-    burnTxHash = burnTx.hash;
-    console.log(`[Treasury] Burn tx submitted: ${burnTxHash}`);
-    await burnTx.wait(1);
-    console.log(`[Treasury] 🔥 Burned ${formatEther(mnestrBalance)} MNESTR!`);
-  } else {
+  
+  // Security Fix #7: Balance validation - don't burn if balance is 0
+  if (mnestrBalance === 0n) {
     console.log(`[Treasury] ⚠️ No MNESTR to burn (swap may have failed)`);
+    return {
+      apeReceived: formatEther(apeBalance),
+      apeForSwap: formatEther(apeForSwap),
+      apeForGas: formatEther(gasReserve),
+      mnestrBurned: '0',
+      txHash: ''
+    };
   }
+  
+  console.log(`[Treasury] Burning ${formatEther(mnestrBalance)} MNESTR...`);
+  const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance, gasCaps);
+  burnTxHash = burnTx.hash;
+  console.log(`[Treasury] Burn tx submitted: ${burnTxHash}`);
+  await burnTx.wait(1);
+  console.log(`[Treasury] 🔥 Burned ${formatEther(mnestrBalance)} MNESTR!`);
   
   // 6. Send 1% APE to trading wallet for gas
   if (apeForTradingWallet > 0n) {
