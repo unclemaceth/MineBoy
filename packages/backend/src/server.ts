@@ -1336,12 +1336,26 @@ fastify.get('/v2/messages', async (req, res) => {
   const adminMessages = messageStore.getMessages();
   const playingPaidMessages = getCurrentlyPlaying();
   
+  // DEBUG: Check messages from database
+  if (playingPaidMessages.length > 0) {
+    console.log('[PM:API] Playing messages from DB:', playingPaidMessages.map(m => ({
+      id: m.id,
+      message: JSON.stringify(m.message),
+      hasD: m.message?.includes('d') || m.message?.includes('D')
+    })));
+  }
+  
   // Format paid messages with prefix and color
   const formattedPaidMessages = playingPaidMessages.map(m => {
     const prefix = m.message_type === 'PAID' ? 'PAID CONTENT: ' 
                  : m.message_type === 'SHILL' ? 'Shilled Content: '
                  : 'MineBoy: ';
-    return `${prefix}${m.message}`;
+    const formatted = `${prefix}${m.message}`;
+    
+    // DEBUG: Check formatted message
+    console.log('[PM:API] Formatted message:', JSON.stringify(formatted), 'hasD:', formatted.includes('d') || formatted.includes('D'));
+    
+    return formatted;
   });
   
   // Combine: admin messages first, then paid messages

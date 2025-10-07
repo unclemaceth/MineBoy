@@ -130,6 +130,11 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
     playButtonSound();
     
     try {
+      // DEBUG: Check message before POST
+      console.log('[PM:FE] Raw message before POST:', JSON.stringify(message));
+      console.log('[PM:FE] Message length:', message.length);
+      console.log('[PM:FE] Contains "d"?', message.includes('d') || message.includes('D'));
+      
       // Calculate message hash (same as backend will verify)
       const msgHash = keccak256(toBytes(message.trim()));
       

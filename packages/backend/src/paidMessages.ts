@@ -213,11 +213,17 @@ function passesBlacklist(msg: string): boolean {
  * Validate message content
  */
 export function validateMessage(raw: string, messageType: 'PAID' | 'SHILL' | 'MINEBOY' = 'PAID'): { ok: true; cleaned: string } | { ok: false; reason: string } {
+  // DEBUG: Check message in validateMessage
+  console.log('[PM:VALIDATE] Raw input:', JSON.stringify(raw));
+  
   if (!raw || !raw.trim()) {
     return { ok: false, reason: 'Message cannot be empty' };
   }
   
   const cleaned = raw.normalize('NFKC').trim();
+  console.log('[PM:VALIDATE] After NFKC normalize:', JSON.stringify(cleaned));
+  console.log('[PM:VALIDATE] Contains "d" after normalize?', cleaned.includes('d') || cleaned.includes('D'));
+  
   const maxLen = MESSAGE_TYPES[messageType].maxLen;
   
   if (cleaned.length > maxLen) {
@@ -227,6 +233,9 @@ export function validateMessage(raw: string, messageType: 'PAID' | 'SHILL' | 'MI
   if (!passesBlacklist(cleaned)) {
     return { ok: false, reason: 'Message contains inappropriate content' };
   }
+  
+  console.log('[PM:VALIDATE] Final cleaned (returning):', JSON.stringify(cleaned));
+  console.log('[PM:VALIDATE] Contains "d" in final?', cleaned.includes('d') || cleaned.includes('D'));
   
   return { ok: true, cleaned };
 }
