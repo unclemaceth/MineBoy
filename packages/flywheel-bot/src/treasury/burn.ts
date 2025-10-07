@@ -102,30 +102,36 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} APE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
   
-  // Debug: Check if function exists and log the populated transaction
-  console.log(`[Treasury] Router functions available:`, Object.keys(router));
-  console.log(`[Treasury] swapNoSplitFromETH exists:`, !!router.swapNoSplitFromETH);
+  // Manually encode function call with correct selector (0xbefe9803)
+  // Because ethers generates wrong selector from tuple syntax
+  const { AbiCoder, keccak256, toUtf8Bytes } = await import('ethers');
+  const abiCoder = AbiCoder.defaultAbiCoder();
   
-  try {
-    const populated = await router.swapNoSplitFromETH.populateTransaction(
-      trade,
-      0,
-      treasuryAddr,
-      { value: apeForSwap }
-    );
-    console.log(`[Treasury] Populated tx data:`, populated.data?.substring(0, 20));
-    console.log(`[Treasury] Method selector:`, populated.data?.substring(0, 10));
-  } catch (e: any) {
-    console.error(`[Treasury] Failed to populate transaction:`, e.message);
-  }
-  
-  // Execute swap with native APE (payable function)
-  const swapTx = await router.swapNoSplitFromETH(
-    trade,
-    0, // No fee
-    treasuryAddr, // Recipient
-    { value: apeForSwap, gasLimit: 500000 }
+  // Encode the Trade struct and other parameters
+  const tradeEncoded = abiCoder.encode(
+    ['uint256', 'uint256', 'address[]', 'address[]'],
+    [trade.amountIn, trade.amountOut, trade.path, trade.adapters]
   );
+  
+  const paramsEncoded = abiCoder.encode(
+    ['tuple(uint256,uint256,address[],address[])', 'uint256', 'address'],
+    [[trade.amountIn, trade.amountOut, trade.path, trade.adapters], 0, treasuryAddr]
+  );
+  
+  // Build calldata with correct method selector
+  const methodSelector = '0xbefe9803';
+  const calldata = methodSelector + paramsEncoded.slice(2);
+  
+  console.log(`[Treasury] Method selector: ${methodSelector} (swapNoSplitFromETH)`);
+  console.log(`[Treasury] Calldata length: ${calldata.length} chars`);
+  
+  // Send raw transaction with manually encoded calldata
+  const swapTx = await treasury.sendTransaction({
+    to: cfg.dexRouter,
+    data: calldata,
+    value: apeForSwap,
+    gasLimit: 500000
+  });
   
   console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait();
