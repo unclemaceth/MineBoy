@@ -1390,6 +1390,20 @@ function Home() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // CRITICAL: Don't intercept keys when user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      const isTyping = target && (
+        target.tagName === 'INPUT' || 
+        target.tagName === 'TEXTAREA' || 
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+      
+      // If user is typing, only handle Escape (to close modals)
+      if (isTyping && e.key !== 'Escape') {
+        return; // Let the input handle the keypress
+      }
+      
       switch (e.key) {
         case 'ArrowUp':
           e.preventDefault();

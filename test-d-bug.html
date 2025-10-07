@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>D Bug Test</title>
+</head>
+<body>
+  <h1>Test 'D' Bug</h1>
+  
+  <h2>Test 1: Arcade Name (toUpperCase)</h2>
+  <input type="text" id="arcadeName" placeholder="Type 'DARED' or 'dared'" maxlength="8" />
+  <button onclick="testArcadeName()">Test</button>
+  <pre id="arcadeResult"></pre>
+  
+  <h2>Test 2: Paid Message (raw input)</h2>
+  <textarea id="paidMessage" placeholder="Type 'I dare you! Down!'" maxlength="128" rows="3" cols="50"></textarea>
+  <button onclick="testPaidMessage()">Test</button>
+  <pre id="paidResult"></pre>
+  
+  <h2>Test 3: JSON.stringify POST body</h2>
+  <button onclick="testJSON()">Test JSON</button>
+  <pre id="jsonResult"></pre>
+  
+  <script>
+    function testArcadeName() {
+      const input = document.getElementById('arcadeName').value;
+      const upper = input.toUpperCase();
+      const result = `
+Input: ${JSON.stringify(input)}
+Upper: ${JSON.stringify(upper)}
+Has 'D': ${upper.includes('D') || upper.includes('d')}
+Length: ${upper.length}
+Chars: ${Array.from(upper).map((c, i) => c + '(' + c.charCodeAt(0) + ')').join(', ')}
+      `;
+      document.getElementById('arcadeResult').textContent = result;
+      console.log('[ArcadeName]', result);
+    }
+    
+    function testPaidMessage() {
+      const input = document.getElementById('paidMessage').value;
+      const trimmed = input.trim();
+      const result = `
+Input: ${JSON.stringify(input)}
+Trimmed: ${JSON.stringify(trimmed)}
+Has 'D' or 'd': ${trimmed.includes('D') || trimmed.includes('d')}
+Length: ${trimmed.length}
+First 20 chars: ${Array.from(trimmed.slice(0, 20)).map((c, i) => c + '(' + c.charCodeAt(0) + ')').join(', ')}
+      `;
+      document.getElementById('paidResult').textContent = result;
+      console.log('[PaidMessage]', result);
+    }
+    
+    function testJSON() {
+      const testData = {
+        message: "I dare you! Down!",
+        wallet: "0xDEAD",
+        txHash: "0xABCD"
+      };
+      const json = JSON.stringify(testData);
+      const parsed = JSON.parse(json);
+      const result = `
+Original: ${JSON.stringify(testData, null, 2)}
+Stringified: ${json}
+Parsed: ${JSON.stringify(parsed, null, 2)}
+Parsed has 'D': ${parsed.message.includes('D') || parsed.message.includes('d')}
+      `;
+      document.getElementById('jsonResult').textContent = result;
+      console.log('[JSON]', result);
+    }
+  </script>
+</body>
+</html>
