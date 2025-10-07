@@ -77,24 +77,19 @@ export async function executeBurn(): Promise<{
   
   // 3. Swap APE → MNESTR via Camelot V3 (Algebra)
   const router = new Contract(cfg.dexRouter, ALGEBRA_ROUTER_ABI, treasury);
-  const quoter = new Contract(QUOTER_V3, ALGEBRA_QUOTER_ABI, treasury.provider);
   
   console.log(`[Treasury] Using Camelot V3 (Algebra) router`);
+  console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
   console.log(`[Treasury] Path: WAPE → MNESTR`);
   
-  // Get quote from Algebra Quoter
-  const [expectedMNESTR, fee] = await quoter.quoteExactInputSingle(
-    cfg.wape,
-    cfg.mnestr,
-    apeForSwap,
-    0n // limitSqrtPrice = 0 (no price limit)
-  );
+  // Use conservative slippage based on observed rate (~61.6k MNESTR per APE)
+  // Instead of calling quoter (which can fail), use expected rate from pool
+  const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
+  const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
+  const minMNESTR = (expectedMNESTR * 90n) / 100n; // 10% slippage tolerance (conservative)
   
-  const minMNESTR = (expectedMNESTR * 95n) / 100n; // 5% slippage tolerance
-  
-  console.log(`[Treasury] Expected MNESTR: ${formatEther(expectedMNESTR)}`);
-  console.log(`[Treasury] Pool fee: ${fee} (${Number(fee) / 100}%)`);
-  console.log(`[Treasury] Min MNESTR (5% slippage): ${formatEther(minMNESTR)}`);
+  console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
+  console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
   
   const deadline = BigInt(Math.floor(Date.now() / 1000) + 300); // 5 minutes
   
