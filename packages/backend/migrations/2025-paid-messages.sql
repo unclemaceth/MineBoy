@@ -38,9 +38,10 @@ CREATE TABLE IF NOT EXISTS blacklisted_wallets (
   blocked_by TEXT
 );
 
-COMMENT ON TABLE paid_messages IS 'All message types (MINEBOY admin messages, PAID user messages, SHILL premium messages) - persisted across deploys';
-COMMENT ON COLUMN paid_messages.message_type IS 'MINEBOY (free admin messages), PAID (1 APE, 1 hour), SHILL (15 APE, 4 hours)';
-COMMENT ON COLUMN paid_messages.tx_hash IS 'Transaction hash for PAID/SHILL messages (null for MINEBOY)';
-COMMENT ON COLUMN paid_messages.status IS 'active (queued for scheduler), playing (currently displaying), expired (TTL passed), removed (manually deleted)';
-COMMENT ON COLUMN paid_messages.nonce IS 'Per-wallet sequence number for PAID/SHILL (null for MINEBOY) - prevents duplicate submissions';
-COMMENT ON COLUMN paid_messages.msg_hash IS 'keccak256(message) for PAID/SHILL (null for MINEBOY) - cryptographic binding to on-chain payment';
+-- Table Documentation (inline comments for better compatibility)
+-- paid_messages: All message types (MINEBOY admin messages, PAID user messages, SHILL premium messages) - persisted across deploys
+-- message_type: MINEBOY (free admin messages), PAID (1 APE, 1 hour), SHILL (15 APE, 4 hours)
+-- tx_hash: Transaction hash for PAID/SHILL messages (null for MINEBOY)
+-- status: active (queued for scheduler), playing (currently displaying), expired (TTL passed), removed (manually deleted)
+-- nonce: Per-wallet sequence number for PAID/SHILL (null for MINEBOY) - prevents duplicate submissions
+-- msg_hash: keccak256(message) for PAID/SHILL (null for MINEBOY) - cryptographic binding to on-chain payment

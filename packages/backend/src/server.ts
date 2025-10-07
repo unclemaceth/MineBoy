@@ -1635,10 +1635,10 @@ fastify.get<{ Querystring: { wallet?: string } }>(
   async (req, res) => {
     try {
       const { wallet } = req.query;
-      const paidDb = getPaidMessagesDb();
+      const db = getDB();
       
       // Total active messages
-      const totalActive = paidDb.prepare(`
+      const totalActive = await db.prepare(`
         SELECT COUNT(*) as count 
         FROM paid_messages 
         WHERE status = 'active'
@@ -1648,19 +1648,19 @@ fastify.get<{ Querystring: { wallet?: string } }>(
       let yourPosition = null;
       if (wallet) {
         const walletLower = wallet.toLowerCase();
-        const result = paidDb.prepare(`
+        const result = await db.prepare(`
           SELECT COUNT(*) + 1 as position 
           FROM paid_messages 
           WHERE status = 'active' 
-            AND (priority < (SELECT COALESCE(MIN(priority), 999999) FROM paid_messages WHERE wallet = ? AND status = 'active')
-            OR (priority = (SELECT COALESCE(MIN(priority), 999999) FROM paid_messages WHERE wallet = ? AND status = 'active') 
-                AND created_at < (SELECT COALESCE(MIN(created_at), 0) FROM paid_messages WHERE wallet = ? AND status = 'active')))
-        `).get(walletLower, walletLower, walletLower) as { position: number };
+            AND (priority < (SELECT COALESCE(MIN(priority), 999999) FROM paid_messages WHERE wallet = @wallet AND status = 'active')
+            OR (priority = (SELECT COALESCE(MIN(priority), 999999) FROM paid_messages WHERE wallet = @wallet AND status = 'active') 
+                AND created_at < (SELECT COALESCE(MIN(created_at), 0) FROM paid_messages WHERE wallet = @wallet AND status = 'active')))
+        `).get({ wallet: walletLower }) as { position: number };
         
         // Check if wallet has any active messages
-        const hasActive = paidDb.prepare(`
-          SELECT 1 FROM paid_messages WHERE wallet = ? AND status = 'active' LIMIT 1
-        `).get(walletLower);
+        const hasActive = await db.prepare(`
+          SELECT 1 FROM paid_messages WHERE wallet = @wallet AND status = 'active' LIMIT 1
+        `).get({ wallet: walletLower });
         
         yourPosition = hasActive ? result.position : null;
       }
