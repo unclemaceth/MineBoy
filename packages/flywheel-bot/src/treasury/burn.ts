@@ -18,6 +18,11 @@ const V3_SWAP_ROUTER_ABI = [
   "function exactInputSingle((address tokenIn,address tokenOut,address recipient,uint256 deadline,uint256 amountIn,uint256 amountOutMinimum,uint160 limitSqrtPrice)) payable returns (uint256 amountOut)"
 ];
 
+// Algebra Quoter ABI (for getting accurate amountOut with correct decimals)
+const QUOTER_ABI = [
+  "function quoteExactInputSingle(address tokenIn,address tokenOut,uint256 amountIn,uint160 limitSqrtPrice) view returns (uint256 amountOut)"
+];
+
 // WAPE ABI for wrapping
 const WAPE_ABI = [
   'function deposit() payable',
@@ -26,7 +31,8 @@ const WAPE_ABI = [
 
 const ERC20_ABI = [
   'function transfer(address to, uint amount) returns (bool)',
-  'function balanceOf(address) view returns (uint256)'
+  'function balanceOf(address) view returns (uint256)',
+  'function decimals() view returns (uint8)'
 ];
 
 /**
@@ -74,21 +80,35 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Will send to trading: ${formatEther(apeForTradingWallet)} APE (1% of swappable)`);
   
   // 3. Swap APE → MNESTR via Camelot V3 SwapRouter
-  // Simple V3 approach: Wrap → Approve → Swap
+  // Use Quoter to get accurate amountOut with correct decimals
   
   const V3_ROUTER = '0xC69Dc28924930583024E067b2B3d773018F4EB52';
+  const QUOTER = '0x60A186019F81bFD04aFc16c9C01804a04E79e68B';
   
-  console.log(`[Treasury] Using Camelot V3 SwapRouter (direct)`);
+  console.log(`[Treasury] Using Camelot V3 SwapRouter (Algebra)`);
   console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
   console.log(`[Treasury] V3 Router: ${V3_ROUTER}`);
   console.log(`[Treasury] Path: WAPE → MNESTR`);
   
-  // Use conservative slippage based on observed rate (~61k MNESTR per APE)
-  const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
-  const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
-  const minMNESTR = (expectedMNESTR * 90n) / 100n; // 10% slippage tolerance
+  // Read token decimals to ensure correct scaling
+  const wapeContract = new Contract(cfg.wape, ERC20_ABI, treasury);
+  const mnestrContract = new Contract(cfg.mnestr, ERC20_ABI, treasury);
+  const [wapeDecimals, mnestrDecimals] = await Promise.all([
+    wapeContract.decimals(),
+    mnestrContract.decimals()
+  ]);
+  console.log(`[Treasury] WAPE decimals: ${wapeDecimals}, MNESTR decimals: ${mnestrDecimals}`);
   
-  console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
+  // Use Quoter to get accurate expected output in MNESTR's native decimals
+  const quoter = new Contract(QUOTER, QUOTER_ABI, treasury);
+  const quotedOut = await quoter.quoteExactInputSingle(cfg.wape, cfg.mnestr, apeForSwap, 0n);
+  console.log(`[Treasury] Quoter says we'll receive: ${formatEther(quotedOut)} MNESTR`);
+  
+  // Apply 10% slippage to quoted amount
+  const slippageBps = 1000n; // 10% = 1000 basis points
+  const minMNESTR = (quotedOut * (10000n - slippageBps)) / 10000n;
+  
+  console.log(`[Treasury] Expected MNESTR (from Quoter): ${formatEther(quotedOut)}`);
   console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
   
   // Step 1: Wrap native APE → WAPE
@@ -135,7 +155,14 @@ export async function executeBurn(): Promise<{
     });
     console.log(`[Treasury] ✅ Simulation passed`);
   } catch (e: any) {
-    console.error(`[Treasury] ❌ Simulation failed:`, e.data);
+    console.error(`[Treasury] ❌ Simulation failed!`);
+    console.error(`[Treasury] Revert data:`, e.data);
+    try {
+      const decoded = router.interface.parseError(e.data);
+      console.error(`[Treasury] Decoded error:`, decoded);
+    } catch (decodeErr) {
+      console.error(`[Treasury] Could not decode error (likely empty revert)`);
+    }
     throw e;
   }
   
@@ -144,8 +171,7 @@ export async function executeBurn(): Promise<{
   const swapReceipt = await swapTx.wait(1);
   console.log(`[Treasury] ✅ Swap confirmed in block ${swapReceipt!.blockNumber}`);
   
-  // 4. Check MNESTR balance
-  const mnestrContract = new Contract(cfg.mnestr, ERC20_ABI, treasury);
+  // 4. Check MNESTR balance (reuse contract from earlier)
   const mnestrBalance = await mnestrContract.balanceOf(treasuryAddr);
   
   console.log(`[Treasury] MNESTR Balance: ${formatEther(mnestrBalance)} MNESTR`);
