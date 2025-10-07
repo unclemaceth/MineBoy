@@ -1123,7 +1123,7 @@ fastify.get('/v2/debug/locks', async (req, res) => {
 
     const { chainId, contract, tokenId, wallet, minerId } = req.query as Record<string, string>;
     if (!chainId || !contract || !tokenId) {
-      return reply.code(400).send({ code: 'bad_request', message: 'Missing chainId/contract/tokenId' });
+      return res.status(400).send({ code: 'bad_request', message: 'Missing chainId/contract/tokenId' });
     }
 
     const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
@@ -1169,9 +1169,9 @@ fastify.get('/v2/debug/locks', async (req, res) => {
       resp.matches.minerMatchesSessionLock = sessionLock ? sessionLock.minerId === minerId : false;
     }
 
-    return reply.send(resp);
+    return res.send(resp);
   } catch (e) {
-    return reply.code(500).send({ code: 'debug_error', message: 'Failed to inspect locks', details: String(e) });
+    return res.status(500).send({ code: 'debug_error', message: 'Failed to inspect locks', details: String(e) });
   }
 });
 
@@ -1219,7 +1219,7 @@ fastify.get('/v2/audit/claims', async (req, res) => {
     `);
     const stats = statsStmt.all();
     
-    return reply.send({
+    return res.send({
       audit: {
         totalClaims: allClaims.length,
         generatedAt: new Date().toISOString(),
@@ -1228,7 +1228,7 @@ fastify.get('/v2/audit/claims', async (req, res) => {
       }
     });
   } catch (e) {
-    return reply.code(500).send({ code: 'audit_error', message: 'Failed to generate audit', details: String(e) });
+    return res.status(500).send({ code: 'audit_error', message: 'Failed to generate audit', details: String(e) });
   }
 });
 
@@ -1239,7 +1239,7 @@ fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async 
 
     const { txHash } = req.body;
     if (!txHash) {
-      return reply.code(400).send({ error: 'txHash required' });
+      return res.status(400).send({ error: 'txHash required' });
     }
 
     const { getDB } = await import('./db.js');
@@ -1256,14 +1256,14 @@ fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async 
     `);
     const pendingClaims = await stmt.all({ thirtyMinutesAgo }); // ← await
     
-    return reply.send({
+    return res.send({
       message: 'Found pending claims',
       txHash,
       pendingClaims,
       instructions: 'Use POST /v2/claim/tx with claimId and txHash to backfill'
     });
   } catch (e) {
-    return reply.code(500).send({ code: 'backfill_error', message: 'Failed to find pending claims', details: String(e) });
+    return res.status(500).send({ code: 'backfill_error', message: 'Failed to find pending claims', details: String(e) });
   }
 });
 
@@ -1313,7 +1313,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
       walletGroups.get(wallet).push(claim);
     }
     
-    return reply.send({
+    return res.send({
       statusCounts,
       confirmedClaims: {
         total: confirmedClaims.length,
@@ -1328,7 +1328,7 @@ fastify.get('/v2/debug/claims', async (req, res) => {
       timestamp: new Date().toISOString()
     });
   } catch (e) {
-    return reply.code(500).send({ code: 'debug_error', message: 'Failed to inspect claims', details: String(e) });
+    return res.status(500).send({ code: 'debug_error', message: 'Failed to inspect claims', details: String(e) });
   }
 });
 
@@ -1338,15 +1338,15 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 
     const { chainId, contract, tokenId } = req.body;
     if (!chainId || !contract || !tokenId) {
-      return reply.code(400).send({ code: 'bad_request', message: 'Missing chainId/contract/tokenId' });
+      return res.status(400).send({ code: 'bad_request', message: 'Missing chainId/contract/tokenId' });
     }
     const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
 
     const prev = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
     await SessionStore.releaseSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    return reply.send({ ok: true, released: !!prev, previous: prev ?? null });
+    return res.send({ ok: true, released: !!prev, previous: prev ?? null });
   } catch (e) {
-    return reply.code(500).send({ code: 'debug_error', message: 'Failed to unlock session', details: String(e) });
+    return res.status(500).send({ code: 'debug_error', message: 'Failed to unlock session', details: String(e) });
   }
 });
 
@@ -1382,14 +1382,14 @@ fastify.get('/v2/messages', async (req, res) => {
   // Combine: admin messages first, then paid messages
   const allMessages = [...adminMessages, ...formattedPaidMessages];
   
-  return reply.send({ messages: allMessages });
+  return res.send({ messages: allMessages });
 });
 
 // Get all messages with metadata (admin only)
 fastify.get('/v2/admin/messages', async (req, res) => {
   if (!requireDebugAuth(req, res)) return;
   const messages = await messageStore.getAllMessages();
-  return reply.send({ messages });
+  return res.send({ messages });
 });
 
 // Add a new message (admin only)
@@ -1398,11 +1398,11 @@ fastify.post<{ Body: { text: string } }>('/v2/admin/messages', async (req, res) 
   
   const { text } = req.body;
   if (!text || typeof text !== 'string') {
-    return reply.code(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
+    return res.status(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
   }
   
   const id = await messageStore.addMessage(text);
-  return reply.send({ ok: true, id });
+  return res.send({ ok: true, id });
 });
 
 // Remove a message (admin only)
@@ -1413,10 +1413,10 @@ fastify.delete<{ Params: { id: string } }>('/v2/admin/messages/:id', async (req,
   const removed = await messageStore.removeMessage(id);
   
   if (!removed) {
-    return reply.code(404).send({ code: 'not_found', message: 'Message not found' });
+    return res.status(404).send({ code: 'not_found', message: 'Message not found' });
   }
   
-  return reply.send({ ok: true });
+  return res.send({ ok: true });
 });
 
 // Update a message (admin only)
@@ -1427,23 +1427,23 @@ fastify.put<{ Params: { id: string }; Body: { text: string } }>('/v2/admin/messa
   const { text } = req.body;
   
   if (!text || typeof text !== 'string') {
-    return reply.code(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
+    return res.status(400).send({ code: 'bad_request', message: 'Missing or invalid text' });
   }
   
   const updated = messageStore.updateMessage(id, text);
   
   if (!updated) {
-    return reply.code(404).send({ code: 'not_found', message: 'Message not found' });
+    return res.status(404).send({ code: 'not_found', message: 'Message not found' });
   }
   
-  return reply.send({ ok: true });
+  return res.send({ ok: true });
 });
 
 // Clear all messages (admin only)
 fastify.delete('/v2/admin/messages', async (req, res) => {
   if (!requireDebugAuth(req, res)) return;
   messageStore.clearAll();
-  return reply.send({ ok: true });
+  return res.send({ ok: true });
 });
 
 // ---- Paid Message Routes ----
@@ -1461,7 +1461,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
       console.log('[PM:BE] Contains "d"?', message?.includes('d') || message?.includes('D'));
       
       if (!message || !txHash || !wallet) {
-        return reply.code(400).send({ 
+        return res.status(400).send({ 
           code: 'bad_request', 
           message: 'Missing message, txHash, or wallet' 
         });
@@ -1469,7 +1469,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
       
       // Validate message type
       if (messageType !== 'PAID' && messageType !== 'SHILL') {
-        return reply.code(400).send({
+        return res.status(400).send({
           code: 'invalid_message_type',
           message: 'messageType must be PAID or SHILL'
         });
@@ -1478,7 +1478,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
       // Validate message content
       const validation = validateMessage(message, messageType);
       if (!validation.ok) {
-        return reply.code(400).send({ 
+        return res.status(400).send({ 
           code: 'invalid_message', 
           message: validation.reason 
         });
@@ -1499,7 +1499,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
         verifyResult = await verifyOnChain(txHash as `0x${string}`, wallet, validation.cleaned, messageType);
       } catch (e: any) {
         console.error('[PAID_MESSAGE] Verification failed:', e);
-        return reply.code(400).send({
+        return res.status(400).send({
           code: 'verification_failed',
           message: e.message || 'Transaction verification failed'
         });
@@ -1516,7 +1516,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
       
       console.log(`[PAID_MESSAGE] Added ${messageType} message from ${wallet}: "${validation.cleaned}" (tx: ${txHash})`);
       
-      return reply.send({ 
+      return res.send({ 
         ok: true, 
         messageId: result.id,
         expiresAt: result.expiresAt,
@@ -1525,7 +1525,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
       
     } catch (error: any) {
       console.error('[PAID_MESSAGE] Error:', error);
-      return reply.code(500).send({ 
+      return res.status(500).send({ 
         code: 'internal_error', 
         message: 'Failed to process paid message' 
       });
@@ -1536,7 +1536,7 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
 // Get all active paid messages (public)
 fastify.get('/v2/messages/paid', async (req, res) => {
   const messages = await getActivePaidMessages();
-  return reply.send({ 
+  return res.send({ 
     messages: messages.map(m => ({
       id: m.id,
       message: m.message,
@@ -1561,17 +1561,17 @@ fastify.delete<{ Params: { id: string } }>(
     const removed = await removePaidMessage(id);
     
     if (!removed) {
-      return reply.code(404).send({ code: 'not_found', message: 'Message not found' });
+      return res.status(404).send({ code: 'not_found', message: 'Message not found' });
     }
     
-    return reply.send({ ok: true });
+    return res.send({ ok: true });
   }
 );
 
 // Get paid message statistics (admin only)
 fastify.get('/v2/admin/messages/paid/stats', async (req, res) => {
   if (!requireDebugAuth(req, res)) return;
-  return reply.send(getPaidMessageStats());
+  return res.send(getPaidMessageStats());
 });
 
 // Post MINEBOY message (admin only)
@@ -1584,7 +1584,7 @@ fastify.post<{ Body: { message: string } }>(
       const { message } = req.body;
       
       if (!message || !message.trim()) {
-        return reply.code(400).send({
+        return res.status(400).send({
           code: 'bad_request',
           message: 'Message is required'
         });
@@ -1593,7 +1593,7 @@ fastify.post<{ Body: { message: string } }>(
       // Validate message content
       const validation = validateMessage(message, 'MINEBOY');
       if (!validation.ok) {
-        return reply.code(400).send({
+        return res.status(400).send({
           code: 'invalid_message',
           message: validation.reason
         });
@@ -1610,7 +1610,7 @@ fastify.post<{ Body: { message: string } }>(
       
       console.log(`[MINEBOY] Added system message: "${validation.cleaned}"`);
       
-      return reply.send({
+      return res.send({
         ok: true,
         messageId: result.id,
         expiresAt: result.expiresAt,
@@ -1618,7 +1618,7 @@ fastify.post<{ Body: { message: string } }>(
       
     } catch (error: any) {
       console.error('[MINEBOY] Error:', error);
-      return reply.code(500).send({
+      return res.status(500).send({
         code: 'internal_error',
         message: error.message || 'Failed to add system message'
       });
@@ -1675,7 +1675,7 @@ fastify.get<{ Querystring: { wallet?: string } }>(
         backlog = 'LOW';
       }
       
-      return reply.send({
+      return res.send({
         totalActive: totalActive.count,
         yourPosition,
         estimatedWaitMin,
@@ -1684,7 +1684,7 @@ fastify.get<{ Querystring: { wallet?: string } }>(
       
     } catch (error: any) {
       console.error('[QUEUE] Error:', error);
-      return reply.code(500).send({
+      return res.status(500).send({
         code: 'internal_error',
         message: 'Failed to get queue status'
       });

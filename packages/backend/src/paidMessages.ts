@@ -225,7 +225,7 @@ export async function verifyOnChain(
 
   return {
     wallet: eventPayer,
-    amount: eventAmount.toString(),
+    amountWei: eventAmount.toString(), // Match expected field name
     msgHash: eventMsgHash,
   };
 }
