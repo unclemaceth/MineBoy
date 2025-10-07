@@ -85,10 +85,9 @@ export async function executeBurn(): Promise<{
   
   const router = new Contract(cfg.dexRouter, YAK_ROUTER_ABI, treasury);
   
-  // YakRouter adapters (from successful swap tx)
+  // YakRouter adapter (official Camelot Algebra adapter for V3 pools)
   const adapters = [
-    '0xf05902d8eb53a354c9ddc67175df3d9bee1f9581', // Adapter 1
-    '0x7101842054d75e8f2b15c0026254b0d7c525d594'  // Pool address
+    '0x1aDaB1D9FDf7fBabE2e7cF281972210aA8Ce50D6'  // CamelotAlgebraAdapter
   ];
   
   const trade = {
