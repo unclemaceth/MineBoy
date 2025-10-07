@@ -2,6 +2,7 @@
 import 'dotenv/config';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import { randomUUID } from 'crypto';
 import { OpenSessionReq, ClaimReq } from '../../shared/src/mining.js';
 import { config, ADMIN_TOKEN } from './config.js';
 import { cartridgeRegistry } from './registry.js';
