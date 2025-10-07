@@ -596,142 +596,71 @@ function TeamStandings() {
   );
 }
 
-// Mint Content Component
+// Mint Content Component V2 - Minting Closed
 function MintContent() {
-  const { address, isConnected } = useActiveAccount();
-  const chainId = 33139; // ApeChain - we'll handle network switching separately if needed
-  
-  const [count] = useState(1); // Fixed to 1 cartridge
-  const [mounted, setMounted] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
-
-  // Mint goes live at 8PM GMT on October 1, 2025
-  const MINT_START_TIME = new Date('2025-10-01T20:00:00Z').getTime(); // 8PM GMT (Z = UTC/GMT)
-  const [timeUntilMint, setTimeUntilMint] = useState<number>(0);
-  const [mintIsLive, setMintIsLive] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    
-    // Check if mint is live and update countdown
-    const checkMintStatus = () => {
-      const now = Date.now();
-      const diff = MINT_START_TIME - now;
-      
-      if (diff <= 0) {
-        setMintIsLive(true);
-        setTimeUntilMint(0);
-      } else {
-        setMintIsLive(false);
-        setTimeUntilMint(diff);
-      }
-    };
-    
-    checkMintStatus();
-    const interval = setInterval(checkMintStatus, 1000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  // Show success message when mint completes successfully
-  const [lastMintSuccess, setLastMintSuccess] = useState(false);
-  
-  useEffect(() => {
-    if (lastMintSuccess) {
-      setShowSuccess(true);
-      // Hide success message after 5 seconds
-      const timer = setTimeout(() => setShowSuccess(false), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [lastMintSuccess]);
-
-  const contractAddress = chainId ? CARTRIDGE_ADDRESSES[chainId] : null;
-  const onApeChain = true; // We're always on ApeChain now
-  const onCurtis = false; // No longer supporting Curtis
-  const canMint = mounted && isConnected && contractAddress && onApeChain;
-
-  const { data: mintPrice, error: priceError, isLoading: priceLoading } = useMintPrice();
-  const { mint, isMinting, error: mintError, isReady } = useBackendMint();
-  const { minted, max, remaining, isLoading: counterLoading } = useMintCounter(chainId || 0);
-  const { ownedCount, canMint: walletCanMint, isLoading: walletLoading } = useWalletCartridgeCount(address, chainId || 0);
-
-  if (!mounted) {
-    return <div style={{ textAlign: 'center', color: '#8a8a8a' }}>Loading...</div>;
-  }
-
-  if (!isConnected) {
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ color: '#8a8a8a', marginBottom: '16px' }}>
-          Connect your wallet to mint cartridges
-        </p>
-      </div>
-    );
-  }
-
-  if (!canMint) {
-    return (
-      <div style={{ textAlign: 'center' }}>
-        <p style={{ color: '#ff6b6b', marginBottom: '16px' }}>
-          Please switch to ApeChain or Curtis to mint
-        </p>
-      </div>
-    );
-  }
-
-  // Format countdown timer
-  const formatTimeRemaining = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <div style={{ textAlign: 'center' }}>
-      <h3 style={{ color: '#64ff8a', marginBottom: '16px' }}>Mint Cartridges</h3>
+      <h3 style={{ color: '#64ff8a', marginBottom: '16px' }}>Mint Pickaxes</h3>
       
-      {/* Mint Countdown Timer */}
-      {!mintIsLive && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '16px', 
-          background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
-          borderRadius: '8px',
-          border: '2px solid #ff8a00'
-        }}>
-          <p style={{ color: '#ffc864', fontSize: '14px', fontWeight: 'bold', margin: '0 0 8px 0', textTransform: 'uppercase' }}>
-            🔒 Mint Locked
-          </p>
-          <p style={{ color: '#ff8a00', fontSize: '24px', fontWeight: 'bold', margin: '0 0 8px 0', fontFamily: 'monospace' }}>
-            {formatTimeRemaining(timeUntilMint)}
-          </p>
-          <p style={{ color: '#c8a864', fontSize: '12px', margin: '0' }}>
-            Mint goes live at 8:00 PM GMT
-          </p>
-        </div>
-      )}
+      {/* Sold Out Banner */}
+      <div style={{ 
+        marginBottom: '20px', 
+        padding: '20px', 
+        background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
+        borderRadius: '8px',
+        border: '2px solid #ff8a00'
+      }}>
+        <p style={{ color: '#ffc864', fontSize: '18px', fontWeight: 'bold', margin: '0', textTransform: 'uppercase' }}>
+          🔒 Minting Closed
+        </p>
+      </div>
       
-      {/* Mint Counter */}
-      {!counterLoading && (
-        <div style={{ 
-          marginBottom: '20px', 
-          padding: '12px', 
-          background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-          borderRadius: '6px',
-          border: '1px solid #4a7d5f'
-        }}>
-          <p style={{ color: '#c8ffc8', fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0' }}>
-            {minted} of {max} minted
-          </p>
-          <p style={{ color: '#8a8a8a', fontSize: '14px', margin: '0' }}>
-            {remaining} remaining
-          </p>
-        </div>
-      )}
+      {/* Secondary Market Info */}
+      <div style={{ 
+        marginBottom: '20px', 
+        padding: '16px', 
+        background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+        borderRadius: '8px',
+        border: '2px solid #4a7d5f',
+        textAlign: 'left'
+      }}>
+        <p style={{ color: '#c8ffc8', fontSize: '15px', margin: '0 0 12px 0', fontWeight: 'bold' }}>
+          🛒 Buy Pickaxes on Secondary:
+        </p>
+        <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0 0 12px 0', lineHeight: '1.5' }}>
+          Primary mint is sold out. You can purchase pickaxes on the secondary market:
+        </p>
+        <a 
+          href="https://magiceden.io/collections/apechain/0x3322b37349aefd6f50f7909b641f2177c1d34d25"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display: 'inline-block',
+            padding: '12px 24px',
+            borderRadius: '6px',
+            background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+            color: '#c8ffc8',
+            border: '2px solid #64ff8a',
+            textDecoration: 'none',
+            fontSize: '14px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
+            e.currentTarget.style.borderColor = '#84ffa4';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #1a3d24)';
+            e.currentTarget.style.borderColor = '#64ff8a';
+          }}
+        >
+          🎨 View on Magic Eden
+        </a>
+      </div>
 
-      {/* Project Explanation */}
+      {/* Mining Info */}
       <div style={{ 
         marginBottom: '20px', 
         padding: '16px', 
@@ -741,91 +670,18 @@ function MintContent() {
         textAlign: 'left'
       }}>
         <p style={{ color: '#c8ffc8', fontSize: '15px', margin: '0 0 12px 0', fontWeight: 'bold' }}>
-          🎮 Mining-Focused Design:
+          ⛏️ About Pickaxes:
         </p>
         <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0 0 8px 0', lineHeight: '1.5' }}>
-          • 2 per wallet = 2 tabs/windows/devices on the same wallet at the same time
+          • Each pickaxe mines $MNESTR token rewards
         </p>
         <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0 0 8px 0', lineHeight: '1.5' }}>
-          • Free mint + 0.001 APE mine tax per claim
+          • 0.01 APE tax per claim (distributed to ecosystem)
         </p>
         <p style={{ color: '#c8ffc8', fontSize: '14px', margin: '0', lineHeight: '1.5' }}>
-          • Focus on mining, not flipping
+          • Hold NPCs for reward multipliers (1.2x - 1.5x)
         </p>
       </div>
-      
-      {priceLoading ? (
-        <p style={{ color: '#8a8a8a' }}>Loading price...</p>
-      ) : (
-        <div style={{ marginBottom: '20px' }}>
-          <p style={{ color: '#c8ffc8', fontSize: '14px' }}>
-            Price: {mintPrice ? formatEther(mintPrice) : '0'} APE
-          </p>
-        </div>
-      )}
-
-      <button
-        onClick={async () => {
-          try {
-            await mint();
-            setLastMintSuccess(true);
-          } catch (error) {
-            console.error('Mint failed:', error);
-          }
-        }}
-        disabled={!mintIsLive || !isReady || isMinting || remaining === 0 || !walletCanMint}
-        style={{
-          padding: '12px 24px',
-          borderRadius: '6px',
-          background: mintIsLive && isReady && !isMinting && remaining > 0 && walletCanMint
-            ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
-            : 'linear-gradient(145deg, #4a4a4a, #1a1a1a)',
-          color: '#c8ffc8',
-          border: '2px solid #8a8a8a',
-          cursor: mintIsLive && isReady && !isMinting && remaining > 0 && walletCanMint ? 'pointer' : 'not-allowed',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}
-      >
-        {!mintIsLive ? '🔒 Locked' : remaining === 0 ? 'Sold Out!' : !walletCanMint ? 'Already Owned!' : isMinting ? 'Minting...' : 'Mint'}
-      </button>
-
-      {/* Already Owned Message */}
-      {!walletLoading && !walletCanMint && ownedCount > 0 && (
-        <div style={{
-          marginTop: '16px',
-          padding: '12px',
-          background: 'linear-gradient(180deg, #2d1a0f, #4a2a1a)',
-          borderRadius: '6px',
-          border: '2px solid #ff8a64',
-          color: '#ff8a64',
-          fontSize: '14px',
-          fontWeight: 'bold'
-        }}>
-          ⚠️ You already own {ownedCount} cartridge{ownedCount > 1 ? 's' : ''}! 
-          <br />
-          <span style={{ fontSize: '12px', opacity: 0.8 }}>
-            Use the SELECT CARTRIDGE button to mine with your existing cartridge.
-          </span>
-        </div>
-      )}
-
-      {/* Success Message */}
-      {showSuccess && (
-        <div style={{
-          marginTop: '16px',
-          padding: '12px',
-          background: 'linear-gradient(180deg, #0f4d1a, #1a5d2a)',
-          borderRadius: '6px',
-          border: '2px solid #64ff8a',
-          color: '#64ff8a',
-          fontSize: '14px',
-          fontWeight: 'bold',
-          animation: 'pulse 1s ease-in-out'
-        }}>
-          🎉 Cartridge Minted Successfully! 🎉
-        </div>
-      )}
 
     </div>
   );
