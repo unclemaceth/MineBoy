@@ -1,97 +1,126 @@
 "use client";
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 interface ScrollingMessageBarProps {
   messages: string[];
   width: number;
   height?: number;
-  speed?: number; // pixels per second
-  messageGap?: number; // gap between messages in pixels
-  loopPause?: number; // pause at end of loop in milliseconds
+  speed?: number;      // pixels per second
+  messageGap?: number; // desired gap between messages
+  loopPause?: number;  // kept for backward compat, not used
 }
 
 export default function ScrollingMessageBar({
   messages,
   width,
   height = 20,
-  speed = 50, // default 50px per second
-  messageGap = 200, // default 200px gap between messages
-  loopPause = 2000, // not used anymore - continuous seamless scrolling
+  speed = 50,
+  messageGap = 200,
 }: ScrollingMessageBarProps) {
   const [offset, setOffset] = useState(0);
-  const textRef = useRef<HTMLDivElement>(null);
   const [textWidth, setTextWidth] = useState(0);
+  const textRef = useRef<HTMLDivElement>(null);
 
-  // Measure text width when messages change
-  useEffect(() => {
-    if (textRef.current) {
-      // Get the actual width of the first text block (not including duplicate)
-      const firstChild = textRef.current.firstChild as HTMLElement;
-      if (firstChild) {
-        setTextWidth(firstChild.offsetWidth);
+  // Ensure next message doesn't appear until previous fully exits
+  const gap = Math.max(messageGap, width);
+
+  // Measure width of the first block (the first <span> inside textRef)
+  useLayoutEffect(() => {
+    const measure = () => {
+      if (!textRef.current) return;
+      const first = textRef.current.firstElementChild as HTMLElement | null;
+      if (!first) return;
+      const w = Math.ceil(first.getBoundingClientRect().width);
+      if (w !== textWidth) setTextWidth(w);
+    };
+
+    measure();
+
+    // Re-measure on font load & resize
+    // (font metrics can change width after initial paint)
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      const fonts = (document as any).fonts;
+      if (fonts?.ready) {
+        fonts.ready.then(measure).catch(() => {});
       }
     }
-  }, [messages]);
 
+    const ro = new ResizeObserver(measure);
+    if (textRef.current) ro.observe(textRef.current);
+    return () => ro.disconnect();
+  }, [messages, height, width, gap, textWidth]); // re-measure when these change
+
+  // Smooth continuous loop with RAF
   useEffect(() => {
-    if (textWidth === 0) return; // Wait for measurement
-    
-    const interval = setInterval(() => {
-      setOffset((prev) => {
-        // For seamless loop: reset when we've scrolled exactly one message block + gap
-        // The duplicate will then appear to be the "new" first message
-        if (prev >= textWidth + messageGap) {
-          return 0; // Instant reset for seamless scrolling
-        }
-        
-        return prev + 1;
-      });
-    }, 1000 / speed); // Update based on speed
+    if (!textWidth) return;
+    let raf = 0;
+    let last = performance.now();
 
-    return () => clearInterval(interval);
-  }, [speed, messageGap, textWidth]);
+    const loop = (now: number) => {
+      const dt = (now - last) / 1000; // seconds
+      last = now;
+
+      setOffset((prev) => {
+        const next = prev + speed * dt;
+        // Must travel: banner width + block width + trailing gap
+        const cycle = width + textWidth + gap;
+        return next >= cycle ? next - cycle : next;
+      });
+
+      raf = requestAnimationFrame(loop);
+    };
+
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [speed, width, gap, textWidth]);
 
   return (
     <div
       style={{
-        width: `${width}px`,
-        height: `${height}px`,
-        backgroundColor: '#0b2f18', // Dark green
-        overflow: 'hidden',
-        position: 'relative',
+        width,
+        height,
+        backgroundColor: "#0b2f18", // Dark green
+        overflow: "hidden",
+        position: "relative",
       }}
     >
       <div
         ref={textRef}
         style={{
-          position: 'absolute',
-          whiteSpace: 'nowrap',
-          color: '#64ff8a', // Bright green
+          position: "absolute",
+          whiteSpace: "nowrap",
+          color: "#64ff8a",
           fontSize: 12,
-          fontFamily: 'Menlo, monospace',
+          fontFamily: "Menlo, monospace",
           letterSpacing: 1,
           lineHeight: `${height}px`,
           transform: `translateX(${width - offset}px)`,
-          willChange: 'transform',
+          willChange: "transform",
         }}
       >
-        {/* First copy with proper gaps between messages */}
+        {/* First block (sequence of messages) */}
         <span>
           {messages.map((msg, i) => (
             <React.Fragment key={`msg-${i}`}>
               {msg}
-              {i < messages.length - 1 && <span style={{ display: 'inline-block', width: `${messageGap}px` }} />}
+              {i < messages.length - 1 && (
+                <span style={{ display: "inline-block", width: gap }} />
+              )}
             </React.Fragment>
           ))}
         </span>
-        {/* Gap before duplicate */}
-        <span style={{ display: 'inline-block', width: `${messageGap}px` }} />
-        {/* Duplicate for seamless loop */}
+
+        {/* Trailing gap before the duplicate block */}
+        <span style={{ display: "inline-block", width: gap }} />
+
+        {/* Duplicate block for seamless looping */}
         <span>
           {messages.map((msg, i) => (
             <React.Fragment key={`msg-dup-${i}`}>
               {msg}
-              {i < messages.length - 1 && <span style={{ display: 'inline-block', width: `${messageGap}px` }} />}
+              {i < messages.length - 1 && (
+                <span style={{ display: "inline-block", width: gap }} />
+              )}
             </React.Fragment>
           ))}
         </span>
