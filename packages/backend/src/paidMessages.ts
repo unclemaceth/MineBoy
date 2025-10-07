@@ -354,9 +354,23 @@ export function isBlacklisted(wallet: string): boolean {
 }
 
 /**
- * Check max pending messages per wallet (limit: 3)
+ * Check max pending messages per wallet
+ * Limit: 50 total active messages per hour (system-wide)
+ * Limit: 3 pending per wallet
  */
 export function checkPendingLimit(wallet: string): void {
+  // Check system-wide active message limit (50 messages max)
+  const systemResult = db.prepare(`
+    SELECT COUNT(*) as count 
+    FROM paid_messages 
+    WHERE status IN ('active', 'playing', 'queued')
+  `).get() as { count: number };
+  
+  if (systemResult.count >= 50) {
+    throw new Error('Message queue is full (50 active messages). Please try again in a few minutes.');
+  }
+  
+  // Check per-wallet limit (3 pending)
   const result = db.prepare(`
     SELECT COUNT(*) as count 
     FROM paid_messages 

@@ -12,6 +12,7 @@ interface HUDProps {
   messages?: string[];       // Scrolling messages
   scrollSpeed?: number;      // Scroll speed in px/s
   messageGap?: number;       // Gap between messages in px
+  loopPause?: number;        // Pause at end of loop in ms
   onMessageBarClick?: () => void; // Callback when message bar is clicked
   onMnestrClick?: () => void;     // Callback when MNESTR panel is clicked
 }
@@ -26,6 +27,7 @@ export default function HUD({
   messages = ["MineBoy it Mines stuff!"],
   scrollSpeed = 50,
   messageGap = 100,
+  loopPause = 2000,
   onMessageBarClick,
   onMnestrClick,
 }: HUDProps) {
@@ -135,6 +137,7 @@ export default function HUD({
           height={20}
           speed={scrollSpeed}
           messageGap={messageGap}
+          loopPause={loopPause}
         />
       </div>
 

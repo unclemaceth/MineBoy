@@ -1571,7 +1571,8 @@ function Home() {
           width={390}
           messages={scrollingMessages}
           scrollSpeed={50}
-          messageGap={100}
+          messageGap={150}
+          loopPause={3000}
           onMessageBarClick={() => {
             playButtonSound();
             setShowPaidMessageModal(true);

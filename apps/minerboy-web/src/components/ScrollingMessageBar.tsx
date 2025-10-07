@@ -7,6 +7,7 @@ interface ScrollingMessageBarProps {
   height?: number;
   speed?: number; // pixels per second
   messageGap?: number; // gap between messages in pixels
+  loopPause?: number; // pause at end of loop in milliseconds
 }
 
 export default function ScrollingMessageBar({
@@ -15,8 +16,10 @@ export default function ScrollingMessageBar({
   height = 20,
   speed = 50, // default 50px per second
   messageGap = 200, // default 200px gap between messages
+  loopPause = 2000, // default 2 second pause between loops
 }: ScrollingMessageBarProps) {
   const [offset, setOffset] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
   const textRef = useRef<HTMLDivElement>(null);
   const [textWidth, setTextWidth] = useState(0);
 
@@ -34,12 +37,21 @@ export default function ScrollingMessageBar({
   useEffect(() => {
     if (textWidth === 0) return; // Wait for measurement
     
+    // If paused, wait for pause duration then resume
+    if (isPaused) {
+      const pauseTimeout = setTimeout(() => {
+        setIsPaused(false);
+        setOffset(0);
+      }, loopPause);
+      return () => clearTimeout(pauseTimeout);
+    }
+    
     const interval = setInterval(() => {
       setOffset((prev) => {
-        // Reset when we've scrolled the full width of one text block + gap
-        // This creates a seamless loop
+        // When we've scrolled past all content + gap, pause before loop
         if (prev >= textWidth + messageGap) {
-          return 0;
+          setIsPaused(true);
+          return prev; // Hold position during pause
         }
         
         return prev + 1;
@@ -47,7 +59,7 @@ export default function ScrollingMessageBar({
     }, 1000 / speed); // Update based on speed
 
     return () => clearInterval(interval);
-  }, [speed, messageGap, textWidth]);
+  }, [speed, messageGap, textWidth, loopPause, isPaused]);
 
   return (
     <div

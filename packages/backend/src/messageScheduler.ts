@@ -12,11 +12,20 @@ import Database from 'better-sqlite3';
 
 const db = new Database(process.env.DB_PATH || './paid_messages.db');
 
-// Weighted round-robin lanes (PAID gets 5/8, MINEBOY 2/8, SHILL 1/8)
+// Interleaved round-robin lanes for better distribution
+// Pattern: SHILL > PAID > MINEBOY (priority order)
+// But distributed to avoid grouping same types together
 const LANE_SEQUENCE = [
-  'PAID', 'PAID', 'PAID', 'PAID', 'PAID',  // 5 slots
-  'MINEBOY', 'MINEBOY',                     // 2 slots
-  'SHILL',                                  // 1 slot
+  'SHILL',    // 1: Highest priority (15 APE)
+  'PAID',     // 2
+  'MINEBOY',  // 3
+  'PAID',     // 4
+  'MINEBOY',  // 5
+  'PAID',     // 6
+  'PAID',     // 7
+  'PAID',     // 8
+  // Gives: SHILL(1/8), PAID(5/8), MINEBOY(2/8)
+  // But interleaved throughout instead of grouped
 ];
 
 // Per-wallet cooldown (seconds between plays for the same wallet)
