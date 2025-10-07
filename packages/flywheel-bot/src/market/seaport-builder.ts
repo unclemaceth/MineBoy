@@ -43,6 +43,41 @@ interface SeaportOrder {
 }
 
 /**
+ * Ensure Seaport is approved to transfer NFTs from wallet
+ * @returns true if already approved, false if approval was needed and executed
+ */
+async function ensureSeaportApproval(
+  wallet: Wallet,
+  nftContract: string
+): Promise<boolean> {
+  const walletAddr = await wallet.getAddress();
+  
+  const nft = new ethers.Contract(
+    nftContract,
+    [
+      'function isApprovedForAll(address owner, address operator) view returns (bool)',
+      'function setApprovalForAll(address operator, bool approved)'
+    ],
+    wallet
+  );
+  
+  const isApproved = await nft.isApprovedForAll(walletAddr, SEAPORT_ADDRESS);
+  
+  if (isApproved) {
+    console.log(`[Seaport] ✅ Already approved for ${nftContract.substring(0, 10)}...`);
+    return true;
+  }
+  
+  console.log(`[Seaport] Approving Seaport to transfer NFTs...`);
+  const tx = await nft.setApprovalForAll(SEAPORT_ADDRESS, true);
+  console.log(`[Seaport] Approval tx: ${tx.hash}`);
+  await tx.wait(1);
+  console.log(`[Seaport] ✅ Approved`);
+  
+  return false;
+}
+
+/**
  * Create and sign a Seaport order for an NFT listing
  */
 export async function createSeaportListing(
@@ -55,6 +90,23 @@ export async function createSeaportListing(
 ): Promise<{ order: SeaportOrder; signature: string; domain: any }> {
   
   const offerer = await wallet.getAddress();
+  
+  // Security Fix #3: Verify ownership before listing
+  const nft = new ethers.Contract(
+    nftContract,
+    ['function ownerOf(uint256) view returns (address)'],
+    wallet
+  );
+  
+  const owner = await nft.ownerOf(tokenId);
+  if (owner.toLowerCase() !== offerer.toLowerCase()) {
+    throw new Error(`Not owner of token ${tokenId}: owner=${owner}, wallet=${offerer}`);
+  }
+  
+  console.log(`[Seaport] ✅ Ownership verified for token #${tokenId}`);
+  
+  // Security Fix #2: Ensure Seaport approval before creating listing
+  await ensureSeaportApproval(wallet, nftContract);
   const now = Math.floor(Date.now() / 1000);
   const endTime = now + durationSeconds;
   

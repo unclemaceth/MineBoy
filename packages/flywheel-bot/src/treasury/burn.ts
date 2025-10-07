@@ -31,6 +31,20 @@ const ERC20_ABI = [
 ];
 
 /**
+ * Security Fix #5: Gas price caps to prevent excessive fees
+ * Returns { maxFeePerGas, maxPriorityFeePerGas } in wei
+ */
+function getGasCaps() {
+  const maxFeeGwei = Number(process.env.MAX_FEE_GWEI || '50');
+  const maxPriorityGwei = Number(process.env.MAX_PRIORITY_FEE_GWEI || '2');
+  
+  return {
+    maxFeePerGas: parseEther(String(maxFeeGwei / 1e9)), // Convert gwei to wei
+    maxPriorityFeePerGas: parseEther(String(maxPriorityGwei / 1e9))
+  };
+}
+
+/**
  * Execute the burn flywheel:
  * 1. Check treasury APE balance
  * 2. Swap 99% APE → MNESTR
@@ -94,17 +108,25 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
   console.log(`[Treasury] Min MNESTR (15% slippage): ${formatEther(minMNESTR)}`);
   
+  // Get gas price caps for all transactions
+  const gasCaps = getGasCaps();
+  console.log(`[Gas] Max fee: ${formatEther(gasCaps.maxFeePerGas)} ETH, Max priority: ${formatEther(gasCaps.maxPriorityFeePerGas)} ETH`);
+  
   // Step 1: Wrap native APE → WAPE
   console.log(`[Treasury] Step 1: Wrapping ${formatEther(apeForSwap)} APE → WAPE...`);
   const wape = new Contract(cfg.wape, WAPE_ABI, treasury);
-  const wrapTx = await wape.deposit({ value: apeForSwap, gasLimit: 100000 });
+  const wrapTx = await wape.deposit({ 
+    value: apeForSwap, 
+    gasLimit: 100000,
+    ...gasCaps
+  });
   console.log(`[Treasury] Wrap tx submitted: ${wrapTx.hash}`);
   await wrapTx.wait(1); // Wait for 1 confirmation only
   console.log(`[Treasury] ✅ Wrapped`);
   
   // Step 2: Approve YakRouter to spend WAPE
   console.log(`[Treasury] Step 2: Approving YakRouter...`);
-  const approveTx = await wape.approve(YAK_ROUTER, apeForSwap);
+  const approveTx = await wape.approve(YAK_ROUTER, apeForSwap, gasCaps);
   console.log(`[Treasury] Approve tx submitted: ${approveTx.hash}`);
   await approveTx.wait(1);
   console.log(`[Treasury] ✅ Approved`);
@@ -148,7 +170,8 @@ export async function executeBurn(): Promise<{
     to: YAK_ROUTER,
     data: calldata,
     value: 0, // token-in, no value
-    gasLimit: 300000
+    gasLimit: 300000,
+    ...gasCaps
   });
   
   console.log(`[Treasury] Swap tx submitted: ${swapTx.hash}`);
@@ -165,7 +188,7 @@ export async function executeBurn(): Promise<{
   let burnTxHash = '';
   if (mnestrBalance > 0n) {
     console.log(`[Treasury] Burning ${formatEther(mnestrBalance)} MNESTR...`);
-    const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance);
+    const burnTx = await mnestrContract.transfer(BURN_ADDRESS, mnestrBalance, gasCaps);
     burnTxHash = burnTx.hash;
     console.log(`[Treasury] Burn tx submitted: ${burnTxHash}`);
     await burnTx.wait(1);
@@ -180,7 +203,8 @@ export async function executeBurn(): Promise<{
     const gasTx = await treasury.sendTransaction({
       to: cfg.flywheelAddr,
       value: apeForTradingWallet,
-      gasLimit: 100000
+      gasLimit: 100000,
+      ...gasCaps
     });
     console.log(`[Treasury] Gas transfer tx submitted: ${gasTx.hash}`);
     await gasTx.wait(1);
@@ -194,6 +218,6 @@ export async function executeBurn(): Promise<{
     apeForSwap: formatEther(apeForSwap),
     apeForGas: formatEther(gasReserve),
     mnestrBurned: formatEther(mnestrBalance),
-    burnTxHash
+    txHash: burnTxHash
   };
 }

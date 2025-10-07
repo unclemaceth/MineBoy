@@ -45,6 +45,16 @@ async function checkOwnedNPCs(): Promise<string[]> {
   return [];
 }
 
+/**
+ * Security Fix #4: Emergency stop mechanism
+ * Check if emergency stop is enabled
+ * Set EMERGENCY_STOP=1 in Render env vars to halt the bot
+ */
+function shouldStop(): boolean {
+  const emergencyStop = process.env.EMERGENCY_STOP || '0';
+  return emergencyStop === '1' || emergencyStop === 'true' || emergencyStop === 'TRUE';
+}
+
 async function loop() {
   console.log(`
 ╔════════════════════════════════════════════════════════╗
@@ -76,6 +86,13 @@ async function loop() {
 
   while (true) {
     try {
+      // Security Fix #4: Check emergency stop
+      if (shouldStop()) {
+        console.warn('⚠️  [EMERGENCY STOP] Bot is paused. Set EMERGENCY_STOP=0 to resume.');
+        await wait(10000); // Wait 10s before checking again
+        continue;
+      }
+      
       resetDailyIfNeeded();
 
       // Get next listing from your source

@@ -2,6 +2,7 @@ import axios from 'axios';
 import { cfg } from '../config.js';
 import { flywheel } from '../wallets.js';
 import type { ManualListing } from './manualListings.js';
+import { getAddress, isAddress } from 'ethers';
 
 /**
  * Magic Eden API Integration
@@ -12,6 +13,16 @@ import type { ManualListing } from './manualListings.js';
 
 const MAGIC_EDEN_API = 'https://api-mainnet.magiceden.dev/v3/rtp';
 const MAGIC_EDEN_KEY = process.env.MAGICEDEN_API_KEY;
+
+// Security: Whitelist of trusted router/marketplace addresses
+const ROUTER_WHITELIST = new Set([
+  '0x00000000000000adc04c56bf30ac9d3c0aaf14dc', // Seaport 1.6
+  '0x2b59eb03865d18d8b62a5956bbbfae352fc1c148', // YakRouter (if used for purchases)
+].map(a => a.toLowerCase()));
+
+// Price sanity bounds (in APE)
+const MIN_PRICE_APE = Number(process.env.MIN_NPC_PRICE || '10');
+const MAX_PRICE_APE = Number(process.env.MAX_NPC_PRICE || '1000');
 
 interface MagicEdenToken {
   token: {
@@ -36,6 +47,47 @@ interface MagicEdenToken {
       };
     };
   };
+}
+
+/**
+ * Validate listing data for security
+ * Prevents malicious API responses from draining wallet
+ */
+function validateListing(listing: any): void {
+  // Check required fields
+  if (!listing || !listing.to || !listing.data) {
+    throw new Error('Missing required fields (to, data)');
+  }
+
+  // Validate router/marketplace address
+  const router = listing.to.toLowerCase();
+  if (!isAddress(router)) {
+    throw new Error(`Invalid router address: ${router}`);
+  }
+  
+  if (!ROUTER_WHITELIST.has(router)) {
+    throw new Error(`Router not whitelisted: ${router} (expected Seaport or YakRouter)`);
+  }
+
+  // Validate price is reasonable
+  const priceAPE = Number(listing.priceNative || 0);
+  if (!Number.isFinite(priceAPE) || priceAPE < MIN_PRICE_APE || priceAPE > MAX_PRICE_APE) {
+    throw new Error(`Price ${priceAPE} APE outside sane range (${MIN_PRICE_APE}-${MAX_PRICE_APE})`);
+  }
+
+  // Validate tokenId is numeric
+  const tokenId = String(listing.tokenId || '');
+  if (!/^\d+$/.test(tokenId)) {
+    throw new Error(`Invalid tokenId: ${tokenId}`);
+  }
+
+  // Validate calldata is hex
+  const data = listing.data || '';
+  if (!/^0x[0-9a-fA-F]+$/.test(data)) {
+    throw new Error(`Invalid calldata format: ${data.substring(0, 20)}...`);
+  }
+
+  console.log(`[Security] ✅ Listing validated: tokenId=${tokenId}, price=${priceAPE} APE, router=${router.substring(0, 10)}...`);
 }
 
 /**
@@ -126,13 +178,23 @@ export async function getCheapestListing(): Promise<ManualListing | null> {
 
     console.log(`[MagicEden] ✅ Got execution data`);
 
-    return {
+    const listing = {
       to: txData.to,
       data: txData.data,
       valueWei: txData.value || priceWei,
       tokenId: tokenId,
       priceNative: priceNative
     };
+
+    // Security: Validate listing before returning
+    try {
+      validateListing(listing);
+    } catch (err: any) {
+      console.error(`[Security] ❌ Listing validation failed: ${err.message}`);
+      return null;
+    }
+
+    return listing;
 
   } catch (error: any) {
     console.error('[MagicEden] Error:', error.response?.data || error.message);
