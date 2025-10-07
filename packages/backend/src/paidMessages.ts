@@ -420,6 +420,10 @@ export function addPaidMessage(params: {
   const config = MESSAGE_TYPES[params.messageType];
   const duration_ms = config.duration * 1000;
   
+  // DEBUG: Check message before DB insert
+  console.log('[PM:DB] Message before insert:', JSON.stringify(params.message));
+  console.log('[PM:DB] Contains "d" before insert?', params.message?.includes('d') || params.message?.includes('D'));
+  
   const row = {
     id,
     wallet,

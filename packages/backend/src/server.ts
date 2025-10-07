@@ -1433,6 +1433,11 @@ fastify.post<{ Body: { message: string; txHash: string; wallet: string; messageT
     try {
       const { message, txHash, wallet, messageType = 'PAID' } = req.body;
       
+      // DEBUG: Check message at server entry
+      console.log('[PM:BE] Server received message:', JSON.stringify(message));
+      console.log('[PM:BE] Message length:', message?.length);
+      console.log('[PM:BE] Contains "d"?', message?.includes('d') || message?.includes('D'));
+      
       if (!message || !txHash || !wallet) {
         return res.status(400).send({ 
           code: 'bad_request', 
