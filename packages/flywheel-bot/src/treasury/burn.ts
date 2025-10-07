@@ -13,16 +13,9 @@ import { cfg } from '../config.js';
 
 const BURN_ADDRESS = '0x000000000000000000000000000000000000dEaD';
 
-// UniswapV2-style Router ABI (works with V2 pools)
-const ROUTER_V2_ABI = [
-  'function swapExactTokensForTokens(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline) external returns (uint[] memory amounts)'
-];
-
-// WAPE ABI (for wrapping native APE)
-const WAPE_ABI = [
-  'function deposit() payable',
-  'function approve(address spender, uint256 amount) returns (bool)',
-  'function balanceOf(address) view returns (uint256)'
+// YakRouter (aggregator) ABI - uses native APE, no wrapping needed!
+const YAK_ROUTER_ABI = [
+  'function swapNoSplitFromETH((uint256 amountIn, uint256 amountOut, address[] path, address[] adapters) _trade, uint256 _fee, address _to) payable'
 ];
 
 const ERC20_ABI = [
@@ -74,13 +67,13 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Will swap: ${formatEther(apeForSwap)} APE (99% of swappable)`);
   console.log(`[Treasury] Will send to trading: ${formatEther(apeForTradingWallet)} APE (1% of swappable)`);
   
-  // 3. Swap APE → MNESTR via Camelot V3 (Algebra)
-  // V3 requires: Wrap → Approve → Swap (NO msg.value on swap)
+  // 3. Swap APE → MNESTR via YakRouter (aggregator)
+  // Uses native APE directly - no wrapping needed!
   
-  console.log(`[Treasury] Using Camelot V3 (Algebra) router`);
+  console.log(`[Treasury] Using YakRouter (DEX aggregator)`);
   console.log(`[Treasury] Treasury signer: ${treasuryAddr}`);
   console.log(`[Treasury] Router: ${cfg.dexRouter}`);
-  console.log(`[Treasury] Path: WAPE → MNESTR`);
+  console.log(`[Treasury] Path: APE → MNESTR`);
   
   // Use conservative slippage based on observed rate (~61k MNESTR per APE)
   const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
@@ -90,39 +83,31 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
   console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
   
-  // Step 1: Wrap native APE → WAPE (THIS is where value is sent)
-  console.log(`[Treasury] Step 1: Wrapping ${formatEther(apeForSwap)} APE → WAPE...`);
-  const wape = new Contract(cfg.wape, WAPE_ABI, treasury);
-  const wrapTx = await wape.deposit({ value: apeForSwap, gasLimit: 100000 });
-  await wrapTx.wait();
-  console.log(`[Treasury] ✅ Wrapped APE → WAPE (tx: ${wrapTx.hash})`);
+  const router = new Contract(cfg.dexRouter, YAK_ROUTER_ABI, treasury);
   
-  // Step 2: Approve router to spend WAPE
-  console.log(`[Treasury] Step 2: Approving router to spend ${formatEther(apeForSwap)} WAPE...`);
-  const approveTx = await wape.approve(cfg.dexRouter, apeForSwap);
-  await approveTx.wait();
-  console.log(`[Treasury] ✅ Approved router (tx: ${approveTx.hash})`);
+  // YakRouter adapters (from successful swap tx)
+  const adapters = [
+    '0xf05902d8eb53a354c9ddc67175df3d9bee1f9581', // Adapter 1
+    '0x7101842054d75e8f2b15c0026254b0d7c525d594'  // Pool address
+  ];
   
-  // Step 3: Execute V2 swap (WAPE → MNESTR)
-  console.log(`[Treasury] Step 3: Executing V2 swap WAPE → MNESTR...`);
-  const router = new Contract(cfg.dexRouter, ROUTER_V2_ABI, treasury);
+  const trade = {
+    amountIn: apeForSwap,
+    amountOut: minMNESTR,
+    path: [cfg.wape, cfg.mnestr], // WAPE → MNESTR (router wraps internally)
+    adapters
+  };
   
-  const deadline = Math.floor(Date.now() / 1000) + 300; // 5 minutes
-  const path = [cfg.wape, cfg.mnestr]; // WAPE → MNESTR
-  
-  console.log(`[Treasury] Router: ${cfg.dexRouter}`);
-  console.log(`[Treasury] Path: ${path.join(' → ')}`);
-  console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} WAPE`);
+  console.log(`[Treasury] Executing YakRouter swap (native APE)...`);
+  console.log(`[Treasury] AmountIn: ${formatEther(apeForSwap)} APE`);
   console.log(`[Treasury] AmountOutMin: ${formatEther(minMNESTR)} MNESTR`);
-  console.log(`[Treasury] Deadline: ${new Date(deadline * 1000).toISOString()}`);
   
-  // Execute V2 swap (WAPE already wrapped and approved)
-  const swapTx = await router.swapExactTokensForTokens(
-    apeForSwap,
-    minMNESTR,
-    path,
-    treasuryAddr,
-    deadline
+  // Execute swap with native APE (payable function)
+  const swapTx = await router.swapNoSplitFromETH(
+    trade,
+    0, // No fee
+    treasuryAddr, // Recipient
+    { value: apeForSwap, gasLimit: 500000 }
   );
   
   console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
