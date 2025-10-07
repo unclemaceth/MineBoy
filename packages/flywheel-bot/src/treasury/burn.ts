@@ -118,8 +118,24 @@ export async function executeBurn(): Promise<{
     limitSqrtPrice: 0n // No price limit
   };
   
+  // Validate calldata is being generated correctly
+  console.log(`[Treasury] Validating swap parameters...`);
+  console.log(`[Treasury] tokenIn: ${params.tokenIn}`);
+  console.log(`[Treasury] tokenOut: ${params.tokenOut}`);
+  console.log(`[Treasury] amountIn: ${params.amountIn.toString()}`);
+  console.log(`[Treasury] amountOutMinimum: ${params.amountOutMinimum.toString()}`);
+  
+  const populated = await router.exactInputSingle.populateTransaction(params);
+  console.log(`[Treasury] Calldata length: ${populated.data?.length ?? 0} bytes`);
+  
+  if (!populated.data || populated.data === '0x' || populated.data.length < 10) {
+    throw new Error('Router calldata is empty - ABI/params mismatch!');
+  }
+  
+  console.log(`[Treasury] Calldata: ${populated.data.substring(0, 66)}...`);
+  
   // Execute V3 swap with NO value (WAPE is already wrapped and approved)
-  const swapTx = await router.exactInputSingle(params, { gasLimit: 500000 });
+  const swapTx = await router.exactInputSingle(params);
   
   console.log(`[Treasury] Swap tx: ${swapTx.hash}`);
   const swapReceipt = await swapTx.wait();
