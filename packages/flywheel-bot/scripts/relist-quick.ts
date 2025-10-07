@@ -8,11 +8,11 @@ import { cfg } from '../src/config.js';
 
 async function main() {
   // Hardcoded list of owned tokens (update this when bot buys/sells)
-  const ownedTokens = ['83', '1077'];
+  const ownedTokens = ['869', '1077'];
   
   console.log(`📋 Relisting ${ownedTokens.length} owned NPCs...`);
   
-  const basePrice = 55.5;
+  const basePrice = 55.6;
   
   for (let i = 0; i < ownedTokens.length; i++) {
     const tokenId = ownedTokens[i];
