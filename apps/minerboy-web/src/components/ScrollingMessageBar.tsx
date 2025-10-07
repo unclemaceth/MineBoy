@@ -1,8 +1,14 @@
 "use client";
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 
+interface Message {
+  text: string;
+  color?: string;
+  prefix?: string;
+}
+
 interface ScrollingMessageBarProps {
-  messages: string[];
+  messages: (string | Message)[];
   width: number;
   height?: number;
   speed?: number;      // pixels per second
@@ -89,7 +95,6 @@ export default function ScrollingMessageBar({
         style={{
           position: "absolute",
           whiteSpace: "nowrap",
-          color: "#64ff8a",
           fontSize: 12,
           fontFamily: "Menlo, monospace",
           letterSpacing: 1,
@@ -100,14 +105,20 @@ export default function ScrollingMessageBar({
       >
         {/* First block (sequence of messages) */}
         <span>
-          {messages.map((msg, i) => (
-            <React.Fragment key={`msg-${i}`}>
-              {msg}
-              {i < messages.length - 1 && (
-                <span style={{ display: "inline-block", width: gap }} />
-              )}
-            </React.Fragment>
-          ))}
+          {messages.map((msg, i) => {
+            const isStructured = typeof msg === 'object';
+            const text = isStructured ? `${msg.prefix || ''}${msg.text}` : msg;
+            const color = isStructured ? (msg.color || '#64ff8a') : '#64ff8a';
+            
+            return (
+              <React.Fragment key={`msg-${i}`}>
+                <span style={{ color }}>{text}</span>
+                {i < messages.length - 1 && (
+                  <span style={{ display: "inline-block", width: gap }} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </span>
 
         {/* Trailing gap before the duplicate block */}
@@ -115,14 +126,20 @@ export default function ScrollingMessageBar({
 
         {/* Duplicate block for seamless looping */}
         <span>
-          {messages.map((msg, i) => (
-            <React.Fragment key={`msg-dup-${i}`}>
-              {msg}
-              {i < messages.length - 1 && (
-                <span style={{ display: "inline-block", width: gap }} />
-              )}
-            </React.Fragment>
-          ))}
+          {messages.map((msg, i) => {
+            const isStructured = typeof msg === 'object';
+            const text = isStructured ? `${msg.prefix || ''}${msg.text}` : msg;
+            const color = isStructured ? (msg.color || '#64ff8a') : '#64ff8a';
+            
+            return (
+              <React.Fragment key={`msg-dup-${i}`}>
+                <span style={{ color }}>{text}</span>
+                {i < messages.length - 1 && (
+                  <span style={{ display: "inline-block", width: gap }} />
+                )}
+              </React.Fragment>
+            );
+          })}
         </span>
       </div>
     </div>

@@ -6,7 +6,11 @@ import { getDB } from './db.js';
 const HOUR_MS = 60 * 60 * 1000;
 const ONE_APE_WEI = parseEther('1');
 const ROUTER_ADDRESS = (process.env.PAID_MESSAGES_ROUTER || '').toLowerCase();
-const RPC_URL = process.env.ALCHEMY_RPC_URL || 'https://apechain-mainnet.g.alchemy.com/v2/3YobnRFCSYEuIC5c1ySEs';
+const RPC_URL = process.env.RPC_URL!;
+
+// Validate required environment variables
+if (!RPC_URL) throw new Error('RPC_URL env var is required');
+if (!ROUTER_ADDRESS) throw new Error('PAID_MESSAGES_ROUTER env var is required');
 
 // Event signature for router's Paid event
 const PAID_EVENT = parseAbiItem('event Paid(address indexed payer, uint256 amount, bytes32 msgHash)');
@@ -147,6 +151,11 @@ export function validateMessage(raw: string, messageType: 'PAID' | 'SHILL' | 'MI
     return { ok: false, reason: `Message must be ${maxLen} characters or less` };
   }
   
+  // Reject empty or punctuation-only messages
+  if (!/\w/.test(cleaned)) {
+    return { ok: false, reason: 'Message must contain letters or numbers' };
+  }
+  
   // Unicode hygiene: reject if too many special chars
   const specialCharCount = (cleaned.match(/[^\w\s.,!?@#$%&*()[\]{}<>:;'"\/\\|-]/g) || []).length;
   if (specialCharCount / cleaned.length > 0.3) {
@@ -220,8 +229,11 @@ export async function verifyOnChain(
     throw new Error(`Insufficient payment: ${formatEther(eventAmount)} APE (minimum ${MESSAGE_TYPES[messageType].cost} APE)`);
   }
 
-  // (Optional) Verify msgHash matches keccak256(messageText)
-  // For now we trust the frontend computed the hash correctly
+  // Verify msgHash matches keccak256(messageText) - prevents post-payment text swap
+  const expectedHash = keccak256(toBytes(messageText));
+  if (expectedHash.toLowerCase() !== eventMsgHash.toLowerCase()) {
+    throw new Error('Message hash mismatch (text differs from paid payload)');
+  }
 
   return {
     wallet: eventPayer,
@@ -275,7 +287,7 @@ export async function checkPendingLimit(wallet: string): Promise<void> {
   const systemResult = await db.prepare(`
     SELECT COUNT(*) as count 
     FROM paid_messages 
-    WHERE status IN ('active', 'playing', 'queued')
+    WHERE status IN ('active', 'playing')
   `).get() as { count: number };
   
   if (systemResult.count >= 50) {
@@ -286,7 +298,7 @@ export async function checkPendingLimit(wallet: string): Promise<void> {
   const result = await db.prepare(`
     SELECT COUNT(*) as count 
     FROM paid_messages 
-    WHERE wallet = @wallet AND status IN ('active', 'playing', 'queued')
+    WHERE wallet = @wallet AND status IN ('active', 'playing')
   `).get({ wallet: wallet.toLowerCase() }) as { count: number };
   
   if (result.count >= 3) {

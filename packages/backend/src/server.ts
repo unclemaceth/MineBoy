@@ -506,10 +506,10 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     if (!ownershipLock || !sameAddr(ownershipLock.ownerAtAcquire, session.wallet)) {
       console.log(`[CLAIM_DEBUG] Ownership lock lost for ${contract}:${tokenId}`);
       
-      reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
-      reply.header('X-Lock-Owner', 'none');
-      reply.header('X-Lock-Session', 'none');
-      reply.header('X-Lock-Expires', '0');
+      reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
+      reply.header('X-Lock-Owner', String('none'));
+      reply.header('X-Lock-Session', String('none'));
+      reply.header('X-Lock-Expires', String('0'));
       
       return reply.code(409).send({ 
         error: 'lock_owned_elsewhere',
@@ -523,10 +523,10 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
       console.log(`[CLAIM_DEBUG] Session lock lost for ${contract}:${tokenId}`);
       
-      reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
-      reply.header('X-Lock-Owner', session.wallet);
-      reply.header('X-Lock-Session', 'none');
-      reply.header('X-Lock-Expires', '0');
+      reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
+      reply.header('X-Lock-Owner', String(session.wallet));
+      reply.header('X-Lock-Session', String('none'));
+      reply.header('X-Lock-Expires', String('0'));
       
       return reply.code(409).send({ 
         error: 'lock_owned_elsewhere',
@@ -552,10 +552,10 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     }
     
     // Add success headers
-    reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
-    reply.header('X-Lock-Owner', minerId);
-    reply.header('X-Lock-Session', sessionId);
-    reply.header('X-Lock-Expires', Date.now() + 45000);
+    reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
+    reply.header('X-Lock-Owner', String(minerId));
+    reply.header('X-Lock-Session', String(sessionId));
+    reply.header('X-Lock-Expires', String(Date.now() + 45000));
     
     return result;
     
@@ -623,10 +623,10 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim/v2', async (request, reply) => {
     }
     
     // Add success headers
-    reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
-    reply.header('X-Lock-Owner', minerId);
-    reply.header('X-Lock-Session', sessionId);
-    reply.header('X-Lock-Expires', Date.now() + 45000);
+    reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
+    reply.header('X-Lock-Owner', String(minerId));
+    reply.header('X-Lock-Session', String(sessionId));
+    reply.header('X-Lock-Expires', String(Date.now() + 45000));
     
     return result;
     
@@ -926,9 +926,9 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     }
     
     // Add lock headers for debugging
-    reply.header('X-Instance', process.env.HOSTNAME || 'unknown');
-    reply.header('X-Lock-Owner', session.wallet);
-    reply.header('X-Lock-Session', sessionId);
+    reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
+    reply.header('X-Lock-Owner', String(session.wallet));
+    reply.header('X-Lock-Session', String(sessionId));
     reply.header('X-Lock-Expires', Date.now() + 60000); // 60s from now
     
     console.log('[HB] 200 success:', { sessionId, minerId, wallet: session.wallet });
@@ -1353,34 +1353,38 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 // ---- Message Management Routes ----
 
 // Get all messages (public) - combines admin and currently playing paid messages
+// Returns structured objects with text, color, prefix for proper banner styling
 fastify.get('/v2/messages', async (req, res) => {
   const adminMessages = await messageStore.getMessages();
   const playingPaidMessages = await getCurrentlyPlaying();
   
-  // DEBUG: Check messages from database
-  if (playingPaidMessages.length > 0) {
-    console.log('[PM:API] Playing messages from DB:', playingPaidMessages.map(m => ({
-      id: m.id,
-      message: JSON.stringify(m.message),
-      hasD: m.message?.includes('d') || m.message?.includes('D')
-    })));
-  }
+  // Format MINEBOY admin messages as structured objects
+  const adminMessagesStructured = adminMessages.map(text => ({
+    text,
+    color: '#ffffff', // white
+    prefix: 'MineBoy: ',
+    type: 'MINEBOY'
+  }));
   
-  // Format paid messages with prefix and color
-  const formattedPaidMessages = playingPaidMessages.map(m => {
+  // Format paid messages with proper metadata
+  const paidMessagesStructured = playingPaidMessages.map(m => {
     const prefix = m.message_type === 'PAID' ? 'PAID CONTENT: ' 
                  : m.message_type === 'SHILL' ? 'Shilled Content: '
                  : 'MineBoy: ';
-    const formatted = `${prefix}${m.message}`;
+    const color = m.message_type === 'PAID' ? '#4ade80' // green
+                : m.message_type === 'SHILL' ? '#ff4444' // red
+                : '#ffffff'; // white
     
-    // DEBUG: Check formatted message
-    console.log('[PM:API] Formatted message:', JSON.stringify(formatted), 'hasD:', formatted.includes('d') || formatted.includes('D'));
-    
-    return formatted;
+    return {
+      text: m.message,
+      color,
+      prefix,
+      type: m.message_type
+    };
   });
   
   // Combine: admin messages first, then paid messages
-  const allMessages = [...adminMessages, ...formattedPaidMessages];
+  const allMessages = [...adminMessagesStructured, ...paidMessagesStructured];
   
   return reply.send({ messages: allMessages });
 });
