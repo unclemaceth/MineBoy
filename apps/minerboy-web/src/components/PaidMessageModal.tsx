@@ -15,13 +15,19 @@ interface PaidMessageModalProps {
 }
 
 const ROUTER_ADDRESS = (process.env.NEXT_PUBLIC_PAID_MESSAGES_ROUTER || '') as `0x${string}`;
-const MESSAGE_COST = '1'; // 1 APE
+
+const MESSAGE_TYPES = {
+  PAID: { cost: '1', maxLen: 64, duration: '1 hour', color: '#4ade80' },
+  SHILL: { cost: '15', maxLen: 128, duration: '4 hours', color: '#ef4444' },
+} as const;
 
 export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }: PaidMessageModalProps) {
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'PAID' | 'SHILL'>('PAID');
   const [status, setStatus] = useState<'idle' | 'sending' | 'confirming' | 'submitting' | 'success' | 'error'>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
+  const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const { address, provider } = useActiveAccount();
   const walletClient = useActiveWalletClient();
   
@@ -38,6 +44,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           message,
           txHash: hash,
           wallet: address,
+          messageType,
         }),
       });
       
@@ -75,15 +82,27 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
     }
   }, [isConfirmed, status, txHash]);
   
+  // Fetch queue position on mount
+  useEffect(() => {
+    if (isOpen && address) {
+      fetch(`${process.env.NEXT_PUBLIC_API_BASE}/v2/messages/queue?wallet=${address}`)
+        .then(res => res.json())
+        .then(data => setQueuePosition(data.yourPosition))
+        .catch(() => setQueuePosition(null));
+    }
+  }, [isOpen, address]);
+  
   const handleSubmit = async () => {
+    const config = MESSAGE_TYPES[messageType];
+    
     if (!message.trim()) {
       setErrorMessage('Message cannot be empty');
       playFailSound();
       return;
     }
     
-    if (message.length > 64) {
-      setErrorMessage('Message must be 64 characters or less');
+    if (message.length > config.maxLen) {
+      setErrorMessage(`Message must be ${config.maxLen} characters or less`);
       playFailSound();
       return;
     }
@@ -114,7 +133,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
       // Calculate message hash (same as backend will verify)
       const msgHash = keccak256(toBytes(message.trim()));
       
-      console.log('[PAID_MESSAGE] Sending transaction...', { provider, address });
+      console.log('[PAID_MESSAGE] Sending transaction...', { provider, address, messageType, cost: config.cost });
       
       // Call router contract's pay() function using walletClient (works with both Glyph and WC)
       const hash = await walletClient.writeContract({
@@ -122,7 +141,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
         abi: PaidMessagesRouterABI,
         functionName: 'pay',
         args: [msgHash],
-        value: parseEther(MESSAGE_COST),
+        value: parseEther(config.cost),
       });
       
       console.log('[PAID_MESSAGE] Transaction sent:', hash);
@@ -206,6 +225,38 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           </button>
         </div>
         
+        {/* Message Type Selector */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={{
+            display: 'block',
+            marginBottom: '8px',
+            fontSize: '12px',
+            fontWeight: 'bold',
+            color: '#64ff8a',
+          }}>
+            Message Type:
+          </label>
+          <select 
+            value={messageType}
+            onChange={(e) => setMessageType(e.target.value as 'PAID' | 'SHILL')}
+            disabled={status !== 'idle' && status !== 'error'}
+            style={{
+              width: '100%',
+              padding: '10px',
+              backgroundColor: '#0f2216',
+              border: '2px solid #4a7d5f',
+              borderRadius: '6px',
+              color: '#c8ffc8',
+              fontSize: '14px',
+              fontFamily: 'Menlo, monospace',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="PAID">💬 Paid Message (1 APE • 64 chars • 1 hour)</option>
+            <option value="SHILL">🔥 Shill Message (15 APE • 128 chars • 4 hours)</option>
+          </select>
+        </div>
+        
         {/* Instructions */}
         <div style={{
           marginBottom: '16px',
@@ -214,14 +265,42 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           color: '#8fbc8f',
         }}>
           <p style={{ margin: '0 0 8px 0' }}>
-            Post your message to the scrolling banner for <strong>1 hour</strong>!
+            Post your message to the scrolling banner for <strong>{MESSAGE_TYPES[messageType].duration}</strong>!
           </p>
           <p style={{ margin: '0 0 8px 0' }}>
-            <strong>Cost:</strong> {MESSAGE_COST} APE
+            <strong>Cost:</strong> {MESSAGE_TYPES[messageType].cost} APE
           </p>
-          <p style={{ margin: '0', fontSize: '11px', color: '#666' }}>
-            Max 64 characters • Auto-moderated
+          <p style={{ margin: '0 0 8px 0', fontSize: '11px', color: '#666' }}>
+            Max {MESSAGE_TYPES[messageType].maxLen} characters • Auto-moderated
           </p>
+          {queuePosition && (
+            <p style={{ margin: '8px 0 0 0', fontSize: '11px', color: '#fbbf24' }}>
+              Queue Position: #{queuePosition}
+            </p>
+          )}
+        </div>
+        
+        {/* Beta Disclaimer */}
+        <div style={{
+          marginBottom: '16px',
+          padding: '12px',
+          backgroundColor: '#1a1a1a',
+          border: '1px solid #fbbf24',
+          borderRadius: '6px',
+          fontSize: '11px',
+          lineHeight: '1.5',
+          color: '#fbbf24',
+        }}>
+          ⚠️ <strong>Beta Testing:</strong> If your message doesn't appear within 10 minutes, 
+          please reach out in <a 
+            href="https://discord.gg/yourserver" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ color: '#60a5fa', textDecoration: 'underline' }}
+          >
+            Discord
+          </a>. 
+          This feature is meant to be fun and useful for founders to share announcements. <strong>Non-refundable.</strong>
         </div>
         
         {/* Message Input */}
@@ -238,7 +317,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            maxLength={64}
+            maxLength={MESSAGE_TYPES[messageType].maxLen}
             disabled={status !== 'idle' && status !== 'error'}
             placeholder="Type your message here..."
             style={{
@@ -258,10 +337,10 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           <div style={{
             marginTop: '4px',
             fontSize: '11px',
-            color: message.length > 64 ? '#ff6b6b' : '#666',
+            color: message.length > MESSAGE_TYPES[messageType].maxLen ? '#ff6b6b' : '#666',
             textAlign: 'right',
           }}>
-            {message.length} / 64
+            {message.length} / {MESSAGE_TYPES[messageType].maxLen}
           </div>
         </div>
         
