@@ -1704,6 +1704,41 @@ fastify.get('/v2/admin/messages/paid/stats', async (req, reply) => {
   return reply.send(getPaidMessageStats());
 });
 
+// Database diagnostic (admin only) - proves which DB is being used in production
+fastify.get('/v2/admin/db-proof', async (req, reply) => {
+  if (!requireDebugAuth(req, reply)) return;
+  
+  try {
+    const { getDB } = await import('./db.js');
+    const db = getDB();
+    
+    if (db.pool?.query) {
+      // Postgres path
+      const result = await db.pool.query('SELECT version(), current_database(), current_user');
+      return reply.send({
+        adapter: 'PostgreSQL',
+        version: result.rows[0]?.version?.split(' ').slice(0, 2).join(' '),
+        database: result.rows[0]?.current_database,
+        user: result.rows[0]?.current_user,
+        persistent: true,
+        note: 'Data persists across redeployments ✅'
+      });
+    } else {
+      // SQLite path
+      return reply.send({
+        adapter: 'SQLite',
+        persistent: false,
+        warning: 'Data will be lost on redeploy! Check DATABASE_URL environment variable.'
+      });
+    }
+  } catch (error: any) {
+    return reply.code(500).send({
+      error: 'Failed to diagnose DB',
+      message: error.message
+    });
+  }
+});
+
 // Post MINEBOY message (admin only)
 fastify.post<{ Body: { message: string } }>(
   '/v2/admin/messages/mineboy',
