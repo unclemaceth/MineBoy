@@ -17,7 +17,7 @@ export async function addMineboyMessage(text: string): Promise<string> {
   const id = randomUUID();
   const now = Date.now();
   const config = MESSAGE_TYPES.MINEBOY;
-  const expiresAt = now + (config.duration * 1000); // 24 hours
+  const expiresAt = now + (100 * 365 * 24 * 60 * 60 * 1000); // 100 years = never expires
   
   await db.prepare(`
     INSERT INTO paid_messages (
@@ -89,7 +89,7 @@ export async function getMineboyMessages(): Promise<Array<{
 class MessageStore {
   async getMessages(): Promise<string[]> {
     const messages = await getMineboyMessages();
-    return messages.map(m => `MineBoy: ${m.message}`);
+    return messages.map(m => m.message); // Don't add prefix here - endpoint handles it
   }
 
   async addMessage(text: string): Promise<string> {
