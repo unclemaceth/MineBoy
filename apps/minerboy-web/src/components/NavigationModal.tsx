@@ -780,52 +780,52 @@ function InstructionsContent() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x0...</div><div>Hashalicious</div><div style={{ textAlign: 'right' }}>128</div>
+              <div>0x0...</div><div>Trash Hash</div><div style={{ textAlign: 'right' }}>0</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x1...</div><div>Hashtalavista, Baby</div><div style={{ textAlign: 'right' }}>120</div>
+              <div>0x1...</div><div>Meh Hash</div><div style={{ textAlign: 'right' }}>2</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x2...</div><div>Monster Mash</div><div style={{ textAlign: 'right' }}>112</div>
+              <div>0x2...</div><div>Basic Batch</div><div style={{ textAlign: 'right' }}>4</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x3...</div><div>Magic Mix</div><div style={{ textAlign: 'right' }}>104</div>
+              <div>0x3...</div><div>Decent Drip</div><div style={{ textAlign: 'right' }}>8</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x4...</div><div>Zesty Zap</div><div style={{ textAlign: 'right' }}>96</div>
+              <div>0x4...</div><div>Solid Shard</div><div style={{ textAlign: 'right' }}>15</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x5...</div><div>Mythical Hash</div><div style={{ textAlign: 'right' }}>88</div>
+              <div>0x5...</div><div>Great Hash</div><div style={{ textAlign: 'right' }}>25</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x6...</div><div>Epic Hash</div><div style={{ textAlign: 'right' }}>80</div>
+              <div>0x6...</div><div>Mega Hash</div><div style={{ textAlign: 'right' }}>35</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x7...</div><div>Hashtastic</div><div style={{ textAlign: 'right' }}>72</div>
+              <div>0x7...</div><div>Juicy Jolt</div><div style={{ textAlign: 'right' }}>45</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x8...</div><div>Juicy Jolt</div><div style={{ textAlign: 'right' }}>64</div>
+              <div>0x8...</div><div>Hashtastic</div><div style={{ textAlign: 'right' }}>55</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0x9...</div><div>Mega Hash</div><div style={{ textAlign: 'right' }}>56</div>
+              <div>0x9...</div><div>Epic Hash</div><div style={{ textAlign: 'right' }}>65</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0xa...</div><div>Great Hash</div><div style={{ textAlign: 'right' }}>48</div>
+              <div>0xa...</div><div>Mythical Hash</div><div style={{ textAlign: 'right' }}>75</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0xb...</div><div>Solid Shard</div><div style={{ textAlign: 'right' }}>40</div>
+              <div>0xb...</div><div>Zesty Zap</div><div style={{ textAlign: 'right' }}>90</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0xc...</div><div>Decent Drip</div><div style={{ textAlign: 'right' }}>32</div>
+              <div>0xc...</div><div>Magic Mix</div><div style={{ textAlign: 'right' }}>110</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0xd...</div><div>Basic Batch</div><div style={{ textAlign: 'right' }}>24</div>
+              <div>0xd...</div><div>Monster Mash</div><div style={{ textAlign: 'right' }}>140</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0xe...</div><div>Meh Hash</div><div style={{ textAlign: 'right' }}>16</div>
+              <div>0xe...</div><div>Hashtalavista, Baby</div><div style={{ textAlign: 'right' }}>180</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '45px 1fr 60px', gap: '4px' }}>
-              <div>0xf...</div><div>Trash Hash</div><div style={{ textAlign: 'right' }}>8</div>
+              <div>0xf...</div><div>Hashalicious</div><div style={{ textAlign: 'right' }}>230</div>
             </div>
           </div>
         </div>

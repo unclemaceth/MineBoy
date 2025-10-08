@@ -4,22 +4,22 @@
  */
 
 export const TIER_NAMES = [
-  "Hashalicious",    // 0 (128 ABIT) - High reward
-  "Hashtalavista, Baby", // 1 (120 ABIT)
-  "Monster Mash",    // 2 (112 ABIT)
-  "Magic Mix",       // 3 (104 ABIT)
-  "Zesty Zap",       // 4 (96 ABIT)
-  "Mythical Hash",   // 5 (88 ABIT)
-  "Epic Hash",       // 6 (80 ABIT)
-  "Hashtastic",      // 7 (72 ABIT)
-  "Juicy Jolt",      // 8 (64 ABIT)
-  "Mega Hash",       // 9 (56 ABIT)
-  "Great Hash",      // 10 (48 ABIT)
-  "Solid Shard",     // 11 (40 ABIT)
-  "Decent Drip",     // 12 (32 ABIT)
-  "Basic Batch",     // 13 (24 ABIT)
-  "Meh Hash",        // 14 (16 ABIT)
-  "Trash Hash"       // 15 (8 ABIT) - Low reward
+  "Trash Hash",      // 0 (0 MNESTR) - Disabled
+  "Meh Hash",        // 1 (2 MNESTR)
+  "Basic Batch",     // 2 (4 MNESTR)
+  "Decent Drip",     // 3 (8 MNESTR)
+  "Solid Shard",     // 4 (15 MNESTR)
+  "Great Hash",      // 5 (25 MNESTR)
+  "Mega Hash",       // 6 (35 MNESTR)
+  "Juicy Jolt",      // 7 (45 MNESTR)
+  "Hashtastic",      // 8 (55 MNESTR)
+  "Epic Hash",       // 9 (65 MNESTR)
+  "Mythical Hash",   // 10 (75 MNESTR)
+  "Zesty Zap",       // 11 (90 MNESTR)
+  "Magic Mix",       // 12 (110 MNESTR)
+  "Monster Mash",    // 13 (140 MNESTR)
+  "Hashtalavista, Baby", // 14 (180 MNESTR)
+  "Hashalicious"     // 15 (230 MNESTR) - Hardest
 ];
 
 /**
