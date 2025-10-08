@@ -66,9 +66,10 @@ contract MiningClaimRouterV3_1 is AccessControl, EIP712, Pausable {
     
     // Events
     event Claimed(
-        address indexed wallet,
+        address indexed wallet,      // NFT owner (vault if delegating)
+        address indexed caller,      // Who mined (hot wallet, gets rewards)
         address indexed cartridge,
-        uint256 indexed tokenId,
+        uint256 tokenId,
         uint256 baseReward,
         uint256 finalReward,
         uint256 multiplierBps,
@@ -78,7 +79,8 @@ contract MiningClaimRouterV3_1 is AccessControl, EIP712, Pausable {
     );
     
     event RewardPaid(
-        address indexed wallet,
+        address indexed recipient,   // Who got the reward (hot wallet)
+        address indexed nftOwner,    // Who owns the NFT (vault if delegating)
         bytes32 workHash,
         uint8 tier,
         uint256 baseAmount,
@@ -255,16 +257,18 @@ contract MiningClaimRouterV3_1 is AccessControl, EIP712, Pausable {
         if (treasuryWallet != address(0)) {
             uint256 minerReward = (finalReward * 9000) / 10000; // 90%
             uint256 treasuryReward = finalReward - minerReward; // 10%
-            IApeBitMintable(rewardToken).mint(claimData.wallet, minerReward);
+            // Mint to caller (hot wallet) for convenience - vault owns NFT but hot wallet gets rewards
+            IApeBitMintable(rewardToken).mint(claimData.caller, minerReward);
             IApeBitMintable(rewardToken).mint(treasuryWallet, treasuryReward);
         } else {
-            // No treasury set, mint 100% to miner
-            IApeBitMintable(rewardToken).mint(claimData.wallet, finalReward);
+            // No treasury set, mint 100% to miner (hot wallet)
+            IApeBitMintable(rewardToken).mint(claimData.caller, finalReward);
         }
         
         // Emit events
         emit Claimed(
-            claimData.wallet,
+            claimData.wallet,      // NFT owner (vault)
+            claimData.caller,      // Miner (hot wallet, got rewards)
             claimData.cartridge,
             claimData.tokenId,
             baseReward,
@@ -276,7 +280,8 @@ contract MiningClaimRouterV3_1 is AccessControl, EIP712, Pausable {
         );
         
         emit RewardPaid(
-            claimData.wallet,
+            claimData.caller,      // Reward recipient (hot wallet)
+            claimData.wallet,      // NFT owner (vault)
             claimData.hash,
             uint8(claimData.tier),
             baseReward,
