@@ -1603,20 +1603,13 @@ fastify.post<{ Body: { message: string } }>(
       }
       
       // Add MINEBOY message directly (no TX required)
-      const result = addPaidMessage({
-        wallet: 'SYSTEM',
-        message: validation.cleaned,
-        txHash: `mineboy-${randomUUID()}` as `0x${string}`,
-        amountWei: '0',
-        messageType: 'MINEBOY',
-      });
+      const messageId = await messageStore.addMessage(validation.cleaned);
       
-      console.log(`[MINEBOY] Added system message: "${validation.cleaned}"`);
+      console.log(`[MINEBOY] Added system message: "${validation.cleaned}" (${messageId})`);
       
       return reply.send({
         ok: true,
-        messageId: result.id,
-        expiresAt: result.expiresAt,
+        messageId,
       });
       
     } catch (error: any) {
