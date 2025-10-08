@@ -1580,8 +1580,8 @@ fastify.get('/v2/admin/messages/paid/stats', async (req, res) => {
 // Post MINEBOY message (admin only)
 fastify.post<{ Body: { message: string } }>(
   '/v2/admin/messages/mineboy',
-  async (req, res) => {
-    if (!requireDebugAuth(req, res)) return;
+  async (req, reply) => {
+    if (!requireDebugAuth(req, reply)) return;
     
     try {
       const { message } = req.body;
