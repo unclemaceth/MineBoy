@@ -128,15 +128,32 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
           </div>
 
           {/* Info box */}
-          <div className="text-xs p-2 rounded bg-zinc-800/50 border border-zinc-700 text-zinc-400 space-y-1">
-            <p><strong className="text-white">How it works:</strong></p>
-            <ul className="list-disc list-inside space-y-0.5 ml-2">
-              <li>Set up delegation at delegate.xyz (vault → this wallet)</li>
+          <div className="text-xs p-2 rounded bg-zinc-800/50 border border-zinc-700 text-zinc-400 space-y-2">
+            <p><strong className="text-white">🔐 Keep NFTs in Cold Storage</strong></p>
+            <p className="text-xs text-zinc-300">Mine safely with a hot wallet while your valuable NFTs stay in cold storage!</p>
+            
+            <p><strong className="text-white">Setup Steps:</strong></p>
+            <ol className="list-decimal list-inside space-y-1 ml-2 text-xs">
+              <li><strong>Go to delegate.xyz</strong> and connect your vault (cold wallet)</li>
+              <li>Click <strong>"Delegate"</strong> → Choose <strong>"Contract Level"</strong></li>
+              <li>Set:
+                <ul className="list-disc list-inside ml-4 mt-1">
+                  <li><strong>Delegate To:</strong> This hot wallet</li>
+                  <li><strong>Contract:</strong> 0x3322b37...1D34D25 (Picks)</li>
+                  <li><strong>Rights:</strong> Type "mineboy"</li>
+                </ul>
+              </li>
+              <li>Sign the transaction</li>
               <li>Enter your vault address above</li>
-              <li>Mine with this hot wallet</li>
-              <li>Rewards mint to your vault (cold storage)</li>
-              <li>Multipliers check vault's NFT holdings</li>
-            </ul>
+              <li>Start mining! Rewards mint to vault 🎉</li>
+            </ol>
+            
+            <p className="text-xs text-green-400 mt-2">
+              ✅ Hot wallet mines<br/>
+              ✅ NFTs stay in cold storage<br/>
+              ✅ Rewards go to vault<br/>
+              ✅ Multipliers check vault's NPCs
+            </p>
           </div>
         </div>
       )}

@@ -12,6 +12,7 @@ interface CartridgeSelectionModalProps {
   onClose: () => void;
   onSelectCartridge: (cartridge: OwnedCartridge) => void;
   lockedCartridge?: { contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null;
+  vaultAddress?: string; // Optional vault address for delegate.xyz support
 }
 
 const toDecString = (id: string) => {
@@ -31,31 +32,36 @@ export default function CartridgeSelectionModal({
   onClose,
   onSelectCartridge,
   lockedCartridge,
+  vaultAddress,
 }: CartridgeSelectionModalProps) {
   const { address, isConnected } = useActiveAccount();
   const [ownedCartridges, setOwnedCartridges] = useState<OwnedCartridge[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Use vault address if provided (delegate mode), otherwise use connected address
+  const queryAddress = vaultAddress || address;
+
   useEffect(() => {
-    if (isOpen && address) {
+    if (isOpen && queryAddress) {
       loadOwnedCartridges();
-    } else if (isOpen && !address) {
+    } else if (isOpen && !queryAddress) {
       // Clear stale list if user disconnected
       setOwnedCartridges([]);
     }
-  }, [isOpen, address]);
+  }, [isOpen, queryAddress]);
 
   const loadOwnedCartridges = async () => {
-    if (!address) return;
+    if (!queryAddress) return;
     setLoading(true);
     setError(null);
     try {
-      const cartridges = await getOwnedCartridges(address);
+      console.log('[Alchemy] Querying NFTs for:', vaultAddress ? `vault ${vaultAddress}` : `hot wallet ${address}`);
+      const cartridges = await getOwnedCartridges(queryAddress);
       setOwnedCartridges(cartridges);
       if (!cartridges?.length) {
         // Helpful console for debugging contracts/filters
-        console.log('[Alchemy] No cartridges found for', address);
+        console.log('[Alchemy] No cartridges found for', queryAddress);
       }
     } catch (err) {
       console.error('Error loading cartridges:', err);
@@ -108,6 +114,23 @@ export default function CartridgeSelectionModal({
           </div>
         )}
 
+        {vaultAddress && (
+          <div style={{ 
+            color: '#4ade80', 
+            fontSize: 12, 
+            textAlign: 'center', 
+            padding: '8px 12px', 
+            background: 'rgba(74, 222, 128, 0.1)',
+            borderRadius: 6,
+            marginBottom: 12,
+            fontFamily: 'Menlo, monospace',
+            border: '1px solid rgba(74, 222, 128, 0.3)'
+          }}>
+            🔐 Loading NFTs from vault:<br/>
+            {vaultAddress.slice(0, 6)}...{vaultAddress.slice(-4)}
+          </div>
+        )}
+
         {loading && (
           <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
             Loading your pickaxes...
@@ -122,7 +145,7 @@ export default function CartridgeSelectionModal({
 
         {!loading && !error && isConnected && ownedCartridges.length === 0 && (
           <div style={{ color: '#64ff8a', fontSize: 14, textAlign: 'center', padding: 20, fontFamily: 'Menlo, monospace' }}>
-            No pickaxes found in your wallet
+            No pickaxes found in {vaultAddress ? 'vault wallet' : 'your wallet'}
             <div style={{ marginTop: 10 }}>
               <button
                 onClick={loadOwnedCartridges}

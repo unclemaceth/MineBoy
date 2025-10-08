@@ -3131,6 +3131,7 @@ function Home() {
         onClose={() => setShowAlchemyCartridges(false)}
         onSelectCartridge={handleAlchemyCartridgeSelect}
         lockedCartridge={lockedCartridge}
+        vaultAddress={vaultAddress || undefined}
       />
 
       {/* Navigation Modal */}
