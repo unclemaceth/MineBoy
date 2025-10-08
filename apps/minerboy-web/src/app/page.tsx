@@ -43,6 +43,7 @@ import StatisticsSection from '@/components/StatisticsSection';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
 import RouterV3ABI from '@/abi/RouterV3.json';
+import RouterV3_1ABI from '@/lib/RouterV3_1ABI.json';
 
 const W = 390; // iPhone 13 CSS pixels
 const H = 924; // iPhone 13 CSS pixels + 80px for HUD
@@ -1110,7 +1111,7 @@ function Home() {
 
           const contractConfig = {
             address: routerAddress as `0x${string}`,
-            abi: RouterV3ABI,
+            abi: isDelegated ? RouterV3_1ABI : RouterV3ABI, // Use V3.1 ABI for delegation
             functionName: 'claimV3',
             args: [claimData, to0x(claimResponse.signature)],
             value: BigInt('10000000000000000'), // 0.01 APE - V3 total fee
