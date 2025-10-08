@@ -1353,7 +1353,7 @@ fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('
 
 // Get all messages (public) - combines admin and currently playing paid messages
 // Returns structured objects with text, color, prefix for proper banner styling
-fastify.get('/v2/messages', async (req, res) => {
+fastify.get('/v2/messages', async (req, reply) => {
   const adminMessages = await messageStore.getMessages();
   const playingPaidMessages = await getCurrentlyPlaying();
   
