@@ -1752,6 +1752,40 @@ fastify.get<{ Querystring: { wallet?: string } }>(
   }
 );
 
+// Auto-detect vault address for delegate support
+fastify.get('/v2/delegate/auto-detect', async (request, reply) => {
+  const { hot } = request.query as any;
+  
+  if (!hot) {
+    return reply.code(400).send({ 
+      error: 'Missing hot wallet address',
+      vault: null 
+    });
+  }
+  
+  if (!config.DELEGATE_PHASE1_ENABLED) {
+    return reply.send({ vault: null, enabled: false });
+  }
+  
+  try {
+    const { delegateVerifier } = await import('./delegate.js');
+    const vault = await delegateVerifier.autoDetectVault(hot, config.CHAIN_ID);
+    
+    return reply.send({ 
+      vault,
+      enabled: true,
+      chainId: config.CHAIN_ID
+    });
+  } catch (error) {
+    console.error('[DELEGATE] Auto-detect error:', error);
+    return reply.send({ 
+      vault: null,
+      enabled: true,
+      error: 'Failed to detect vault'
+    });
+  }
+});
+
 // Cleanup expired messages (runs periodically)
 setInterval(async () => {
   const expired = await markExpired();
