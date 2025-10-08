@@ -14,6 +14,7 @@ export interface StartReq {
   tokenId: number;
   sessionId: string;
   minerId?: string;
+  vault?: string;  // Optional vault address for delegate.xyz support
 }
 
 export interface StartOk {

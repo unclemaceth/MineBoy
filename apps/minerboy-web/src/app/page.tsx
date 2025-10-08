@@ -10,6 +10,7 @@ import SideButton from "@/components/ui/SideButton";
 import PaidMessageModal from "@/components/PaidMessageModal";
 import MineStrategyModal from "@/components/MineStrategyModal";
 import EnhancedShell from "@/components/art/EnhancedShell";
+import VaultDelegateInput from "@/components/VaultDelegateInput";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
@@ -93,6 +94,7 @@ function Home() {
   const [showMineStrategyModal, setShowMineStrategyModal] = useState(false);
   const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
+  const [vaultAddress, setVaultAddress] = useState<string>(''); // Delegate.xyz vault address
 
   // Navigation helpers
   const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => {
@@ -682,7 +684,8 @@ function Home() {
         contract,
         tokenId: parseInt(tokenId),
         sessionId,
-        minerId
+        minerId,
+        vault: vaultAddress || undefined  // Include vault for delegate support
       });
       
       console.log('[SESSION_OPEN] Success:', res);
@@ -2245,6 +2248,14 @@ function Home() {
             }}>
               Lock expires in 60s if inactive
             </div>
+            
+            {/* Vault Delegation Input */}
+            <VaultDelegateInput 
+              vaultAddress={vaultAddress}
+              onVaultChange={setVaultAddress}
+              className="mb-4"
+            />
+            
             {cartridges.map((cart) => {
               // Check if this specific cartridge is locked
               const isThisCartLocked = lockedCartridge && lockedCartridge.contract === cart.contract;
