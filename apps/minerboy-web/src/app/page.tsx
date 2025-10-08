@@ -11,6 +11,7 @@ import PaidMessageModal from "@/components/PaidMessageModal";
 import MineStrategyModal from "@/components/MineStrategyModal";
 import EnhancedShell from "@/components/art/EnhancedShell";
 import VaultDelegateInput from "@/components/VaultDelegateInput";
+import CartridgeModalV2 from "@/components/CartridgeModalV2";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import NPCSimple from "@/components/art/NPCSimple";
 import Visualizer3x3 from "@/components/Visualizer3x3";
@@ -78,6 +79,7 @@ function Home() {
   const [connectPressed, setConnectPressed] = useState(false);
   const [cartridges, setCartridges] = useState<CartridgeConfig[]>([]);
   const [showCartridgeSelect, setShowCartridgeSelect] = useState(false);
+  const [showCartridgeModalV2, setShowCartridgeModalV2] = useState(false);
   const [showJobExpired, setShowJobExpired] = useState(false);
   const [showDebugModal, setShowDebugModal] = useState(false);
   const [pendingClaimId, setPendingClaimId] = useState<string | null>(null);
@@ -588,7 +590,7 @@ function Home() {
   
   const handleInsertCartridge = () => {
     if (isConnected && !sessionId) {
-      setShowAlchemyCartridges(true); // Open Alchemy modal directly
+      setShowCartridgeModalV2(true); // Open new cartridge modal with delegate UI
     } else if (!isConnected) {
       pushLine('Connect wallet first!');
     } else {
@@ -2172,7 +2174,20 @@ function Home() {
         })()}
       </div>
       
-      {/* Cartridge Selection Modal */}
+      {/* New Cartridge Modal V2 - With Delegate Support */}
+      <CartridgeModalV2
+        isOpen={showCartridgeModalV2}
+        onClose={() => setShowCartridgeModalV2(false)}
+        onLoadCartridges={() => {
+          setShowCartridgeModalV2(false);
+          setShowAlchemyCartridges(true);
+        }}
+        vaultAddress={vaultAddress}
+        onVaultChange={setVaultAddress}
+        playButtonSound={playButtonSound}
+      />
+      
+      {/* Cartridge Selection Modal (OLD - keeping for now but not used) */}
       {showCartridgeSelect && (
         <div style={{
           position: 'fixed',
@@ -2248,13 +2263,6 @@ function Home() {
             }}>
               Lock expires in 60s if inactive
             </div>
-            
-            {/* Vault Delegation Input */}
-            <VaultDelegateInput 
-              vaultAddress={vaultAddress}
-              onVaultChange={setVaultAddress}
-              className="mb-4"
-            />
             
             {cartridges.map((cart) => {
               // Check if this specific cartridge is locked

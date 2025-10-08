@@ -36,24 +36,23 @@ contract DeployRouterV3_1 is Script {
 
         // Default reward table (can be updated later via setRewardTier)
         // Tiers 0-15 based on first nibble of workHash
-        uint256[16] memory rewardTable = [
-            0 ether,        // Tier 0: disabled (too easy)
-            2 ether,        // Tier 1
-            4 ether,        // Tier 2
-            8 ether,        // Tier 3
-            15 ether,       // Tier 4
-            25 ether,       // Tier 5
-            35 ether,       // Tier 6
-            45 ether,       // Tier 7
-            55 ether,       // Tier 8
-            65 ether,       // Tier 9
-            75 ether,       // Tier 10
-            90 ether,       // Tier 11
-            110 ether,      // Tier 12
-            140 ether,      // Tier 13
-            180 ether,      // Tier 14
-            230 ether       // Tier 15 (hardest)
-        ];
+        uint256[16] memory rewardTable;
+        rewardTable[0] = 0 ether;        // Tier 0: disabled (too easy)
+        rewardTable[1] = 2 ether;        // Tier 1
+        rewardTable[2] = 4 ether;        // Tier 2
+        rewardTable[3] = 8 ether;        // Tier 3
+        rewardTable[4] = 15 ether;       // Tier 4
+        rewardTable[5] = 25 ether;       // Tier 5
+        rewardTable[6] = 35 ether;       // Tier 6
+        rewardTable[7] = 45 ether;       // Tier 7
+        rewardTable[8] = 55 ether;       // Tier 8
+        rewardTable[9] = 65 ether;       // Tier 9
+        rewardTable[10] = 75 ether;      // Tier 10
+        rewardTable[11] = 90 ether;      // Tier 11
+        rewardTable[12] = 110 ether;     // Tier 12
+        rewardTable[13] = 140 ether;     // Tier 13
+        rewardTable[14] = 180 ether;     // Tier 14
+        rewardTable[15] = 230 ether;     // Tier 15 (hardest)
 
         vm.startBroadcast(deployerPrivateKey);
 
