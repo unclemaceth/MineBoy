@@ -161,7 +161,8 @@ function Home() {
   const walletClient = useActiveWalletClient();
   
   // Fetch NPC balance for multiplier display
-  const { npcBalance } = useNPCBalance(address);
+  // DELEGATE: Query vault's NPCs when delegating, otherwise query connected wallet
+  const { npcBalance } = useNPCBalance((vaultAddress || address) as `0x${string}` | undefined);
   
   // Read MNESTR token balance
   const { data: mnestrBalanceRaw } = useReadContract({
