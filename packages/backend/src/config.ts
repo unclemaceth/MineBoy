@@ -10,6 +10,7 @@ export const config = {
   
   // Contracts
   ROUTER_ADDRESS: process.env.ROUTER_ADDRESS as `0x${string}`,
+  ROUTER_V3_1_ADDRESS: process.env.ROUTER_V3_1_ADDRESS as `0x${string}` | undefined,
   REWARD_TOKEN_ADDRESS: process.env.REWARD_TOKEN_ADDRESS as `0x${string}`,
   
   // Backend signer - try secret file first, then env var
@@ -48,7 +49,8 @@ export const config = {
   
   // Feature flags
   CLAIM_LEGACY_ENABLED: process.env.CLAIM_LEGACY_ENABLED === 'true',
-  REPLAY_CHECK_ONCHAIN: process.env.REPLAY_CHECK_ONCHAIN === 'true'
+  REPLAY_CHECK_ONCHAIN: process.env.REPLAY_CHECK_ONCHAIN === 'true',
+  DELEGATE_PHASE1_ENABLED: process.env.DELEGATE_PHASE1_ENABLED === 'true'
 };
 
 // Validate required config
