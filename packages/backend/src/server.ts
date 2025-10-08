@@ -1118,7 +1118,7 @@ const start = async () => {
 // Debug endpoints
 fastify.get('/v2/debug/locks', async (req, reply) => {
   try {
-    if (!requireDebugAuth(req, res)) return;
+    if (!requireDebugAuth(req, reply)) return;
 
     const { chainId, contract, tokenId, wallet, minerId } = req.query as Record<string, string>;
     if (!chainId || !contract || !tokenId) {
@@ -1177,7 +1177,7 @@ fastify.get('/v2/debug/locks', async (req, reply) => {
 // Audit endpoint to export all claims for transparency
 fastify.get('/v2/audit/claims', async (req, reply) => {
   try {
-    if (!requireDebugAuth(req, res)) return;
+    if (!requireDebugAuth(req, reply)) return;
 
     const { getDB } = await import('./db.js');
     const d = getDB();
@@ -1234,7 +1234,7 @@ fastify.get('/v2/audit/claims', async (req, reply) => {
 // Backfill endpoint to attach transaction hash to pending claims
 fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async (req, reply) => {
   try {
-    if (!requireDebugAuth(req, res)) return;
+    if (!requireDebugAuth(req, reply)) return;
 
     const { txHash } = req.body;
     if (!txHash) {
@@ -1269,7 +1269,7 @@ fastify.post<{ Body: { txHash: string } }>('/v2/admin/attach-tx-by-hash', async 
 // Debug endpoint to inspect claims database
 fastify.get('/v2/debug/claims', async (req, reply) => {
   try {
-    if (!requireDebugAuth(req, res)) return;
+    if (!requireDebugAuth(req, reply)) return;
 
     const { getDB } = await import('./db.js');
     const d = getDB();
@@ -1333,7 +1333,7 @@ fastify.get('/v2/debug/claims', async (req, reply) => {
 
 fastify.post<{ Body: { chainId: number; contract: string; tokenId: string } }>('/v2/debug/session/unlock', async (req, reply) => {
   try {
-    if (!requireDebugAuth(req, res)) return;
+    if (!requireDebugAuth(req, reply)) return;
 
     const { chainId, contract, tokenId } = req.body;
     if (!chainId || !contract || !tokenId) {
@@ -1390,14 +1390,14 @@ fastify.get('/v2/messages', async (req, reply) => {
 
 // Get all messages with metadata (admin only)
 fastify.get('/v2/admin/messages', async (req, reply) => {
-  if (!requireDebugAuth(req, res)) return;
+  if (!requireDebugAuth(req, reply)) return;
   const messages = await messageStore.getAllMessages();
   return reply.send({ messages });
 });
 
 // Add a new message (admin only)
 fastify.post<{ Body: { text: string } }>('/v2/admin/messages', async (req, reply) => {
-  if (!requireDebugAuth(req, res)) return;
+  if (!requireDebugAuth(req, reply)) return;
   
   const { text } = req.body;
   if (!text || typeof text !== 'string') {
@@ -1410,7 +1410,7 @@ fastify.post<{ Body: { text: string } }>('/v2/admin/messages', async (req, reply
 
 // Remove a message (admin only)
 fastify.delete<{ Params: { id: string } }>('/v2/admin/messages/:id', async (req, reply) => {
-  if (!requireDebugAuth(req, res)) return;
+  if (!requireDebugAuth(req, reply)) return;
   
   const { id } = req.params;
   const removed = await messageStore.removeMessage(id);
@@ -1424,7 +1424,7 @@ fastify.delete<{ Params: { id: string } }>('/v2/admin/messages/:id', async (req,
 
 // Update a message (admin only)
 fastify.put<{ Params: { id: string }; Body: { text: string } }>('/v2/admin/messages/:id', async (req, reply) => {
-  if (!requireDebugAuth(req, res)) return;
+  if (!requireDebugAuth(req, reply)) return;
   
   const { id } = req.params;
   const { text } = req.body;
@@ -1444,7 +1444,7 @@ fastify.put<{ Params: { id: string }; Body: { text: string } }>('/v2/admin/messa
 
 // Clear all messages (admin only)
 fastify.delete('/v2/admin/messages', async (req, reply) => {
-  if (!requireDebugAuth(req, res)) return;
+  if (!requireDebugAuth(req, reply)) return;
   messageStore.clearAll();
   return reply.send({ ok: true });
 });
@@ -1558,7 +1558,7 @@ fastify.get('/v2/messages/paid', async (req, reply) => {
 fastify.delete<{ Params: { id: string } }>(
   '/v2/admin/messages/paid/:id',
   async (req, reply) => {
-    if (!requireDebugAuth(req, res)) return;
+    if (!requireDebugAuth(req, reply)) return;
     
     const { id } = req.params;
     const removed = await removePaidMessage(id);
@@ -1573,7 +1573,7 @@ fastify.delete<{ Params: { id: string } }>(
 
 // Get paid message statistics (admin only)
 fastify.get('/v2/admin/messages/paid/stats', async (req, reply) => {
-  if (!requireDebugAuth(req, res)) return;
+  if (!requireDebugAuth(req, reply)) return;
   return reply.send(getPaidMessageStats());
 });
 
