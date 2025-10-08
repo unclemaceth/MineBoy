@@ -1584,7 +1584,7 @@ function Home() {
           seasonPoints={0} // TODO: Get from leaderboard API
           width={390}
           messages={scrollingMessages}
-          scrollSpeed={50}
+          scrollSpeed={60}
           messageGap={150}
           loopPause={3000}
           onMessageBarClick={() => {
