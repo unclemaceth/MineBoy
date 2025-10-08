@@ -612,9 +612,15 @@ export class ClaimProcessor {
       throw new Error('Preimage nonce mismatch');
     }
     
-    // SECURITY: Verify wallet matches session wallet
-    if (walletPart.toLowerCase() !== session.wallet.toLowerCase()) {
+    // SECURITY: Verify wallet matches session caller (immutable for session lifetime)
+    const sessionCaller = (session as any).caller || session.wallet; // Hot wallet that opened session
+    if (walletPart.toLowerCase() !== sessionCaller.toLowerCase()) {
       throw new Error('Preimage wallet mismatch - work stealing attempt detected');
+    }
+    
+    // SECURITY: Prevent hot wallet swap - ensure caller hasn't changed
+    if (session.wallet.toLowerCase() !== sessionCaller.toLowerCase()) {
+      throw new Error('Session caller changed - hot wallet swap detected');
     }
     
     // SECURITY: Verify tokenId matches session cartridge

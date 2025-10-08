@@ -118,5 +118,6 @@ Thumbs.db
 SECURITY_AUDIT.md
 *_AUDIT.md
 SECURITY_RECOMMENDATIONS.md
+DELEGATE_SECURITY_*.md
 # Sensitive address reference (contains private keys)
 MINEBOY_ADDRESSES.md

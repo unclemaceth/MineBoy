@@ -918,12 +918,45 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       return errorResponse(reply, 404, 'session_not_found', 'Session expired - please restart mining');
     }
     
+    // CRITICAL: Prevent hot wallet swap - caller must remain the same for session lifetime
+    const sessionCaller = session.caller || session.wallet; // Caller is the hot wallet
+    if (wallet && !sameAddr(wallet, sessionCaller)) {
+      console.warn('[SECURITY] caller_mismatch detected:', { 
+        sessionId, 
+        expectedCaller: sessionCaller, 
+        receivedCaller: wallet,
+        cartridge: `${canonical.chainId}:${canonical.contract}:${canonical.tokenId}`,
+        timestamp: new Date().toISOString()
+      });
+      // TODO: Add metrics counter: metrics.increment('security.caller_mismatch')
+      return errorResponse(reply, 403, 'caller_changed', 
+        'Cannot change hot wallet during session - please start a new session with the new wallet', 
+        { expectedCaller: sessionCaller, receivedCaller: wallet });
+    }
+    
     // Step 1: Validate ownership lock (wallet-only validation)
     const hbOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
     const effectiveOwner = session.owner || session.wallet; // For delegate support: check vault if delegating, otherwise hot wallet
-    if (!hbOwnershipLock || !sameAddr(hbOwnershipLock.ownerAtAcquire, effectiveOwner)) {
-      console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet, owner: effectiveOwner });
-      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over', { expectedWallet: hbOwnershipLock?.ownerAtAcquire, receivedWallet: effectiveOwner });
+    if (!hbOwnershipLock) {
+      console.warn('[SECURITY] lock_missing detected:', {
+        sessionId,
+        cartridge: `${canonical.chainId}:${canonical.contract}:${canonical.tokenId}`,
+        expectedOwner: effectiveOwner,
+        timestamp: new Date().toISOString()
+      });
+      // TODO: Add metrics counter: metrics.increment('security.lock_missing')
+      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over', { expectedWallet: null, receivedWallet: effectiveOwner });
+    }
+    if (!sameAddr(hbOwnershipLock.ownerAtAcquire, effectiveOwner)) {
+      console.warn('[SECURITY] owner_mismatch detected:', { 
+        sessionId, 
+        expectedOwner: effectiveOwner,
+        lockOwner: hbOwnershipLock.ownerAtAcquire,
+        cartridge: `${canonical.chainId}:${canonical.contract}:${canonical.tokenId}`,
+        timestamp: new Date().toISOString()
+      });
+      // TODO: Add metrics counter: metrics.increment('security.owner_mismatch')
+      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over', { expectedWallet: hbOwnershipLock.ownerAtAcquire, receivedWallet: effectiveOwner });
     }
     
     // Step 2: Validate session lock (minerId + sessionId validation for multi-tab prevention)
