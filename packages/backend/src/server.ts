@@ -604,7 +604,8 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     // Refresh both locks
     try {
       await SessionStore.refreshOwnershipLock(chainId, contract, tokenId, Date.now(), 3_600_000);
-      await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+      // CRITICAL: Use effectiveOwner (vault if delegating), not session.wallet (hot)
+      await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, effectiveOwner);
     } catch (error) {
       console.error('[CLAIM_DEBUG] Lock refresh failed:', error);
       return reply.code(500).send({ error: 'lock_refresh_failed' });
@@ -1009,10 +1010,10 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
       // Refresh ownership lock (update lastActive)
       await SessionStore.refreshOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId, Date.now(), 3_600_000);
       
-      // Refresh session lock (60s TTL)
-      const sessionRefreshed = await SessionStore.refreshSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, sessionId, session.wallet);
+      // Refresh session lock (60s TTL) - CRITICAL: Use effectiveOwner (vault if delegating)
+      const sessionRefreshed = await SessionStore.refreshSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, sessionId, effectiveOwner);
       if (!sessionRefreshed) {
-        console.warn('[HB] 409 session refresh failed:', { sessionId });
+        console.warn('[HB] 409 session refresh failed:', { sessionId, effectiveOwner });
         return errorResponse(reply, 409, 'ownership_conflict', 'Session lock refresh failed');
       }
       
