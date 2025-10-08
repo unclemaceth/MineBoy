@@ -565,8 +565,9 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
     // Validate both locks for claim
     const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
     const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+    const effectiveOwner = session.owner || session.wallet; // For delegate support
     
-    if (!ownershipLock || !sameAddr(ownershipLock.ownerAtAcquire, session.wallet)) {
+    if (!ownershipLock || !sameAddr(ownershipLock.ownerAtAcquire, effectiveOwner)) {
       console.log(`[CLAIM_DEBUG] Ownership lock lost for ${contract}:${tokenId}`);
       
       reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
@@ -579,11 +580,11 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim', async (request, reply) => {
         message: 'Ownership lock lost - another wallet may have taken over',
         cartridgeId: `${contract}:${tokenId}`,
         sessionId,
-        wallet: session.wallet
+        wallet: effectiveOwner
       });
     }
     
-    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
+    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== effectiveOwner) {
       console.log(`[CLAIM_DEBUG] Session lock lost for ${contract}:${tokenId}`);
       
       reply.header('X-Instance', String(process.env.HOSTNAME || 'unknown'));
@@ -650,8 +651,9 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim/v2', async (request, reply) => {
     // Validate both locks for claim
     const ownershipLock = await SessionStore.getOwnershipLock(chainId, contract, tokenId);
     const sessionLock = await SessionStore.getSessionLock(chainId, contract, tokenId);
+    const effectiveOwner = session.owner || session.wallet; // For delegate support
     
-    if (!ownershipLock || !sameAddr(ownershipLock.ownerAtAcquire, session.wallet)) {
+    if (!ownershipLock || !sameAddr(ownershipLock.ownerAtAcquire, effectiveOwner)) {
       console.log(`[CLAIM_V2_DEBUG] Ownership lock lost for ${contract}:${tokenId}`);
       
       return reply.code(409).send({ 
@@ -672,7 +674,7 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim/v2', async (request, reply) => {
     // Refresh both locks
     try {
       await SessionStore.refreshOwnershipLock(chainId, contract, tokenId, Date.now(), 3_600_000);
-      await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, session.wallet);
+      await SessionStore.refreshSessionLock(chainId, contract, tokenId, sessionId, effectiveOwner);
     } catch (error) {
       console.error('[CLAIM_V2_DEBUG] Lock refresh failed:', error);
       return reply.code(500).send({ error: 'lock_refresh_failed' });
@@ -918,14 +920,15 @@ fastify.post('/v2/session/heartbeat', async (request, reply) => {
     
     // Step 1: Validate ownership lock (wallet-only validation)
     const hbOwnershipLock = await SessionStore.getOwnershipLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    if (!hbOwnershipLock || !sameAddr(hbOwnershipLock.ownerAtAcquire, session.wallet)) {
-      console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet });
-      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over', { expectedWallet: hbOwnershipLock?.ownerAtAcquire, receivedWallet: session.wallet });
+    const effectiveOwner = session.owner || session.wallet; // For delegate support: check vault if delegating, otherwise hot wallet
+    if (!hbOwnershipLock || !sameAddr(hbOwnershipLock.ownerAtAcquire, effectiveOwner)) {
+      console.warn('[HB] 409 ownership lock lost:', { sessionId, wallet: session.wallet, owner: effectiveOwner });
+      return errorResponse(reply, 409, 'ownership_conflict', 'Ownership lock lost - another wallet may have taken over', { expectedWallet: hbOwnershipLock?.ownerAtAcquire, receivedWallet: effectiveOwner });
     }
     
     // Step 2: Validate session lock (minerId + sessionId validation for multi-tab prevention)
     const sessionLock = await SessionStore.getSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
-    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== session.wallet) {
+    if (!sessionLock || sessionLock.sessionId !== sessionId || sessionLock.wallet !== effectiveOwner) {
       console.warn('[HB] 409 session lock lost:', { sessionId, sessionLock });
       return errorResponse(reply, 409, 'session_conflict', 'Session lock lost - another session may be active', { expectedSessionId: sessionLock?.sessionId, receivedSessionId: sessionId });
     }
