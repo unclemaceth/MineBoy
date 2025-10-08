@@ -37,6 +37,49 @@ const client = createPublicClient({
 // Initialize paid messages table (migration handles creation)
 export async function initPaidMessagesTable() {
   console.log('[PaidMessages] Using PostgreSQL for message persistence');
+  
+  // BELT-AND-SUSPENDERS: Ensure table exists even if migration didn't run
+  // This is idempotent and safe to run multiple times
+  const db = getDB();
+  if (db.pool) {
+    try {
+      await db.pool.query(`
+        CREATE TABLE IF NOT EXISTS paid_messages (
+          id TEXT PRIMARY KEY,
+          wallet TEXT NOT NULL,
+          message TEXT NOT NULL,
+          tx_hash TEXT UNIQUE,
+          amount_wei TEXT,
+          created_at BIGINT NOT NULL,
+          expires_at BIGINT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'playing', 'expired', 'removed')),
+          message_type TEXT NOT NULL DEFAULT 'PAID' CHECK (message_type IN ('MINEBOY', 'PAID', 'SHILL')),
+          nonce INTEGER,
+          msg_hash TEXT,
+          color TEXT NOT NULL DEFAULT '#4ade80',
+          banner_duration_sec INTEGER NOT NULL DEFAULT 3600,
+          priority INTEGER NOT NULL DEFAULT 0,
+          scheduled_at BIGINT,
+          played_at BIGINT
+        );
+        
+        CREATE TABLE IF NOT EXISTS blacklisted_wallets (
+          wallet TEXT PRIMARY KEY,
+          reason TEXT,
+          blocked_at BIGINT NOT NULL,
+          blocked_by TEXT
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_paid_messages_status_expires ON paid_messages(status, expires_at);
+        CREATE INDEX IF NOT EXISTS idx_paid_messages_status_created ON paid_messages(status, created_at);
+        CREATE INDEX IF NOT EXISTS idx_paid_messages_wallet ON paid_messages(wallet);
+        CREATE INDEX IF NOT EXISTS idx_paid_messages_type_status_priority ON paid_messages(message_type, status, priority, created_at);
+      `);
+      console.log('✅ Paid messages tables verified (belt-and-suspenders check)');
+    } catch (err) {
+      console.error('⚠️  Failed to verify paid messages tables:', err);
+    }
+  }
 }
 
 export interface PaidMessage {

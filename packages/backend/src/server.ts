@@ -1150,11 +1150,35 @@ let stopPoller: (() => void) | null = null;
 // Start server
 const start = async () => {
   try {
+    // CRITICAL: Require DATABASE_URL for production (don't silently fall back to SQLite)
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is required but not set. Check your environment variables.');
+    }
+    
     // Initialize database
     await initDb(process.env.DATABASE_URL);
     
-    // Run paid messages migration (PostgreSQL only)
-    if (process.env.DATABASE_URL?.startsWith('postgresql://')) {
+    // DIAGNOSTIC: Prove which DB adapter is being used
+    const { getDB } = await import('./db.js');
+    const db = getDB();
+    try {
+      if (db.pool?.query) {
+        // Postgres path
+        const result = await db.pool.query('SELECT version(), current_database()');
+        console.log('[DB] ✅ Using Postgres:', {
+          version: result.rows[0]?.version?.split(' ').slice(0, 2).join(' '),
+          database: result.rows[0]?.current_database
+        });
+      } else {
+        // SQLite path (ephemeral disk - data will be lost on redeploy!)
+        console.warn('[DB] ⚠️  Using SQLite adapter (local file, ephemeral!)');
+      }
+    } catch (diagError) {
+      console.error('[DB] Failed to diagnose DB type:', diagError);
+    }
+    
+    // Run paid messages migration (PostgreSQL only - catches both postgres:// and postgresql://)
+    if (/^postgres(ql)?:\/\//i.test(process.env.DATABASE_URL || '')) {
       try {
         const fs = await import('fs');
         const path = await import('path');
@@ -1164,7 +1188,9 @@ const start = async () => {
         if (fs.existsSync(migrationPath)) {
           const migration = fs.readFileSync(migrationPath, 'utf8');
           await pool.query(migration);
-          console.log('✅ Paid messages migration applied');
+          console.log('✅ Paid messages migration applied (idempotent - preserves existing data)');
+        } else {
+          console.warn(`⚠️  Migration file not found: ${migrationPath}`);
         }
         await pool.end();
       } catch (err) {

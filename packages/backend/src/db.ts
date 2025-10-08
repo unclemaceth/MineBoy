@@ -21,7 +21,8 @@ let pgPool: Pool | null = null;
 export async function initDb(dbUrl?: string) {
   const url = dbUrl || process.env.DATABASE_URL;
   
-  if (url && url.startsWith('postgresql://')) {
+  // CRITICAL: Detect both postgres:// and postgresql:// URLs
+  if (url && /^postgres(ql)?:\/\//i.test(url)) {
     // Use PostgreSQL
     pgPool = new Pool({ connectionString: url });
     console.log('📊 Using PostgreSQL database');
