@@ -91,7 +91,7 @@ function Home() {
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
   const [showPaidMessageModal, setShowPaidMessageModal] = useState(false);
   const [showMineStrategyModal, setShowMineStrategyModal] = useState(false);
-  const [scrollingMessages, setScrollingMessages] = useState<string[]>(["MineBoy it Mines stuff!"]);
+  const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
 
   // Navigation helpers

@@ -232,8 +232,8 @@ export const api = {
     return jfetch(`/v2/debug/lock?${usp.toString()}`, undefined, (j) => j);
   },
 
-  async getMessages(): Promise<{ messages: string[] }> {
-    return jfetch('/v2/messages', { cache: 'no-store' } as RequestInit, (j) => j as { messages: string[] });
+  async getMessages(): Promise<{ messages: Array<string | { text: string; color?: string; prefix?: string; type?: string }> }> {
+    return jfetch('/v2/messages', { cache: 'no-store' } as RequestInit, (j) => j as { messages: Array<string | { text: string; color?: string; prefix?: string; type?: string }> });
   }
 };
 

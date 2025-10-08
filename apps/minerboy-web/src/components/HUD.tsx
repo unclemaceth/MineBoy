@@ -9,7 +9,7 @@ interface HUDProps {
   multiplierSource?: string; // "NAPC", "BASE", etc.
   seasonPoints?: number;     // User's season points
   width: number;             // Total width (390px)
-  messages?: string[];       // Scrolling messages
+  messages?: Array<string | { text: string; color?: string; prefix?: string; type?: string }>;  // Scrolling messages
   scrollSpeed?: number;      // Scroll speed in px/s
   messageGap?: number;       // Gap between messages in px
   loopPause?: number;        // Pause at end of loop in ms
