@@ -110,6 +110,22 @@ const EIP712_TYPES_V3 = {
   ],
 };
 
+// V3.1: Adds caller field for delegate support
+const EIP712_TYPES_V3_1 = {
+  ClaimV3: [
+    { name: 'cartridge',     type: 'address' },
+    { name: 'tokenId',       type: 'uint256' },
+    { name: 'wallet',        type: 'address' },  // vault/owner
+    { name: 'caller',        type: 'address' },  // hot wallet (NEW)
+    { name: 'nonce',         type: 'bytes32' },
+    { name: 'tier',          type: 'uint256' },
+    { name: 'tries',         type: 'uint256' },
+    { name: 'elapsedMs',     type: 'uint256' },
+    { name: 'hash',          type: 'bytes32' },
+    { name: 'expiry',        type: 'uint256' },
+  ],
+};
+
 const EIP712_DOMAIN_LOCAL = {
   name: 'MinerBoyClaim',
   version: '1',
@@ -122,6 +138,14 @@ const EIP712_DOMAIN_V3 = {
   version: '3',
   chainId: Number(process.env.CHAIN_ID),
   verifyingContract: process.env.ROUTER_ADDRESS as `0x${string}`,
+} as const;
+
+// V3.1: Uses ROUTER_V3_1_ADDRESS and version "3.1"
+const EIP712_DOMAIN_V3_1 = {
+  name: 'MiningClaimRouter',
+  version: '3.1',
+  chainId: Number(process.env.CHAIN_ID),
+  verifyingContract: (config.ROUTER_V3_1_ADDRESS || config.ROUTER_ADDRESS) as `0x${string}`,
 } as const;
 
 // Canonical SHA-256 helper - matches worker exactly
@@ -678,9 +702,10 @@ export class ClaimProcessor {
     const baseReward = this.calculateTierReward(claimReq.hash as `0x${string}`);
     const tierInfo = Rewards.getTierInfo(claimReq.hash as `0x${string}`);
 
-    // Calculate multiplier based on user's NFT holdings
-    console.log(`[V3_CLAIM] Calculating multiplier for ${session.wallet}...`);
-    const multiplierResult = await calculateMultiplier(session.wallet);
+    // Calculate multiplier based on owner's NFT holdings (vault if delegating)
+    const ownerAddress = (session as any).owner || session.wallet;
+    console.log(`[V3_CLAIM] Calculating multiplier for ${ownerAddress}...`);
+    const multiplierResult = await calculateMultiplier(ownerAddress);
     
     // Apply multiplier to base reward
     const { applyMultiplier } = await import('./multipliers.js');
@@ -690,26 +715,44 @@ export class ClaimProcessor {
     console.log(`[V3_CLAIM] Multiplier: ${multiplierResult.multiplier}x (${multiplierResult.multiplierBps} bps)`);
     console.log(`[V3_CLAIM] Final reward: ${ethers.formatEther(finalReward)} ABIT`);
 
-    // Create claimV3 struct
-    const claimStructV3 = {
+    // Create claimV3 struct (feature-flagged for V3.1 delegate support)
+    const nonce = ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`;
+    const expiry = Math.floor(Date.now() / 1000) + 300; // 5 minutes from now (in seconds)
+    
+    const claimStructV3 = config.DELEGATE_PHASE1_ENABLED ? {
+      // V3.1: Includes caller field
       cartridge: session.cartridge.contract,
       tokenId: session.cartridge.tokenId,
-      wallet: session.wallet,
-      nonce: ethers.hexlify(ethers.randomBytes(32)) as `0x${string}`,
+      wallet: (session as any).owner || session.wallet,  // Vault if delegating
+      caller: (session as any).caller || session.wallet, // Hot wallet
+      nonce,
       tier: tierInfo.tier,
       tries: tries,
       elapsedMs: elapsedMs,
       hash: claimReq.hash,
-      expiry: Math.floor(Date.now() / 1000) + 300, // 5 minutes from now (in seconds)
+      expiry,
+    } : {
+      // V3: Original structure
+      cartridge: session.cartridge.contract,
+      tokenId: session.cartridge.tokenId,
+      wallet: session.wallet,
+      nonce,
+      tier: tierInfo.tier,
+      tries: tries,
+      elapsedMs: elapsedMs,
+      hash: claimReq.hash,
+      expiry,
     };
 
     // Check nonce uniqueness
-    if (this.usedNonces.has(claimStructV3.nonce)) {
+    if (this.usedNonces.has(nonce)) {
       throw new Error('Nonce already used');
     }
 
-    // Sign the claimV3 with EIP-712
-    const signature = await this.signClaimV3(claimStructV3);
+    // Sign the claimV3 with EIP-712 (V3 or V3.1)
+    const signature = config.DELEGATE_PHASE1_ENABLED 
+      ? await this.signClaimV3_1(claimStructV3 as any)
+      : await this.signClaimV3(claimStructV3);
 
     // Mark nonce as used
     this.usedNonces.add(claimStructV3.nonce);
@@ -942,6 +985,46 @@ export class ClaimProcessor {
     };
   }
   
+  /**
+   * Sign claimV3.1 with EIP-712 (V3.1 - adds caller field for delegate support)
+   */
+  private async signClaimV3_1(claim: {
+    cartridge: string;
+    tokenId: string;
+    wallet: string;   // vault/owner
+    caller: string;   // hot wallet
+    nonce: string;
+    tier: number;
+    tries: number;
+    elapsedMs: number;
+    hash: string;
+    expiry: number;
+  }): Promise<string> {
+    const domain = EIP712_DOMAIN_V3_1;
+    
+    console.log('[CLAIM_SIGN_V3.1] Domain verifyingContract:', domain.verifyingContract);
+    console.log('[CLAIM_SIGN_V3.1] Domain version:', domain.version);
+    console.log('[CLAIM_SIGN_V3.1] Domain chainId:', domain.chainId);
+    console.log('[CLAIM_SIGN_V3.1] Signer address:', this.signer.address);
+    console.log('[CLAIM_SIGN_V3.1] Claim cartridge:', claim.cartridge);
+    console.log('[CLAIM_SIGN_V3.1] Claim tokenId:', claim.tokenId);
+    console.log('[CLAIM_SIGN_V3.1] Claim wallet (owner):', claim.wallet);
+    console.log('[CLAIM_SIGN_V3.1] Claim caller (hot):', claim.caller);
+    console.log('[CLAIM_SIGN_V3.1] Claim tier:', claim.tier);
+    console.log('[CLAIM_SIGN_V3.1] Claim tries:', claim.tries);
+    console.log('[CLAIM_SIGN_V3.1] Claim elapsedMs:', claim.elapsedMs);
+    console.log('[CLAIM_SIGN_V3.1] Claim hash:', claim.hash);
+    console.log('[CLAIM_SIGN_V3.1] Claim expiry:', claim.expiry);
+    console.log('[CLAIM_SIGN_V3.1] Current timestamp:', Math.floor(Date.now() / 1000));
+    console.log('[CLAIM_SIGN_V3.1] Expiry - now:', claim.expiry - Math.floor(Date.now() / 1000), 'seconds');
+    
+    const signature = await this.signer.signTypedData(domain, EIP712_TYPES_V3_1, claim);
+    
+    console.log('[CLAIM_SIGN_V3.1] Signature:', signature);
+    
+    return signature;
+  }
+
   /**
    * Reset claims counter (for testing)
    */

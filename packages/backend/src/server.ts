@@ -259,7 +259,7 @@ fastify.post('/admin/clear-locks', async (request, reply) => {
 // Open a mining session
 fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply) => {
   const body = request.body as any;
-  const { sessionId: clientSessionId, wallet, minerId, chainId, contract, tokenId } = body;
+  const { sessionId: clientSessionId, wallet, minerId, chainId, contract, tokenId, vault } = body;
   
   if (!clientSessionId || !wallet || !minerId || !chainId || !contract || !tokenId) {
     return errorResponse(reply, 400, 'invalid_request', 'Missing required fields: sessionId, wallet, minerId, chainId, contract, tokenId');
@@ -268,28 +268,88 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
   try {
     const now = Date.now();
     const canonical = canonicalizeCartridge({ chainId, contract, tokenId });
-    const w = normalizeAddress(wallet);
+    const hotWallet = normalizeAddress(wallet);
+    const vaultWallet = vault ? normalizeAddress(vault) : null;
     
-    console.log('[OPEN] Using new cartridge lock system:', {
+    // Determine effective owner (vault if delegating, otherwise hot wallet)
+    let effectiveOwner = hotWallet;
+    let isDelegated = false;
+    
+    console.log('[OPEN] Session request:', {
       sessionId: clientSessionId,
-      wallet: w,
+      hotWallet,
+      vaultWallet,
+      delegateEnabled: config.DELEGATE_PHASE1_ENABLED,
       chainId: canonical.chainId,
       contract: canonical.contract,
       tokenId: canonical.tokenId,
       minerId
     });
 
-    // Verify ownership first
-    const owns = await ownershipVerifier.ownsCartridge(w, canonical.contract, canonical.tokenId);
-    if (!owns) {
-      return errorResponse(reply, 403, 'ownership_required', 'Wallet does not own this cartridge');
+    // Verify ownership or delegation
+    if (vaultWallet && config.DELEGATE_PHASE1_ENABLED) {
+      // DELEGATE MODE: Check hot wallet is delegated by vault
+      console.log('[OPEN] Checking delegation:', {
+        hot: hotWallet.slice(0, 8) + '...',
+        vault: vaultWallet.slice(0, 8) + '...'
+      });
+      
+      const { delegateVerifier } = await import('./delegate.js');
+      
+      // 1. Check if vault delegates to hot wallet
+      const hasDelegate = await delegateVerifier.checkDelegateForToken(
+        hotWallet,
+        vaultWallet,
+        canonical.contract,
+        canonical.tokenId,
+        true // require "mineboy" rights
+      );
+      
+      if (!hasDelegate) {
+        return errorResponse(reply, 403, 'not_delegated', 
+          'Hot wallet is not delegated by vault. Please set up delegation at delegate.xyz');
+      }
+      
+      // 2. Check vault owns the cartridge
+      const vaultOwns = await ownershipVerifier.ownsCartridge(
+        vaultWallet,
+        canonical.contract,
+        canonical.tokenId
+      );
+      
+      if (!vaultOwns) {
+        return errorResponse(reply, 403, 'vault_not_owner', 
+          'Vault wallet does not own this cartridge');
+      }
+      
+      effectiveOwner = vaultWallet;
+      isDelegated = true;
+      
+      console.log('[OPEN] ✅ Delegation valid:', {
+        hot: hotWallet.slice(0, 8) + '...',
+        vault: vaultWallet.slice(0, 8) + '...',
+        owns: true
+      });
+      
+    } else {
+      // DIRECT MODE: Hot wallet must own cartridge
+      const owns = await ownershipVerifier.ownsCartridge(
+        hotWallet,
+        canonical.contract,
+        canonical.tokenId
+      );
+      
+      if (!owns) {
+        return errorResponse(reply, 403, 'ownership_required', 
+          'Wallet does not own this cartridge');
+      }
     }
 
     // Check wallet session limit (prevent exploit where user transfers multiple cartridges to one wallet)
-    const sessionLimit = await SessionStore.checkWalletSessionLimit(w);
+    const sessionLimit = await SessionStore.checkWalletSessionLimit(effectiveOwner);
     if (!sessionLimit.allowed) {
       console.warn('[OPEN] Wallet session limit exceeded:', {
-        wallet: w,
+        wallet: effectiveOwner,
         activeCount: sessionLimit.activeCount,
         limit: sessionLimit.limit
       });
@@ -309,11 +369,11 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       if (now >= lock.expiresAt) {
         // expired -> fall through to create fresh lock
         console.log('[OPEN] Existing lock expired, creating new one');
-      } else if (!sameAddr(lock.ownerAtAcquire, w)) {
+      } else if (!sameAddr(lock.ownerAtAcquire, effectiveOwner)) {
         // locked by someone else -> cooldown
         console.warn('[OPEN] Cartridge locked by another owner:', { 
           lockedBy: lock.ownerAtAcquire, 
-          requestedBy: w,
+          requestedBy: effectiveOwner,
           expiresAt: new Date(lock.expiresAt).toISOString()
         });
         return reply.status(409).send({
@@ -335,7 +395,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     let finalLock = lock;
     if (!lock || now >= lock.expiresAt) {
       const payload = {
-        ownerAtAcquire: w,
+        ownerAtAcquire: effectiveOwner,  // Lock under vault address (or hot if no vault)
         ownerMinerId: minerId,
         issuedAt: now,
         lastActive: now,
@@ -361,7 +421,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     }
 
     // 3) Session lock: one active tab/session
-    const gotSession = await SessionStore.acquireSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId, w, minerId);
+    const gotSession = await SessionStore.acquireSessionLock(canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId, effectiveOwner, minerId);
     if (!gotSession) {
       const ttl = await SessionStore.getSessionLockPttlMs(canonical.chainId, canonical.contract, canonical.tokenId);
       const holderMinerId = await SessionStore.getSessionHolderMinerId(canonical.chainId, canonical.contract, canonical.tokenId);
@@ -376,14 +436,18 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
     // 4) Create/refresh short session doc (45s)
     const session = {
       sessionId: clientSessionId,
-      wallet: w,
+      wallet: hotWallet,           // Always the connected wallet (hot)
+      owner: effectiveOwner,       // Vault if delegating, otherwise hot wallet
+      vault: vaultWallet || undefined, // Optional vault address
+      caller: hotWallet,           // Explicit caller for V3.1 claims
+      isDelegated,                 // Flag for logging/debugging
       cartridge: { chainId: canonical.chainId, contract: canonical.contract, tokenId: canonical.tokenId },
       minerId,
       createdAt: now,
       lastActive: now
     };
     await SessionStore.createSession(session);
-    await SessionStore.addWalletSession(w, canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId);
+    await SessionStore.addWalletSession(effectiveOwner, canonical.chainId, canonical.contract, canonical.tokenId, clientSessionId);
 
     // 5) Issue job + policy + TTLs (with IP address for rate limiting)
     const ipAddress = request.headers['x-forwarded-for'] as string || request.ip;
@@ -393,7 +457,7 @@ fastify.post<{ Body: OpenSessionReq }>('/v2/session/open', async (request, reply
       // CRITICAL: Clean up ALL state created before this point
       await SessionStore.releaseSessionLock(canonical.chainId, canonical.contract, canonical.tokenId);
       await SessionStore.deleteSession(clientSessionId);
-      await SessionStore.removeWalletSession(w, clientSessionId); // FIX: Remove wallet session tracking
+      await SessionStore.removeWalletSession(effectiveOwner, clientSessionId); // FIX: Remove wallet session tracking
       
       // If rate limited, return specific error
       if (result.error) {
