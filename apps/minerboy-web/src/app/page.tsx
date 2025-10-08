@@ -26,7 +26,7 @@ import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
 import { useJobTtl } from "@/hooks/useJobTtl";
 import { useNPCBalance } from "@/hooks/useNPCBalance";
-import { api } from "@/lib/api";
+import { api, apiGetIndividualLeaderboard } from "@/lib/api";
 import { heartbeat } from "@/utils/HeartbeatController";
 import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
@@ -98,6 +98,7 @@ function Home() {
   const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   const [vaultAddress, setVaultAddress] = useState<string>(''); // Delegate.xyz vault address
+  const [seasonPoints, setSeasonPoints] = useState<number>(0); // User's season MNESTR total
 
   // Navigation helpers
   const openNavigationPage = (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => {
@@ -385,6 +386,32 @@ function Home() {
     const interval = setInterval(fetchMessages, 5 * 60 * 1000); // Refresh every 5 minutes
     return () => clearInterval(interval);
   }, [fetchMessages]);
+
+  // Fetch season points when wallet connects
+  const fetchSeasonPoints = useCallback(async () => {
+    if (!address) {
+      setSeasonPoints(0);
+      return;
+    }
+    try {
+      const response = await apiGetIndividualLeaderboard('active', 100, 0, address);
+      if (response.me?.totalMNESTR) {
+        const points = Math.floor(parseFloat(response.me.totalMNESTR));
+        setSeasonPoints(points);
+      } else {
+        setSeasonPoints(0);
+      }
+    } catch (err) {
+      console.error('Failed to load season points:', err);
+      setSeasonPoints(0);
+    }
+  }, [address]);
+
+  useEffect(() => {
+    fetchSeasonPoints();
+    const interval = setInterval(fetchSeasonPoints, 30 * 1000); // Refresh every 30 seconds
+    return () => clearInterval(interval);
+  }, [fetchSeasonPoints]);
   
   // Mine blink effect
   useEffect(() => {
@@ -1605,7 +1632,7 @@ function Home() {
           pickaxeId={cartridge?.tokenId}
           multiplier={npcBalance >= 10 ? 1.5 : npcBalance >= 1 ? 1.2 : 1.0}
           multiplierSource={npcBalance >= 1 ? `NPC` : "BASE"}
-          seasonPoints={0} // TODO: Get from leaderboard API
+          seasonPoints={seasonPoints}
           width={390}
           messages={scrollingMessages}
           scrollSpeed={60}
