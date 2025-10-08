@@ -1075,11 +1075,28 @@ function Home() {
           // Submit claim to smart contract
           pushLine('Opening wallet for transaction...');
           
-          // Use the proper MiningClaimRouter contract
-          const routerAddress = process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
+          // DELEGATE V3.1: Use V3.1 router if delegation is active
+          const isDelegated = !!vaultAddress || !!claimResponse.claim.caller;
+          const routerAddress = isDelegated 
+            ? (process.env.NEXT_PUBLIC_ROUTER_V3_1_ADDRESS || process.env.NEXT_PUBLIC_ROUTER_ADDRESS)
+            : process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
+          
+          console.log('[CLAIM_TX] Router:', routerAddress, 'Delegated:', isDelegated);
           
           // Use the claim data from backend (properly formatted)
-          const claimData = {
+          // V3.1 includes caller field, V3 does not
+          const claimData = isDelegated ? {
+            cartridge: to0x(claimResponse.claim.cartridge),
+            tokenId: BigInt(claimResponse.claim.tokenId),
+            wallet: to0x(claimResponse.claim.wallet),
+            caller: to0x(claimResponse.claim.caller || address), // V3.1: caller field
+            nonce: to0x(claimResponse.claim.nonce),
+            tier: BigInt(claimResponse.claim.tier),
+            tries: BigInt(claimResponse.claim.tries),
+            elapsedMs: BigInt(claimResponse.claim.elapsedMs),
+            hash: to0x(claimResponse.claim.hash),
+            expiry: BigInt(claimResponse.claim.expiry)
+          } : {
             cartridge: to0x(claimResponse.claim.cartridge),
             tokenId: BigInt(claimResponse.claim.tokenId),
             wallet: to0x(claimResponse.claim.wallet),
