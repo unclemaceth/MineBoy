@@ -554,30 +554,23 @@ function NPCCard({
                 onError={onError}
               />
               <button
-                onClick={() => setShowCardCheckout(true)}
+                disabled
+                title="Coming soon - Currently limited to EU/US regions"
                 style={{
-                  background: 'linear-gradient(145deg, #4a7d5f, #2a5d3f)',
-                  border: '2px solid #5a9d7f',
+                  background: 'linear-gradient(145deg, #3a3a3a, #2a2a2a)',
+                  border: '2px solid #4a4a4a',
                   borderRadius: '4px',
-                  color: '#fff',
+                  color: '#888',
                   fontSize: '10px',
                   fontWeight: 'bold',
                   padding: '6px',
-                  cursor: 'pointer',
+                  cursor: 'not-allowed',
                   fontFamily: 'monospace',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                  transition: 'all 0.1s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #3a6d4f)';
-                  e.currentTarget.style.transform = 'scale(1.02)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #2a5d3f)';
-                  e.currentTarget.style.transform = 'scale(1)';
+                  opacity: 0.5,
                 }}
               >
-                💳 Buy with Card
+                💳 Card (Coming Soon)
               </button>
             </div>
             

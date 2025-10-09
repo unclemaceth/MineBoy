@@ -196,7 +196,7 @@ export default function WalletModal({ isOpen, onClose }: Props) {
                   </div>
                 </div>
 
-                {/* Buy APE Section */}
+                {/* Buy APE Section - DISABLED: Region-restricted (EU/US only) */}
                 <div style={styles.card}>
                   <div style={styles.sectionTitle}>Buy APE with Card</div>
                   <div style={{ ...styles.hint, marginBottom: 12 }}>
@@ -204,23 +204,50 @@ export default function WalletModal({ isOpen, onClose }: Props) {
                   </div>
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button
-                      onClick={() => { playButtonSound(); setShowCheckout('5'); }}
-                      style={{...styles.primaryBtn, flex: 1, fontSize: 13}}
+                      disabled
+                      style={{
+                        ...styles.primaryBtn,
+                        flex: 1,
+                        fontSize: 13,
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                        background: 'linear-gradient(145deg, #3a3a3a, #2a2a2a)'
+                      }}
+                      title="Coming soon - Currently limited to EU/US regions"
                     >
                       £5
                     </button>
                     <button
-                      onClick={() => { playButtonSound(); setShowCheckout('10'); }}
-                      style={{...styles.primaryBtn, flex: 1, fontSize: 13}}
+                      disabled
+                      style={{
+                        ...styles.primaryBtn,
+                        flex: 1,
+                        fontSize: 13,
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                        background: 'linear-gradient(145deg, #3a3a3a, #2a2a3a)'
+                      }}
+                      title="Coming soon - Currently limited to EU/US regions"
                     >
                       £10
                     </button>
                     <button
-                      onClick={() => { playButtonSound(); setShowCheckout('25'); }}
-                      style={{...styles.primaryBtn, flex: 1, fontSize: 13}}
+                      disabled
+                      style={{
+                        ...styles.primaryBtn,
+                        flex: 1,
+                        fontSize: 13,
+                        opacity: 0.5,
+                        cursor: 'not-allowed',
+                        background: 'linear-gradient(145deg, #3a3a3a, #2a2a2a)'
+                      }}
+                      title="Coming soon - Currently limited to EU/US regions"
                     >
                       £25
                     </button>
+                  </div>
+                  <div style={{ ...styles.hint, marginTop: 8, fontSize: 11, color: '#ff9999' }}>
+                    ⚠️ Coming Soon - Currently limited to EU/US regions
                   </div>
                 </div>
 
