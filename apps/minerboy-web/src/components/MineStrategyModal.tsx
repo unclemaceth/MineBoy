@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { BuyButton } from './BuyButton';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://mineboy-g5xo.onrender.com';
+const NPC_CONTRACT = '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA';
+const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
 
 type MineStrategyModalProps = {
   isOpen: boolean;
@@ -248,51 +250,29 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                       <div style={{ fontSize: '10px', color: '#88cc88', marginTop: '4px', marginBottom: '8px' }}>
                         Buy directly from the flywheel! Your purchase fuels the MNESTR burn 🔥
                       </div>
-                  <div style={{ marginTop: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+                  <div style={{ 
+                    marginTop: '10px', 
+                    maxHeight: '400px', 
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    gap: '10px'
+                  }}>
                     {stats.ownedNPCs.map((npc) => (
-                      <div
+                      <NPCCard
                         key={npc.tokenId}
-                        style={{
-                          backgroundColor: '#1a4d2a',
-                          border: '2px solid #2d5a3d',
-                          borderRadius: '6px',
-                          padding: '10px',
-                          marginBottom: '8px'
+                        tokenId={npc.tokenId}
+                        listedPrice={npc.listedPrice}
+                        onSuccess={() => {
+                          setNotification({ message: 'Purchase successful! 🎉 You now own this NPC!', type: 'success' });
+                          setTimeout(() => setNotification(null), 5000);
+                          fetchStats();
                         }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: 'bold' }}>NPC #{npc.tokenId}</span>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            {npc.listedPrice && (
-                              <span style={{ color: '#ffd700', fontSize: '13px', fontWeight: 'bold' }}>
-                                {npc.listedPrice} APE
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#88cc88', marginBottom: '8px' }}>
-                          Status: {npc.listedPrice ? 'Available for purchase!' : 'Being prepared for sale...'}
-                        </div>
-                        
-                        {npc.listedPrice && (
-                          <div style={{ marginTop: '8px' }}>
-                            <BuyButton 
-                              tokenId={npc.tokenId}
-                              priceLabel={`${npc.listedPrice} APE`}
-                              onSuccess={() => {
-                                setNotification({ message: 'Purchase successful! 🎉 You now own this NPC!', type: 'success' });
-                                setTimeout(() => setNotification(null), 5000);
-                                fetchStats();
-                              }}
-                              onError={(err) => {
-                                setNotification({ message: err, type: 'error' });
-                                setTimeout(() => setNotification(null), 5000);
-                              }}
-                            />
-                          </div>
-                        )}
-                      </div>
+                        onError={(err) => {
+                          setNotification({ message: err, type: 'error' });
+                          setTimeout(() => setNotification(null), 5000);
+                        }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -440,6 +420,122 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
       paddingBottom: '6px'
     }}>
       {children}
+    </div>
+  );
+}
+
+function NPCCard({ 
+  tokenId, 
+  listedPrice, 
+  onSuccess, 
+  onError 
+}: { 
+  tokenId: string; 
+  listedPrice: string | null; 
+  onSuccess: () => void;
+  onError: (err: string) => void;
+}) {
+  const [imageUrl, setImageUrl] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNFTMetadata = async () => {
+      try {
+        const response = await fetch(
+          `https://apechain-mainnet.g.alchemy.com/nft/v3/${ALCHEMY_API_KEY}/getNFTMetadata?contractAddress=${NPC_CONTRACT}&tokenId=${tokenId}&refreshCache=false`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          const imageUrl = data?.image?.cachedUrl || data?.image?.originalUrl || data?.image?.thumbnailUrl || '';
+          setImageUrl(imageUrl);
+        }
+      } catch (err) {
+        console.error('Error fetching NPC metadata:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNFTMetadata();
+  }, [tokenId]);
+
+  return (
+    <div style={{
+      backgroundColor: '#1a4d2a',
+      border: '2px solid #2d5a3d',
+      borderRadius: '8px',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      aspectRatio: '1 / 1'
+    }}>
+      {/* Image */}
+      <div style={{
+        width: '100%',
+        height: '60%',
+        backgroundColor: '#0d2417',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative'
+      }}>
+        {loading ? (
+          <div style={{ fontSize: '10px', color: '#88cc88' }}>Loading...</div>
+        ) : imageUrl ? (
+          <img 
+            src={imageUrl} 
+            alt={`NPC #${tokenId}`}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover'
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: '24px' }}>🤖</div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div style={{
+        padding: '8px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '6px',
+        flex: 1
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <span style={{ fontSize: '11px', fontWeight: 'bold' }}>#{tokenId}</span>
+          {listedPrice && (
+            <span style={{ color: '#ffd700', fontSize: '11px', fontWeight: 'bold' }}>
+              {listedPrice} APE
+            </span>
+          )}
+        </div>
+
+        {listedPrice ? (
+          <BuyButton 
+            tokenId={tokenId}
+            priceLabel={`${listedPrice} APE`}
+            onSuccess={onSuccess}
+            onError={onError}
+          />
+        ) : (
+          <div style={{ 
+            fontSize: '9px', 
+            color: '#88cc88', 
+            textAlign: 'center',
+            padding: '4px'
+          }}>
+            Preparing for sale...
+          </div>
+        )}
+      </div>
     </div>
   );
 }
