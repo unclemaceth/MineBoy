@@ -925,6 +925,66 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         />
       </div>
 
+      {/* Main Intro */}
+      <div style={{
+        padding: '20px',
+        background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
+        border: '3px solid #4a7d5f',
+        borderRadius: '12px'
+      }}>
+        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#64ff8a' }}>
+          Welcome to MineBoy
+        </h3>
+        <p style={{ fontSize: '16px', color: '#c8ffc8', lineHeight: '1.6', margin: '0' }}>
+          Gamified cryptographic SHA256 mining.<br/>
+          <span style={{ color: '#64ff8a', fontSize: '18px', fontWeight: 'bold' }}>MINE TO WIN!</span>
+        </p>
+      </div>
+
+      {/* This Season's Prizes */}
+      <div style={{
+        padding: '16px',
+        background: 'linear-gradient(180deg, #2a1f3d, #1a0f2d)',
+        border: '3px solid #9b59b6',
+        borderRadius: '8px'
+      }}>
+        <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#e74c3c' }}>
+          🏆 THIS SEASON'S PRIZES
+        </h4>
+        {/* Season countdown timer */}
+        <div style={{ 
+          marginBottom: '12px', 
+          padding: '10px', 
+          background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
+          borderRadius: '6px',
+          border: '2px solid #ff8a00'
+        }}>
+          <div style={{ color: '#ffc864', fontSize: '11px', fontWeight: 'bold', marginBottom: 4 }}>
+            ⏱️ SEASON 1 ENDS IN
+          </div>
+          <div style={{ color: '#ff8a00', fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>
+            {formatTimeRemaining(timeRemaining)}
+          </div>
+        </div>
+        <div style={{ fontSize: '13px', color: '#c8ffc8', lineHeight: '1.6', textAlign: 'left' }}>
+          <p style={{ margin: '6px 0', color: '#f1c40f' }}>🥇 <strong>1st Place:</strong> Alpha Dog</p>
+          <p style={{ margin: '6px 0', color: '#c0c0c0' }}>🥈 <strong>2nd Place:</strong> Eyeversed Blood of Ape</p>
+          <p style={{ margin: '6px 0', color: '#cd7f32' }}>🥉 <strong>3rd Place:</strong> ApeDroidz</p>
+        </div>
+        <div style={{ 
+          marginTop: '12px', 
+          padding: '8px', 
+          background: 'rgba(231, 76, 60, 0.2)', 
+          borderRadius: '4px',
+          border: '1px solid #e74c3c'
+        }}>
+          <p style={{ fontSize: '11px', color: '#ff8a8a', margin: 0, fontWeight: 'bold' }}>
+            ⚠️ Only tokens you've MINED count as Score Tokens<br/>
+            Buying the token won't improve your score!
+          </p>
+        </div>
+      </div>
+
       {/* Navigation Guide */}
       <div style={{
         padding: '16px',
@@ -1013,22 +1073,6 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         </p>
       </div>
 
-      {/* Main Intro */}
-      <div style={{
-        padding: '20px',
-        background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
-        border: '3px solid #4a7d5f',
-        borderRadius: '12px'
-      }}>
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#64ff8a' }}>
-          Welcome to MineBoy
-        </h3>
-        <p style={{ fontSize: '16px', color: '#c8ffc8', lineHeight: '1.6', margin: '0' }}>
-          Gamified cryptographic SHA256 mining.<br/>
-          <span style={{ color: '#64ff8a', fontSize: '18px', fontWeight: 'bold' }}>MINE TO WIN!</span>
-        </p>
-      </div>
-
       {/* Wallet Safety */}
       <div style={{
         padding: '16px',
@@ -1045,6 +1089,20 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         <div style={{ fontSize: '11px', color: '#c8a864', lineHeight: '1.4', textAlign: 'left' }}>
           <p style={{ margin: '4px 0' }}>📱 <strong>Mobile:</strong> Use Rabby Wallet's in-app browser</p>
           <p style={{ margin: '4px 0' }}>🔑 <strong>Easy Setup:</strong> Create wallet with Glyph (social login)</p>
+        </div>
+        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(255, 138, 0, 0.3)' }}>
+          <p style={{ fontSize: '12px', color: '#64ff8a', lineHeight: '1.5', marginBottom: '6px' }}>
+            <strong>❄️ Cold Storage Option:</strong>
+          </p>
+          <p style={{ fontSize: '11px', color: '#c8a864', lineHeight: '1.4', marginBottom: '6px' }}>
+            Keep your valuable NFTs in cold storage! Use <strong>delegate.xyz</strong> to mine from a hot wallet while your Picks and NPCs stay safe in your vault.
+          </p>
+          <div style={{ fontSize: '11px', color: '#8a8a8a', lineHeight: '1.4', textAlign: 'left' }}>
+            <p style={{ margin: '4px 0' }}>✅ Hot wallet mines safely</p>
+            <p style={{ margin: '4px 0' }}>✅ NFTs never leave cold storage</p>
+            <p style={{ margin: '4px 0' }}>✅ Rewards go to you (hot wallet)</p>
+            <p style={{ margin: '4px 0' }}>✅ NPC multipliers from vault</p>
+          </div>
         </div>
       </div>
 
@@ -1080,50 +1138,6 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         <p style={{ fontSize: '11px', color: '#8a8a8a', lineHeight: '1.4', margin: 0 }}>
           💡 Mine Tax supports prize pools, team collection sweeps, and server costs
         </p>
-      </div>
-
-      {/* This Season's Prizes */}
-      <div style={{
-        padding: '16px',
-        background: 'linear-gradient(180deg, #2a1f3d, #1a0f2d)',
-        border: '3px solid #9b59b6',
-        borderRadius: '8px'
-      }}>
-        <h4 style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px', color: '#e74c3c' }}>
-          🏆 THIS SEASON'S PRIZES
-        </h4>
-        {/* Season countdown timer */}
-        <div style={{ 
-          marginBottom: '12px', 
-          padding: '10px', 
-          background: 'linear-gradient(180deg, #2d1f0f, #3d2a14)',
-          borderRadius: '6px',
-          border: '2px solid #ff8a00'
-        }}>
-          <div style={{ color: '#ffc864', fontSize: '11px', fontWeight: 'bold', marginBottom: 4 }}>
-            ⏱️ SEASON 1 ENDS IN
-          </div>
-          <div style={{ color: '#ff8a00', fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>
-            {formatTimeRemaining(timeRemaining)}
-          </div>
-        </div>
-        <div style={{ fontSize: '13px', color: '#c8ffc8', lineHeight: '1.6', textAlign: 'left' }}>
-          <p style={{ margin: '6px 0', color: '#f1c40f' }}>🥇 <strong>1st Place:</strong> Alpha Dog</p>
-          <p style={{ margin: '6px 0', color: '#c0c0c0' }}>🥈 <strong>2nd Place:</strong> Eyeversed Blood of Ape</p>
-          <p style={{ margin: '6px 0', color: '#cd7f32' }}>🥉 <strong>3rd Place:</strong> ApeDroidz</p>
-        </div>
-        <div style={{ 
-          marginTop: '12px', 
-          padding: '8px', 
-          background: 'rgba(231, 76, 60, 0.2)', 
-          borderRadius: '4px',
-          border: '1px solid #e74c3c'
-        }}>
-          <p style={{ fontSize: '11px', color: '#ff8a8a', margin: 0, fontWeight: 'bold' }}>
-            ⚠️ Only tokens you've MINED count as Score Tokens<br/>
-            Buying the token won't improve your score!
-          </p>
-        </div>
       </div>
 
       {/* Don't Show Again */}

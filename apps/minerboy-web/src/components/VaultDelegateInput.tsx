@@ -134,24 +134,15 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
             
             <p><strong className="text-white">Setup Steps:</strong></p>
             <ol className="list-decimal list-inside space-y-1 ml-2 text-xs">
-              <li><strong>Go to delegate.xyz</strong> and connect your vault (cold wallet)</li>
-              <li>Click <strong>"Delegate"</strong> → Choose <strong>"Contract Level"</strong></li>
-              <li>Set:
-                <ul className="list-disc list-inside ml-4 mt-1">
-                  <li><strong>Delegate To:</strong> This hot wallet</li>
-                  <li><strong>Contract:</strong> 0x3322b37...1D34D25 (Picks)</li>
-                  <li><strong>Rights:</strong> Type "mineboy"</li>
-                </ul>
-              </li>
-              <li>Sign the transaction</li>
-              <li>Enter your vault address above</li>
-              <li>Start mining! Rewards mint to vault 🎉</li>
+              <li>Go to <strong>delegate.xyz</strong> and connect your cold wallet</li>
+              <li>Delegate to this hot wallet (Wallet Level or Contract Level)</li>
+              <li>That's it! MineBoy will auto-detect your delegation</li>
             </ol>
             
             <p className="text-xs text-green-400 mt-2">
               ✅ Hot wallet mines<br/>
               ✅ NFTs stay in cold storage<br/>
-              ✅ Rewards go to vault<br/>
+              ✅ Rewards go to hot wallet (you)<br/>
               ✅ Multipliers check vault's NPCs
             </p>
           </div>
