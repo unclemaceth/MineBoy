@@ -1,3 +1,4 @@
+// MineBoy Game - Updated with Wallet Modal & Debug Logging
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import dynamic from 'next/dynamic';
