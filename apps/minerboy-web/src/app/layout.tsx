@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MineBoy",
-  description: "NFT-gated crypto mining PWA",
+  description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
   manifest: "/manifest.json",
   icons: {
     apple: "/icon-192x192.png",
@@ -33,6 +33,28 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+  },
+  openGraph: {
+    title: "MineBoy",
+    description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
+    url: "https://mineboy.gg",
+    siteName: "MineBoy",
+    images: [
+      {
+        url: "/mineboylogo.png",
+        width: 1200,
+        height: 630,
+        alt: "MineBoy Logo",
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "MineBoy",
+    description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
+    images: ["/mineboylogo.png"],
   },
 };
 

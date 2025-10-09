@@ -1,7 +1,7 @@
 {
   "name": "MineBoy",
   "short_name": "MineBoy",
-  "description": "NFT-gated crypto mining PWA",
+  "description": "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
   "start_url": "/?pwa=1",
   "display": "standalone",
   "background_color": "#000000",
