@@ -12,7 +12,8 @@
     "migrate:seasons": "tsx ./scripts/run-seasons-migration.ts",
     "seed:teams": "tsx ./scripts/seed-teams.ts",
     "seed:season": "tsx ./scripts/seed-season.ts",
-    "stats:compute": "tsx ./scripts/compute-daily-stats.ts"
+    "stats:compute": "tsx ./scripts/compute-daily-stats.ts",
+    "test:x": "tsx ./scripts/test-x-post.ts"
   },
   "keywords": [
     "mining",
@@ -28,13 +29,14 @@
     "@noble/hashes": "^1.8.0",
     "axios": "^1.7.4",
     "better-sqlite3": "^11.10.0",
+    "date-fns": "^3.6.0",
     "ethers": "^6.15.0",
     "fastify": "^5.6.0",
     "ioredis": "^5.7.0",
     "node-cache": "^5.1.2",
     "pg": "^8.11.3",
-    "viem": "^2.21.0",
-    "date-fns": "^3.6.0"
+    "twitter-api-v2": "^1.27.0",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
     "@types/node": "^24.4.0",

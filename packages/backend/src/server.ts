@@ -39,6 +39,7 @@ import flywheelRoutes from './routes/flywheel.js';
 import flywheelActionsRoutes from './routes/flywheelActions.js';
 import marketRoutes from './routes/market.js';
 import { registerMaintenance } from './routes/maintenance.js';
+import { startDailySummaryJob } from './utils/dailySummary.js';
 import { registerJobRoutes } from './routes/job.js';
 import { registerAdminExportRoute } from './routes/adminExport.js';
 import { SessionStore } from './sessionStore.js';
@@ -1225,6 +1226,11 @@ const start = async () => {
     
     // Start message scheduler (fair queueing system)
     startMessageScheduler();
+    
+    // Start daily summary job (posts game stats to X)
+    startDailySummaryJob().catch(err => {
+      console.error('[MineBoy:DailySummary] Job failed:', err);
+    });
     
     // Start receipt poller after database is initialized
     stopPoller = startReceiptPoller(process.env.RPC_URL!);
