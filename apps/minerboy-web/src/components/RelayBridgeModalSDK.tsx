@@ -1,12 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useAccount, useChainId, useWalletClient } from 'wagmi';
+import { useChainId } from 'wagmi';
 import { formatEther, parseEther } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apePublicClient } from '@/lib/apechain';
 import { createClient } from '@relayprotocol/relay-sdk';
 import { useQuote } from '@relayprotocol/relay-kit-hooks';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
+import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
 
 const queryClient = new QueryClient();
 const APECHAIN_ID = 33139;
@@ -34,9 +36,9 @@ export default function RelayBridgeModalSDK({ isOpen, onClose, suggestedAmount =
 }
 
 function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; suggestedAmount: string }) {
-  const { address } = useAccount();
+  const { address, isConnected } = useActiveAccount();
   const fromChainId = useChainId();
-  const { data: walletClient } = useWalletClient();
+  const walletClient = useActiveWalletClient();
   
   // Debounced amount input
   const [rawAmount, setRawAmount] = useState(suggestedAmount);
