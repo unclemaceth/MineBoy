@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     siteName: "MineBoy™",
     images: [
       {
-        url: "/mineboylogo.png",
+        url: "/mineboylogo.png?v=2",
         width: 1200,
         height: 630,
         alt: "MineBoy™ Logo",
@@ -54,7 +54,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "MineBoy™",
     description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
-    images: ["/mineboylogo.png"],
+    images: ["/mineboylogo.png?v=2"],
   },
 };
 

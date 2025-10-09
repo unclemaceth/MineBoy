@@ -1082,7 +1082,7 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
       {/* MineBoy™ Logo */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
         <img 
-          src="/mineboylogo.png" 
+          src="/mineboylogo.png?v=2" 
           alt="MineBoy™" 
           style={{ maxWidth: '200px', height: 'auto' }} 
         />
