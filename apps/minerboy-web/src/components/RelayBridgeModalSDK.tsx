@@ -134,6 +134,21 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     refetchInterval: 30_000,
   });
 
+  // Log quote state for debugging
+  useEffect(() => {
+    console.log('[RelayBridge] Quote state:', {
+      isLoading,
+      hasData: !!data,
+      hasError: !!error,
+      error: error,
+      amount,
+      validAmount,
+      selectedFromChainId,
+      currentChainId,
+      address
+    });
+  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, address]);
+
   // Analytics: Quote loaded
   useEffect(() => {
     if (data && typeof window !== 'undefined' && (window as any).gtag) {
@@ -501,6 +516,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             </div>
           )}
           {errMsg && <div style={errorBox}>❌ {errMsg}</div>}
+          {error && <div style={errorBox}>❌ Quote error: {(error as any)?.message || 'Failed to fetch quote from Relay'}</div>}
+          {isLoading && !data && <div style={{ marginTop: 12, fontSize: 12, color: '#ffd700', textAlign: 'center' }}>⏳ Fetching quote from Relay...</div>}
 
           {/* actions */}
           {address && (
