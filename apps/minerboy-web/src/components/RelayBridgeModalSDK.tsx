@@ -203,7 +203,14 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     console.log('  - hasData:', !!data);
     console.log('  - hasError:', !!error);
     if (data) {
-      console.log('  - Quote data structure:', JSON.stringify(data, null, 2));
+      console.log('  - Quote data (raw):', data);
+      try {
+        console.log('  - Quote data (JSON):', JSON.stringify(data, null, 2));
+      } catch (e) {
+        console.log('  - Quote data (could not stringify, circular ref?)');
+      }
+      console.log('  - timeEstimate type:', typeof (data as any).timeEstimate);
+      console.log('  - timeEstimate value:', (data as any).timeEstimate);
     }
     console.log('  - amount:', amount);
     console.log('  - validAmount:', validAmount);
@@ -654,7 +661,13 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
 
           {address && data && !isLoading && (
             <div style={card}>
-              <div><strong>Time:</strong> {(data as any).timeEstimate ?? '~30–60s'}</div>
+              <div><strong>Time:</strong> {(() => {
+                const timeEst = (data as any).timeEstimate;
+                if (!timeEst) return '~30–60s';
+                if (typeof timeEst === 'string') return timeEst;
+                if (typeof timeEst === 'object' && timeEst.display) return timeEst.display;
+                return '~30–60s';
+              })()}</div>
               <div><strong>Relayer covers dst gas:</strong> yes</div>
               {/* show out amount when present */}
               {(data as any)?.to?.amount && (
