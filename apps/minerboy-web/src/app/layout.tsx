@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "MineBoy",
-  description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
+  description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
   manifest: "/manifest.json",
   icons: {
     apple: "/icon-192x192.png",
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "MineBoy",
-    description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
+    description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
     url: "https://mineboy.gg",
     siteName: "MineBoy",
     images: [
@@ -53,7 +53,7 @@ export const metadata: Metadata = {
   twitter: {
     card: "summary_large_image",
     title: "MineBoy",
-    description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by Not a Punks Cult @NGMI.land. Powered by ApeCoin.",
+    description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
     images: ["/mineboylogo.png"],
   },
 };

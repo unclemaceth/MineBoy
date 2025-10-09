@@ -706,7 +706,7 @@ function InstructionsContent() {
           <p><strong>The Morgul PickHammer:</strong> up to 7000 H/s Mining Speed</p>
           <p><strong>The Blue Steel:</strong> up to 6000 H/s Mining Speed</p>
           <p><strong>Ol' Rusty:</strong> COMING SOON - 5000 H/s Mining Speed</p>
-          <p style={{ marginTop: '8px', fontSize: '11px', color: '#8a8a8a' }}>Head to the Mint Page to link to Magic Eden, or Mint an Ol' Rusty - whilst stocks last.</p>
+          <p style={{ marginTop: '8px', fontSize: '11px', color: '#8a8a8a' }}>Head to the Mint Page to link to Magic Eden and get your Pick!</p>
         </div>
       </div>
 
@@ -720,7 +720,7 @@ function InstructionsContent() {
           🎮 HOW TO PLAY
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p><strong>1. Get a MineCart:</strong> Own a Pick NFT from The Mine collection, or mint Ol' Rusty</p>
+          <p><strong>1. Get a MineCart:</strong> Own a Pick NFT from The Mine collection (Ol' Rusty coming soon)</p>
           <p><strong>2. Connect Wallet:</strong> Use CONNECT button (Glyph or WalletConnect)</p>
           <p><strong>3. Select MineCart:</strong> Load your MineCart into the MineBoy</p>
           <p><strong>4. Start Mining:</strong> Press A button to begin SHA256 mining</p>
@@ -1118,12 +1118,16 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         </h4>
         <div style={{ fontSize: '12px', color: '#c8ffc8', lineHeight: '1.5', textAlign: 'left' }}>
           <p style={{ margin: '8px 0' }}>
-            <strong>1. APE Tokens:</strong> For MINE TAX (0.001 APE) + gas per claim<br/>
-            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>1 APE ≈ 1000 claims</span>
+            <strong>1. PICK NFT (Required):</strong> Your minecart to mine with<br/>
+            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>From The Mine collection (Ol' Rusty coming soon)</span>
           </p>
           <p style={{ margin: '8px 0' }}>
-            <strong>2. MINE CART(s):</strong> FREE mint, up to 2 per wallet<br/>
-            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>Gas is sponsored!</span>
+            <strong>2. APE Tokens:</strong> 0.001 APE claim fee + gas<br/>
+            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>~1 APE = 1000 claims</span>
+          </p>
+          <p style={{ margin: '8px 0' }}>
+            <strong>3. NPC NFT (Optional):</strong> Boost your rewards!<br/>
+            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>1+ NPC = 1.2x multiplier | 10+ NPCs = 1.5x multiplier</span>
           </p>
         </div>
       </div>
@@ -1136,7 +1140,7 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         borderRadius: '6px'
       }}>
         <p style={{ fontSize: '11px', color: '#8a8a8a', lineHeight: '1.4', margin: 0 }}>
-          💡 Mine Tax supports prize pools, team collection sweeps, and server costs
+          💡 The 0.001 APE claim fee powers the MineStrategy flywheel: prize pools, team collection sweeps, liquidity, and ecosystem growth
         </p>
       </div>
 
