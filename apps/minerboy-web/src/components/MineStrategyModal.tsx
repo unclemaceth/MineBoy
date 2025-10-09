@@ -10,6 +10,7 @@ import { useActiveAccount } from '@/hooks/useActiveAccount';
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://mineboy-g5xo.onrender.com';
 const NPC_CONTRACT = '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA';
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+const FLYWHEEL_WALLET = '0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4'; // Flywheel wallet that receives NPC payments
 
 // Define ApeChain for Thirdweb
 const thirdwebApechain = defineChain({
@@ -543,7 +544,7 @@ function NPCCard({
 
         {listedPrice ? (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <BuyButton 
                 tokenId={tokenId}
                 priceLabel="APE"
@@ -559,7 +560,7 @@ function NPCCard({
                   color: '#fff',
                   fontSize: '10px',
                   fontWeight: 'bold',
-                  padding: '4px',
+                  padding: '6px',
                   cursor: 'pointer',
                   fontFamily: 'monospace',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
@@ -574,7 +575,7 @@ function NPCCard({
                   e.currentTarget.style.transform = 'scale(1)';
                 }}
               >
-                💳 Card
+                💳 Buy with Card
               </button>
             </div>
             
@@ -649,7 +650,7 @@ function NPCCard({
                           token: {
                             address: '0x0000000000000000000000000000000000000000',
                           },
-                          sellerAddress: address,
+                          sellerAddress: FLYWHEEL_WALLET,
                         },
                         metadata: {
                           name: `NPC #${tokenId}`,

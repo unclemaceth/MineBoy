@@ -289,18 +289,10 @@ export default function WalletModal({ isOpen, onClose }: Props) {
                 <PayEmbed
                   client={thirdwebClient}
                   payOptions={{
-                    mode: 'direct_payment',
-                    paymentInfo: {
-                      amount: showCheckout,
+                    mode: 'fund_wallet',
+                    prefillBuy: {
                       chain: thirdwebApechain,
-                      token: {
-                        address: '0x0000000000000000000000000000000000000000', // Native APE
-                      },
-                      sellerAddress: address,
-                    },
-                    metadata: {
-                      name: 'APE Token Purchase',
-                      description: `Buy £${showCheckout} worth of APE on ApeChain`,
+                      amount: showCheckout,
                     },
                   }}
                 />
