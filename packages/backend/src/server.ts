@@ -24,7 +24,7 @@ if (typeof getDifficultyForEpoch !== 'function') {
   throw new Error('shared/mining is missing getDifficultyForEpoch');
 }
 import { locks } from './locks.js';
-import { initDb } from './db.js';
+import { initDb, getDB } from './db.js';
 import { startReceiptPoller } from './chain/receiptPoller.js';
 import { registerClaimTxRoute } from './routes/claimTx.js';
 import { registerLeaderboardRoute } from './routes/leaderboard.js';
@@ -1903,6 +1903,96 @@ fastify.get('/v2/delegate/auto-detect', async (request, reply) => {
       enabled: true,
       error: 'Failed to detect vault'
     });
+  }
+});
+
+// Arcade name lookup endpoint (for wallet modal send feature)
+// Rate limited to prevent abuse
+const arcadeLookupCache = new Map<string, { address: string; arcadeName: string; timestamp: number }>();
+const ARCADE_LOOKUP_CACHE_TTL = 60 * 1000; // 60 seconds
+const ARCADE_LOOKUP_RATE_LIMIT = new Map<string, { count: number; resetAt: number }>();
+
+function checkArcadeRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const limit = ARCADE_LOOKUP_RATE_LIMIT.get(ip);
+  
+  if (!limit || now > limit.resetAt) {
+    ARCADE_LOOKUP_RATE_LIMIT.set(ip, { count: 1, resetAt: now + 60_000 });
+    return true;
+  }
+  
+  if (limit.count >= 30) {
+    return false; // Rate limit exceeded
+  }
+  
+  limit.count++;
+  return true;
+}
+
+fastify.get('/api/arcade/resolve', async (request, reply) => {
+  const { name } = request.query as { name?: string };
+  const ip = request.ip;
+  
+  // Rate limiting
+  if (!checkArcadeRateLimit(ip)) {
+    return reply.code(429).send({ error: 'Rate limit exceeded. Try again later.' });
+  }
+  
+  // Validate input
+  if (!name || typeof name !== 'string') {
+    return reply.code(400).send({ error: 'Name parameter required' });
+  }
+  
+  const trimmedName = name.trim();
+  
+  // Validate format: @username (2-32 chars, alphanumeric + underscore)
+  if (!/^@[a-zA-Z0-9_]{2,32}$/.test(trimmedName)) {
+    return reply.code(400).send({ 
+      error: 'Invalid arcade name format. Use @Username (2-32 chars, alphanumeric + underscore)' 
+    });
+  }
+  
+  // Remove @ for database lookup
+  const nameWithoutAt = trimmedName.slice(1);
+  
+  // Check cache first
+  const cached = arcadeLookupCache.get(nameWithoutAt.toLowerCase());
+  if (cached && Date.now() - cached.timestamp < ARCADE_LOOKUP_CACHE_TTL) {
+    return reply.send({
+      address: cached.address,
+      arcadeName: `@${cached.arcadeName}`,
+    });
+  }
+  
+  try {
+    const db = getDB();
+    
+    // Query database (case-insensitive)
+    const row = await db.pool.query(
+      `SELECT wallet, name FROM user_names WHERE LOWER(name) = LOWER($1)`,
+      [nameWithoutAt]
+    );
+    
+    if (!row.rows || row.rows.length === 0) {
+      return reply.code(404).send({ error: 'Arcade name not found' });
+    }
+    
+    const result = row.rows[0];
+    
+    // Cache the result
+    arcadeLookupCache.set(nameWithoutAt.toLowerCase(), {
+      address: result.wallet,
+      arcadeName: result.name,
+      timestamp: Date.now(),
+    });
+    
+    return reply.send({
+      address: result.wallet,
+      arcadeName: `@${result.name}`,
+    });
+  } catch (error: any) {
+    console.error('[ARCADE_LOOKUP] Error:', error);
+    return reply.code(500).send({ error: 'Internal server error' });
   }
 });
 

@@ -41,6 +41,7 @@ import SoundSettings from '@/components/SoundSettings';
 import NavigationModal from '@/components/NavigationModal';
 import StatisticsSection from '@/components/StatisticsSection';
 import RelayBridgeModalSDK from '@/components/RelayBridgeModalSDK';
+import WalletModal from '@/components/WalletModal';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
 import RouterV3ABI from '@/abi/RouterV3.json';
@@ -97,6 +98,7 @@ function Home() {
   const [showPaidMessageModal, setShowPaidMessageModal] = useState(false);
   const [showMineStrategyModal, setShowMineStrategyModal] = useState(false);
   const [showRelayModal, setShowRelayModal] = useState(false);
+  const [showWalletModal, setShowWalletModal] = useState(false);
   const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy™ it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   const [vaultAddress, setVaultAddress] = useState<string>(''); // Delegate.xyz vault address
@@ -2001,6 +2003,62 @@ function Home() {
         </div>
       </div>
 
+      {/* WALLET Button: between CONNECT and MENU */}
+      <button
+        onClick={() => { playButtonSound(); setShowWalletModal(true); }}
+        onPointerDown={(e) => {
+          e.currentTarget.style.borderTopColor = "#1a1a1a";
+          e.currentTarget.style.borderLeftColor = "#1a1a1a";
+          e.currentTarget.style.borderRightColor = "#6a6a6a";
+          e.currentTarget.style.borderBottomColor = "#6a6a6a";
+          e.currentTarget.style.boxShadow = "inset 0 2px 3px rgba(0,0,0,0.6)";
+          e.currentTarget.style.transform = "translateY(2px)";
+        }}
+        onPointerUp={(e) => {
+          e.currentTarget.style.borderTopColor = "#8a8a8a";
+          e.currentTarget.style.borderLeftColor = "#8a8a8a";
+          e.currentTarget.style.borderRightColor = "#2a2a2a";
+          e.currentTarget.style.borderBottomColor = "#2a2a2a";
+          e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
+        onPointerLeave={(e) => {
+          e.currentTarget.style.borderTopColor = "#8a8a8a";
+          e.currentTarget.style.borderLeftColor = "#8a8a8a";
+          e.currentTarget.style.borderRightColor = "#2a2a2a";
+          e.currentTarget.style.borderBottomColor = "#2a2a2a";
+          e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
+          e.currentTarget.style.transform = "translateY(0)";
+        }}
+        style={{
+          position: "absolute",
+          bottom: 775,
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: 75,
+          height: 27,
+          borderRadius: 18,
+          border: "2px solid",
+          borderTopColor: "#8a8a8a",
+          borderLeftColor: "#8a8a8a",
+          borderRightColor: "#2a2a2a",
+          borderBottomColor: "#2a2a2a",
+          cursor: "pointer",
+          background: "linear-gradient(145deg, #4a4a4a, #1a1a1a)",
+          boxShadow: "0 2px 2px rgba(0,0,0,0.5)",
+          fontWeight: 900,
+          fontSize: 10,
+          letterSpacing: 0.5,
+          color: "#ffffff",
+          transition: "transform 120ms, border-color 120ms",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center"
+        }}
+      >
+        WALLET
+      </button>
+
       {/* MENU Button: small button in top right */}
       <button
         onClick={() => { playButtonSound(); setShowDebugModal(true); }}
@@ -2770,41 +2828,6 @@ function Home() {
 
             {/* Debug Content */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Get APE Gas Button */}
-              <div style={{
-                padding: '12px',
-                background: 'linear-gradient(180deg, #1a4d2a, #0f2c1b)',
-                border: '2px solid #4a7d5f',
-                borderRadius: '8px'
-              }}>
-                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#ffd700' }}>
-                  ⛽ BRIDGE GAS
-                </h3>
-                <button
-                  onClick={() => {
-                    playButtonSound();
-                    setShowRelayModal(true);
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                    color: '#c8ffc8',
-                    border: '2px solid #64ff8a',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    fontFamily: 'Menlo, monospace'
-                  }}
-                >
-                  🌉 Get APE Gas (Bridge/Swap)
-                </button>
-                <div style={{ fontSize: '10px', marginTop: '6px', opacity: 0.7, textAlign: 'center' }}>
-                  Bridge from Base, Arbitrum, Ethereum → ApeChain
-                </div>
-              </div>
-
               {/* Sound Settings - moved to top */}
               <SoundSettings />
 
@@ -3245,6 +3268,12 @@ function Home() {
         isOpen={showRelayModal}
         onClose={() => setShowRelayModal(false)}
         suggestedAmount="0.01"
+      />
+
+      {/* Wallet Modal */}
+      <WalletModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
       />
 
       {/* Eject Cart Confirmation Modal */}
