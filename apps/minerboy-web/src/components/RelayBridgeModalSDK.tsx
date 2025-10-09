@@ -146,36 +146,43 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     try { return parseEther(amount).toString(); } catch { return '0'; }
   }, [amount]);
 
+  // Constants for Relay
+  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+  
   // Log quote request params
   console.log('[RelayBridge] Quote request params:');
   console.log('  originChainId (from):', selectedFromChainId);
   console.log('  destinationChainId (to):', APECHAIN_ID);
-  console.log('  originCurrency:', '0x0000000000000000000000000000000000000000');
-  console.log('  destinationCurrency:', '0x0000000000000000000000000000000000000000');
+  console.log('  originCurrency:', ZERO_ADDRESS);
+  console.log('  destinationCurrency:', ZERO_ADDRESS);
   console.log('  amount (wei):', weiAmount);
   console.log('  amount (human):', amount);
   console.log('  user:', address);
   console.log('  recipient:', address);
   console.log('  tradeType:', 'EXACT_INPUT');
-  console.log('  enabled:', Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId));
+  console.log('  enabled:', Boolean(address && parseFloat(amount) > 0));
 
-  // fetch a live quote - using relay-kit-hooks which expects origin/destination field names
-  const { data, isLoading, error, refetch } = (useQuote as any)({
-    client: relayClient,
-    wallet: undefined, // Don't pass wallet during quote, only during execute
-    options: {
-      user: address!,                      // payer/sender on source
-      recipient: address!,                 // receiver on ApeChain
-      originChainId: selectedFromChainId,  // source chain (e.g., Base 8453)
-      destinationChainId: APECHAIN_ID,     // ApeChain (33139)
-      originCurrency: '0x0000000000000000000000000000000000000000', // native ETH
-      destinationCurrency: '0x0000000000000000000000000000000000000000', // native APE
+  // fetch a live quote - useQuote expects POSITIONAL args, not a single object!
+  const { data, isLoading, error, refetch, executeQuote } = (useQuote as any)(
+    relayClient,                           // arg 1: client
+    undefined,                             // arg 2: wallet (undefined during quote, pass during execute only)
+    {                                      // arg 3: options (API schema with origin/destination fields)
+      user: address!,
+      recipient: address!,
+      originChainId: selectedFromChainId,  // e.g., Base 8453
+      destinationChainId: APECHAIN_ID,     // ApeChain 33139
+      originCurrency: ZERO_ADDRESS,        // native ETH
+      destinationCurrency: ZERO_ADDRESS,   // native APE
       tradeType: 'EXACT_INPUT',
       amount: weiAmount,                   // wei string
     },
-    enabled: Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId),
-    refetchInterval: 30_000,
-  });
+    undefined,                             // arg 4: chain config (optional)
+    undefined,                             // arg 5: fetch options (optional)
+    {                                      // arg 6: React Query options
+      enabled: Boolean(address && parseFloat(amount) > 0), // Allow quotes even if on different chain
+      refetchInterval: 30_000,
+    }
+  );
 
   // Log quote state for debugging
   useEffect(() => {
@@ -192,12 +199,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     console.log('  - currentChainId (final):', currentChainId);
     console.log('  - ON CORRECT CHAIN?:', currentChainId === selectedFromChainId);
     console.log('  - address:', address);
-    console.log('  - Button disabled because:', {
+    console.log('  - Bridge button disabled because:', {
       noData: !data,
       loading: isLoading,
       invalidAmount: !validAmount,
       polling: isPollingGas,
-      wrongChain: currentChainId !== selectedFromChainId
+      needsChainSwitch: needsChainSwitch
     });
     if (error) {
       const body = (error as any)?.response?.data;
@@ -390,13 +397,13 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     setJustSwitched(false);
   }, [selectedFromChainId]);
   
-  // Force refetch quote when chain becomes correct
+  // Optional: Force refetch quote when chain becomes correct (for freshness)
   useEffect(() => {
-    if (currentChainId === selectedFromChainId && address && parseFloat(amount) > 0) {
-      console.log('[RelayBridge] Chain is correct, triggering quote refetch...');
+    if (currentChainId === selectedFromChainId && address && parseFloat(amount) > 0 && !isLoading) {
+      console.log('[RelayBridge] Chain is now correct, triggering quote refetch for freshness...');
       refetch();
     }
-  }, [currentChainId, selectedFromChainId, address, amount, refetch]);
+  }, [currentChainId, selectedFromChainId, address, amount, isLoading, refetch]);
 
   return (
     <div style={backdrop}>
@@ -642,15 +649,18 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
           {address && (
             <button
               onClick={execute}
-              disabled={!data || isLoading || !validAmount || isPollingGas}
+              disabled={!data || isLoading || !validAmount || isPollingGas || needsChainSwitch}
               style={{
                 ...btn,
-                backgroundColor: (!data || isLoading || !validAmount || isPollingGas) ? '#2a3a2a' : '#4a7d5f',
-                cursor: (!data || isLoading || !validAmount || isPollingGas) ? 'not-allowed' : 'pointer',
-                opacity: (!data || isLoading || !validAmount || isPollingGas) ? 0.6 : 1
+                backgroundColor: (!data || isLoading || !validAmount || isPollingGas || needsChainSwitch) ? '#2a3a2a' : '#4a7d5f',
+                cursor: (!data || isLoading || !validAmount || isPollingGas || needsChainSwitch) ? 'not-allowed' : 'pointer',
+                opacity: (!data || isLoading || !validAmount || isPollingGas || needsChainSwitch) ? 0.6 : 1
               }}
             >
-              {isPollingGas ? 'Waiting for APE...' : isLoading ? 'Preparing…' : `Bridge ${amount} to ApeChain`}
+              {isPollingGas ? 'Waiting for APE...' : 
+               needsChainSwitch ? `Switch to ${selectedChain.name} first` :
+               isLoading ? 'Preparing…' : 
+               `Bridge ${amount} to ApeChain`}
             </button>
           )}
 
