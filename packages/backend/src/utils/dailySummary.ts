@@ -1,10 +1,11 @@
 /**
  * Daily MineBoy Game Stats Summary
- * Posts game updates to X once per day
+ * Posts game updates to Discord and X once per day
  */
 
 import { getDB } from '../db.js';
 import { postTweet, formatGameStatsForX } from './twitter.js';
+import { postGameStats } from './discord.js';
 import { setTimeout as wait } from 'timers/promises';
 import { formatEther } from 'ethers';
 
@@ -101,16 +102,23 @@ async function sendDailySummary() {
       console.log('[MineBoy:DailySummary] No team data available');
     }
     
-    // Format and post to X
-    const xSummary = formatGameStatsForX({
+    // Prepare stats object
+    const statsData = {
       totalClaims: totalClaimsToday,
       activeMiners,
       totalMiners,
       topMiner,
       topTeam,
       date,
-    });
+    };
     
+    // Post to Discord
+    console.log('[MineBoy:DailySummary] Posting to Discord...');
+    await postGameStats(statsData);
+    console.log('[MineBoy:DailySummary] ✅ Posted to Discord');
+    
+    // Post to X
+    const xSummary = formatGameStatsForX(statsData);
     console.log('[MineBoy:DailySummary] Posting to X...');
     console.log(xSummary);
     
