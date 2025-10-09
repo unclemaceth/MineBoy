@@ -340,6 +340,14 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   useEffect(() => {
     setJustSwitched(false);
   }, [selectedFromChainId]);
+  
+  // Force refetch quote when chain becomes correct
+  useEffect(() => {
+    if (currentChainId === selectedFromChainId && address && parseFloat(amount) > 0) {
+      console.log('[RelayBridge] Chain is correct, triggering quote refetch...');
+      refetch();
+    }
+  }, [currentChainId, selectedFromChainId, address, amount, refetch]);
 
   return (
     <div style={backdrop}>
