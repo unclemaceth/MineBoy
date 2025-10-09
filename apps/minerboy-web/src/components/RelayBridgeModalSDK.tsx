@@ -202,6 +202,9 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     console.log('  - isLoading:', isLoading);
     console.log('  - hasData:', !!data);
     console.log('  - hasError:', !!error);
+    if (data) {
+      console.log('  - Quote data structure:', JSON.stringify(data, null, 2));
+    }
     console.log('  - amount:', amount);
     console.log('  - validAmount:', validAmount);
     console.log('  - selectedFromChainId:', selectedFromChainId);
