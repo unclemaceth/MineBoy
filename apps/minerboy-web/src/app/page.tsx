@@ -40,6 +40,7 @@ import { playButtonSound, playConfirmSound, playFailSound, startMiningSound, sto
 import SoundSettings from '@/components/SoundSettings';
 import NavigationModal from '@/components/NavigationModal';
 import StatisticsSection from '@/components/StatisticsSection';
+import RelayBridgeModalSDK from '@/components/RelayBridgeModalSDK';
 import type { CartridgeConfig } from "@/lib/api";
 import type { MiningJob as Job } from "@/types/mining";
 import RouterV3ABI from '@/abi/RouterV3.json';
@@ -95,6 +96,7 @@ function Home() {
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
   const [showPaidMessageModal, setShowPaidMessageModal] = useState(false);
   const [showMineStrategyModal, setShowMineStrategyModal] = useState(false);
+  const [showRelayModal, setShowRelayModal] = useState(false);
   const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy™ it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   const [vaultAddress, setVaultAddress] = useState<string>(''); // Delegate.xyz vault address
@@ -2768,6 +2770,41 @@ function Home() {
 
             {/* Debug Content */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Get APE Gas Button */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #1a4d2a, #0f2c1b)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#ffd700' }}>
+                  ⛽ BRIDGE GAS
+                </h3>
+                <button
+                  onClick={() => {
+                    playButtonSound();
+                    setShowRelayModal(true);
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                    color: '#c8ffc8',
+                    border: '2px solid #64ff8a',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 'bold',
+                    fontFamily: 'Menlo, monospace'
+                  }}
+                >
+                  🌉 Get APE Gas (Bridge/Swap)
+                </button>
+                <div style={{ fontSize: '10px', marginTop: '6px', opacity: 0.7, textAlign: 'center' }}>
+                  Bridge from Base, Arbitrum, Ethereum → ApeChain
+                </div>
+              </div>
+
               {/* Sound Settings - moved to top */}
               <SoundSettings />
 
@@ -3201,6 +3238,13 @@ function Home() {
         isOpen={showNavigationModal}
         page={navigationPage}
         onClose={closeNavigationModal}
+      />
+
+      {/* Relay Bridge Modal (on-demand) */}
+      <RelayBridgeModalSDK
+        isOpen={showRelayModal}
+        onClose={() => setShowRelayModal(false)}
+        suggestedAmount="0.01"
       />
 
       {/* Eject Cart Confirmation Modal */}
