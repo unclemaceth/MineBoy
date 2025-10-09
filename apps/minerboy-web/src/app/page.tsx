@@ -1349,8 +1349,24 @@ function Home() {
         // Stop any running worker
         miner.stop();
       } else {
-        pushLine(`Claim failed: ${err.status} ${err.info?.error || err.message || 'Unknown error'}`);
-        setStatus('error');
+        // Surface structured error details (physics, lock, expired, cadence, etc.)
+        const errorCode = err.info?.code || err.info?.error || 'unknown';
+        const errorMessage = err.info?.message || err.info?.details || err.message || 'Unknown error';
+        
+        pushLine(`Claim failed (${err.status}): ${errorCode}`);
+        pushLine(errorMessage);
+        pushLine(' ');
+        pushLine('Press B to try again or A to mine');
+        
+        console.error('[CLAIM_FAILED]', {
+          status: err.status,
+          code: errorCode,
+          message: errorMessage,
+          fullError: err.info
+        });
+        
+        // Keep status as 'found' so modal stays open, but user can dismiss or retry
+        // Status will be reset when they press A or dismiss the modal
       }
         } finally {
           // Heartbeats continue running throughout the session

@@ -698,7 +698,29 @@ fastify.post<{ Body: ClaimReq }>('/v2/claim/v2', async (request, reply) => {
     
   } catch (error: any) {
     fastify.log.error('Error processing claimV2:', error);
-    return reply.code(400).send({ error: error instanceof Error ? error.message : 'ClaimV2 processing failed' });
+    
+    // Send structured error response for better frontend debugging
+    const errorMessage = error instanceof Error ? error.message : 'ClaimV2 processing failed';
+    
+    // Categorize error types based on message content
+    let errorCode = 'claim_failed';
+    if (errorMessage.includes('physics') || errorMessage.includes('too fast') || errorMessage.includes('too slow')) {
+      errorCode = 'physics_invalid';
+    } else if (errorMessage.includes('expiresAt') || errorMessage.includes('maxHps') || errorMessage.includes('missing')) {
+      errorCode = 'job_invalid';
+    } else if (errorMessage.includes('expired') || errorMessage.includes('TTL')) {
+      errorCode = 'job_expired';
+    } else if (errorMessage.includes('lock') || errorMessage.includes('ownership')) {
+      errorCode = 'lock_lost';
+    } else if (errorMessage.includes('preimage') || errorMessage.includes('mismatch')) {
+      errorCode = 'validation_failed';
+    }
+    
+    return reply.code(400).send({ 
+      code: errorCode,
+      error: errorMessage,
+      message: errorMessage
+    });
   }
 });
 

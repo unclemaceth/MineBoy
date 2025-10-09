@@ -115,10 +115,16 @@ export const api = {
       }
       return res;
     } catch (e: any) {
-      console.log('[CLAIM_ERR]', e.status, { 
+      // Surface structured error details for debugging
+      const errorCode = e.info?.code || e.info?.error || 'unknown';
+      const errorMessage = e.info?.message || e.info?.details || 'Claim failed';
+      
+      console.error('[CLAIM_ERR]', e.status, { 
+        code: errorCode,
+        message: errorMessage,
         xInstance: e.headers?.['x-instance'], 
         lockOwner: e.headers?.['x-lock-owner'], 
-        server: e.info 
+        fullError: e.info 
       });
       throw e;
     }
@@ -154,10 +160,16 @@ export const api = {
         amountLabel: json.amountLabel
       };
     } catch (e: any) {
-      console.log('[CLAIM_V2_ERR]', e.status, { 
+      // Surface structured error details for debugging (physics, lock, expired, cadence, etc.)
+      const errorCode = e.info?.code || e.info?.error || 'unknown';
+      const errorMessage = e.info?.message || e.info?.details || 'ClaimV3 failed';
+      
+      console.error('[CLAIM_V2_ERR]', e.status, { 
+        code: errorCode,
+        message: errorMessage,
         xInstance: e.headers?.['x-instance'], 
         lockOwner: e.headers?.['x-lock-owner'], 
-        server: e.info 
+        fullError: e.info 
       });
       throw e;
     }

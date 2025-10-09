@@ -418,7 +418,19 @@ export class JobManager {
     this.jobNonces.set(sessionId, signedJob);
     await SessionStore.setJob(sessionId, signedJob);
     
-    console.log(`Created next job ${job.jobId} (height ${jobWithSession.height}) for session ${sessionId} (counter [${job.counterStart},${job.counterEnd}), maxHps ${job.maxHps})`);
+    console.log(`Created next job ${job.jobId} (height ${jobWithSession.height}) for session ${sessionId} (counter [${job.counterStart},${job.counterEnd}), maxHps ${job.maxHps}, ttl ${job.ttlMs}ms, expiresAt ${job.expiresAt})`);
+    
+    // DIAGNOSTIC: Verify all critical fields are present
+    if (!job.expiresAt) {
+      console.error(`[NEXT_JOB_ERROR] Missing expiresAt for job ${job.jobId}`);
+    }
+    if (!job.maxHps) {
+      console.error(`[NEXT_JOB_ERROR] Missing maxHps for job ${job.jobId}`);
+    }
+    if (!job.counterStart || !job.counterEnd) {
+      console.error(`[NEXT_JOB_ERROR] Missing counter window for job ${job.jobId}`);
+    }
+    
     return signedJob;
   }
 
