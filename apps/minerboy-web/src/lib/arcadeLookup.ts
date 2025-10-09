@@ -10,6 +10,7 @@ export type ArcadeUser = {
 };
 
 const ARCADE_NAME_REGEX = /^@[a-zA-Z0-9_]{2,32}$/;
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
 
 export function isValidArcadeName(input: string): boolean {
   return ARCADE_NAME_REGEX.test(input);
@@ -22,7 +23,7 @@ export async function lookupArcadeName(arcadeName: string): Promise<ArcadeUser> 
   }
 
   try {
-    const response = await fetch(`/api/arcade/resolve?name=${encodeURIComponent(arcadeName)}`);
+    const response = await fetch(`${BACKEND_URL}/api/arcade/resolve?name=${encodeURIComponent(arcadeName)}`);
     
     if (response.status === 404) {
       throw new Error(`Arcade name "${arcadeName}" not found`);
