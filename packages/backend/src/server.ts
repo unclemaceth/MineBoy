@@ -1967,13 +1967,24 @@ fastify.get('/api/arcade/resolve', async (request, reply) => {
   try {
     const db = getDB();
     
+    // Debug: Log the query
+    console.log('[ARCADE_LOOKUP] Searching for name:', nameWithoutAt);
+    
     // Query database (case-insensitive)
     const row = await db.pool.query(
       `SELECT wallet, name FROM user_names WHERE LOWER(name) = LOWER($1)`,
       [nameWithoutAt]
     );
     
+    console.log('[ARCADE_LOOKUP] Query result:', row.rows?.length || 0, 'rows');
+    if (row.rows?.length > 0) {
+      console.log('[ARCADE_LOOKUP] Found:', row.rows[0]);
+    }
+    
     if (!row.rows || row.rows.length === 0) {
+      // Debug: Let's see what's in the table
+      const allNames = await db.pool.query(`SELECT name FROM user_names LIMIT 10`);
+      console.log('[ARCADE_LOOKUP] Sample names in DB:', allNames.rows?.map(r => r.name));
       return reply.code(404).send({ error: 'Arcade name not found' });
     }
     
