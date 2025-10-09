@@ -337,10 +337,23 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                   </div>
                   <button
                     onClick={async () => {
+                      console.log('[RelayBridge] Switch chain clicked:', selectedFromChainId, selectedChain.name);
+                      if (!switchChain) {
+                        console.error('[RelayBridge] switchChain is not available');
+                        setErrMsg('Chain switching not available. Please switch manually in your wallet.');
+                        return;
+                      }
                       try {
-                        switchChain?.({ chainId: selectedFromChainId });
-                      } catch (err) {
-                        console.warn('Failed to switch chain:', err);
+                        setStatus(`Requesting switch to ${selectedChain.name}...`);
+                        setErrMsg('');
+                        console.log('[RelayBridge] Calling switchChain with chainId:', selectedFromChainId);
+                        await switchChain({ chainId: selectedFromChainId });
+                        console.log('[RelayBridge] Switch successful');
+                        setStatus('');
+                      } catch (err: any) {
+                        console.error('[RelayBridge] Failed to switch chain:', err);
+                        setErrMsg(err?.message || 'Failed to switch chain. Please switch manually in your wallet.');
+                        setStatus('');
                       }
                     }}
                     style={{
