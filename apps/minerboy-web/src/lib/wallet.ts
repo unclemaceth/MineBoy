@@ -2,6 +2,7 @@
 
 import { http } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
+import { mainnet, base, arbitrum, optimism, polygon } from 'wagmi/chains';
 import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
@@ -31,7 +32,8 @@ export const apechain = {
   blockExplorers: { default: { name: 'ApeScan', url: 'https://apescan.io' } }
 } as const satisfies Chain;
 
-export const chains = [apechain, curtis] as const;
+// Include major bridging chains for Relay swap functionality
+export const chains = [apechain, base, mainnet, arbitrum, optimism, polygon, curtis] as const;
 
 // Single wagmi config used everywhere
 export const wagmiConfig = defaultWagmiConfig({
@@ -45,6 +47,11 @@ export const wagmiConfig = defaultWagmiConfig({
   },
   transports: {
     [apechain.id]: http('https://rpc.apechain.com/http'),
+    [base.id]: http(),
+    [mainnet.id]: http(),
+    [arbitrum.id]: http(),
+    [optimism.id]: http(),
+    [polygon.id]: http(),
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
   }
 });
