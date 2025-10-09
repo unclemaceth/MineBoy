@@ -10,17 +10,12 @@ import { lookupArcadeName, detectRecipientType, isValidArcadeName, type ArcadeUs
 import { useSendAPE } from '@/hooks/useSendAPE';
 import RelayBridgeModalSDK from '@/components/RelayBridgeModalSDK';
 import { playButtonSound } from '@/lib/sounds';
-import { createThirdwebClient } from 'thirdweb';
+import { thirdwebClient } from '@/app/ThirdwebProvider';
 import { defineChain } from 'thirdweb/chains';
 import { PayEmbed } from 'thirdweb/react';
 
 const APECHAIN_ID = 33139;
 const MNESTR_TOKEN_ADDRESS = '0xAe0DfbB1a2b22080F947D1C0234c415FabEEc276' as const;
-
-// Initialize Thirdweb client
-const thirdwebClient = createThirdwebClient({
-  clientId: 'c7092085d8fa5c3ec2ed5d1598ec5206',
-});
 
 // Define ApeChain for Thirdweb
 const thirdwebApechain = defineChain({

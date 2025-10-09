@@ -2,10 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { BuyButton } from './BuyButton';
+import { thirdwebClient } from '@/app/ThirdwebProvider';
+import { defineChain } from 'thirdweb/chains';
+import { PayEmbed } from 'thirdweb/react';
+import { useActiveAccount } from '@/hooks/useActiveAccount';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://mineboy-g5xo.onrender.com';
 const NPC_CONTRACT = '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA';
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
+
+// Define ApeChain for Thirdweb
+const thirdwebApechain = defineChain({
+  id: 33139,
+  name: 'ApeChain',
+  rpc: 'https://rpc.apechain.com',
+  nativeCurrency: {
+    name: 'ApeCoin',
+    symbol: 'APE',
+    decimals: 18,
+  },
+  blockExplorers: [
+    {
+      name: 'ApeScan',
+      url: 'https://apescan.io',
+    },
+  ],
+});
 
 type MineStrategyModalProps = {
   isOpen: boolean;
@@ -435,8 +457,10 @@ function NPCCard({
   onSuccess: () => void;
   onError: (err: string) => void;
 }) {
+  const { address } = useActiveAccount();
   const [imageUrl, setImageUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [showCardCheckout, setShowCardCheckout] = useState(false);
 
   useEffect(() => {
     const fetchNFTMetadata = async () => {
@@ -518,12 +542,148 @@ function NPCCard({
         </div>
 
         {listedPrice ? (
-          <BuyButton 
-            tokenId={tokenId}
-            priceLabel={`${listedPrice} APE`}
-            onSuccess={onSuccess}
-            onError={onError}
-          />
+          <>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+              <BuyButton 
+                tokenId={tokenId}
+                priceLabel="APE"
+                onSuccess={onSuccess}
+                onError={onError}
+              />
+              <button
+                onClick={() => setShowCardCheckout(true)}
+                style={{
+                  background: 'linear-gradient(145deg, #4a7d5f, #2a5d3f)',
+                  border: '2px solid #5a9d7f',
+                  borderRadius: '4px',
+                  color: '#fff',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  fontFamily: 'monospace',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                  transition: 'all 0.1s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #3a6d4f)';
+                  e.currentTarget.style.transform = 'scale(1.02)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #2a5d3f)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                }}
+              >
+                💳 Card
+              </button>
+            </div>
+            
+            {/* Card Checkout Modal */}
+            {showCardCheckout && address && (
+              <div 
+                style={{
+                  position: 'fixed',
+                  inset: 0,
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  zIndex: 10000,
+                  padding: 20,
+                }}
+                onClick={() => setShowCardCheckout(false)}
+              >
+                <div 
+                  style={{
+                    background: '#0f2c1b',
+                    border: '2px solid #4a7d5f',
+                    borderRadius: '8px',
+                    maxWidth: 400,
+                    width: '100%',
+                    overflow: 'hidden',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '16px 20px',
+                    borderBottom: '2px solid #4a7d5f',
+                    background: 'linear-gradient(145deg, #1a4d2a, #2d5a3d)'
+                  }}>
+                    <h2 style={{
+                      margin: 0,
+                      fontSize: '16px',
+                      color: '#c8ffc8',
+                      fontWeight: 'bold',
+                      fontFamily: 'monospace',
+                    }}>
+                      💳 Buy NPC #{tokenId}
+                    </h2>
+                    <button
+                      onClick={() => setShowCardCheckout(false)}
+                      style={{
+                        background: 'linear-gradient(145deg, #ff6b6b, #d63031)',
+                        color: 'white',
+                        border: '2px solid #8a8a8a',
+                        borderRadius: '6px',
+                        width: '30px',
+                        height: '30px',
+                        cursor: 'pointer',
+                        fontSize: '16px',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  <div style={{ padding: '20px' }}>
+                    <PayEmbed
+                      client={thirdwebClient}
+                      payOptions={{
+                        mode: 'direct_payment',
+                        paymentInfo: {
+                          amount: listedPrice,
+                          chain: thirdwebApechain,
+                          token: {
+                            address: '0x0000000000000000000000000000000000000000',
+                          },
+                          sellerAddress: address,
+                        },
+                        metadata: {
+                          name: `NPC #${tokenId}`,
+                          description: `Purchase NPC #${tokenId} from MineStrategy Flywheel for ${listedPrice} APE`,
+                        },
+                      }}
+                    />
+                    <div style={{ marginTop: 12, textAlign: 'center' }}>
+                      <button
+                        onClick={() => {
+                          setShowCardCheckout(false);
+                          onSuccess();
+                        }}
+                        style={{
+                          background: 'linear-gradient(145deg, #4a7d5f, #2a5d3f)',
+                          border: '2px solid #5a9d7f',
+                          borderRadius: '6px',
+                          color: '#fff',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          padding: '10px 20px',
+                          cursor: 'pointer',
+                          fontFamily: 'monospace',
+                          width: '100%',
+                        }}
+                      >
+                        Close & Refresh
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div style={{ 
             fontSize: '9px', 

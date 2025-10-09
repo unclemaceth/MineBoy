@@ -8,6 +8,7 @@ import SeasonEndOverlay from "@/components/SeasonEndOverlay";
 import GlyphWalletProvider from "./GlyphWalletProvider";
 import W3MInit from "./W3MInit";
 import WCAccountBridge from '@/components/WCAccountBridge';
+import ThirdwebProviderWrapper from "./ThirdwebProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -76,17 +77,19 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <GlyphWalletProvider>
-          <W3MInit />
-          <WCAccountBridge />
-          {children}
-          {/* mounted once globally */}
-          <GlobalWalletModal />
-              {/* Sits on top when maintenance is enabled */}
-              <MaintenanceGate />
-              {/* Season 1 Beta Test ended - commented out for testing */}
-              {/* <SeasonEndOverlay /> */}
-        </GlyphWalletProvider>
+        <ThirdwebProviderWrapper>
+          <GlyphWalletProvider>
+            <W3MInit />
+            <WCAccountBridge />
+            {children}
+            {/* mounted once globally */}
+            <GlobalWalletModal />
+                {/* Sits on top when maintenance is enabled */}
+                <MaintenanceGate />
+                {/* Season 1 Beta Test ended - commented out for testing */}
+                {/* <SeasonEndOverlay /> */}
+          </GlyphWalletProvider>
+        </ThirdwebProviderWrapper>
       </body>
     </html>
   );
