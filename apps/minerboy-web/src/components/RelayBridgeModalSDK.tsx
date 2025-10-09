@@ -54,6 +54,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   // Selected source chain (default to Base)
   const [selectedFromChainId, setSelectedFromChainId] = useState(8453); // Base
   const [sourceBalance, setSourceBalance] = useState<bigint | null>(null);
+  const [justSwitched, setJustSwitched] = useState(false); // Track if we just successfully switched
   
   // Debounced amount input
   const [rawAmount, setRawAmount] = useState(suggestedAmount);
@@ -277,7 +278,19 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     return u.toString();
   }, [selectedFromChainId, address]);
   
-  const needsChainSwitch = currentChainId !== selectedFromChainId;
+  const needsChainSwitch = currentChainId !== selectedFromChainId && !justSwitched;
+  
+  // Clear justSwitched flag when chain actually updates
+  useEffect(() => {
+    if (currentChainId === selectedFromChainId && justSwitched) {
+      setJustSwitched(false);
+    }
+  }, [currentChainId, selectedFromChainId, justSwitched]);
+  
+  // Clear justSwitched when user selects a different chain
+  useEffect(() => {
+    setJustSwitched(false);
+  }, [selectedFromChainId]);
 
   return (
     <div style={backdrop}>
@@ -349,6 +362,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                         console.log('[RelayBridge] Calling switchChain with chainId:', selectedFromChainId);
                         await switchChain({ chainId: selectedFromChainId });
                         console.log('[RelayBridge] Switch successful');
+                        setJustSwitched(true); // Hide the warning immediately
                         setStatus(`✓ Switched to ${selectedChain.name}!`);
                         setTimeout(() => setStatus(''), 2000);
                       } catch (err: any) {
