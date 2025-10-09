@@ -47,8 +47,11 @@ export default function RelayBridgeModalSDK({ isOpen, onClose, suggestedAmount =
 
 function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; suggestedAmount: string }) {
   const { address, isConnected } = useActiveAccount();
-  const currentChainId = useChainId();
+  const wagmiChainId = useChainId();
   const walletClient = useActiveWalletClient();
+  
+  // Get the ACTUAL current chain ID from the wallet client (more reliable than wagmi's useChainId)
+  const currentChainId = walletClient?.chain?.id ?? wagmiChainId;
   
   // Selected source chain (default to Base)
   const [selectedFromChainId, setSelectedFromChainId] = useState(8453); // Base
@@ -142,7 +145,9 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     console.log('  - amount:', amount);
     console.log('  - validAmount:', validAmount);
     console.log('  - selectedFromChainId:', selectedFromChainId);
-    console.log('  - currentChainId:', currentChainId);
+    console.log('  - wagmiChainId:', wagmiChainId);
+    console.log('  - walletClient.chain.id:', walletClient?.chain?.id);
+    console.log('  - currentChainId (actual):', currentChainId);
     console.log('  - ON CORRECT CHAIN?:', currentChainId === selectedFromChainId);
     console.log('  - address:', address);
     console.log('  - Button disabled because:', {
@@ -153,7 +158,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       wrongChain: currentChainId !== selectedFromChainId
     });
     if (error) console.error('  - ERROR:', error);
-  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, address, isPollingGas]);
+  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, wagmiChainId, walletClient, address, isPollingGas]);
 
   // Analytics: Quote loaded
   useEffect(() => {
