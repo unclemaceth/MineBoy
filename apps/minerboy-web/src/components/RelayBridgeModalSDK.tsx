@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useChainId, useSwitchChain } from 'wagmi';
+import { useChainId } from 'wagmi';
 import { formatEther, parseEther, createPublicClient, http } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apePublicClient } from '@/lib/apechain';
@@ -48,7 +48,6 @@ export default function RelayBridgeModalSDK({ isOpen, onClose, suggestedAmount =
 function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; suggestedAmount: string }) {
   const { address, isConnected } = useActiveAccount();
   const currentChainId = useChainId();
-  const { switchChain } = useSwitchChain();
   const walletClient = useActiveWalletClient();
   
   // Selected source chain (default to Base)
@@ -130,24 +129,31 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       recipient: address!,                 // receiver on ApeChain
       tradeType: 'EXACT_INPUT',
     },
-    enabled: Boolean(address && parseFloat(amount) > 0),
+    enabled: Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId),
     refetchInterval: 30_000,
   });
 
   // Log quote state for debugging
   useEffect(() => {
-    console.log('[RelayBridge] Quote state:', {
-      isLoading,
-      hasData: !!data,
-      hasError: !!error,
-      error: error,
-      amount,
-      validAmount,
-      selectedFromChainId,
-      currentChainId,
-      address
+    console.log('[RelayBridge] Quote state:');
+    console.log('  - isLoading:', isLoading);
+    console.log('  - hasData:', !!data);
+    console.log('  - hasError:', !!error);
+    console.log('  - amount:', amount);
+    console.log('  - validAmount:', validAmount);
+    console.log('  - selectedFromChainId:', selectedFromChainId);
+    console.log('  - currentChainId:', currentChainId);
+    console.log('  - ON CORRECT CHAIN?:', currentChainId === selectedFromChainId);
+    console.log('  - address:', address);
+    console.log('  - Button disabled because:', {
+      noData: !data,
+      loading: isLoading,
+      invalidAmount: !validAmount,
+      polling: isPollingGas,
+      wrongChain: currentChainId !== selectedFromChainId
     });
-  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, address]);
+    if (error) console.error('  - ERROR:', error);
+  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, address, isPollingGas]);
 
   // Analytics: Quote loaded
   useEffect(() => {
@@ -366,16 +372,22 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                   <button
                     onClick={async () => {
                       console.log('[RelayBridge] Switch chain clicked:', selectedFromChainId, selectedChain.name);
-                      if (!switchChain) {
-                        console.error('[RelayBridge] switchChain is not available');
-                        setErrMsg('Chain switching not available. Please switch manually in your wallet.');
+                      if (!walletClient) {
+                        console.error('[RelayBridge] walletClient is not available');
+                        setErrMsg('Wallet not connected. Please connect your wallet.');
                         return;
                       }
                       try {
                         setStatus(`Requesting switch to ${selectedChain.name}...`);
                         setErrMsg('');
-                        console.log('[RelayBridge] Calling switchChain with chainId:', selectedFromChainId);
-                        await switchChain({ chainId: selectedFromChainId });
+                        console.log('[RelayBridge] Using wallet client to switch chain to:', selectedFromChainId);
+                        
+                        // Use the wallet client directly to request chain switch
+                        await walletClient.request({
+                          method: 'wallet_switchEthereumChain',
+                          params: [{ chainId: `0x${selectedFromChainId.toString(16)}` }],
+                        });
+                        
                         console.log('[RelayBridge] Switch successful');
                         setJustSwitched(true); // Hide the warning immediately
                         setStatus(`✓ Switched to ${selectedChain.name}!`);
