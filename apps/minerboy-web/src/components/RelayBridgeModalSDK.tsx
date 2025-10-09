@@ -50,13 +50,35 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   const wagmiChainId = useChainId();
   const walletClient = useActiveWalletClient();
   
-  // Get the ACTUAL current chain ID from the wallet client (more reliable than wagmi's useChainId)
-  const currentChainId = walletClient?.chain?.id ?? wagmiChainId;
+  // Track ACTUAL chain ID by polling the provider directly
+  const [realChainId, setRealChainId] = useState<number | null>(null);
+  
+  // Get the ACTUAL current chain ID from the wallet client, or our polled value
+  const currentChainId = realChainId ?? walletClient?.chain?.id ?? wagmiChainId;
   
   // Selected source chain (default to Base)
   const [selectedFromChainId, setSelectedFromChainId] = useState(8453); // Base
   const [sourceBalance, setSourceBalance] = useState<bigint | null>(null);
   const [justSwitched, setJustSwitched] = useState(false); // Track if we just successfully switched
+  
+  // Poll for ACTUAL chain ID directly from provider
+  useEffect(() => {
+    const pollChainId = async () => {
+      if (!walletClient) return;
+      try {
+        const chainIdHex = await walletClient.request({ method: 'eth_chainId' });
+        const chainId = parseInt(chainIdHex as string, 16);
+        console.log('[RelayBridge] Direct eth_chainId query:', chainId);
+        setRealChainId(chainId);
+      } catch (err) {
+        console.error('[RelayBridge] Failed to query chain ID:', err);
+      }
+    };
+    
+    pollChainId();
+    const interval = setInterval(pollChainId, 2000); // Poll every 2 seconds
+    return () => clearInterval(interval);
+  }, [walletClient]);
   
   // Debounced amount input
   const [rawAmount, setRawAmount] = useState(suggestedAmount);
@@ -147,7 +169,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     console.log('  - selectedFromChainId:', selectedFromChainId);
     console.log('  - wagmiChainId:', wagmiChainId);
     console.log('  - walletClient.chain.id:', walletClient?.chain?.id);
-    console.log('  - currentChainId (actual):', currentChainId);
+    console.log('  - realChainId (polled from provider):', realChainId);
+    console.log('  - currentChainId (final):', currentChainId);
     console.log('  - ON CORRECT CHAIN?:', currentChainId === selectedFromChainId);
     console.log('  - address:', address);
     console.log('  - Button disabled because:', {
@@ -158,7 +181,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       wrongChain: currentChainId !== selectedFromChainId
     });
     if (error) console.error('  - ERROR:', error);
-  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, wagmiChainId, walletClient, address, isPollingGas]);
+  }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, realChainId, wagmiChainId, walletClient, address, isPollingGas]);
 
   // Analytics: Quote loaded
   useEffect(() => {
