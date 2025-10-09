@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { parseEther, isAddress } from 'viem';
 import { useActiveAccount } from './useActiveAccount';
 import { useActiveWalletClient } from './useActiveWalletClient';
+import { apePublicClient } from '@/lib/apechain';
 
 const APECHAIN_ID = 33139;
 const APESCAN_URL = 'https://apescan.io';
@@ -52,8 +53,8 @@ export function useSendAPE() {
     try {
       const value = parseEther(amount);
 
-      // Estimate gas with safety buffer
-      const estimatedGas = await walletClient.estimateGas({
+      // Estimate gas with safety buffer using public client
+      const estimatedGas = await apePublicClient.estimateGas({
         to,
         value,
         account: fromAddress,
@@ -83,8 +84,8 @@ export function useSendAPE() {
         explorerUrl,
       });
 
-      // Wait for 1 confirmation
-      const receipt = await walletClient.waitForTransactionReceipt({
+      // Wait for 1 confirmation using public client
+      const receipt = await apePublicClient.waitForTransactionReceipt({
         hash,
         confirmations: 1,
       });
