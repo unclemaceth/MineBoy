@@ -467,13 +467,12 @@ function NPCCard({
       borderRadius: '8px',
       overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column',
-      aspectRatio: '1 / 1'
+      flexDirection: 'column'
     }}>
       {/* Image */}
       <div style={{
         width: '100%',
-        height: '60%',
+        aspectRatio: '1 / 1',
         backgroundColor: '#0d2417',
         display: 'flex',
         alignItems: 'center',
