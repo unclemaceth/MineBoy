@@ -4,15 +4,41 @@ import { useEffect, useMemo, useState } from 'react';
 import { useChainId, useReadContract } from 'wagmi';
 import { formatEther, parseEther, isAddress } from 'viem';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
-import { apePublicClient } from '@/lib/apechain';
+import { apePublicClient, apechain } from '@/lib/apechain';
 import { formatAddress, copyToClipboard } from '@/lib/format';
 import { lookupArcadeName, detectRecipientType, isValidArcadeName, type ArcadeUser } from '@/lib/arcadeLookup';
 import { useSendAPE } from '@/hooks/useSendAPE';
 import RelayBridgeModalSDK from '@/components/RelayBridgeModalSDK';
 import { playButtonSound } from '@/lib/sounds';
+import { createThirdwebClient } from 'thirdweb';
+import { defineChain } from 'thirdweb/chains';
+import { PayEmbed } from 'thirdweb/react';
 
 const APECHAIN_ID = 33139;
 const MNESTR_TOKEN_ADDRESS = '0xAe0DfbB1a2b22080F947D1C0234c415FabEEc276' as const;
+
+// Initialize Thirdweb client
+const thirdwebClient = createThirdwebClient({
+  clientId: 'c7092085d8fa5c3ec2ed5d1598ec5206',
+});
+
+// Define ApeChain for Thirdweb
+const thirdwebApechain = defineChain({
+  id: 33139,
+  name: 'ApeChain',
+  rpc: 'https://rpc.apechain.com',
+  nativeCurrency: {
+    name: 'ApeCoin',
+    symbol: 'APE',
+    decimals: 18,
+  },
+  blockExplorers: [
+    {
+      name: 'ApeScan',
+      url: 'https://apescan.io',
+    },
+  ],
+});
 
 type Props = {
   isOpen: boolean;
@@ -26,6 +52,7 @@ export default function WalletModal({ isOpen, onClose }: Props) {
   const [apeBalance, setApeBalance] = useState<bigint | null>(null);
   const [showBridge, setShowBridge] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showCheckout, setShowCheckout] = useState<'5' | '10' | '25' | null>(null);
 
   // Detect if using Glyph (embedded wallet)
   const isGlyph = useMemo(() => {
@@ -174,6 +201,34 @@ export default function WalletModal({ isOpen, onClose }: Props) {
                   </div>
                 </div>
 
+                {/* Buy APE Section */}
+                <div style={styles.card}>
+                  <div style={styles.sectionTitle}>Buy APE with Card</div>
+                  <div style={{ ...styles.hint, marginBottom: 12 }}>
+                    💳 Purchase APE directly to your wallet using credit/debit card
+                  </div>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      onClick={() => { playButtonSound(); setShowCheckout('5'); }}
+                      style={{...styles.primaryBtn, flex: 1, fontSize: 13}}
+                    >
+                      £5
+                    </button>
+                    <button
+                      onClick={() => { playButtonSound(); setShowCheckout('10'); }}
+                      style={{...styles.primaryBtn, flex: 1, fontSize: 13}}
+                    >
+                      £10
+                    </button>
+                    <button
+                      onClick={() => { playButtonSound(); setShowCheckout('25'); }}
+                      style={{...styles.primaryBtn, flex: 1, fontSize: 13}}
+                    >
+                      £25
+                    </button>
+                  </div>
+                </div>
+
                 {/* Bridge Gas Button */}
                 <div style={styles.card}>
                   <button
@@ -219,6 +274,62 @@ export default function WalletModal({ isOpen, onClose }: Props) {
           onClose={() => setShowBridge(false)}
           suggestedAmount="0.01"
         />
+      )}
+
+      {/* Thirdweb Checkout Modal */}
+      {showCheckout && address && (
+        <div style={styles.backdrop} onClick={() => setShowCheckout(null)}>
+          <div style={{...styles.modal, maxWidth: 400}} onClick={(e) => e.stopPropagation()}>
+            <div style={styles.header}>
+              <h2 style={styles.title}>💳 Buy £{showCheckout} APE</h2>
+              <button 
+                onClick={() => { playButtonSound(); setShowCheckout(null); }} 
+                style={styles.closeBtn}
+              >
+                ×
+              </button>
+            </div>
+            <div style={styles.body}>
+              <div style={{ position: 'relative' }}>
+                <PayEmbed
+                  client={thirdwebClient}
+                  payOptions={{
+                    mode: 'direct_payment',
+                    paymentInfo: {
+                      amount: showCheckout,
+                      chain: thirdwebApechain,
+                      token: {
+                        address: '0x0000000000000000000000000000000000000000', // Native APE
+                      },
+                      sellerAddress: address,
+                    },
+                    metadata: {
+                      name: 'APE Token Purchase',
+                      description: `Buy £${showCheckout} worth of APE on ApeChain`,
+                    },
+                  }}
+                />
+                <div style={{ marginTop: 12, textAlign: 'center' }}>
+                  <button
+                    onClick={() => {
+                      setShowCheckout(null);
+                      // Refresh balance
+                      if (address) {
+                        apePublicClient
+                          .getBalance({ address })
+                          .then(setApeBalance)
+                          .catch(() => setApeBalance(null));
+                      }
+                    }}
+                    style={{...styles.primaryBtn, fontSize: 12}}
+                  >
+                    Close & Refresh Balance
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
