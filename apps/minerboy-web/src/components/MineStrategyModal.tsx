@@ -66,7 +66,6 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
   const [error, setError] = useState<string | null>(null);
   const [listingNPC, setListingNPC] = useState<string | null>(null); // Track which NPC is being listed
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [anyCheckoutOpen, setAnyCheckoutOpen] = useState(false); // Track if any card checkout is open
 
   // Function to trigger listing for a specific NPC
   const handleListNPC = async (tokenId: string) => {
@@ -131,14 +130,12 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
 
     fetchStats();
     
-    // Refresh every 30 seconds, but PAUSE if card checkout is open
+    // Refresh every 90 seconds
     const interval = setInterval(() => {
-      if (!anyCheckoutOpen) {
-        fetchStats();
-      }
-    }, 30000);
+      fetchStats();
+    }, 90000);
     return () => clearInterval(interval);
-  }, [isOpen, anyCheckoutOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -300,7 +297,6 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                           setNotification({ message: err, type: 'error' });
                           setTimeout(() => setNotification(null), 5000);
                         }}
-                        onCheckoutOpenChange={setAnyCheckoutOpen}
                       />
                     ))}
                   </div>
@@ -457,24 +453,17 @@ function NPCCard({
   tokenId, 
   listedPrice, 
   onSuccess, 
-  onError,
-  onCheckoutOpenChange 
+  onError
 }: { 
   tokenId: string; 
   listedPrice: string | null; 
   onSuccess: () => void;
   onError: (err: string) => void;
-  onCheckoutOpenChange: (isOpen: boolean) => void;
 }) {
   const { address } = useActiveAccount();
   const [imageUrl, setImageUrl] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [showCardCheckout, setShowCardCheckout] = useState(false);
-
-  // Notify parent when card checkout opens/closes to pause auto-refresh
-  useEffect(() => {
-    onCheckoutOpenChange(showCardCheckout);
-  }, [showCardCheckout, onCheckoutOpenChange]);
 
   useEffect(() => {
     const fetchNFTMetadata = async () => {
