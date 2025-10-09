@@ -6,6 +6,7 @@
  */
 
 import { alertInfo } from './discord.js';
+import { postTweet, formatSummaryForX } from './twitter.js';
 import { health, getHealthStatus } from './health.js';
 import { setTimeout as wait } from 'timers/promises';
 
@@ -103,8 +104,23 @@ async function sendDailySummary() {
       `**Status:** ${status.emergencyStop ? '🛑 STOPPED' : '✅ Running'}`,
     ].join('\n');
     
+    // Send to Discord
     await alertInfo('Daily Summary', summary);
     console.log('[DailySummary] Sent to Discord');
+    
+    // Send to X (Twitter)
+    const date = new Date().toISOString().split('T')[0];
+    const xSummary = formatSummaryForX({
+      buys: dailyStats.buys,
+      apeSpent: dailyStats.apeSpent,
+      sales: dailyStats.sales,
+      apeReceived: dailyStats.apeReceived,
+      mnestrBurned: dailyStats.mnestrBurned,
+      gasSpent: dailyStats.gasSpent,
+      date,
+    });
+    await postTweet(xSummary);
+    console.log('[DailySummary] Sent to X');
   } catch (error) {
     console.error('[DailySummary] Failed to send:', error);
   }

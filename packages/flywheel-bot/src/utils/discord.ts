@@ -140,7 +140,9 @@ export function alertErrorDeduped(title: string, details: Record<string, unknown
   // Cleanup old entries (keep map size bounded)
   if (recentAlerts.size > 100) {
     const oldestKey = recentAlerts.keys().next().value;
-    recentAlerts.delete(oldestKey);
+    if (oldestKey) {
+      recentAlerts.delete(oldestKey);
+    }
   }
   
   return alertError(title, details);
