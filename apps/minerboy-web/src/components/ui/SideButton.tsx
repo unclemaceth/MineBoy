@@ -25,13 +25,13 @@ export default function SideButton({ width = 9, height = 69.91, onClick }: SideB
       onClick={onClick}
       onMouseEnter={(e) => {
         if (onClick) {
-          e.currentTarget.style.transform = "translateX(-1px)";
-          e.currentTarget.style.filter = "brightness(1.1)";
+          e.currentTarget.style.transform = "translateY(-2px)";
+          e.currentTarget.style.filter = "brightness(1.15)";
         }
       }}
       onMouseLeave={(e) => {
         if (onClick) {
-          e.currentTarget.style.transform = "translateX(0px)";
+          e.currentTarget.style.transform = "translateY(0px)";
           e.currentTarget.style.filter = "brightness(1)";
         }
       }}

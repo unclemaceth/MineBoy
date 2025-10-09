@@ -2167,6 +2167,18 @@ function Home() {
       <div style={{ position: "absolute", left: 17, bottom: 775 }}>
         <button
           onClick={() => { playButtonSound(); handleConnect(); }}
+          onMouseEnter={(e) => {
+            if (!connectPressed) {
+              e.currentTarget.style.background = "linear-gradient(145deg, #5a5a5a, #2a2a2a)";
+              e.currentTarget.style.transform = "translateY(0) scale(1.05)";
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!connectPressed) {
+              e.currentTarget.style.background = "linear-gradient(145deg, #4a4a4a, #1a1a1a)";
+              e.currentTarget.style.transform = "translateY(0) scale(1)";
+            }
+          }}
           onPointerDown={() => setConnectPressed(true)}
           onPointerUp={() => setConnectPressed(false)}
           onPointerLeave={() => setConnectPressed(false)}
@@ -2188,8 +2200,8 @@ function Home() {
             fontSize: 10, // smaller text to fit 90% button
             letterSpacing: 0.5, 
             color: "#ffffff",
-            transform: connectPressed ? "translateY(2px)" : "translateY(0)",
-            transition: "transform 120ms, border-color 120ms",
+            transform: connectPressed ? "translateY(2px) scale(1)" : "translateY(0) scale(1)",
+            transition: "all 0.1s ease",
           }}
         >
 {!isConnected ? 'CONNECT' : 'DISCONNECT'}

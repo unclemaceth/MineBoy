@@ -108,7 +108,11 @@ export default function HUD({
             width: panelWidth,
             height: panelHeight,
             background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-            border: '2px solid rgba(255,255,255,0.15)',
+            border: '2px solid',
+            borderTopColor: 'rgba(255,255,255,0.2)',
+            borderLeftColor: 'rgba(255,255,255,0.2)',
+            borderBottomColor: 'rgba(0,0,0,0.4)',
+            borderRightColor: 'rgba(0,0,0,0.4)',
             borderRadius: '8px',
             boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -1px 2px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.5)',
             display: 'flex',
@@ -116,17 +120,18 @@ export default function HUD({
             justifyContent: 'center',
             cursor: onMnestrClick ? 'pointer' : 'default',
             fontFamily: 'monospace',
-            fontSize: '13px',
+            fontSize: '11px',
             fontWeight: 'bold',
             color: '#F0E68C',
             textShadow: '0 1px 2px rgba(0,0,0,0.5)',
             transition: 'all 0.1s ease',
             userSelect: 'none',
+            transform: 'scale(1)',
           }}
           onMouseEnter={(e) => {
             if (onMnestrClick) {
               e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
-              e.currentTarget.style.transform = 'scale(1.05)';
+              e.currentTarget.style.transform = 'scale(1.03)';
             }
           }}
           onMouseLeave={(e) => {
@@ -137,12 +142,20 @@ export default function HUD({
           }}
           onPointerDown={(e) => {
             if (onMnestrClick) {
+              e.currentTarget.style.borderTopColor = 'rgba(0,0,0,0.4)';
+              e.currentTarget.style.borderLeftColor = 'rgba(0,0,0,0.4)';
+              e.currentTarget.style.borderBottomColor = 'rgba(255,255,255,0.2)';
+              e.currentTarget.style.borderRightColor = 'rgba(255,255,255,0.2)';
               e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.5)';
               e.currentTarget.style.background = 'linear-gradient(145deg, #3a6d4f, #0a2d14)';
             }
           }}
           onPointerUp={(e) => {
             if (onMnestrClick) {
+              e.currentTarget.style.borderTopColor = 'rgba(255,255,255,0.2)';
+              e.currentTarget.style.borderLeftColor = 'rgba(255,255,255,0.2)';
+              e.currentTarget.style.borderBottomColor = 'rgba(0,0,0,0.4)';
+              e.currentTarget.style.borderRightColor = 'rgba(0,0,0,0.4)';
               e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -1px 2px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.5)';
               e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
             }
@@ -160,15 +173,21 @@ export default function HUD({
         onClick={onMessageBarClick}
         style={{ 
           cursor: onMessageBarClick ? 'pointer' : 'default',
-          transition: 'opacity 0.2s',
+          transition: 'all 0.15s ease',
+          transform: 'scale(1)',
+          filter: 'brightness(1)',
         }}
         onMouseEnter={(e) => {
           if (onMessageBarClick) {
-            e.currentTarget.style.opacity = '0.8';
+            e.currentTarget.style.transform = 'scale(1.02)';
+            e.currentTarget.style.filter = 'brightness(1.15)';
           }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.opacity = '1';
+          if (onMessageBarClick) {
+            e.currentTarget.style.transform = 'scale(1)';
+            e.currentTarget.style.filter = 'brightness(1)';
+          }
         }}
       >
         <ScrollingMessageBar
