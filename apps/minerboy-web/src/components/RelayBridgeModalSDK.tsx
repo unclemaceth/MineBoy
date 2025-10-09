@@ -63,8 +63,13 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   
   // Poll for ACTUAL chain ID directly from provider
   useEffect(() => {
+    console.log('[RelayBridge] Polling effect running, walletClient:', !!walletClient);
+    
     const pollChainId = async () => {
-      if (!walletClient) return;
+      if (!walletClient) {
+        console.log('[RelayBridge] No walletClient available for polling');
+        return;
+      }
       try {
         const chainIdHex = await walletClient.request({ method: 'eth_chainId' });
         const chainId = parseInt(chainIdHex as string, 16);
@@ -431,6 +436,13 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                         setErrMsg('Wallet not connected. Please connect your wallet.');
                         return;
                       }
+                      
+                      // Timeout to clear stuck status
+                      const statusTimeout = setTimeout(() => {
+                        setStatus('');
+                        console.log('[RelayBridge] Switch request timed out or was cancelled');
+                      }, 10000); // Clear after 10 seconds
+                      
                       try {
                         setStatus(`Requesting switch to ${selectedChain.name}...`);
                         setErrMsg('');
@@ -442,13 +454,25 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                           params: [{ chainId: `0x${selectedFromChainId.toString(16)}` }],
                         });
                         
+                        clearTimeout(statusTimeout);
                         console.log('[RelayBridge] Switch successful');
                         setJustSwitched(true); // Hide the warning immediately
                         setStatus(`✓ Switched to ${selectedChain.name}!`);
                         setTimeout(() => setStatus(''), 2000);
                       } catch (err: any) {
+                        clearTimeout(statusTimeout);
                         console.error('[RelayBridge] Failed to switch chain:', err);
-                        setErrMsg(err?.message || 'Failed to switch chain. Please switch manually in your wallet.');
+                        
+                        // Check if user rejected
+                        const isRejection = err?.message?.toLowerCase()?.includes('reject') || 
+                                          err?.message?.toLowerCase()?.includes('denied') ||
+                                          err?.message?.toLowerCase()?.includes('cancel');
+                        
+                        if (isRejection) {
+                          setErrMsg('Chain switch cancelled. Please switch manually in your wallet.');
+                        } else {
+                          setErrMsg(err?.message || 'Failed to switch chain. Please switch manually in your wallet.');
+                        }
                         setStatus('');
                       }
                     }}
