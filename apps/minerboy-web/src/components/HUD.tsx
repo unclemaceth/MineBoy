@@ -101,15 +101,55 @@ export default function HUD({
           height={panelHeight}
         />
 
-        {/* Panel 4: MNESTR Flywheel */}
-        <LCDPanel
-          label="MNESTR"
-          value="FLYWHEEL"
-          width={panelWidth}
-          height={panelHeight}
+        {/* Panel 4: MNESTR Flywheel - Button Style */}
+        <div
           onClick={onMnestrClick}
-          clickable={!!onMnestrClick}
-        />
+          style={{
+            width: panelWidth,
+            height: panelHeight,
+            background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+            border: '2px solid rgba(255,255,255,0.15)',
+            borderRadius: '8px',
+            boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -1px 2px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: onMnestrClick ? 'pointer' : 'default',
+            fontFamily: 'monospace',
+            fontSize: '13px',
+            fontWeight: 'bold',
+            color: '#F0E68C',
+            textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+            transition: 'all 0.1s ease',
+            userSelect: 'none',
+          }}
+          onMouseEnter={(e) => {
+            if (onMnestrClick) {
+              e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (onMnestrClick) {
+              e.currentTarget.style.background = 'linear-gradient(145deg, #4a7d5f, #1a3d24)';
+              e.currentTarget.style.transform = 'scale(1)';
+            }
+          }}
+          onPointerDown={(e) => {
+            if (onMnestrClick) {
+              e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.5), 0 2px 4px rgba(0,0,0,0.5)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, #3a6d4f, #0a2d14)';
+            }
+          }}
+          onPointerUp={(e) => {
+            if (onMnestrClick) {
+              e.currentTarget.style.boxShadow = 'inset 0 1px 2px rgba(255,255,255,0.15), inset 0 -1px 2px rgba(0,0,0,0.3), 0 4px 8px rgba(0,0,0,0.5)';
+              e.currentTarget.style.background = 'linear-gradient(145deg, #5a8d6f, #2a4d34)';
+            }
+          }}
+        >
+          FLYWHEEL
+        </div>
       </div>
 
       {/* Padding between LCDs and message bar */}

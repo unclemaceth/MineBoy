@@ -13,6 +13,7 @@ export default function DpadButton({
   onPress?: () => void;
 }) {
   const [down, setDown] = useState(false);
+  const [hover, setHover] = useState(false);
   
   // Arrow triangle styles for each direction
   const base = { width: 0, height: 0, borderStyle: "solid" as const };
@@ -27,6 +28,8 @@ export default function DpadButton({
     
   return (
     <button
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => { setHover(false); setDown(false); }}
       onPointerDown={() => { 
         setDown(true); 
         onPress?.(); 
@@ -45,10 +48,10 @@ export default function DpadButton({
         borderRightColor: down ? "#6a6a6a" : "#2a2a2a", // right shadow/highlight
         borderBottomColor: down ? "#6a6a6a" : "#2a2a2a", // bottom shadow/highlight
         cursor: "pointer",
-        background: "linear-gradient(145deg, #4a4a4a, #1a1a1a)", 
+        background: hover && !down ? "linear-gradient(145deg, #5a5a5a, #2a2a2a)" : "linear-gradient(145deg, #4a4a4a, #1a1a1a)", 
         position: "relative",
-        transform: down ? "translateY(3px)" : "translateY(0)",
-        transition: "transform 120ms, border-color 120ms",
+        transform: down ? "translateY(3px) scale(1)" : (hover ? "translateY(0) scale(1.05)" : "translateY(0) scale(1)"),
+        transition: "all 0.1s ease",
         boxShadow: down 
           ? "inset 0 2px 3px rgba(0,0,0,0.6)" 
           : "0 2px 2px rgba(0,0,0,0.5)",

@@ -19,9 +19,22 @@ export default function SideButton({ width = 9, height = 69.91, onClick }: SideB
         clipRule: "evenodd", 
         strokeLinejoin: "round", 
         strokeMiterlimit: 2,
-        cursor: onClick ? "pointer" : "default"
+        cursor: onClick ? "pointer" : "default",
+        transition: "transform 0.1s ease, filter 0.1s ease"
       }}
       onClick={onClick}
+      onMouseEnter={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = "translateX(-1px)";
+          e.currentTarget.style.filter = "brightness(1.1)";
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (onClick) {
+          e.currentTarget.style.transform = "translateX(0px)";
+          e.currentTarget.style.filter = "brightness(1)";
+        }
+      }}
     >
       <g transform="matrix(1,0,0,0.920052,1.32469e-16,-377.504)">
         <path 

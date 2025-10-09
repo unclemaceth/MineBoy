@@ -2007,6 +2007,14 @@ function Home() {
       {/* WALLET Button: between CONNECT and MENU */}
       <button
         onClick={() => { playButtonSound(); setShowWalletModal(true); }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "linear-gradient(145deg, #b09fe4, #8a6fc8)";
+          e.currentTarget.style.transform = "scale(1.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "linear-gradient(145deg, #a08fd4, #7a5fb8)";
+          e.currentTarget.style.transform = "scale(1)";
+        }}
         onPointerDown={(e) => {
           e.currentTarget.style.borderTopColor = "#6a4a8a";
           e.currentTarget.style.borderLeftColor = "#6a4a8a";
@@ -2027,6 +2035,8 @@ function Home() {
           e.currentTarget.style.borderRightColor = "#6a4a8a";
           e.currentTarget.style.borderBottomColor = "#6a4a8a";
           e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
+          e.currentTarget.style.background = "linear-gradient(145deg, #a08fd4, #7a5fb8)";
+          e.currentTarget.style.transform = "scale(1)";
         }}
         style={{
           position: "absolute",
@@ -2047,7 +2057,7 @@ function Home() {
           fontSize: 10,
           letterSpacing: 0.5,
           color: "#ffffff",
-          transition: "border-color 120ms, box-shadow 120ms",
+          transition: "all 0.1s ease",
           display: "flex",
           alignItems: "center",
           justifyContent: "center"
@@ -2059,13 +2069,21 @@ function Home() {
       {/* MENU Button: small button in top right */}
       <button
         onClick={() => { playButtonSound(); setShowDebugModal(true); }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = "linear-gradient(145deg, #5a5a5a, #2a2a2a)";
+          e.currentTarget.style.transform = "translateY(0) scale(1.05)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = "linear-gradient(145deg, #4a4a4a, #1a1a1a)";
+          e.currentTarget.style.transform = "translateY(0) scale(1)";
+        }}
         onPointerDown={(e) => {
           e.currentTarget.style.borderTopColor = "#1a1a1a";
           e.currentTarget.style.borderLeftColor = "#1a1a1a";
           e.currentTarget.style.borderRightColor = "#6a6a6a";
           e.currentTarget.style.borderBottomColor = "#6a6a6a";
           e.currentTarget.style.boxShadow = "inset 0 2px 3px rgba(0,0,0,0.6)";
-          e.currentTarget.style.transform = "translateY(2px)";
+          e.currentTarget.style.transform = "translateY(2px) scale(1)";
         }}
         onPointerUp={(e) => {
           e.currentTarget.style.borderTopColor = "#8a8a8a";
@@ -2073,7 +2091,7 @@ function Home() {
           e.currentTarget.style.borderRightColor = "#2a2a2a";
           e.currentTarget.style.borderBottomColor = "#2a2a2a";
           e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
-          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.transform = "translateY(0) scale(1.05)";
         }}
         onPointerLeave={(e) => {
           e.currentTarget.style.borderTopColor = "#8a8a8a";
@@ -2081,7 +2099,8 @@ function Home() {
           e.currentTarget.style.borderRightColor = "#2a2a2a";
           e.currentTarget.style.borderBottomColor = "#2a2a2a";
           e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
-          e.currentTarget.style.transform = "translateY(0)";
+          e.currentTarget.style.transform = "translateY(0) scale(1)";
+          e.currentTarget.style.background = "linear-gradient(145deg, #4a4a4a, #1a1a1a)";
         }}
         style={{
           position: "absolute",
@@ -2102,8 +2121,8 @@ function Home() {
           fontSize: 10,
           letterSpacing: 0.5,
           color: "#ffffff",
-          transform: "translateY(0)",
-          transition: "transform 120ms, border-color 120ms",
+          transform: "translateY(0) scale(1)",
+          transition: "all 0.1s ease",
           display: "flex",
           alignItems: "center",
           justifyContent: "center"
