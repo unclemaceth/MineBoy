@@ -109,7 +109,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   // Validate and sanitize amount
   const validAmount = useMemo(() => {
     const n = Number(amount);
-    return Number.isFinite(n) && n >= 0.001 && n <= 5; // Min 0.001, max 5 ETH
+    return Number.isFinite(n) && n >= 0.0005 && n <= 5; // Min 0.0005, max 5 ETH
   }, [amount]);
 
   // turn the human amount into wei (string)
@@ -432,12 +432,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                 style={{...input, opacity: isPollingGas ? 0.6 : 1}}
               />
               <div style={{ fontSize: 12, marginTop: 4, opacity: 0.7 }}>
-                Min: 0.001, Max: 5.0 {!validAmount && rawAmount && '(invalid amount)'}
+                Min: 0.0005, Max: 5.0 {!validAmount && rawAmount && '(invalid amount)'}
               </div>
               
               {/* One-tap presets */}
               <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
-                {['0.005', '0.01', '0.02'].map(amt => (
+                {['0.0005', '0.005', '0.01'].map(amt => (
                   <button
                     key={amt}
                     onClick={() => setRawAmount(amt)}
