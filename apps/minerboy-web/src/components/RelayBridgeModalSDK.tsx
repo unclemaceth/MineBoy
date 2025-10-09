@@ -141,6 +141,19 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     try { return parseEther(amount).toString(); } catch { return '0'; }
   }, [amount]);
 
+  // Log quote request params
+  console.log('[RelayBridge] Quote request params:', {
+    chainId: selectedFromChainId,
+    toChainId: APECHAIN_ID,
+    currency: '0x0000000000000000000000000000000000000000',
+    toCurrency: '0x0000000000000000000000000000000000000000',
+    amount: weiAmount,
+    amountReadable: amount,
+    user: address,
+    recipient: address,
+    enabled: Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId),
+  });
+
   // fetch a live quote
   const { data, isLoading, error, refetch } = (useQuote as any)({
     client: relayClient,
@@ -180,7 +193,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       polling: isPollingGas,
       wrongChain: currentChainId !== selectedFromChainId
     });
-    if (error) console.error('  - ERROR:', error);
+    if (error) {
+      console.error('  - ERROR FULL:', error);
+      console.error('  - ERROR MESSAGE:', (error as any)?.message);
+      console.error('  - ERROR RESPONSE:', (error as any)?.response);
+      console.error('  - ERROR DATA:', (error as any)?.data);
+    }
   }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, realChainId, wagmiChainId, walletClient, address, isPollingGas]);
 
   // Analytics: Quote loaded
