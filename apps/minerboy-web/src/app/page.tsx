@@ -95,7 +95,7 @@ function Home() {
   const [cooldownTimer, setCooldownTimer] = useState<number | null>(null);
   const [showPaidMessageModal, setShowPaidMessageModal] = useState(false);
   const [showMineStrategyModal, setShowMineStrategyModal] = useState(false);
-  const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy it Mines stuff!"]);
+  const [scrollingMessages, setScrollingMessages] = useState<Array<string | { text: string; color?: string; prefix?: string; type?: string }>>(["MineBoy™ it Mines stuff!"]);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   const [vaultAddress, setVaultAddress] = useState<string>(''); // Delegate.xyz vault address
   const [seasonPoints, setSeasonPoints] = useState<number>(0); // User's season MNESTR total
@@ -140,7 +140,7 @@ function Home() {
     bc.postMessage('hello');
     bc.onmessage = (e) => { 
       if (e.data === 'busy') {
-        alert('MineBoy already open in another tab. Please close the other tab first.');
+        alert('MineBoy™ already open in another tab. Please close the other tab first.');
         window.close();
       }
     };
@@ -3049,7 +3049,7 @@ function Home() {
         </>
       )}
 
-        {/* MineBoy Branding */}
+        {/* MineBoy™ Branding */}
         <div style={{
           position: 'absolute',
           bottom: '67.5px',
@@ -3074,7 +3074,7 @@ function Home() {
           <span style={{ fontSize: '26px' }}>M</span>INE<span style={{ fontSize: '26px' }}>B</span>OY
         </div>
 
-      {/* MineBoy Branding - White Clone */}
+      {/* MineBoy™ Branding - White Clone */}
       <div style={{
         position: 'absolute',
         bottom: '67px',

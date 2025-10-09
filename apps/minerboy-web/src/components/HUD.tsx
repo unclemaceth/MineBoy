@@ -24,7 +24,7 @@ export default function HUD({
   multiplierSource = "BASE",
   seasonPoints = 0,
   width,
-  messages = ["MineBoy it Mines stuff!"],
+  messages = ["MineBoy™ it Mines stuff!"],
   scrollSpeed = 50,
   messageGap = 100,
   loopPause = 2000,

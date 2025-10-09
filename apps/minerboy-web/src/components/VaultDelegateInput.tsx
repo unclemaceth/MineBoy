@@ -136,7 +136,7 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
             <ol className="list-decimal list-inside space-y-1 ml-2 text-xs">
               <li>Go to <strong>delegate.xyz</strong> and connect your cold wallet</li>
               <li>Delegate to this hot wallet (Wallet Level or Contract Level)</li>
-              <li>That's it! MineBoy will auto-detect your delegation</li>
+              <li>That's it! MineBoy™ will auto-detect your delegation</li>
             </ol>
             
             <p className="text-xs text-green-400 mt-2">

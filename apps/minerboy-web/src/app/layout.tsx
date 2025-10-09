@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "MineBoy",
+  title: "MineBoy™",
   description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
   manifest: "/manifest.json",
   icons: {
@@ -29,22 +29,22 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "MineBoy",
+    title: "MineBoy™",
   },
   formatDetection: {
     telephone: false,
   },
   openGraph: {
-    title: "MineBoy",
+    title: "MineBoy™",
     description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
     url: "https://mineboy.gg",
-    siteName: "MineBoy",
+    siteName: "MineBoy™",
     images: [
       {
         url: "/mineboylogo.png",
         width: 1200,
         height: 630,
-        alt: "MineBoy Logo",
+        alt: "MineBoy™ Logo",
       },
     ],
     locale: "en_US",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "MineBoy",
+    title: "MineBoy™",
     description: "Gamified cryptographic SHA256 mining. Real Proof-of-Work Mining, in-browser. MINE TO WIN! Now featuring MineStrategy! Created by NGMI @notapunkscult. Powered by ApeCoin.",
     images: ["/mineboylogo.png"],
   },

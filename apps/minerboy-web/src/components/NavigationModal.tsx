@@ -743,7 +743,7 @@ function InstructionsContent() {
             <span style={{ fontSize: '10px', color: '#8a8a8a' }}>Discord</span>
           </a>
 
-          {/* X (Twitter) Button */}
+          {/* X (Twitter) Button - NGMI */}
           <a 
             href="https://x.com/notapunkscult" 
             target="_blank" 
@@ -773,7 +773,40 @@ function InstructionsContent() {
                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
             </div>
-            <span style={{ fontSize: '10px', color: '#8a8a8a' }}>X / Twitter</span>
+            <span style={{ fontSize: '10px', color: '#8a8a8a' }}>NGMI</span>
+          </a>
+
+          {/* X (Twitter) Button - MineBoy™ */}
+          <a 
+            href="https://x.com/mineboy_app" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', textDecoration: 'none' }}
+          >
+            <div style={{
+              width: '40px',
+              height: '40px',
+              borderRadius: '50%',
+              background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+              color: 'white',
+              fontSize: '20px',
+              fontWeight: 'bold',
+              border: '2px solid #8a8a8a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.5)',
+              cursor: 'pointer',
+              transition: 'transform 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+              </svg>
+            </div>
+            <span style={{ fontSize: '10px', color: '#8a8a8a' }}>MineBoy™</span>
           </a>
         </div>
 
@@ -831,7 +864,7 @@ function InstructionsContent() {
           ⛏️ PICKS & MINECARTS
         </h3>
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
-          <p style={{ marginBottom: '8px' }}>Picks from <strong>The Mine</strong> are transformed on entry to the MineBoy dApp. Each Pick becomes a MineCart!</p>
+          <p style={{ marginBottom: '8px' }}>Picks from <strong>The Mine</strong> are transformed on entry to the MineBoy™ dApp. Each Pick becomes a MineCart!</p>
           <p><strong>The DripAxe:</strong> up to 8000 H/s Mining Speed</p>
           <p><strong>The Morgul PickHammer:</strong> up to 7000 H/s Mining Speed</p>
           <p><strong>The Blue Steel:</strong> up to 6000 H/s Mining Speed</p>
@@ -852,7 +885,7 @@ function InstructionsContent() {
         <div style={{ fontSize: '12px', lineHeight: '1.5', color: '#c8ffc8' }}>
           <p><strong>1. Get a MineCart:</strong> Own a Pick NFT from The Mine collection (Ol' Rusty coming soon)</p>
           <p><strong>2. Connect Wallet:</strong> Use CONNECT button (Glyph or WalletConnect)</p>
-          <p><strong>3. Select MineCart:</strong> Load your MineCart into the MineBoy</p>
+          <p><strong>3. Select MineCart:</strong> Load your MineCart into the MineBoy™</p>
           <p><strong>4. Start Mining:</strong> Press A button to begin SHA256 mining</p>
           <p><strong>5. Find Valid Hash:</strong> Mine until you find a hash with the required suffix</p>
           <p><strong>6. Claim Rewards:</strong> Press 'CLAIM' on the popup (or press B to reopen). You have 2 minutes after finding a valid hash to submit!</p>
@@ -1046,11 +1079,11 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'center' }}>
-      {/* MineBoy Logo */}
+      {/* MineBoy™ Logo */}
       <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '8px' }}>
         <img 
           src="/mineboylogo.png" 
-          alt="MineBoy" 
+          alt="MineBoy™" 
           style={{ maxWidth: '200px', height: 'auto' }} 
         />
       </div>
@@ -1063,7 +1096,7 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         borderRadius: '12px'
       }}>
         <h3 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', color: '#64ff8a' }}>
-          Welcome to MineBoy
+          Welcome to MineBoy™
         </h3>
         <p style={{ fontSize: '16px', color: '#c8ffc8', lineHeight: '1.6', margin: '0' }}>
           Gamified cryptographic SHA256 mining.<br/>

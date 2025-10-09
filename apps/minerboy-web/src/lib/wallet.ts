@@ -38,8 +38,8 @@ export const wagmiConfig = defaultWagmiConfig({
   chains,
   projectId,
   metadata: {
-    name: 'MineBoy',
-    description: 'MineBoy',
+    name: 'MineBoy™',
+    description: 'MineBoy™',
     url: getSiteUrl(),
     icons: [`${getSiteUrl()}/icon.png`]
   },
