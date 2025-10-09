@@ -397,8 +397,11 @@ export class JobManager {
     const nextNonceBytes = sha256(utf8ToBytes(saltedInput));
     const nextNonce = `0x${bytesToHex(nextNonceBytes)}` as `0x${string}`;
     
+    // CRITICAL: Reuse pickaxe hash rate from previous job to maintain consistency
+    const pickaxeHashRate = previousJob.maxHps || 5000; // Fallback to 5000 if missing
+    
     // Create job with current difficulty (counter auto-continues)
-    const job = await this.issueJob(nextNonce, cartridgeKey);
+    const job = await this.issueJob(nextNonce, cartridgeKey, pickaxeHashRate);
     
     // Add session-specific fields
     const jobWithSession: InternalJob = {
