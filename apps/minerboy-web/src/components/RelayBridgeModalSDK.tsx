@@ -24,6 +24,16 @@ const BRIDGE_CHAINS = [
   { id: 137, name: 'Polygon', symbol: 'MATIC', chain: polygon },
 ];
 
+// Explorer URLs for transaction links
+const EXPLORERS: Record<number, string> = {
+  1: 'https://etherscan.io/tx/',
+  8453: 'https://basescan.org/tx/',
+  42161: 'https://arbiscan.io/tx/',
+  10: 'https://optimistic.etherscan.io/tx/',
+  137: 'https://polygonscan.com/tx/',
+  33139: 'https://apescan.io/tx/',
+};
+
 type Props = {
   isOpen: boolean;
   onClose: () => void;
@@ -149,18 +159,20 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   // Constants for Relay
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   
-  // Log quote request params
-  console.log('[RelayBridge] Quote request params:');
-  console.log('  originChainId (from):', selectedFromChainId);
-  console.log('  destinationChainId (to):', APECHAIN_ID);
-  console.log('  originCurrency:', ZERO_ADDRESS);
-  console.log('  destinationCurrency:', ZERO_ADDRESS);
-  console.log('  amount (wei):', weiAmount);
-  console.log('  amount (human):', amount);
-  console.log('  user:', address);
-  console.log('  recipient:', address);
-  console.log('  tradeType:', 'EXACT_INPUT');
-  console.log('  enabled:', Boolean(address && parseFloat(amount) > 0));
+  // Log quote request params (dev only to reduce noise)
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[RelayBridge] Quote request params:');
+    console.log('  originChainId (from):', selectedFromChainId);
+    console.log('  destinationChainId (to):', APECHAIN_ID);
+    console.log('  originCurrency:', ZERO_ADDRESS);
+    console.log('  destinationCurrency:', ZERO_ADDRESS);
+    console.log('  amount (wei):', weiAmount);
+    console.log('  amount (human):', amount);
+    console.log('  user:', address);
+    console.log('  recipient:', address);
+    console.log('  tradeType:', 'EXACT_INPUT');
+    console.log('  enabled:', Boolean(address && parseFloat(amount) > 0));
+  }
 
   // fetch a live quote - useQuote expects POSITIONAL args, not a single object!
   const { data, isLoading, error, refetch, executeQuote } = (useQuote as any)(
@@ -204,7 +216,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       loading: isLoading,
       invalidAmount: !validAmount,
       polling: isPollingGas,
-      needsChainSwitch: needsChainSwitch
+      wrongChain: currentChainId !== selectedFromChainId,
+      noWalletClient: !walletClient,
     });
     if (error) {
       const body = (error as any)?.response?.data;
@@ -255,8 +268,16 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       setStatus('Preparing…');
       setLastTxUrl('');
       
-      if (!walletClient) throw new Error('Wallet not connected');
-      if (!data) throw new Error('No quote');
+      if (!walletClient) {
+        setErrMsg('Wallet not connected. Please reconnect and try again.');
+        setStatus('');
+        return;
+      }
+      if (!data) {
+        setErrMsg('No quote available. Please wait for quote to load.');
+        setStatus('');
+        return;
+      }
 
       // Guard against stale quotes (user switched chains after quote was fetched)
       const quoteOriginChain = (data as any)?.from?.chainId || (data as any)?.originChainId;
@@ -300,11 +321,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
           });
         }
         
-        // Show explorer links from progress
+        // Show explorer links from progress (use correct explorer based on chain)
         if (progress.txHashes?.length) {
           const last = progress.txHashes[progress.txHashes.length - 1];
           if (last?.hash) {
-            setLastTxUrl(`https://apescan.io/tx/${last.hash}`);
+            const explorerBase = EXPLORERS[last.chainId ?? APECHAIN_ID] ?? EXPLORERS[APECHAIN_ID];
+            setLastTxUrl(`${explorerBase}${last.hash}`);
           }
         }
         },
@@ -384,6 +406,15 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   }, [selectedFromChainId, address]);
   
   const needsChainSwitch = currentChainId !== selectedFromChainId && !justSwitched;
+  
+  // Clear condition for when bridge button should be enabled
+  const canExecute =
+    !!data &&
+    !isLoading &&
+    validAmount &&
+    !isPollingGas &&
+    !!walletClient &&
+    currentChainId === selectedFromChainId;
   
   // Clear justSwitched flag when chain actually updates
   useEffect(() => {
@@ -649,18 +680,21 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
           {address && (
             <button
               onClick={execute}
-              disabled={!data || isLoading || !validAmount || isPollingGas || needsChainSwitch}
+              disabled={!canExecute}
               style={{
                 ...btn,
-                backgroundColor: (!data || isLoading || !validAmount || isPollingGas || needsChainSwitch) ? '#2a3a2a' : '#4a7d5f',
-                cursor: (!data || isLoading || !validAmount || isPollingGas || needsChainSwitch) ? 'not-allowed' : 'pointer',
-                opacity: (!data || isLoading || !validAmount || isPollingGas || needsChainSwitch) ? 0.6 : 1
+                backgroundColor: canExecute ? '#4a7d5f' : '#2a3a2a',
+                cursor: canExecute ? 'pointer' : 'not-allowed',
+                opacity: canExecute ? 1 : 0.6
               }}
             >
-              {isPollingGas ? 'Waiting for APE...' : 
-               needsChainSwitch ? `Switch to ${selectedChain.name} first` :
-               isLoading ? 'Preparing…' : 
-               `Bridge ${amount} to ApeChain`}
+              {!canExecute && currentChainId !== selectedFromChainId
+                ? `Switch to ${selectedChain.name} to bridge`
+                : isLoading
+                ? 'Preparing…'
+                : isPollingGas
+                ? 'Waiting for APE...'
+                : `Bridge ${amount} to ApeChain`}
             </button>
           )}
 
