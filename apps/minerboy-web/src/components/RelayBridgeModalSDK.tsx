@@ -148,10 +148,10 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
 
   // Log quote request params
   console.log('[RelayBridge] Quote request params:');
-  console.log('  chainId (from):', selectedFromChainId);
-  console.log('  toChainId:', APECHAIN_ID);
-  console.log('  currency:', '0x0000000000000000000000000000000000000000');
-  console.log('  toCurrency:', '0x0000000000000000000000000000000000000000');
+  console.log('  originChainId (from):', selectedFromChainId);
+  console.log('  destinationChainId (to):', APECHAIN_ID);
+  console.log('  originCurrency:', '0x0000000000000000000000000000000000000000');
+  console.log('  destinationCurrency:', '0x0000000000000000000000000000000000000000');
   console.log('  amount (wei):', weiAmount);
   console.log('  amount (human):', amount);
   console.log('  user:', address);
@@ -159,18 +159,19 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   console.log('  tradeType:', 'EXACT_INPUT');
   console.log('  enabled:', Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId));
 
-  // fetch a live quote
+  // fetch a live quote - using relay-kit-hooks which expects origin/destination field names
   const { data, isLoading, error, refetch } = (useQuote as any)({
     client: relayClient,
+    wallet: undefined, // Don't pass wallet during quote, only during execute
     options: {
-      chainId: selectedFromChainId,        // source chain (user-selected)
-      toChainId: APECHAIN_ID,              // ApeChain
-      currency: '0x0000000000000000000000000000000000000000', // native in
-      toCurrency: '0x0000000000000000000000000000000000000000', // native APE out
-      amount: weiAmount,
       user: address!,                      // payer/sender on source
       recipient: address!,                 // receiver on ApeChain
+      originChainId: selectedFromChainId,  // source chain (e.g., Base 8453)
+      destinationChainId: APECHAIN_ID,     // ApeChain (33139)
+      originCurrency: '0x0000000000000000000000000000000000000000', // native ETH
+      destinationCurrency: '0x0000000000000000000000000000000000000000', // native APE
       tradeType: 'EXACT_INPUT',
+      amount: weiAmount,                   // wei string
     },
     enabled: Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId),
     refetchInterval: 30_000,
@@ -199,15 +200,27 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       wrongChain: currentChainId !== selectedFromChainId
     });
     if (error) {
+      const body = (error as any)?.response?.data;
       console.error('  - ERROR FULL:', error);
       console.error('  - ERROR MESSAGE:', (error as any)?.message);
       console.error('  - ERROR RESPONSE:', (error as any)?.response);
-      console.error('  - ERROR RESPONSE.data:', (error as any)?.response?.data);
+      console.error('  - ERROR RESPONSE.data (BODY):', body);
       console.error('  - ERROR RESPONSE.status:', (error as any)?.response?.status);
       console.error('  - ERROR RESPONSE.statusText:', (error as any)?.response?.statusText);
       console.error('  - ERROR DATA:', (error as any)?.data);
-      console.error('  - ERROR CONFIG:', (error as any)?.config);
-      console.error('  - ERROR as JSON:', JSON.stringify(error, null, 2));
+      
+      // Try to extract meaningful error message
+      const errorMsg = body?.message || body?.error || (error as any)?.message || 'Quote failed';
+      console.error('  - PARSED ERROR MESSAGE:', errorMsg);
+      
+      // If it's a serialization issue, try stringifying
+      if (body && typeof body === 'object') {
+        try {
+          console.error('  - ERROR BODY as JSON:', JSON.stringify(body, null, 2));
+        } catch {
+          console.error('  - ERROR BODY (could not stringify)');
+        }
+      }
     }
   }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, realChainId, wagmiChainId, walletClient, address, isPollingGas]);
 
@@ -238,10 +251,18 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       if (!walletClient) throw new Error('Wallet not connected');
       if (!data) throw new Error('No quote');
 
-      // Guard against stale quotes (user switched chains)
-      if ((data as any)?.from?.chainId && (data as any).from.chainId !== selectedFromChainId) {
-        setErrMsg('Chain changed. Refreshing quote…');
+      // Guard against stale quotes (user switched chains after quote was fetched)
+      const quoteOriginChain = (data as any)?.from?.chainId || (data as any)?.originChainId;
+      if (quoteOriginChain && quoteOriginChain !== selectedFromChainId) {
+        console.warn('[RelayBridge] Quote is stale - chain changed from', quoteOriginChain, 'to', selectedFromChainId);
+        setErrMsg('Network changed. Refreshing quote…');
         await refetch();
+        return;
+      }
+      
+      // Also verify wallet is on correct chain
+      if (currentChainId !== selectedFromChainId) {
+        setErrMsg(`Please switch to ${selectedChain.name} to continue`);
         return;
       }
 
@@ -577,7 +598,11 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
           {/* Better error states */}
           {address && error && (
             <div style={errorBox}>
-              ⚠️ {String((error as any)?.message || error)}
+              ⚠️ {(() => {
+                const body = (error as any)?.response?.data;
+                const errorMsg = body?.message || body?.error || (error as any)?.message || 'Quote failed';
+                return String(errorMsg);
+              })()}
               {String((error as any)?.message || '').includes('unsupported') && (
                 <div style={{ marginTop: 8, fontSize: 12 }}>
                   Use the fallback link below to bridge manually.
@@ -611,7 +636,6 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             </div>
           )}
           {errMsg && <div style={errorBox}>❌ {errMsg}</div>}
-          {error && <div style={errorBox}>❌ Quote error: {(error as any)?.message || 'Failed to fetch quote from Relay'}</div>}
           {isLoading && !data && <div style={{ marginTop: 12, fontSize: 12, color: '#ffd700', textAlign: 'center' }}>⏳ Fetching quote from Relay...</div>}
 
           {/* actions */}
