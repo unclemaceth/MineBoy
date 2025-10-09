@@ -1,18 +1,28 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useChainId } from 'wagmi';
-import { formatEther, parseEther } from 'viem';
+import { useChainId, useSwitchChain } from 'wagmi';
+import { formatEther, parseEther, createPublicClient, http } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apePublicClient } from '@/lib/apechain';
 import { createClient } from '@relayprotocol/relay-sdk';
 import { useQuote } from '@relayprotocol/relay-kit-hooks';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
+import { mainnet, base, arbitrum, optimism, polygon } from 'viem/chains';
 
 const queryClient = new QueryClient();
 const APECHAIN_ID = 33139;
 const GAS_THRESHOLD = parseEther('0.005'); // ~25 claims worth
+
+// Supported source chains for bridging
+const BRIDGE_CHAINS = [
+  { id: 8453, name: 'Base', symbol: 'ETH', chain: base },
+  { id: 1, name: 'Ethereum', symbol: 'ETH', chain: mainnet },
+  { id: 42161, name: 'Arbitrum', symbol: 'ETH', chain: arbitrum },
+  { id: 10, name: 'Optimism', symbol: 'ETH', chain: optimism },
+  { id: 137, name: 'Polygon', symbol: 'MATIC', chain: polygon },
+];
 
 type Props = {
   isOpen: boolean;
@@ -37,8 +47,13 @@ export default function RelayBridgeModalSDK({ isOpen, onClose, suggestedAmount =
 
 function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; suggestedAmount: string }) {
   const { address, isConnected } = useActiveAccount();
-  const fromChainId = useChainId();
+  const currentChainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const walletClient = useActiveWalletClient();
+  
+  // Selected source chain (default to Base)
+  const [selectedFromChainId, setSelectedFromChainId] = useState(8453); // Base
+  const [sourceBalance, setSourceBalance] = useState<bigint | null>(null);
   
   // Debounced amount input
   const [rawAmount, setRawAmount] = useState(suggestedAmount);
@@ -49,6 +64,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   const [apeGas, setApeGas] = useState<bigint | null>(null);
   const [lastTxUrl, setLastTxUrl] = useState<string>('');
   const [isPollingGas, setIsPollingGas] = useState(false);
+  
+  const selectedChain = BRIDGE_CHAINS.find(c => c.id === selectedFromChainId) || BRIDGE_CHAINS[0];
 
   // Debounce amount input (avoid thrashing quotes)
   useEffect(() => {
@@ -70,6 +87,24 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     })();
   }, [address]);
 
+  // Fetch balance on selected source chain
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!address) return;
+        const client = createPublicClient({
+          chain: selectedChain.chain,
+          transport: http()
+        });
+        const bal = await client.getBalance({ address });
+        setSourceBalance(bal);
+      } catch (err) {
+        console.warn('Failed to fetch source balance:', err);
+        setSourceBalance(null);
+      }
+    })();
+  }, [address, selectedFromChainId, selectedChain.chain]);
+
   // Validate and sanitize amount
   const validAmount = useMemo(() => {
     const n = Number(amount);
@@ -85,7 +120,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   const { data, isLoading, error, refetch } = (useQuote as any)({
     client: relayClient,
     options: {
-      chainId: fromChainId,                // source chain
+      chainId: selectedFromChainId,        // source chain (user-selected)
       toChainId: APECHAIN_ID,              // ApeChain
       currency: '0x0000000000000000000000000000000000000000', // native in
       toCurrency: '0x0000000000000000000000000000000000000000', // native APE out
@@ -102,12 +137,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   useEffect(() => {
     if (data && typeof window !== 'undefined' && (window as any).gtag) {
       (window as any).gtag('event', 'relay_quote_loaded', {
-        fromChainId,
+        fromChainId: selectedFromChainId,
         amount,
         timeEstimate: (data as any).timeEstimate,
       });
     }
-  }, [data, fromChainId, amount]);
+  }, [data, selectedFromChainId, amount]);
 
   // Cleanup polling on unmount
   useEffect(() => {
@@ -126,8 +161,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       if (!data) throw new Error('No quote');
 
       // Guard against stale quotes (user switched chains)
-      if ((data as any)?.from?.chainId && (data as any).from.chainId !== fromChainId) {
-        setErrMsg('Network changed. Refreshing quote…');
+      if ((data as any)?.from?.chainId && (data as any).from.chainId !== selectedFromChainId) {
+        setErrMsg('Chain changed. Refreshing quote…');
         await refetch();
         return;
       }
@@ -135,7 +170,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       // Analytics: Execute started
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'relay_execute_started', {
-          fromChainId,
+          fromChainId: selectedFromChainId,
           amount,
           quoteId: (data as any)?.id,
         });
@@ -153,7 +188,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
         // Analytics: Progress step
         if (typeof window !== 'undefined' && (window as any).gtag) {
           (window as any).gtag('event', 'relay_progress_step', {
-            fromChainId,
+            fromChainId: selectedFromChainId,
             amount,
             step,
           });
@@ -189,7 +224,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             // Analytics: Bridge complete
             if (typeof window !== 'undefined' && (window as any).gtag) {
               (window as any).gtag('event', 'relay_execute_complete', {
-                fromChainId,
+                fromChainId: selectedFromChainId,
                 amount,
                 finalBalance: Number(v),
               });
@@ -222,7 +257,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       // Analytics: Bridge error
       if (typeof window !== 'undefined' && (window as any).gtag) {
         (window as any).gtag('event', 'relay_execute_error', {
-          fromChainId,
+          fromChainId: selectedFromChainId,
           amount,
           error: e?.message,
         });
@@ -234,20 +269,15 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
     }
   };
 
-  const fromChainName = useMemo(() => {
-    const map: Record<number, string> = {
-      1: 'Ethereum', 8453: 'Base', 42161: 'Arbitrum', 10: 'Optimism', 137: 'Polygon'
-    };
-    return map[fromChainId] || `Chain ${fromChainId}`;
-  }, [fromChainId]);
-
   // deep-link fallback
   const deeplink = useMemo(() => {
     const u = new URL('https://relay.link/bridge/apechain');
-    u.searchParams.set('fromChainId', String(fromChainId));
+    u.searchParams.set('fromChainId', String(selectedFromChainId));
     if (address) u.searchParams.set('toAddress', address);
     return u.toString();
-  }, [fromChainId, address]);
+  }, [selectedFromChainId, address]);
+  
+  const needsChainSwitch = currentChainId !== selectedFromChainId;
 
   return (
     <div style={backdrop}>
@@ -267,55 +297,81 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             </div>
           )}
 
-          {/* route */}
+          {/* Chain Selector */}
           {address && (
             <div style={card}>
-              <div style={{ fontSize: 14, marginBottom: 8 }}><strong>Bridge Route</strong></div>
-              <div style={{ fontSize: 13, display: 'flex', gap: 8, alignItems: 'center' }}>
-                <span>{fromChainName}</span><span>→</span><span style={{ color: '#ffd700' }}>ApeChain (33139)</span>
-              </div>
-              {apeGas !== null && (
+              <div style={{ fontSize: 14, marginBottom: 8 }}><strong>From (Source Chain)</strong></div>
+              <select
+                value={selectedFromChainId}
+                onChange={(e) => setSelectedFromChainId(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  background: '#0a1f14',
+                  border: '1px solid #4a7d5f',
+                  borderRadius: '4px',
+                  color: '#c8ffc8',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                {BRIDGE_CHAINS.map(chain => (
+                  <option key={chain.id} value={chain.id}>
+                    {chain.name} ({chain.symbol})
+                  </option>
+                ))}
+              </select>
+              
+              {/* Source chain balance */}
+              {sourceBalance !== null && (
                 <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
-                  ApeChain balance: {formatEther(apeGas)} APE {needsGas ? '(low ⚠️)' : '✓'}
+                  {selectedChain.name} balance: {formatEther(sourceBalance)} {selectedChain.symbol}
                 </div>
               )}
               
-              {/* Base-first hint + switch CTA */}
-              {fromChainId === 1 && (
+              {/* Chain switch warning */}
+              {needsChainSwitch && (
                 <div style={{ marginTop: 8, padding: 8, background: '#4a3a1a', borderRadius: 4, border: '1px solid #ffd700' }}>
                   <div style={{ fontSize: 11, color: '#ffd700', marginBottom: 6 }}>
-                    💡 Switch to Base for 75% cheaper fees ($0.50 vs $2.00)
+                    ⚠️ Please switch your wallet to {selectedChain.name}
                   </div>
                   <button
                     onClick={async () => {
                       try {
-                        if (walletClient?.switchChain) {
-                          await walletClient.switchChain({ id: 8453 });
-                        } else if ((window as any).ethereum) {
-                          await (window as any).ethereum.request({
-                            method: 'wallet_switchEthereumChain',
-                            params: [{ chainId: '0x2105' }], // 8453 in hex
-                          });
-                        }
-                      } catch (e) {
-                        console.error('Switch chain failed:', e);
+                        switchChain?.({ chainId: selectedFromChainId });
+                      } catch (err) {
+                        console.warn('Failed to switch chain:', err);
                       }
                     }}
-                    disabled={isPollingGas}
                     style={{
                       width: '100%',
-                      padding: '6px',
-                      background: '#1a4d2a',
-                      border: '1px solid #4a7d5f',
-                      borderRadius: 4,
-                      color: '#c8ffc8',
-                      fontSize: 12,
-                      cursor: isPollingGas ? 'not-allowed' : 'pointer',
-                      opacity: isPollingGas ? 0.6 : 1
+                      padding: '8px',
+                      background: 'linear-gradient(145deg, #ffd700, #cc9900)',
+                      color: '#0a1f14',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 'bold'
                     }}
                   >
-                    Switch to Base Network
+                    Switch to {selectedChain.name}
                   </button>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Destination (ApeChain) */}
+          {address && (
+            <div style={card}>
+              <div style={{ fontSize: 14, marginBottom: 8 }}><strong>To (Destination)</strong></div>
+              <div style={{ fontSize: 13, display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ color: '#ffd700' }}>ApeChain (APE)</span>
+              </div>
+              {apeGas !== null && (
+                <div style={{ marginTop: 6, opacity: 0.8, fontSize: 12 }}>
+                  Current balance: {formatEther(apeGas)} APE {needsGas ? '(low ⚠️)' : '✓'}
                 </div>
               )}
             </div>
