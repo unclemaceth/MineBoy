@@ -1252,8 +1252,8 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
             <span style={{ color: '#8a8a8a', fontSize: '11px' }}>From The Mine collection (Ol' Rusty coming soon)</span>
           </p>
           <p style={{ margin: '8px 0' }}>
-            <strong>2. APE Tokens:</strong> 0.001 APE claim fee + gas<br/>
-            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>~1 APE = 1000 claims</span>
+            <strong>2. APE Tokens:</strong> 0.01 APE claim fee + gas<br/>
+            <span style={{ color: '#8a8a8a', fontSize: '11px' }}>~1 APE = 100 claims</span>
           </p>
           <p style={{ margin: '8px 0' }}>
             <strong>3. NPC NFT (Optional):</strong> Boost your rewards!<br/>
@@ -1270,7 +1270,7 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
         borderRadius: '6px'
       }}>
         <p style={{ fontSize: '11px', color: '#8a8a8a', lineHeight: '1.4', margin: 0 }}>
-          💡 The 0.001 APE claim fee powers the MineStrategy flywheel: prize pools, team collection sweeps, liquidity, and ecosystem growth
+          💡 The 0.01 APE claim fee powers the MineStrategy flywheel: prize pools, team collection sweeps, liquidity, and ecosystem growth
         </p>
       </div>
 
