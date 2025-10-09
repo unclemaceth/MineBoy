@@ -1677,12 +1677,10 @@ function Home() {
         left: 0,
         zIndex: 100,
         transition: 'top 150ms ease',
-        cursor: (cartridge && sessionId) ? 'pointer' : 'default',
         opacity: (cartridge && sessionId) ? 1 : 0.5,
       }}
-      onClick={handleEjectButton}
       >
-        <SideButton />
+        <SideButton onClick={(cartridge && sessionId) ? handleEjectButton : undefined} />
       </div>
 
       {/* Navigation Links */}
