@@ -5,9 +5,7 @@ import { useAccount, useChainId, useWalletClient } from 'wagmi';
 import { formatEther, parseEther } from 'viem';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { apePublicClient } from '@/lib/apechain';
-// @ts-expect-error - Install with: npm install @relayprotocol/relay-sdk @relayprotocol/relay-kit-hooks
 import { createClient } from '@relayprotocol/relay-sdk';
-// @ts-expect-error - Install with: npm install @relayprotocol/relay-sdk @relayprotocol/relay-kit-hooks
 import { useQuote } from '@relayprotocol/relay-kit-hooks';
 
 const queryClient = new QueryClient();
@@ -20,9 +18,10 @@ type Props = {
   suggestedAmount?: string; // in native units (e.g., '0.01')
 };
 
-// init Relay client once per app (move to a provider if you like)
+// init Relay client once per app  
 const relayClient = createClient({
-  apiBase: 'https://api.relay.link', // or testnet: https://api.testnets.relay.link
+  baseApiUrl: 'https://api.relay.link',
+  source: 'mineboy.app',
 });
 
 export default function RelayBridgeModalSDK({ isOpen, onClose, suggestedAmount = '0.01' }: Props) {
@@ -81,7 +80,7 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   }, [amount]);
 
   // fetch a live quote
-  const { data, isLoading, error, refetch } = useQuote({
+  const { data, isLoading, error, refetch } = (useQuote as any)({
     client: relayClient,
     options: {
       chainId: fromChainId,                // source chain
@@ -99,11 +98,11 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
 
   // Analytics: Quote loaded
   useEffect(() => {
-    if (data?.quote && typeof window !== 'undefined' && (window as any).gtag) {
+    if (data && typeof window !== 'undefined' && (window as any).gtag) {
       (window as any).gtag('event', 'relay_quote_loaded', {
         fromChainId,
         amount,
-        timeEstimate: data.quote.timeEstimate,
+        timeEstimate: (data as any).timeEstimate,
       });
     }
   }, [data, fromChainId, amount]);
@@ -122,10 +121,10 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       setLastTxUrl('');
       
       if (!walletClient) throw new Error('Wallet not connected');
-      if (!data?.quote) throw new Error('No quote');
+      if (!data) throw new Error('No quote');
 
       // Guard against stale quotes (user switched chains)
-      if ((data.quote as any)?.from?.chainId && (data.quote as any).from.chainId !== fromChainId) {
+      if ((data as any)?.from?.chainId && (data as any).from.chainId !== fromChainId) {
         setErrMsg('Network changed. Refreshing quote…');
         await refetch();
         return;
@@ -136,12 +135,15 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
         (window as any).gtag('event', 'relay_execute_started', {
           fromChainId,
           amount,
-          quoteId: (data.quote as any)?.id,
+          quoteId: (data as any)?.id,
         });
       }
 
-      // Execute via the hook-provided helper; progress mirrors SDK steps
-      await data.executeQuote!((progress: any) => {
+      // Execute via SDK; progress mirrors SDK steps
+      await relayClient.actions.execute({
+        quote: data as any, // Type cast for SDK compatibility
+        wallet: walletClient as any,
+        onProgress: (progress: any) => {
         const step = progress.currentStep;
         const detail = progress.details ?? '';
         setStatus(`${step}${detail ? `: ${detail}` : ''}`);
@@ -162,7 +164,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             setLastTxUrl(`https://apescan.io/tx/${last.hash}`);
           }
         }
-      }, { wallet: walletClient });
+        },
+      });
 
       setStatus('✅ Bridge complete! Waiting for APE on ApeChain…');
       
@@ -374,13 +377,13 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             </div>
           )}
 
-          {address && data?.quote && !isLoading && (
+          {address && data && !isLoading && (
             <div style={card}>
-              <div><strong>Time:</strong> {data.quote.timeEstimate ?? '~30–60s'}</div>
+              <div><strong>Time:</strong> {(data as any).timeEstimate ?? '~30–60s'}</div>
               <div><strong>Relayer covers dst gas:</strong> yes</div>
               {/* show out amount when present */}
-              {data.quote?.to?.amount && (
-                <div><strong>Est. receive:</strong> ~{formatEther(BigInt(data.quote.to.amount))} APE</div>
+              {(data as any)?.to?.amount && (
+                <div><strong>Est. receive:</strong> ~{formatEther(BigInt((data as any).to.amount))} APE</div>
               )}
             </div>
           )}
@@ -404,12 +407,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
           {address && (
             <button
               onClick={execute}
-              disabled={!data?.quote || isLoading || !validAmount || isPollingGas}
+              disabled={!data || isLoading || !validAmount || isPollingGas}
               style={{
                 ...btn,
-                backgroundColor: (!data?.quote || isLoading || !validAmount || isPollingGas) ? '#2a3a2a' : '#4a7d5f',
-                cursor: (!data?.quote || isLoading || !validAmount || isPollingGas) ? 'not-allowed' : 'pointer',
-                opacity: (!data?.quote || isLoading || !validAmount || isPollingGas) ? 0.6 : 1
+                backgroundColor: (!data || isLoading || !validAmount || isPollingGas) ? '#2a3a2a' : '#4a7d5f',
+                cursor: (!data || isLoading || !validAmount || isPollingGas) ? 'not-allowed' : 'pointer',
+                opacity: (!data || isLoading || !validAmount || isPollingGas) ? 0.6 : 1
               }}
             >
               {isPollingGas ? 'Waiting for APE...' : isLoading ? 'Preparing…' : `Bridge ${amount} to ApeChain`}
