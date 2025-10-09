@@ -147,17 +147,17 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   }, [amount]);
 
   // Log quote request params
-  console.log('[RelayBridge] Quote request params:', {
-    chainId: selectedFromChainId,
-    toChainId: APECHAIN_ID,
-    currency: '0x0000000000000000000000000000000000000000',
-    toCurrency: '0x0000000000000000000000000000000000000000',
-    amount: weiAmount,
-    amountReadable: amount,
-    user: address,
-    recipient: address,
-    enabled: Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId),
-  });
+  console.log('[RelayBridge] Quote request params:');
+  console.log('  chainId (from):', selectedFromChainId);
+  console.log('  toChainId:', APECHAIN_ID);
+  console.log('  currency:', '0x0000000000000000000000000000000000000000');
+  console.log('  toCurrency:', '0x0000000000000000000000000000000000000000');
+  console.log('  amount (wei):', weiAmount);
+  console.log('  amount (human):', amount);
+  console.log('  user:', address);
+  console.log('  recipient:', address);
+  console.log('  tradeType:', 'EXACT_INPUT');
+  console.log('  enabled:', Boolean(address && parseFloat(amount) > 0 && currentChainId === selectedFromChainId));
 
   // fetch a live quote
   const { data, isLoading, error, refetch } = (useQuote as any)({
@@ -202,7 +202,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
       console.error('  - ERROR FULL:', error);
       console.error('  - ERROR MESSAGE:', (error as any)?.message);
       console.error('  - ERROR RESPONSE:', (error as any)?.response);
+      console.error('  - ERROR RESPONSE.data:', (error as any)?.response?.data);
+      console.error('  - ERROR RESPONSE.status:', (error as any)?.response?.status);
+      console.error('  - ERROR RESPONSE.statusText:', (error as any)?.response?.statusText);
       console.error('  - ERROR DATA:', (error as any)?.data);
+      console.error('  - ERROR CONFIG:', (error as any)?.config);
+      console.error('  - ERROR as JSON:', JSON.stringify(error, null, 2));
     }
   }, [data, isLoading, error, amount, validAmount, selectedFromChainId, currentChainId, realChainId, wagmiChainId, walletClient, address, isPollingGas]);
 
