@@ -2009,7 +2009,7 @@ function Home() {
         onClick={() => { playButtonSound(); setShowWalletModal(true); }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "linear-gradient(145deg, #b09fe4, #8a6fc8)";
-          e.currentTarget.style.transform = "scale(1.05)";
+          e.currentTarget.style.transform = "scale(1.02)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = "linear-gradient(145deg, #a08fd4, #7a5fb8)";
@@ -2071,7 +2071,7 @@ function Home() {
         onClick={() => { playButtonSound(); setShowDebugModal(true); }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = "linear-gradient(145deg, #5a5a5a, #2a2a2a)";
-          e.currentTarget.style.transform = "translateY(0) scale(1.05)";
+          e.currentTarget.style.transform = "translateY(0) scale(1.02)";
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = "linear-gradient(145deg, #4a4a4a, #1a1a1a)";
@@ -2091,7 +2091,7 @@ function Home() {
           e.currentTarget.style.borderRightColor = "#2a2a2a";
           e.currentTarget.style.borderBottomColor = "#2a2a2a";
           e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
-          e.currentTarget.style.transform = "translateY(0) scale(1.05)";
+          e.currentTarget.style.transform = "translateY(0) scale(1.02)";
         }}
         onPointerLeave={(e) => {
           e.currentTarget.style.borderTopColor = "#8a8a8a";
@@ -2170,7 +2170,7 @@ function Home() {
           onMouseEnter={(e) => {
             if (!connectPressed) {
               e.currentTarget.style.background = "linear-gradient(145deg, #5a5a5a, #2a2a2a)";
-              e.currentTarget.style.transform = "translateY(0) scale(1.05)";
+              e.currentTarget.style.transform = "translateY(0) scale(1.02)";
             }
           }}
           onMouseLeave={(e) => {

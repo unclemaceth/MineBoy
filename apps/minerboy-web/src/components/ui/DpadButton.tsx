@@ -50,7 +50,7 @@ export default function DpadButton({
         cursor: "pointer",
         background: hover && !down ? "linear-gradient(145deg, #5a5a5a, #2a2a2a)" : "linear-gradient(145deg, #4a4a4a, #1a1a1a)", 
         position: "relative",
-        transform: down ? "translateY(3px) scale(1)" : (hover ? "translateY(0) scale(1.05)" : "translateY(0) scale(1)"),
+        transform: down ? "translateY(3px) scale(1)" : (hover ? "translateY(0) scale(1.02)" : "translateY(0) scale(1)"),
         transition: "all 0.1s ease",
         boxShadow: down 
           ? "inset 0 2px 3px rgba(0,0,0,0.6)" 

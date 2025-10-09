@@ -46,7 +46,7 @@ export default function ActionButton({
         cursor: "pointer",
         background: hover && !down ? hoverGradient : gradient, 
         position: "relative",
-        transform: down ? "translateY(3px) scale(1)" : (hover ? "translateY(0) scale(1.05)" : "translateY(0) scale(1)"),
+        transform: down ? "translateY(3px) scale(1)" : (hover ? "translateY(0) scale(1.02)" : "translateY(0) scale(1)"),
         transition: "all 0.1s ease",
         boxShadow: down 
           ? "inset 0 3px 4px rgba(0,0,0,0.6)" 
