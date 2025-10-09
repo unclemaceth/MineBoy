@@ -2007,50 +2007,46 @@ function Home() {
       <button
         onClick={() => { playButtonSound(); setShowWalletModal(true); }}
         onPointerDown={(e) => {
-          e.currentTarget.style.borderTopColor = "#1a1a1a";
-          e.currentTarget.style.borderLeftColor = "#1a1a1a";
-          e.currentTarget.style.borderRightColor = "#6a6a6a";
-          e.currentTarget.style.borderBottomColor = "#6a6a6a";
+          e.currentTarget.style.borderTopColor = "#6a4a8a";
+          e.currentTarget.style.borderLeftColor = "#6a4a8a";
+          e.currentTarget.style.borderRightColor = "#c8a8ff";
+          e.currentTarget.style.borderBottomColor = "#c8a8ff";
           e.currentTarget.style.boxShadow = "inset 0 2px 3px rgba(0,0,0,0.6)";
-          e.currentTarget.style.transform = "translateY(2px)";
         }}
         onPointerUp={(e) => {
-          e.currentTarget.style.borderTopColor = "#8a8a8a";
-          e.currentTarget.style.borderLeftColor = "#8a8a8a";
-          e.currentTarget.style.borderRightColor = "#2a2a2a";
-          e.currentTarget.style.borderBottomColor = "#2a2a2a";
+          e.currentTarget.style.borderTopColor = "#c8a8ff";
+          e.currentTarget.style.borderLeftColor = "#c8a8ff";
+          e.currentTarget.style.borderRightColor = "#6a4a8a";
+          e.currentTarget.style.borderBottomColor = "#6a4a8a";
           e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
-          e.currentTarget.style.transform = "translateY(0)";
         }}
         onPointerLeave={(e) => {
-          e.currentTarget.style.borderTopColor = "#8a8a8a";
-          e.currentTarget.style.borderLeftColor = "#8a8a8a";
-          e.currentTarget.style.borderRightColor = "#2a2a2a";
-          e.currentTarget.style.borderBottomColor = "#2a2a2a";
+          e.currentTarget.style.borderTopColor = "#c8a8ff";
+          e.currentTarget.style.borderLeftColor = "#c8a8ff";
+          e.currentTarget.style.borderRightColor = "#6a4a8a";
+          e.currentTarget.style.borderBottomColor = "#6a4a8a";
           e.currentTarget.style.boxShadow = "0 2px 2px rgba(0,0,0,0.5)";
-          e.currentTarget.style.transform = "translateY(0)";
         }}
         style={{
           position: "absolute",
-          bottom: 775,
-          left: "50%",
-          transform: "translateX(-50%)",
+          bottom: 175,
+          left: 280,
           width: 75,
           height: 27,
           borderRadius: 18,
           border: "2px solid",
-          borderTopColor: "#8a8a8a",
-          borderLeftColor: "#8a8a8a",
-          borderRightColor: "#2a2a2a",
-          borderBottomColor: "#2a2a2a",
+          borderTopColor: "#c8a8ff",
+          borderLeftColor: "#c8a8ff",
+          borderRightColor: "#6a4a8a",
+          borderBottomColor: "#6a4a8a",
           cursor: "pointer",
-          background: "linear-gradient(145deg, #4a4a4a, #1a1a1a)",
+          background: "linear-gradient(145deg, #a08fd4, #7a5fb8)",
           boxShadow: "0 2px 2px rgba(0,0,0,0.5)",
           fontWeight: 900,
           fontSize: 10,
           letterSpacing: 0.5,
           color: "#ffffff",
-          transition: "transform 120ms, border-color 120ms",
+          transition: "border-color 120ms, box-shadow 120ms",
           display: "flex",
           alignItems: "center",
           justifyContent: "center"
@@ -2089,7 +2085,7 @@ function Home() {
         style={{
           position: "absolute",
           bottom: 775, // Aligned with CONNECT button
-          right: 207, // Same distance from right as CONNECT is from left
+          right: 199, // Moved right 8px (207 - 8)
           width: 70,
           height: 27,
           borderRadius: 18,
@@ -2182,23 +2178,23 @@ function Home() {
 
 
 
-      {/* D-pad Up: moved up 20px for HUD */}
-      <div style={{ position: "absolute", left: 92, bottom: 253.5 + 20 }}>
+      {/* D-pad Up: moved up 20px for HUD, adjusted down 6px, left 6px */}
+      <div style={{ position: "absolute", left: 86, bottom: 253.5 + 14 }}>
         <DpadButton direction="up" size={38} onPress={() => handleDpad('up')} />
       </div>
       
-      {/* D-pad Down: moved up 20px for HUD */}
-      <div style={{ position: "absolute", left: 92, bottom: 159.5 + 20 }}>
+      {/* D-pad Down: moved up 20px for HUD, adjusted down 6px, left 6px */}
+      <div style={{ position: "absolute", left: 86, bottom: 159.5 + 14 }}>
         <DpadButton direction="down" size={38} onPress={() => handleDpad('down')} />
       </div>
       
-      {/* D-pad Left: moved up 20px for HUD */}
-      <div style={{ position: "absolute", left: 45, bottom: 206.5 + 20 }}>
+      {/* D-pad Left: moved up 20px for HUD, adjusted down 6px, left 6px */}
+      <div style={{ position: "absolute", left: 39, bottom: 206.5 + 14 }}>
         <DpadButton direction="left" size={38} onPress={() => handleDpad('left')} />
       </div>
       
-      {/* D-pad Right: moved up 20px for HUD */}
-      <div style={{ position: "absolute", left: 139, bottom: 206.5 + 20 }}>
+      {/* D-pad Right: moved up 20px for HUD, adjusted down 6px, left 6px */}
+      <div style={{ position: "absolute", left: 133, bottom: 206.5 + 14 }}>
         <DpadButton direction="right" size={38} onPress={() => handleDpad('right')} />
       </div>
 
