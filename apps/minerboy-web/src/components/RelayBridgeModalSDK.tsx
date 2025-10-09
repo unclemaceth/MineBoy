@@ -349,12 +349,25 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                         console.log('[RelayBridge] Calling switchChain with chainId:', selectedFromChainId);
                         await switchChain({ chainId: selectedFromChainId });
                         console.log('[RelayBridge] Switch successful');
-                        setStatus('');
+                        setStatus(`✓ Switched to ${selectedChain.name}!`);
+                        setTimeout(() => setStatus(''), 2000);
                       } catch (err: any) {
                         console.error('[RelayBridge] Failed to switch chain:', err);
                         setErrMsg(err?.message || 'Failed to switch chain. Please switch manually in your wallet.');
                         setStatus('');
                       }
+                    }}
+                    onMouseDown={(e) => {
+                      e.currentTarget.style.transform = 'scale(0.95)';
+                      e.currentTarget.style.opacity = '0.8';
+                    }}
+                    onMouseUp={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.opacity = '1';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      e.currentTarget.style.opacity = '1';
                     }}
                     style={{
                       width: '100%',
@@ -365,7 +378,8 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
                       borderRadius: '4px',
                       cursor: 'pointer',
                       fontSize: '12px',
-                      fontWeight: 'bold'
+                      fontWeight: 'bold',
+                      transition: 'all 0.1s ease'
                     }}
                   >
                     Switch to {selectedChain.name}
