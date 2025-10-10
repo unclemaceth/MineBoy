@@ -66,30 +66,33 @@ export function postGameStats(stats: {
   totalClaims: number;
   activeMiners: number;
   totalMiners: number;
-  topMiner?: { wallet: string; ape: string };
+  topMiner?: { wallet: string; arcadeName?: string; mnestr: string };
   topTeam?: { name: string; emoji: string; score: string };
   date: string;
 }) {
-  const topMinerShort = stats.topMiner
-    ? `${stats.topMiner.wallet.slice(0, 6)}...${stats.topMiner.wallet.slice(-4)}`
+  // Use arcade name if available, otherwise show wallet
+  const topMinerDisplay = stats.topMiner
+    ? stats.topMiner.arcadeName 
+      ? `🎮 ${stats.topMiner.arcadeName}`
+      : `${stats.topMiner.wallet.slice(0, 6)}...${stats.topMiner.wallet.slice(-4)}`
     : 'N/A';
   
-  const topMinerApe = stats.topMiner
-    ? parseFloat(stats.topMiner.ape).toFixed(2)
+  const topMinerMnestr = stats.topMiner
+    ? parseFloat(stats.topMiner.mnestr).toFixed(2)
     : '0';
 
   const fields = [
     { name: 'Claims Today', value: stats.totalClaims.toLocaleString(), inline: true },
     { name: 'Active Miners', value: stats.activeMiners.toString(), inline: true },
     { name: 'Total Miners', value: stats.totalMiners.toLocaleString(), inline: true },
-    { name: 'Top Miner', value: `${topMinerShort}\n${topMinerApe} APE`, inline: false },
+    { name: 'Top Miner', value: `${topMinerDisplay}\n${topMinerMnestr} MNESTR mined`, inline: false },
   ];
 
   if (stats.topTeam) {
-    const teamScore = parseFloat(stats.topTeam.score).toFixed(2);
+    const teamMnestr = parseFloat(stats.topTeam.score).toFixed(2);
     fields.push({
       name: 'Top Team',
-      value: `${stats.topTeam.emoji} ${stats.topTeam.name}\n${teamScore} APE`,
+      value: `${stats.topTeam.emoji} ${stats.topTeam.name}\n${teamMnestr} MNESTR mined`,
       inline: false
     });
   }

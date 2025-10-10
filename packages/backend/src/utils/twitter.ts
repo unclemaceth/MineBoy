@@ -67,17 +67,17 @@ export function formatGameStatsForX(stats: {
   totalClaims: number;
   activeMiners: number;
   totalMiners: number;
-  topMiner?: { wallet: string; ape: string };
+  topMiner?: { wallet: string; arcadeName?: string; mnestr: string };
   topTeam?: { name: string; emoji: string; score: string };
   date: string;
 }): string {
-  // Shorten wallet address
-  const topMinerShort = stats.topMiner
-    ? `${stats.topMiner.wallet.slice(0, 6)}...${stats.topMiner.wallet.slice(-4)}`
+  // Use arcade name if available, otherwise shorten wallet
+  const topMinerDisplay = stats.topMiner
+    ? stats.topMiner.arcadeName || `${stats.topMiner.wallet.slice(0, 6)}...${stats.topMiner.wallet.slice(-4)}`
     : 'N/A';
   
-  const topMinerApe = stats.topMiner
-    ? parseFloat(stats.topMiner.ape).toFixed(0)
+  const topMinerMnestr = stats.topMiner
+    ? parseFloat(stats.topMiner.mnestr).toFixed(0)
     : '0';
 
   const lines = [
@@ -87,13 +87,13 @@ export function formatGameStatsForX(stats: {
     `${stats.activeMiners} active miners`,
     `${stats.totalMiners.toLocaleString()} total miners`,
     ``,
-    `🏆 Top: ${topMinerShort} (${topMinerApe} APE)`,
+    `🏆 Top: ${topMinerDisplay} (${topMinerMnestr} MNESTR)`,
   ];
 
   // Add team if available
   if (stats.topTeam) {
-    const teamScore = parseFloat(stats.topTeam.score).toFixed(0);
-    lines.push(`${stats.topTeam.emoji} Team ${stats.topTeam.name}: ${teamScore} APE`);
+    const teamMnestr = parseFloat(stats.topTeam.score).toFixed(0);
+    lines.push(`${stats.topTeam.emoji} Team ${stats.topTeam.name}: ${teamMnestr} MNESTR`);
   }
 
   return lines.join('\n');

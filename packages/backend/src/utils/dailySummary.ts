@@ -50,14 +50,16 @@ async function sendDailySummary() {
     
     const totalMiners = parseInt(totalMinersResult.rows[0]?.total_miners || '0');
     
-    // Get top miner today (last 24h)
+    // Get top miner today (last 24h) with arcade name
     const topMinerResult = await db.pool.query(`
       SELECT 
-        wallet,
-        SUM(amount_wei::numeric) as total_wei
-      FROM claims
-      WHERE status='confirmed' AND confirmed_at >= $1
-      GROUP BY wallet
+        c.wallet,
+        SUM(c.amount_wei::numeric) as total_wei,
+        un.name as arcade_name
+      FROM claims c
+      LEFT JOIN user_names un ON LOWER(un.wallet) = LOWER(c.wallet)
+      WHERE c.status='confirmed' AND c.confirmed_at >= $1
+      GROUP BY c.wallet, un.name
       ORDER BY total_wei DESC
       LIMIT 1
     `, [oneDayAgo]);
@@ -67,7 +69,8 @@ async function sendDailySummary() {
       const row = topMinerResult.rows[0];
       topMiner = {
         wallet: row.wallet,
-        ape: formatEther(row.total_wei)
+        arcadeName: row.arcade_name,
+        mnestr: formatEther(row.total_wei)
       };
     }
     

@@ -11,12 +11,13 @@ const testStats = {
   totalMiners: 567,
   topMiner: {
     wallet: '0x1234567890abcdef1234567890abcdef12345678',
-    ape: '123.456789'
+    arcadeName: 'TESTARCADE',
+    mnestr: '123456.789'
   },
   topTeam: {
     name: 'Test Team',
     emoji: '🔥',
-    score: '9876.543210'
+    score: '987654.321'
   },
   date: new Date().toISOString().split('T')[0]
 };
