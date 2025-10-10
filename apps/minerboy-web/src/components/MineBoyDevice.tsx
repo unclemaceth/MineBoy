@@ -267,18 +267,20 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     });
     
     // =========================================================================
-    // LIFECYCLE: Cleanup on unmount
+    // LIFECYCLE: Cleanup - only re-register when sessionId changes
     // =========================================================================
     
     useEffect(() => {
+      // This effect's cleanup will run when sessionId changes OR on unmount
+      // We need sessionId in deps so cleanup uses the CURRENT sessionId
       return () => {
-        console.log(`[MineBoyDevice] Unmounting ${color} cart ${cartridge?.tokenId || 'none'}, cleaning up`);
+        console.log(`[MineBoyDevice] Cleaning up ${color} device (sessionId: ${sessionId || 'none'})`);
         miner.stop();
         if (sessionId) {
           api.close(sessionId).catch(console.error);
         }
       };
-    }, [cartridge?.tokenId, color, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [sessionId]); // Only sessionId in deps - cartridge changes don't trigger cleanup
     
     // =========================================================================
     // SESSION LOGGING (Dev mode)
