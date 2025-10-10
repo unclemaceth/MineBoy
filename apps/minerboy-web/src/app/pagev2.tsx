@@ -22,7 +22,7 @@ import { api, apiGetIndividualLeaderboard } from "@/lib/api";
 // =============================================================================
 
 interface DeviceSlot {
-  cartridge: OwnedCartridge;
+  cartridge?: OwnedCartridge; // Optional - device can exist without cartridge
   color: MineBoyColor;
 }
 
@@ -78,8 +78,8 @@ function MineBoyOrchestrator() {
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   
-  // Device management
-  const [devices, setDevices] = useState<DeviceSlot[]>([]);
+  // Device management - Start with one empty device
+  const [devices, setDevices] = useState<DeviceSlot[]>([{ color: 'blue' }]);
   const [availableCartridges, setAvailableCartridges] = useState<OwnedCartridge[]>([]);
   
   // =========================================================================
@@ -217,27 +217,55 @@ function MineBoyOrchestrator() {
     setShowAlchemyCartridges(false);
     
     // Check if cartridge is already in use
-    const alreadyUsed = devices.some(d => d.cartridge.tokenId === selectedCartridge.tokenId);
+    const alreadyUsed = devices.some(d => d.cartridge?.tokenId === selectedCartridge.tokenId);
     if (alreadyUsed) {
       alert('This cartridge is already inserted in another MineBoy');
       return;
     }
     
-    const nextColor = DEVICE_COLORS[devices.length % DEVICE_COLORS.length];
-    const newDevice: DeviceSlot = {
-      cartridge: selectedCartridge,
-      color: nextColor,
-    };
-    
-    setDevices(prev => [...prev, newDevice]);
-    console.log('[Orchestrator] Added device:', newDevice);
+    // Find first device without a cartridge and update it
+    const emptyDeviceIndex = devices.findIndex(d => !d.cartridge);
+    if (emptyDeviceIndex !== -1) {
+      setDevices(prev => {
+        const updated = [...prev];
+        updated[emptyDeviceIndex] = {
+          ...updated[emptyDeviceIndex],
+          cartridge: selectedCartridge,
+        };
+        console.log('[Orchestrator] Updated device at index', emptyDeviceIndex, ':', updated[emptyDeviceIndex]);
+        return updated;
+      });
+    } else {
+      // All devices have cartridges, add a new one
+      const nextColor = DEVICE_COLORS[devices.length % DEVICE_COLORS.length];
+      const newDevice: DeviceSlot = {
+        cartridge: selectedCartridge,
+        color: nextColor,
+      };
+      
+      setDevices(prev => [...prev, newDevice]);
+      console.log('[Orchestrator] Added new device:', newDevice);
+    }
   };
   
   const handleEjectDevice = (index: number) => {
     const device = devices[index];
-    console.log('[Orchestrator] Ejecting device:', { index, color: device.color, tokenId: device.cartridge.tokenId });
+    console.log('[Orchestrator] Ejecting device:', { index, color: device.color, tokenId: device.cartridge?.tokenId });
     
-    setDevices(prev => prev.filter((_, i) => i !== index));
+    playButtonSound();
+    
+    // If this is the only device and it has no cartridge, do nothing
+    if (devices.length === 1 && !device.cartridge) {
+      console.log('[Orchestrator] Cannot eject last empty device');
+      return;
+    }
+    
+    // Remove device from array (keeps at least one device)
+    setDevices(prev => {
+      const filtered = prev.filter((_, i) => i !== index);
+      // Ensure we always have at least one device
+      return filtered.length > 0 ? filtered : [{ color: 'blue' }];
+    });
   };
   
   // =========================================================================

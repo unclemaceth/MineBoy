@@ -193,21 +193,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // RENDER
   // ==========================================================================
   
-  if (devices.length === 0) {
-    // Show real device with no cartridge - user will connect wallet and insert cartridge
-    return (
-      <MineBoyDevice
-        ref={(el: HTMLDivElement | null) => {}}
-        color="blue"
-        isActive={true}
-        onEject={() => {}}
-        playButtonSound={playButtonSound}
-        onOpenWalletModal={onOpenWalletModal}
-        onCartridgeSelected={onCartridgeSelected}
-      />
-    );
-  }
-  
+  // Always render from devices array (never empty)
   // Hide navigation if only one device
   const showNavigation = devices.length > 1;
   
@@ -243,6 +229,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
               onEject={() => onEject(index)}
               playButtonSound={playButtonSound}
               onOpenWalletModal={onOpenWalletModal}
+              onCartridgeSelected={onCartridgeSelected}
             />
           </div>
         );
