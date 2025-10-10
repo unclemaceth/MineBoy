@@ -147,6 +147,13 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     const [progressText, setProgressText] = useState('No job');
     const [localVaultAddress, setLocalVaultAddress] = useState(vaultAddress);
     
+    // Sync vault prop to local state
+    useEffect(() => {
+      if (vaultAddress !== localVaultAddress) {
+        setLocalVaultAddress(vaultAddress || '');
+      }
+    }, [vaultAddress]);
+    
     // =========================================================================
     // WALLET & ACCOUNT
     // =========================================================================
@@ -157,7 +164,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     const walletClient = walletClientResult?.data ?? null;
     const { writeContract, writeContractAsync, data: hash } = useWriteContract();
     
-    const { npcBalance } = useNPCBalance((vaultAddress || address) as `0x${string}` | undefined);
+    const { npcBalance } = useNPCBalance((localVaultAddress || address) as `0x${string}` | undefined);
     
     const { data: mnestrBalanceRaw } = useReadContract({
       address: '0xAe0DfbB1a2b22080F947D1C0234c415FabEEc276' as `0x${string}`,
@@ -316,7 +323,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             tokenId: parseInt(cartridge.tokenId),
             sessionId: sid,
             minerId,
-            vault: vaultAddress || undefined
+            vault: localVaultAddress || undefined
           });
           
           console.log('[SESSION_OPEN] Success:', res);
@@ -804,7 +811,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           pushLine('Preparing on-chain transaction...');
           pushLine('Opening wallet for transaction...');
           
-          const isDelegated = !!vaultAddress || !!claimResponse.claim.caller;
+          const isDelegated = !!localVaultAddress || !!claimResponse.claim.caller;
           const routerAddress = isDelegated 
             ? (process.env.NEXT_PUBLIC_ROUTER_V3_1_ADDRESS || process.env.NEXT_PUBLIC_ROUTER_ADDRESS)
             : process.env.NEXT_PUBLIC_ROUTER_ADDRESS;
