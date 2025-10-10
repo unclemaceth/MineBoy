@@ -78,36 +78,26 @@ function MineBoyOrchestrator() {
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   
-  // Device management - Restore from localStorage or start with one empty device
-  const [devices, setDevices] = useState<DeviceSlot[]>(() => {
-    if (typeof window === 'undefined') return [{ color: 'blue' }];
-    try {
-      const saved = localStorage.getItem('mineboy_carousel_devices');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        console.log('[Orchestrator] Restored devices from localStorage:', parsed);
-        return parsed;
-      }
-    } catch (e) {
-      console.warn('[Orchestrator] Failed to restore devices from localStorage:', e);
-    }
-    return [{ color: 'blue' }];
-  });
+  // Device management - Always start with 3 empty devices (blue, orange, green)
+  const [devices, setDevices] = useState<DeviceSlot[]>([
+    { color: 'blue' },
+    { color: 'orange' },
+    { color: 'green' }
+  ]);
   const [availableCartridges, setAvailableCartridges] = useState<OwnedCartridge[]>([]);
   
-  // Persist devices to localStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        // Don't save cartridge data, only the device slots and colors
-        const devicesToSave = devices.map(d => ({ color: d.color }));
-        localStorage.setItem('mineboy_carousel_devices', JSON.stringify(devicesToSave));
-        console.log('[Orchestrator] Saved devices to localStorage:', devicesToSave);
-      } catch (e) {
-        console.warn('[Orchestrator] Failed to save devices to localStorage:', e);
-      }
-    }
-  }, [devices]);
+  // Device persistence disabled - always use 3 fixed devices
+  // useEffect(() => {
+  //   if (typeof window !== 'undefined') {
+  //     try {
+  //       const devicesToSave = devices.map(d => ({ color: d.color }));
+  //       localStorage.setItem('mineboy_carousel_devices', JSON.stringify(devicesToSave));
+  //       console.log('[Orchestrator] Saved devices to localStorage:', devicesToSave);
+  //     } catch (e) {
+  //       console.warn('[Orchestrator] Failed to save devices to localStorage:', e);
+  //     }
+  //   }
+  // }, [devices]);
   
   // =========================================================================
   // WALLET INTEGRATION
@@ -274,21 +264,21 @@ function MineBoyOrchestrator() {
   
   const handleEjectDevice = (index: number) => {
     const device = devices[index];
-    console.log('[Orchestrator] Ejecting device:', { index, color: device.color, tokenId: device.cartridge?.tokenId });
+    console.log('[Orchestrator] Ejecting cartridge from device:', { index, color: device.color, tokenId: device.cartridge?.tokenId });
     
     playButtonSound();
     
-    // If this is the only device and it has no cartridge, do nothing
-    if (devices.length === 1 && !device.cartridge) {
-      console.log('[Orchestrator] Cannot eject last empty device');
-            return;
-          }
+    // If device has no cartridge, do nothing
+    if (!device.cartridge) {
+      console.log('[Orchestrator] Device has no cartridge to eject');
+      return;
+    }
           
-    // Remove device from array (keeps at least one device)
+    // Clear the cartridge from this device (keep device, just remove cartridge)
     setDevices(prev => {
-      const filtered = prev.filter((_, i) => i !== index);
-      // Ensure we always have at least one device
-      return filtered.length > 0 ? filtered : [{ color: 'blue' }];
+      const updated = [...prev];
+      updated[index] = { ...updated[index], cartridge: undefined };
+      return updated;
     });
   };
   
@@ -361,8 +351,8 @@ function MineBoyOrchestrator() {
               ‹
             </button>
 
-            {/* Bottom: +/− buttons */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {/* Bottom: +/− buttons - DISABLED (always have 3 devices) */}
+            {/* <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <button 
                 onClick={handleAddDevice}
                 disabled={devices.length >= MAX_DEVICES}
@@ -412,7 +402,7 @@ function MineBoyOrchestrator() {
               >
                 −
             </button>
-      </div>
+      </div> */}
             </div>
 
           {/* MineBoy Device: 390px x 924px */}
