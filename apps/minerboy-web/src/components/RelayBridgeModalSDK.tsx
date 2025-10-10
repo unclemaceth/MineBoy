@@ -401,7 +401,25 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
         });
       }
       
-      setErrMsg(e?.message || 'Bridge failed');
+      // Show user-friendly error messages
+      const errorMessage = e?.message?.toLowerCase() || '';
+      let friendlyMsg = 'Bridge failed';
+      
+      if (errorMessage.includes('reject') || errorMessage.includes('denied') || errorMessage.includes('cancel')) {
+        friendlyMsg = 'Transaction cancelled';
+      } else if (errorMessage.includes('insufficient')) {
+        friendlyMsg = 'Insufficient balance';
+      } else if (errorMessage.includes('network')) {
+        friendlyMsg = 'Network error. Please try again';
+      } else if (errorMessage.includes('timeout')) {
+        friendlyMsg = 'Request timed out. Please try again';
+      } else if (e?.shortMessage) {
+        friendlyMsg = e.shortMessage;
+      } else if (e?.message && e.message.length < 100) {
+        friendlyMsg = e.message;
+      }
+      
+      setErrMsg(friendlyMsg);
       setStatus('');
       setIsPollingGas(false);
     }
@@ -648,14 +666,19 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
             <div style={errorBox}>
               ⚠️ {(() => {
                 const body = (error as any)?.response?.data;
-                const errorMsg = body?.message || body?.error || (error as any)?.message || 'Quote failed';
-                return String(errorMsg);
+                const rawMsg = body?.message || body?.error || (error as any)?.message || '';
+                
+                // Show user-friendly error messages
+                const errorLower = String(rawMsg).toLowerCase();
+                if (errorLower.includes('unsupported')) {
+                  return 'Route not available. Try the fallback link below.';
+                } else if (errorLower.includes('insufficient')) {
+                  return 'Insufficient balance';
+                } else if (rawMsg && String(rawMsg).length < 100) {
+                  return String(rawMsg);
+                }
+                return 'Failed to get quote. Please try again.';
               })()}
-              {String((error as any)?.message || '').includes('unsupported') && (
-                <div style={{ marginTop: 8, fontSize: 12 }}>
-                  Use the fallback link below to bridge manually.
-                </div>
-              )}
             </div>
           )}
 
