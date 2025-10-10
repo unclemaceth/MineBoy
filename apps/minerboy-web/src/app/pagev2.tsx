@@ -202,12 +202,6 @@ function MineBoyOrchestrator() {
   // =========================================================================
   
   const handleAddDevice = () => {
-    if (!isConnected) {
-      playButtonSound();
-      setShowWalletModal(true);
-      return;
-    }
-    
     if (devices.length >= MAX_DEVICES) {
       alert(`Maximum ${MAX_DEVICES} MineBoys allowed`);
       return;

@@ -83,6 +83,7 @@ export interface MineBoyDeviceProps {
   color: MineBoyColor;
   isActive: boolean;
   onEject: () => void;
+  playButtonSound: () => void;
   
   // Shared from parent
   vaultAddress?: string;
@@ -206,7 +207,9 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
       onTick: (data) => {
         setTelemetry(data.attempts, data.hr);
         if (data.hash) setCurrentDisplayHash(data.hash);
-        if (data.nibs && data.nibs.length === 9) setVisualizerNibs(data.nibs);
+        if (data.nibs && data.nibs.length === 9) {
+          setVisualizerNibs(data.nibs.map(nib => ({ nib, found: false })));
+        }
         if (data.progress !== undefined) setMiningProgress(data.progress);
         if (data.estimatedSecondsLeft !== undefined) setMiningEta(data.estimatedSecondsLeft);
       },
@@ -1157,7 +1160,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
                 )}
               </div>
             ) : (
-              <Visualizer3x3 nibs={visualizerNibs} />
+              <Visualizer3x3 nibs={visualizerNibs.map(v => v.nib)} />
             )}
           </div>
         </div>
