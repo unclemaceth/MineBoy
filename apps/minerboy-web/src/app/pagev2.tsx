@@ -78,9 +78,36 @@ function MineBoyOrchestrator() {
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   
-  // Device management - Start with one empty device
-  const [devices, setDevices] = useState<DeviceSlot[]>([{ color: 'blue' }]);
+  // Device management - Restore from localStorage or start with one empty device
+  const [devices, setDevices] = useState<DeviceSlot[]>(() => {
+    if (typeof window === 'undefined') return [{ color: 'blue' }];
+    try {
+      const saved = localStorage.getItem('mineboy_carousel_devices');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log('[Orchestrator] Restored devices from localStorage:', parsed);
+        return parsed;
+      }
+    } catch (e) {
+      console.warn('[Orchestrator] Failed to restore devices from localStorage:', e);
+    }
+    return [{ color: 'blue' }];
+  });
   const [availableCartridges, setAvailableCartridges] = useState<OwnedCartridge[]>([]);
+  
+  // Persist devices to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        // Don't save cartridge data, only the device slots and colors
+        const devicesToSave = devices.map(d => ({ color: d.color }));
+        localStorage.setItem('mineboy_carousel_devices', JSON.stringify(devicesToSave));
+        console.log('[Orchestrator] Saved devices to localStorage:', devicesToSave);
+      } catch (e) {
+        console.warn('[Orchestrator] Failed to save devices to localStorage:', e);
+      }
+    }
+  }, [devices]);
   
   // =========================================================================
   // WALLET INTEGRATION
@@ -204,21 +231,23 @@ function MineBoyOrchestrator() {
   // =========================================================================
   
   const handleAddDevice = () => {
-    if (devices.length >= MAX_DEVICES) {
-      alert(`Maximum ${MAX_DEVICES} MineBoys allowed`);
-      return;
-    }
-    
     playButtonSound();
     
-    // Add a new empty device with the next color
-    const nextColor = DEVICE_COLORS[devices.length % DEVICE_COLORS.length];
-    const newDevice: DeviceSlot = {
-      color: nextColor,
-    };
-    
-    setDevices(prev => [...prev, newDevice]);
-    console.log('[Orchestrator] Added empty device:', newDevice);
+    setDevices(prev => {
+      if (prev.length >= MAX_DEVICES) {
+        alert(`Maximum ${MAX_DEVICES} MineBoys allowed`);
+        return prev;
+      }
+      
+      // Calculate color based on current array length
+      const nextColor = DEVICE_COLORS[prev.length % DEVICE_COLORS.length];
+      const newDevice: DeviceSlot = {
+        color: nextColor,
+      };
+      
+      console.log('[Orchestrator] Adding device:', { currentLength: prev.length, nextColor, newDevice });
+      return [...prev, newDevice];
+    });
   };
   
   const handleAlchemyCartridgeSelect = async (selectedCartridge: OwnedCartridge, deviceIndex: number) => {
@@ -228,9 +257,9 @@ function MineBoyOrchestrator() {
     const alreadyUsed = devices.some(d => d.cartridge?.tokenId === selectedCartridge.tokenId);
     if (alreadyUsed) {
       alert('This cartridge is already inserted in another MineBoy');
-      return;
-    }
-    
+        return;
+      }
+      
     // Insert into the specific device that requested it
     setDevices(prev => {
       const updated = [...prev];
@@ -252,9 +281,9 @@ function MineBoyOrchestrator() {
     // If this is the only device and it has no cartridge, do nothing
     if (devices.length === 1 && !device.cartridge) {
       console.log('[Orchestrator] Cannot eject last empty device');
-      return;
-    }
-    
+            return;
+          }
+          
     // Remove device from array (keeps at least one device)
     setDevices(prev => {
       const filtered = prev.filter((_, i) => i !== index);
@@ -268,7 +297,7 @@ function MineBoyOrchestrator() {
   // =========================================================================
 
   return (
-    <div style={{
+      <div style={{
       position: 'fixed',
       inset: 0,
       display: 'grid',
@@ -291,17 +320,17 @@ function MineBoyOrchestrator() {
           }}
         >
           {/* Left Panel: 97.5px x 924px */}
-          <div style={{
+      <div style={{
             width: 97.5,
             height: 924,
-            display: 'flex',
+        display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 0',
-          }}>
+      }}>
             {/* Top: Left Arrow */}
-            <button
+            <button 
               onClick={() => carouselRef.current?.goToPrevious()}
               disabled={devices.length <= 1}
               style={{
@@ -334,57 +363,57 @@ function MineBoyOrchestrator() {
 
             {/* Bottom: +/− buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button
+            <button 
                 onClick={handleAddDevice}
                 disabled={devices.length >= MAX_DEVICES}
-                style={{
+              style={{
                   width: 50,
                   height: 50,
-                  borderRadius: '50%',
+                borderRadius: '50%',
                   background: devices.length >= MAX_DEVICES 
                     ? 'linear-gradient(145deg, #3a3a3a, #1a1a1a)'
                     : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                   border: '3px solid #3a8a4d',
-                  color: '#c8ffc8',
+                color: '#c8ffc8',
                   fontSize: 28,
-                  fontWeight: 'bold',
+                fontWeight: 'bold',
                   cursor: devices.length >= MAX_DEVICES ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
                   opacity: devices.length >= MAX_DEVICES ? 0.4 : 1,
                 }}
                 aria-label="Add MineBoy"
               >
                 +
-              </button>
-              <button
+            </button>
+            <button 
                 onClick={() => {
                   const activeIndex = carouselRef.current?.activeIndex ?? 0;
                   handleEjectDevice(activeIndex);
                 }}
-                style={{
+              style={{
                   width: 50,
                   height: 50,
-                  borderRadius: '50%',
+                borderRadius: '50%',
                   background: 'linear-gradient(145deg, #7d4a4a, #3d1a1a)',
                   border: '3px solid #8a3a3a',
                   color: '#ffc8c8',
                   fontSize: 28,
-                  fontWeight: 'bold',
+                fontWeight: 'bold',
                   cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
                 }}
                 aria-label="Remove Active MineBoy"
               >
                 −
-              </button>
+            </button>
+      </div>
             </div>
-          </div>
 
           {/* MineBoy Device: 390px x 924px */}
           <div style={{ width: 390, height: 924, position: 'relative' }}>
@@ -392,27 +421,27 @@ function MineBoyOrchestrator() {
               ref={carouselRef}
               devices={devices}
               onEject={handleEjectDevice}
-              playButtonSound={playButtonSound}
+        playButtonSound={playButtonSound}
               onOpenWalletModal={openWalletConnectionModal}
               onCartridgeSelected={handleAlchemyCartridgeSelect}
-            />
+      />
           </div>
-
+      
           {/* Right Panel: 97.5px x 924px */}
-          <div style={{
+        <div style={{
             width: 97.5,
             height: 924,
-            display: 'flex',
+          display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+          alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 0',
           }}>
             {/* Top: Right Arrow */}
-            <button
+              <button
               onClick={() => carouselRef.current?.goToNext()}
               disabled={devices.length <= 1}
-              style={{
+                style={{
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
@@ -426,7 +455,7 @@ function MineBoyOrchestrator() {
                 borderBottomColor: devices.length > 1 ? '#2a4d34' : '#2a2a2a',
                 color: devices.length > 1 ? '#c8ffc8' : '#666',
                 fontSize: 32,
-                fontWeight: 'bold',
+                  fontWeight: 'bold',
                 cursor: devices.length > 1 ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
@@ -438,13 +467,13 @@ function MineBoyOrchestrator() {
               aria-label="Next MineBoy"
             >
               ›
-            </button>
+              </button>
 
             {/* Bottom: M/I/L buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <button
+                    <button
                 onClick={() => openNavigationPage('mint')}
-                style={{
+                      style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
@@ -452,11 +481,11 @@ function MineBoyOrchestrator() {
                   border: '3px solid #3a8a4d',
                   color: '#c8ffc8',
                   fontSize: 18,
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
                   boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
                 }}
                 aria-label="Mint"
@@ -471,7 +500,7 @@ function MineBoyOrchestrator() {
                   borderRadius: '50%',
                   background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                   border: '3px solid #3a8a4d',
-                  color: '#c8ffc8',
+              color: '#c8ffc8',
                   fontSize: 18,
                   fontWeight: 'bold',
                   cursor: 'pointer',
@@ -484,18 +513,18 @@ function MineBoyOrchestrator() {
               >
                 I
               </button>
-              <button
+                <button
                 onClick={() => openNavigationPage('leaderboard')}
-                style={{
+                  style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                    background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                   border: '3px solid #3a8a4d',
-                  color: '#c8ffc8',
+                    color: '#c8ffc8',
                   fontSize: 18,
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
+                    fontWeight: 'bold',
+                      cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -504,10 +533,10 @@ function MineBoyOrchestrator() {
                 aria-label="Leaderboard"
               >
                 L
-              </button>
-            </div>
-          </div>
-        </div>
+                  </button>
+                </div>
+                </div>
+              </div>
       )}
       
       {/* Global Modals */}
