@@ -6,7 +6,7 @@ import MineBoyDevice, { type MineBoyColor } from "./MineBoyDevice";
 import { type OwnedCartridge } from '@/lib/alchemy';
 
 export interface MineBoyCarouselDevice {
-  cartridge: OwnedCartridge;
+  cartridge?: OwnedCartridge; // Optional - device can exist without cartridge
   color: MineBoyColor;
 }
 

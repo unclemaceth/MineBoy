@@ -210,7 +210,15 @@ function MineBoyOrchestrator() {
     }
     
     playButtonSound();
-    setShowAlchemyCartridges(true);
+    
+    // Add a new empty device with the next color
+    const nextColor = DEVICE_COLORS[devices.length % DEVICE_COLORS.length];
+    const newDevice: DeviceSlot = {
+      color: nextColor,
+    };
+    
+    setDevices(prev => [...prev, newDevice]);
+    console.log('[Orchestrator] Added empty device:', newDevice);
   };
   
   const handleAlchemyCartridgeSelect = async (selectedCartridge: OwnedCartridge) => {
