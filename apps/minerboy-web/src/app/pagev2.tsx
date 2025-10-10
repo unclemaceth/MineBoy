@@ -368,6 +368,7 @@ function MineBoyOrchestrator() {
               devices={devices}
               onEject={handleEjectDevice}
               playButtonSound={playButtonSound}
+              onOpenWalletModal={() => setShowWalletModal(true)}
             />
           </div>
 

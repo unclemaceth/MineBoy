@@ -14,6 +14,7 @@ export interface MineBoyCarouselProps {
   devices: MineBoyCarouselDevice[];
   onEject: (index: number) => void;
   playButtonSound?: () => void;
+  onOpenWalletModal?: () => void;
 }
 
 export interface MineBoyCarouselRef {
@@ -37,7 +38,8 @@ export interface MineBoyCarouselRef {
 const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(function MineBoyCarousel({ 
   devices, 
   onEject, 
-  playButtonSound = () => {} 
+  playButtonSound = () => {},
+  onOpenWalletModal
 }, ref) {
   
   const [activeIndex, setActiveIndex] = useState(0);
@@ -214,6 +216,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
         isActive={true}
         onEject={() => {}}
         playButtonSound={playButtonSound}
+        onOpenWalletModal={onOpenWalletModal}
       />
     );
   }
@@ -252,6 +255,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
               isActive={isActive}
               onEject={() => onEject(index)}
               playButtonSound={playButtonSound}
+              onOpenWalletModal={onOpenWalletModal}
             />
           </div>
         );
