@@ -17,6 +17,8 @@
 /* Firefox */
 html {
   scrollbar-width: none;
+  /* Prevent Safari auto text-zoom on orientation change */
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Pulse animation for success messages */
@@ -42,11 +44,11 @@ body {
 
 html, body, #__next { 
   height: 100%; 
-  overflow: hidden; 
   background: #0a0a0a;
-  /* Prevent horizontal overflow on mobile */
+  /* Only prevent horizontal overflow, let Y size naturally */
   max-width: 100vw;
   overflow-x: hidden;
+  /* Don't hard-lock overflow: hidden - it forces Safari zoom */
 }
 
 body { 

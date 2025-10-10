@@ -389,31 +389,34 @@ function MineBoyOrchestrator() {
       WebkitTouchCallout: 'none',
     }}>
       {/* Always show carousel view - no landing page */}
-      {(
+      {(() => {
+        // Calculate dimensions using state (not direct window.innerWidth)
+        const DEVICE_W = isMobile ? 390 : 585;
+        const DEVICE_H = isMobile ? 820 : 924;
+        const PANELS = isMobile ? 0 : 195;
+        const GAP = 12;
+
+        const contentWidth =
+          layout === 'carousel'
+            ? PANELS + 390 // device width only
+            : layout === 'row'
+            ? PANELS + (390 * devices.length + GAP * (devices.length - 1))
+            : PANELS + 390;
+
+        const contentHeight =
+          layout === 'column'
+            ? DEVICE_H * devices.length + GAP * (devices.length - 1)
+            : DEVICE_H;
+
+        return (
         // Scaling wrapper - natural content dimensions for scrolling
         <div
               style={{
-            // Calculate real content dimensions (mobile: no panels, desktop: with panels)
-            width: (() => {
-              const mobile = window.innerWidth < 768;
-              const PANELS = mobile ? 0 : 195; // Hide panels on mobile
-              const DEVICE_W = 390;
-              const gap = 12;
-              return layout === 'carousel'
-                ? PANELS + DEVICE_W // 390 mobile, 585 desktop
-                : layout === 'row'
-                ? PANELS + (DEVICE_W * devices.length + gap * (devices.length - 1))
-                : PANELS + DEVICE_W;
-            })(),
-            height: (() => {
-              const mobile = window.innerWidth < 768;
-              const DEVICE_H = mobile ? 820 : 924; // Shorter on mobile
-              const gap = 12;
-              return layout === 'column'
-                ? DEVICE_H * devices.length + gap * (devices.length - 1)
-                : DEVICE_H;
-            })(),
-            transformOrigin: 'center center', // Center for mobile
+            width: `${contentWidth}px`,
+            height: `${contentHeight}px`,
+            maxWidth: '100vw',        // Never overflow viewport
+            maxHeight: '100svh',      // iOS toolbar-safe
+            transformOrigin: 'top center', // Better on phones
             transform: 'scale(var(--device-scale, 1))',
             position: 'relative',
                 display: 'flex',
@@ -638,7 +641,8 @@ function MineBoyOrchestrator() {
                 </div>
       )}
         </div>
-      )}
+        );
+      })()}
       
       {/* Global Modals - z-index 3000+ to render above all devices */}
       <NavigationModal
