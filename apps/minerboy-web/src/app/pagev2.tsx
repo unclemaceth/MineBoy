@@ -144,6 +144,12 @@ function MineBoyOrchestrator() {
     // (iOS innerHeight includes toolbars, visualViewport.height doesn't)
     const vv = window.visualViewport;
     
+    // Helper to read CSS var as pixels
+    const readPx = (v: string) => parseFloat(v || '0') || 0;
+    const css = () => getComputedStyle(document.documentElement);
+    const safeTop = () => readPx(css().getPropertyValue('--safe-top'));
+    const safeBottom = () => readPx(css().getPropertyValue('--safe-bottom'));
+    
     function fitDevice() {
       const mobile = window.innerWidth < 768;
       
@@ -154,7 +160,11 @@ function MineBoyOrchestrator() {
       
       // Use visualViewport dimensions if available (more accurate on iOS)
       const vw = vv ? vv.width : window.innerWidth;
-      const vh = vv ? vv.height : window.innerHeight;
+      const rawVH = vv ? vv.height : window.innerHeight;
+      
+      // Subtract safe-area insets to match the padding we apply on outer container
+      // This ensures the device scales to fit the ACTUAL available space
+      const availableVH = Math.max(0, rawVH - safeTop() - safeBottom() - 8);
       
       let scaleRaw: number;
       if (mobile) {
@@ -162,17 +172,17 @@ function MineBoyOrchestrator() {
         const padding = 20; // 10px on each side
         scaleRaw = Math.min(
           (vw - padding) / BASE_W,
-          (vh - padding) / BASE_H
+          (availableVH - padding) / BASE_H
         );
       } else {
         // Desktop: standard scaling
-        scaleRaw = Math.min(vw / BASE_W, vh / BASE_H);
+        scaleRaw = Math.min(vw / BASE_W, availableVH / BASE_H);
       }
       
       // Never upscale (blur), but allow natural downscale on small screens
       const scale = Math.min(1, scaleRaw);
       document.documentElement.style.setProperty('--device-scale', String(scale));
-      console.log('[Scale] Mobile:', mobile, 'Layout:', layout, 'VV:', vw, 'x', vh, 'Scale:', scale.toFixed(3));
+      console.log('[Scale] Mobile:', mobile, 'vw:', vw, 'availableVH:', availableVH, 'scale:', scale.toFixed(3));
     }
     
     // First paint, then a second pass after toolbar settles
@@ -419,7 +429,10 @@ function MineBoyOrchestrator() {
         ? 'auto hidden' // horizontal scroll
         : 'hidden auto', // vertical scroll
       width: '100vw',
-      height: '100dvh', // iOS-safe viewport
+      height: 'var(--vh)', // Use real visual viewport (updated by bindVisualViewportVH)
+      maxHeight: 'var(--vh)',
+      paddingTop: 'var(--safe-top)', // Keep clear of notch
+      paddingBottom: 'calc(var(--safe-bottom) + 8px)', // Keep clear of home indicator
       WebkitOverflowScrolling: 'touch',
       overscrollBehavior: 'contain',
       // Prevent text selection and zooming on mobile
