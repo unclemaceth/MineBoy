@@ -17,6 +17,7 @@ import Visualizer3x3 from "@/components/Visualizer3x3";
 import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
 import SoundSettings from '@/components/SoundSettings';
 import StatisticsSection from '@/components/StatisticsSection';
+import DeviceModal from '@/components/ui/DeviceModal';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
 import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
@@ -472,9 +473,9 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             return;
           }
           
-          // Generic error
+          // Generic error - keep device mounted so user can fix issue
           pushLine(`Session open failed: ${errorInfo.message || error.message || 'Unknown error'}`);
-          onEject();
+          pushLine('You can eject the cartridge and try another, or check your settings.');
         }
       };
       
@@ -497,6 +498,16 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         });
       }
     }, [sessionId, cartridge?.tokenId, color, isActive, mining, hr, attempts]);
+    
+    // =========================================================================
+    // FETCH LOCK INFO ON DEBUG MODAL OPEN
+    // =========================================================================
+    
+    useEffect(() => {
+      if (showDebugModal && cartridge && address) {
+        fetchLockInfo();
+      }
+    }, [showDebugModal, cartridge, address]);
     
     // =========================================================================
     // BOOT SEQUENCE
@@ -1873,267 +1884,443 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         )}
 
         {/* Eject Confirm Modal */}
-        {showEjectConfirm && (
+        <DeviceModal
+          isOpen={showEjectConfirm}
+          onClose={() => { playButtonSound(); setShowEjectConfirm(false); }}
+          ariaLabel="Confirm eject cartridge"
+          zIndex={905}
+        >
           <div style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
+            padding: 20,
+            textAlign: 'center',
+            color: '#fff',
+            fontFamily: 'Menlo, monospace',
           }}>
-            <div style={{
-              backgroundColor: '#1a1a1a',
-              border: '2px solid #ff6b6b',
-              borderRadius: 8,
-              padding: 20,
-              textAlign: 'center',
-              maxWidth: 300,
-              color: '#fff',
-            }}>
-              <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>
-                Eject Cartridge?
-              </div>
-              <div style={{ marginBottom: 20, fontSize: 14 }}>
-                This will close your session and reload the page.
-              </div>
-              <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                <button
-                  onClick={() => { playButtonSound(); confirmEjectCart(); }}
-                  style={{
-                    backgroundColor: '#ff6b6b',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                >
-                  EJECT
-                </button>
-                <button
-                  onClick={() => { playButtonSound(); setShowEjectConfirm(false); }}
-                  style={{
-                    backgroundColor: '#333',
-                    color: '#fff',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: 4,
-                    cursor: 'pointer',
-                  }}
-                >
-                  CANCEL
-                </button>
-              </div>
+            <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#64ff8a' }}>
+              ⚠️ EJECT CARTRIDGE?
+            </div>
+            <div style={{ marginBottom: 20, fontSize: 14, color: '#c8ffc8' }}>
+              This will end your mining session and reload the page.
+            </div>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
+              <button
+                onClick={() => { playButtonSound(); confirmEjectCart(); }}
+                style={{
+                  background: 'linear-gradient(145deg, #cc4444, #aa2222)',
+                  border: '2px solid #ff6666',
+                  color: 'white',
+                  padding: '10px 20px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 12,
+                }}
+              >
+                YES, EJECT
+              </button>
+              <button
+                onClick={() => { playButtonSound(); setShowEjectConfirm(false); }}
+                style={{
+                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '2px solid #3a8a4d',
+                  color: '#c8ffc8',
+                  padding: '10px 20px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: 12,
+                }}
+              >
+                CANCEL
+              </button>
             </div>
           </div>
-        )}
+        </DeviceModal>
 
-        {/* Debug Modal - positioned absolutely within device */}
-        {showDebugModal && (
+        {/* Debug Modal */}
+        <DeviceModal
+          isOpen={showDebugModal}
+          onClose={() => { playButtonSound(); setShowDebugModal(false); }}
+          ariaLabel="Debug info"
+          zIndex={910}
+        >
           <div style={{
-            position: 'absolute',
-            top: HUD_HEIGHT,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            overflow: 'auto'
+            padding: '16px',
+            width: '100%',
+            maxWidth: 340,
+            fontFamily: 'Menlo, monospace',
+            color: '#c8ffc8',
+            fontSize: '11px'
           }}>
             <div style={{
-              backgroundColor: '#1a3d24',
-              border: '3px solid #4a7d5f',
-              borderRadius: '12px',
-              padding: '16px',
-              width: '340px',
-              maxHeight: '720px',
-              overflow: 'auto',
-              fontFamily: 'Menlo, monospace',
-              color: '#c8ffc8',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
-              fontSize: '11px'
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '16px',
+              borderBottom: '2px solid #4a7d5f',
+              paddingBottom: '10px'
             }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '20px',
-                borderBottom: '2px solid #4a7d5f',
-                paddingBottom: '10px'
+              <h2 style={{
+                margin: 0,
+                fontSize: '18px',
+                color: '#4a7d5f',
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
               }}>
-                <h2 style={{
-                  margin: 0,
-                  fontSize: '18px',
-                  color: '#4a7d5f',
-                  textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
-                }}>
-                  DEBUG INFO
-                </h2>
+                DEBUG INFO
+              </h2>
+              <button
+                onClick={() => { playButtonSound(); setShowDebugModal(false); }}
+                style={{
+                  background: 'linear-gradient(145deg, #ff6b6b, #d63031)',
+                  color: 'white',
+                  border: '2px solid #8a8a8a',
+                  borderRadius: '6px',
+                  width: '30px',
+                  height: '30px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Sound Settings */}
+              <SoundSettings />
+
+              {/* Network Statistics */}
+              <StatisticsSection />
+
+              {/* Show Welcome Page Button */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <h3 style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  WELCOME PAGE
+                </h3>
                 <button
-                  onClick={() => { playButtonSound(); setShowDebugModal(false); }}
-                  style={{
-                    background: 'linear-gradient(145deg, #ff6b6b, #d63031)',
-                    color: 'white',
-                    border: '2px solid #8a8a8a',
-                    borderRadius: '6px',
-                    width: '30px',
-                    height: '30px',
-                    cursor: 'pointer',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                  onClick={() => {
+                    playButtonSound();
+                    setShowDebugModal(false);
+                    onOpenNavigationModal?.('welcome');
                   }}
-                >
-                  ×
-                </button>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <SoundSettings />
-                <StatisticsSection />
-
-                <div style={{
-                  padding: '12px',
-                  background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-                  border: '2px solid #4a7d5f',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
-                    SESSION INFO
-                  </div>
-                  <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                    <div><strong>Session ID:</strong> {sessionId ? `${sessionId.slice(0, 8)}...${sessionId.slice(-6)}` : 'None'}</div>
-                    <div><strong>Miner ID:</strong> {getOrCreateMinerId().slice(0, 8)}...{getOrCreateMinerId().slice(-6)}</div>
-                    <div><strong>Wallet:</strong> {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}</div>
-                    <div><strong>Status:</strong> {status}</div>
-                    <div><strong>Mining:</strong> {mining ? 'Yes' : 'No'}</div>
-                    <div><strong>Color:</strong> {color}</div>
-                    <div><strong>Active:</strong> {isActive ? 'Yes' : 'No'}</div>
-                  </div>
-                </div>
-
-                <div style={{
-                  padding: '12px',
-                  background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-                  border: '2px solid #4a7d5f',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
-                    MINING STATS
-                  </div>
-                  <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                    <div><strong>Attempts:</strong> {attempts.toLocaleString()}</div>
-                    <div><strong>Hash Rate:</strong> {hr.toLocaleString()} H/s</div>
-                    <div><strong>Last Found:</strong> {lastFound ? 'Yes' : 'No'}</div>
-                  </div>
-                </div>
-
-                {cartridge && (
-                  <div style={{
-                    padding: '12px',
-                    background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-                    border: '2px solid #4a7d5f',
-                    borderRadius: '8px'
-                  }}>
-                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
-                      CARTRIDGE INFO
-                    </div>
-                    <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                      <div><strong>Token ID:</strong> {cartridge.tokenId}</div>
-                      <div><strong>Contract:</strong> {cartridge.contractAddress.slice(0, 6)}...{cartridge.contractAddress.slice(-4)}</div>
-                      <div><strong>Chain ID:</strong> {cartridge.chainId}</div>
-                    </div>
-                  </div>
-                )}
-
-                <div style={{
-                  padding: '12px',
-                  background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-                  border: '2px solid #4a7d5f',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
-                    WALLET BALANCE
-                  </div>
-                  <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                    <div><strong>MNESTR:</strong> {mnestrBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    <div><strong>NPC NFTs:</strong> {npcBalance}</div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{
-                marginTop: '20px',
-                paddingTop: '10px',
-                borderTop: '2px solid #4a7d5f',
-                textAlign: 'center'
-              }}>
-                <button
-                  onClick={() => { playButtonSound(); setShowDebugModal(false); }}
                   style={{
+                    width: '100%',
+                    padding: '8px',
                     background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
                     color: '#c8ffc8',
-                    border: '2px solid #8a8a8a',
+                    border: '2px solid #64ff8a',
                     borderRadius: '6px',
-                    padding: '8px 16px',
                     cursor: 'pointer',
                     fontSize: '12px',
                     fontWeight: 'bold',
-                    fontFamily: 'Menlo, monospace',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                    fontFamily: 'Menlo, monospace'
                   }}
                 >
-                  CLOSE
+                  🎮 Show Welcome Page
                 </button>
               </div>
+
+              {/* Session Info */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  SESSION INFO
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  <div><strong>Session ID:</strong> {sessionId ? `${sessionId.slice(0, 8)}...${sessionId.slice(-6)}` : 'None'}</div>
+                  <div><strong>Miner ID:</strong> {getOrCreateMinerId().slice(0, 8)}...{getOrCreateMinerId().slice(-6)}</div>
+                  <div><strong>Wallet:</strong> {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}</div>
+                  <div><strong>Status:</strong> {status}</div>
+                  <div><strong>Mining:</strong> {mining ? 'Yes' : 'No'}</div>
+                  <div><strong>Color:</strong> {color}</div>
+                  <div><strong>Active:</strong> {isActive ? 'Yes' : 'No'}</div>
+                </div>
+              </div>
+
+              {/* Lock Info */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ 
+                  fontSize: '14px', 
+                  fontWeight: 'bold', 
+                  marginBottom: '8px', 
+                  color: '#4a7d5f',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  LOCK INFO
+                  <button
+                    onClick={() => { playButtonSound(); fetchLockInfo(); }}
+                    style={{
+                      background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                      color: '#c8ffc8',
+                      border: '1px solid #8a8a8a',
+                      borderRadius: '4px',
+                      padding: '2px 6px',
+                      cursor: 'pointer',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      fontFamily: 'Menlo, monospace'
+                    }}
+                  >
+                    REFRESH
+                  </button>
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  {cartridge ? (
+                    <>
+                      {lockInfo ? (
+                        <>
+                          <div><strong>Ownership Lock:</strong> {lockInfo.ownershipLock.active ? 'Active' : 'Inactive'} ({Math.ceil(lockInfo.ownershipLock.ttl / 60)}m TTL)</div>
+                          <div><strong>Session Lock:</strong> {lockInfo.sessionLock.active ? 'Active' : 'Inactive'} ({lockInfo.sessionLock.ttl}s TTL)</div>
+                          <div><strong>Lock Owner:</strong> {lockInfo.ownershipLock.owner ? `${lockInfo.ownershipLock.owner.slice(0, 6)}...${lockInfo.ownershipLock.owner.slice(-4)}` : 'Unknown'}</div>
+                          <div><strong>Session ID:</strong> {lockInfo.sessionLock.sessionId ? `${lockInfo.sessionLock.sessionId.slice(0, 8)}...${lockInfo.sessionLock.sessionId.slice(-6)}` : 'None'}</div>
+                          <div><strong>Wallet Sessions:</strong> {lockInfo.walletSessions.active}/{lockInfo.walletSessions.limit}</div>
+                          <div><strong>Expires:</strong> {new Date(lockInfo.ownershipLock.expiresAt).toLocaleTimeString()}</div>
+                        </>
+                      ) : (
+                        <>
+                          <div><strong>Ownership Lock:</strong> Active (1h TTL)</div>
+                          <div><strong>Session Lock:</strong> Active (60s TTL)</div>
+                          <div><strong>Lock Owner:</strong> {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Unknown'}</div>
+                          <div><strong>Per-Tab Session:</strong> {cartridge ? getOrCreateSessionId(parseInt(cartridge.tokenId)).slice(0, 8) + '...' + getOrCreateSessionId(parseInt(cartridge.tokenId)).slice(-6) : 'None'}</div>
+                          <div><strong>Wallet Sessions:</strong> Active (click REFRESH for details)</div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div>No cartridge - no locks</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Job Info */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  JOB INFO
+                </div>
+                <div style={{ fontSize: '10px', color: '#6a8d7f', marginBottom: '8px' }}>
+                  Job ID = server handle • Counter = window position
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  {job ? (
+                    <>
+                      <div><strong>Job ID:</strong> {job?.id ? `${job.id.slice(0, 12)}...${job.id.slice(-7)}` : 'N/A'}</div>
+                      <div><strong>Difficulty:</strong> {job.target?.length ? `${job.target.length * 4} bits` : 'N/A'}</div>
+                      <div><strong>Target:</strong> {job.target || '00000'}</div>
+                      <div><strong>Time Remaining:</strong> {ttlSec != null ? `${ttlSec}s` : 'N/A'}</div>
+                      {job.counterStart !== undefined && job.counterEnd !== undefined && (
+                        <>
+                          <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #4a7d5f' }}>
+                            <strong>Counter Window:</strong> [{job.counterStart.toLocaleString()}, {job.counterEnd.toLocaleString()})
+                          </div>
+                          <div style={{ fontSize: '10px', color: '#6a8d7f' }}>
+                            Window Size: {(job.counterEnd - job.counterStart).toLocaleString()} hashes
+                          </div>
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    <div>No active job</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Anti-Bot Status */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  🛡️ ANTI-BOT STATUS
+                </div>
+                <div style={{ fontSize: '10px', color: '#6a8d7f', marginBottom: '8px' }}>
+                  Security measures to ensure fair play
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  <div><strong>Physics Validation:</strong> ✅ Active (85% slack)</div>
+                  <div><strong>Rate Limit (Wallet):</strong> 10 jobs/minute</div>
+                  <div><strong>Rate Limit (Network):</strong> 50 jobs/minute</div>
+                  <div><strong>Counter Window:</strong> {job?.counterStart !== undefined && job?.counterEnd !== undefined ? `${(job.counterEnd - job.counterStart).toLocaleString()} hashes` : 'N/A'}</div>
+                  <div><strong>Work Binding:</strong> ✅ wallet+tokenId</div>
+                  <div style={{ marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #4a7d5f', fontSize: '10px', color: '#ffa500' }}>
+                    ⚠️  Exceeding limits results in cooldown penalties
+                  </div>
+                </div>
+              </div>
+
+              {/* Mining Stats */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  MINING STATS
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  <div><strong>Attempts:</strong> {attempts.toLocaleString()}</div>
+                  <div><strong>Hash Rate:</strong> {hr.toLocaleString()} H/s</div>
+                  <div><strong>Last Found:</strong> {lastFound ? 'Yes' : 'No'}</div>
+                  {lastFound && (
+                    <>
+                      <div><strong>Found Hash:</strong> {lastFound.hash.slice(0, 8)}...{lastFound.hash.slice(-6)}</div>
+                      <div><strong>Found Attempts:</strong> {lastFound.attempts.toLocaleString()}</div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* Cartridge Info */}
+              {cartridge && (
+                <div style={{
+                  padding: '12px',
+                  background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                  border: '2px solid #4a7d5f',
+                  borderRadius: '8px'
+                }}>
+                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                    CARTRIDGE INFO
+                  </div>
+                  <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                    <div><strong>Token ID:</strong> {cartridge.tokenId}</div>
+                    <div><strong>Contract:</strong> {cartridge.contractAddress.slice(0, 6)}...{cartridge.contractAddress.slice(-4)}</div>
+                    <div><strong>Chain ID:</strong> {cartridge.chainId}</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Wallet Balance */}
+              <div style={{
+                padding: '12px',
+                background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                border: '2px solid #4a7d5f',
+                borderRadius: '8px'
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                  WALLET BALANCE
+                </div>
+                <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                  <div><strong>MNESTR:</strong> {mnestrBalance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                  <div><strong>NPC NFTs:</strong> {npcBalance}</div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{
+              marginTop: '20px',
+              paddingTop: '10px',
+              borderTop: '2px solid #4a7d5f',
+              textAlign: 'center'
+            }}>
+              <button
+                onClick={() => { playButtonSound(); setShowDebugModal(false); }}
+                style={{
+                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  color: '#c8ffc8',
+                  border: '2px solid #8a8a8a',
+                  borderRadius: '6px',
+                  padding: '8px 16px',
+                  cursor: 'pointer',
+                  fontSize: '12px',
+                  fontWeight: 'bold',
+                  fontFamily: 'Menlo, monospace',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.5)'
+                }}
+              >
+                CLOSE
+              </button>
             </div>
           </div>
-        )}
+        </DeviceModal>
 
         {/* PaidMessageModal */}
-        {showPaidMessageModal && (
+        <DeviceModal
+          isOpen={showPaidMessageModal}
+          onClose={() => setShowPaidMessageModal(false)}
+          ariaLabel="Paid message"
+          zIndex={900}
+        >
           <PaidMessageModal
-            isOpen={showPaidMessageModal}
+            isOpen={true}
             onClose={() => setShowPaidMessageModal(false)}
           />
-        )}
+        </DeviceModal>
 
         {/* MineStrategyModal */}
-        {showMineStrategyModal && (
+        <DeviceModal
+          isOpen={showMineStrategyModal}
+          onClose={() => setShowMineStrategyModal(false)}
+          ariaLabel="Mining strategy"
+          zIndex={900}
+        >
           <MineStrategyModal
-            isOpen={showMineStrategyModal}
+            isOpen={true}
             onClose={() => setShowMineStrategyModal(false)}
           />
-        )}
+        </DeviceModal>
 
         {/* Cartridge Selection Modals */}
-        <CartridgeModalV2
+        <DeviceModal
           isOpen={showCartridgeModalV2}
           onClose={() => setShowCartridgeModalV2(false)}
-          onLoadCartridges={() => {
-            setShowCartridgeModalV2(false);
-            setShowAlchemyCartridges(true);
-          }}
-          vaultAddress={localVaultAddress}
-          onVaultChange={setLocalVaultAddress}
-          playButtonSound={playButtonSound}
-        />
+          ariaLabel="Cartridge settings"
+          zIndex={905}
+        >
+          <CartridgeModalV2
+            isOpen={true}
+            onClose={() => setShowCartridgeModalV2(false)}
+            onLoadCartridges={() => {
+              setShowCartridgeModalV2(false);
+              setShowAlchemyCartridges(true);
+            }}
+            vaultAddress={localVaultAddress}
+            onVaultChange={setLocalVaultAddress}
+            playButtonSound={playButtonSound}
+          />
+        </DeviceModal>
 
-        <CartridgeSelectionModal
+        <DeviceModal
           isOpen={showAlchemyCartridges}
           onClose={() => setShowAlchemyCartridges(false)}
-          onSelectCartridge={handleAlchemyCartridgeSelect}
-          lockedCartridge={null}
-          vaultAddress={localVaultAddress || undefined}
-        />
+          ariaLabel="Select cartridge"
+          zIndex={910}
+        >
+          <CartridgeSelectionModal
+            isOpen={true}
+            onClose={() => setShowAlchemyCartridges(false)}
+            onSelectCartridge={handleAlchemyCartridgeSelect}
+            lockedCartridge={null}
+            vaultAddress={localVaultAddress || undefined}
+          />
+        </DeviceModal>
       </div>
     );
   }

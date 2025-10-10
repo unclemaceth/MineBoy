@@ -90,15 +90,18 @@ function MineBoyOrchestrator() {
   
   useEffect(() => {
     // Dynamic dimensions based on layout mode
+    // ALWAYS include side panels (97.5 + 97.5 = 195px)
     // Carousel: side panels + 1 device
-    // Row: 3 devices side by side with gaps
-    // Column: 3 devices stacked vertically with gaps
+    // Row: side panels + 3 devices side by side with gaps
+    // Column: side panels + 3 devices stacked vertically with gaps
     const numDevices = devices.length;
+    const SIDE_PANELS = 195; // 97.5 left + 97.5 right
+    
     const TOTAL_W = layout === 'carousel' 
       ? 585 // 97.5 + 390 + 97.5
       : layout === 'row'
-      ? (390 * numDevices + 12 * (numDevices - 1)) // devices side by side with gaps
-      : 390; // single device width in column mode
+      ? SIDE_PANELS + (390 * numDevices + 12 * (numDevices - 1)) // side panels + devices side by side with gaps
+      : 585; // same as carousel (single device width + side panels)
     
     const TOTAL_H = layout === 'column'
       ? (924 * numDevices + 12 * (numDevices - 1)) // devices stacked with gaps
@@ -365,8 +368,7 @@ function MineBoyOrchestrator() {
             gap: 0,
           }}
         >
-          {/* Left Panel: Only in carousel mode */}
-          {layout === 'carousel' && (
+          {/* Left Panel: ALWAYS visible */}
       <div style={{
             width: 97.5,
             height: 924,
@@ -376,7 +378,8 @@ function MineBoyOrchestrator() {
             justifyContent: 'space-between',
             padding: '20px 0',
       }}>
-            {/* Top: Left Arrow */}
+            {/* Top: Left Arrow - only visible in carousel mode */}
+            {layout === 'carousel' && (
             <button 
               onClick={() => carouselRef.current?.goToPrevious()}
               disabled={devices.length <= 1 || layout !== 'carousel'}
@@ -408,61 +411,14 @@ function MineBoyOrchestrator() {
             >
               ‹
             </button>
+            )}
+            
+            {/* Spacer for non-carousel mode */}
+            {layout !== 'carousel' && <div style={{ width: 60, height: 60 }} />}
 
-            {/* Bottom: +/− buttons - DISABLED (always have 3 devices) */}
-            {/* <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <button 
-                onClick={handleAddDevice}
-                disabled={devices.length >= MAX_DEVICES}
-              style={{
-                  width: 50,
-                  height: 50,
-                borderRadius: '50%',
-                  background: devices.length >= MAX_DEVICES 
-                    ? 'linear-gradient(145deg, #3a3a3a, #1a1a1a)'
-                    : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                  border: '3px solid #3a8a4d',
-                color: '#c8ffc8',
-                  fontSize: 28,
-                fontWeight: 'bold',
-                  cursor: devices.length >= MAX_DEVICES ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
-                  opacity: devices.length >= MAX_DEVICES ? 0.4 : 1,
-                }}
-                aria-label="Add MineBoy"
-              >
-                +
-            </button>
-            <button 
-                onClick={() => {
-                  const activeIndex = carouselRef.current?.activeIndex ?? 0;
-                  handleEjectDevice(activeIndex);
-                }}
-              style={{
-                  width: 50,
-                  height: 50,
-                borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #7d4a4a, #3d1a1a)',
-                  border: '3px solid #8a3a3a',
-                  color: '#ffc8c8',
-                  fontSize: 28,
-                fontWeight: 'bold',
-                  cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
-                }}
-                aria-label="Remove Active MineBoy"
-              >
-                −
-            </button>
-      </div> */}
+            {/* Bottom: placeholder for future controls */}
+            <div style={{ width: 50, height: 50 }} />
             </div>
-          )}
 
           {/* MineBoy Device(s) - size depends on layout */}
           <MineBoyCarousel
@@ -478,8 +434,7 @@ function MineBoyOrchestrator() {
             onCartridgeSelected={handleAlchemyCartridgeSelect}
           />
       
-          {/* Right Panel: Only in carousel mode */}
-          {layout === 'carousel' && (
+          {/* Right Panel: ALWAYS visible */}
         <div style={{
             width: 97.5,
             height: 924,
@@ -489,7 +444,8 @@ function MineBoyOrchestrator() {
             justifyContent: 'space-between',
             padding: '20px 0',
           }}>
-            {/* Top: Right Arrow */}
+            {/* Top: Right Arrow - only visible in carousel mode */}
+            {layout === 'carousel' && (
               <button
               onClick={() => carouselRef.current?.goToNext()}
               disabled={devices.length <= 1 || layout !== 'carousel'}
@@ -521,8 +477,12 @@ function MineBoyOrchestrator() {
             >
               ›
               </button>
+            )}
+            
+            {/* Spacer for non-carousel mode */}
+            {layout !== 'carousel' && <div style={{ width: 60, height: 60 }} />}
 
-            {/* Bottom: Layout toggle + M/I/L buttons */}
+            {/* Bottom: Layout toggle + M/I/L buttons - ALWAYS visible */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Layout Toggle */}
               <button
@@ -620,26 +580,14 @@ function MineBoyOrchestrator() {
                   </button>
                 </div>
                 </div>
-          )}
               </div>
       )}
       
-      {/* Global Modals */}
+      {/* Global Modals - z-index 3000+ to render above all devices */}
       <NavigationModal
         isOpen={showNavigationModal}
         page={navigationPage}
         onClose={closeNavigationModal}
-      />
-      
-      <CartridgeSelectionModal
-        isOpen={showAlchemyCartridges}
-        onClose={() => setShowAlchemyCartridges(false)}
-        onSelectCartridge={(cart) => {
-          const idx = carouselRef.current?.activeIndex ?? 0;
-          handleAlchemyCartridgeSelect(cart, idx);
-        }}
-        lockedCartridge={null}
-        vaultAddress={vaultAddress || undefined}
       />
 
       <RelayBridgeModalSDK

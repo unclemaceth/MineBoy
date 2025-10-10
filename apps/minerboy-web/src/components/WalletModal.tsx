@@ -544,7 +544,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 2000,
+    zIndex: 3000, // Global modal - above all devices
     padding: 20,
   },
   modal: {
