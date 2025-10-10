@@ -83,22 +83,20 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   
   // Persist active index to localStorage and notify parent
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('mineboy_active_index', String(activeIndex));
-    }
+    if (typeof window === 'undefined') return;
+    if (devices.length === 0) return;
+    localStorage.setItem('mineboy_active_index', String(activeIndex));
     onChangeActive?.(activeIndex);
-  }, [activeIndex, onChangeActive]);
+  }, [activeIndex, onChangeActive, devices.length]);
   
   // ==========================================================================
   // ACTIVE INDEX BOUNDS CHECKING
   // ==========================================================================
   
-  // Clamp activeIndex when devices array changes (e.g., after ejecting last device)
+  // Clamp activeIndex when devices array changes OR layout changes
   useEffect(() => {
-    if (activeIndex > devices.length - 1) {
-      setActiveIndex(Math.max(0, devices.length - 1));
-    }
-  }, [devices, activeIndex]);
+    setActiveIndex(prev => Math.min(prev, Math.max(0, devices.length - 1)));
+  }, [devices.length, mode]);
   
   // ==========================================================================
   // NAVIGATION HANDLERS
@@ -204,12 +202,13 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // ==========================================================================
   
   useEffect(() => {
-    // Move focus to the active device when index changes
-    const activeDevice = deviceRefs.current[activeIndex];
-    if (activeDevice && document.activeElement !== activeDevice) {
-      activeDevice.focus();
+    // Move focus to the active device when index or layout changes
+    const el = deviceRefs.current[activeIndex] ?? deviceRefs.current[0];
+    if (!el) return;
+    if (document.activeElement !== el) {
+      el.focus();
     }
-  }, [activeIndex]);
+  }, [activeIndex, mode]);
   
   // ==========================================================================
   // TOUCH/SWIPE GESTURES
@@ -264,53 +263,57 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // RENDER
   // ==========================================================================
   
-  // Row/Column modes: scrollable, all devices interactive
+  // Row/Column modes: all devices visible at once, no scroll
   if (mode !== 'carousel') {
     const isRow = mode === 'row';
+    // Calculate total dimensions to show all 3 devices
+    const totalWidth = isRow ? (390 * devices.length + 12 * (devices.length - 1)) : 390;
+    const totalHeight = isRow ? 924 : (924 * devices.length + 12 * (devices.length - 1));
+    
     return (
-      <div style={{ position: 'relative', width: 390, height: 924, overflow: 'hidden' }}>
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            flexDirection: isRow ? 'row' : 'column',
-            gap: 12,
-            padding: isRow ? '0 6px' : '6px 0',
-            overflowX: isRow ? 'auto' : 'hidden',
-            overflowY: isRow ? 'hidden' : 'auto',
-            scrollSnapType: isRow ? 'x mandatory' : 'y mandatory',
-            WebkitOverflowScrolling: 'touch',
-          }}
-        >
-          {devices.map((device, index) => {
-            const stableKey = `${device.color}-${device.cartridge?.tokenId ?? 'empty'}`;
-            return (
-              <div
-                key={stableKey}
-                style={{
-                  flex: '0 0 auto',
-                  width: 390,
-                  height: 924,
-                  scrollSnapAlign: 'start',
-                }}
-              >
-                <MineBoyDevice
-                  ref={(el) => { deviceRefs.current[index] = el; }}
-                  cartridge={device.cartridge}
-                  color={device.color}
-                  isActive={true} // All interactive in row/column mode
-                  onEject={() => onEject(index)}
-                  playButtonSound={playButtonSound}
-                  onOpenWalletModal={onOpenWalletModal}
-                  onOpenWalletManagementModal={onOpenWalletManagementModal}
-                  onOpenNavigationModal={onOpenNavigationModal}
-                  onCartridgeSelected={(cart) => onCartridgeSelected && onCartridgeSelected(cart, index)}
-                />
-              </div>
-            );
-          })}
-        </div>
+      <div 
+        role="region"
+        aria-roledescription="MineBoy layout"
+        aria-label={mode === 'row' ? 'Row' : 'Column'}
+        aria-live="polite"
+        style={{ 
+          position: 'relative', 
+          width: totalWidth, 
+          height: totalHeight,
+          display: 'flex',
+          flexDirection: isRow ? 'row' : 'column',
+          gap: 12,
+        }}
+      >
+        {devices.map((device, index) => {
+          const stableKey = device.cartridge?.tokenId
+            ? `${device.color}-${device.cartridge.tokenId}`
+            : `${device.color}-empty-${index}`;
+          return (
+            <div
+              key={stableKey}
+              aria-label={`MineBoy ${index + 1} of ${devices.length}`}
+              style={{
+                width: 390,
+                height: 924,
+                flexShrink: 0,
+              }}
+            >
+              <MineBoyDevice
+                ref={(el) => { deviceRefs.current[index] = el; }}
+                cartridge={device.cartridge}
+                color={device.color}
+                isActive={true} // All interactive in row/column mode
+                onEject={() => onEject(index)}
+                playButtonSound={playButtonSound}
+                onOpenWalletModal={onOpenWalletModal}
+                onOpenWalletManagementModal={onOpenWalletManagementModal}
+                onOpenNavigationModal={onOpenNavigationModal}
+                onCartridgeSelected={(cart) => onCartridgeSelected && onCartridgeSelected(cart, index)}
+              />
+            </div>
+          );
+        })}
       </div>
     );
   }
@@ -322,11 +325,16 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   
   return (
     <div
+      role="region"
+      aria-roledescription="MineBoy layout"
+      aria-label="Carousel"
+      aria-live="polite"
       style={{
         position: 'relative',
         width: 390,
         height: 924, // Full device height (HUD is already part of MineBoyDevice)
         flexShrink: 0, // Don't shrink in parent flexbox
+        touchAction: 'pan-y', // Avoid browser guessing horizontal scroll gestures
       }}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
@@ -334,18 +342,21 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
       {/* Stacked MineBoy devices - all stay mounted */}
       {devices.map((device, index) => {
         const isActive = index === activeIndex;
-        // Use stable key based on color + optional tokenId to prevent remounts on eject
-        const stableKey = `${device.color}-${device.cartridge?.tokenId ?? 'empty'}`;
+        // Use stable key based on color + tokenId, with index salt for empty slots
+        const stableKey = device.cartridge?.tokenId
+          ? `${device.color}-${device.cartridge.tokenId}`
+          : `${device.color}-empty-${index}`;
         return (
           <div
             key={stableKey}
+            aria-label={`MineBoy ${index + 1} of ${devices.length}`}
+            aria-hidden={!isActive}
             style={{
               position: 'absolute',
               inset: 0,
               zIndex: isActive ? 3 : (devices.length - index), // Active on top
               pointerEvents: isActive ? 'auto' : 'none', // Only active device receives clicks
             }}
-            aria-hidden={!isActive}
           >
             <MineBoyDevice
               ref={(el) => { deviceRefs.current[index] = el; }}

@@ -43,26 +43,6 @@ function MineBoyOrchestrator() {
   const carouselRef = useRef<MineBoyCarouselRef>(null);
   
   // =========================================================================
-  // DEVICE SCALING - Handle responsive scaling of 390x924 device
-  // =========================================================================
-  
-  useEffect(() => {
-    const TOTAL_W = 585; // 97.5 (left panel) + 390 (device) + 97.5 (right panel)
-    const TOTAL_H = 924;
-    
-    function fitDevice() {
-      const scale = Math.min(window.innerWidth / TOTAL_W, window.innerHeight / TOTAL_H);
-      document.documentElement.style.setProperty('--device-scale', String(scale));
-      console.log('[Carousel] Scale:', scale.toFixed(3), 'Viewport:', window.innerWidth, 'x', window.innerHeight);
-    }
-    
-    fitDevice(); // Initial calculation
-    window.addEventListener('resize', fitDevice, { passive: true });
-    
-    return () => window.removeEventListener('resize', fitDevice);
-  }, []);
-  
-  // =========================================================================
   // GLOBAL STATE - Shared across all devices
   // =========================================================================
   
@@ -105,6 +85,38 @@ function MineBoyOrchestrator() {
       localStorage.setItem('mineboy_layout', layout);
     }
   }, [layout]);
+  
+  // =========================================================================
+  // DEVICE SCALING - Handle responsive scaling based on layout mode
+  // =========================================================================
+  
+  useEffect(() => {
+    // Dynamic dimensions based on layout mode
+    // Carousel: side panels + 1 device
+    // Row: 3 devices side by side with gaps
+    // Column: 3 devices stacked vertically with gaps
+    const numDevices = devices.length;
+    const TOTAL_W = layout === 'carousel' 
+      ? 585 // 97.5 + 390 + 97.5
+      : layout === 'row'
+      ? (390 * numDevices + 12 * (numDevices - 1)) // devices side by side with gaps
+      : 390; // single device width in column mode
+    
+    const TOTAL_H = layout === 'column'
+      ? (924 * numDevices + 12 * (numDevices - 1)) // devices stacked with gaps
+      : 924; // single device height in carousel/row
+    
+    function fitDevice() {
+      const scale = Math.min(window.innerWidth / TOTAL_W, window.innerHeight / TOTAL_H);
+      document.documentElement.style.setProperty('--device-scale', String(scale));
+      console.log('[Scale] Layout:', layout, 'Dimensions:', TOTAL_W, 'x', TOTAL_H, 'Scale:', scale.toFixed(3));
+    }
+    
+    fitDevice(); // Initial calculation
+    window.addEventListener('resize', fitDevice, { passive: true });
+    
+    return () => window.removeEventListener('resize', fitDevice);
+  }, [layout, devices.length]);
   
   // Device persistence disabled - always use 3 fixed devices
   // useEffect(() => {
@@ -317,11 +329,17 @@ function MineBoyOrchestrator() {
     }}>
       {/* Always show carousel view - no landing page */}
       {(
-        // Carousel View - All inside one scaling wrapper
+        // Scaling wrapper - dimensions change based on layout to fit all devices
         <div
           style={{
-            width: 585, // 97.5 (left) + 390 (device) + 97.5 (right)
-            height: 924,
+            width: layout === 'carousel' 
+              ? 585 
+              : layout === 'row'
+              ? (390 * devices.length + 12 * (devices.length - 1))
+              : 390,
+            height: layout === 'column'
+              ? (924 * devices.length + 12 * (devices.length - 1))
+              : 924,
             transformOrigin: 'top left',
             transform: 'scale(var(--device-scale, 1))',
             position: 'relative',
@@ -329,7 +347,8 @@ function MineBoyOrchestrator() {
             gap: 0,
           }}
         >
-          {/* Left Panel: 97.5px x 924px */}
+          {/* Left Panel: Only in carousel mode */}
+          {layout === 'carousel' && (
       <div style={{
             width: 97.5,
             height: 924,
@@ -342,29 +361,29 @@ function MineBoyOrchestrator() {
             {/* Top: Left Arrow */}
             <button 
               onClick={() => carouselRef.current?.goToPrevious()}
-              disabled={devices.length <= 1}
+              disabled={devices.length <= 1 || layout !== 'carousel'}
               style={{
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
-                background: devices.length > 1 
+                background: devices.length > 1 && layout === 'carousel'
                   ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
                   : 'linear-gradient(145deg, #3a3a3a, #1a1a1a)',
                 border: '3px solid',
-                borderTopColor: devices.length > 1 ? '#5a8d6f' : '#4a4a4a',
-                borderLeftColor: devices.length > 1 ? '#5a8d6f' : '#4a4a4a',
-                borderRightColor: devices.length > 1 ? '#2a4d34' : '#2a2a2a',
-                borderBottomColor: devices.length > 1 ? '#2a4d34' : '#2a2a2a',
-                color: devices.length > 1 ? '#c8ffc8' : '#666',
+                borderTopColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
+                borderLeftColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
+                borderRightColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
+                borderBottomColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
+                color: devices.length > 1 && layout === 'carousel' ? '#c8ffc8' : '#666',
                 fontSize: 32,
                 fontWeight: 'bold',
-                cursor: devices.length > 1 ? 'pointer' : 'not-allowed',
+                cursor: devices.length > 1 && layout === 'carousel' ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
                 transition: 'all 0.15s',
-                opacity: devices.length > 1 ? 1 : 0.4,
+                opacity: devices.length > 1 && layout === 'carousel' ? 1 : 0.4,
               }}
               aria-label="Previous MineBoy"
             >
@@ -424,23 +443,23 @@ function MineBoyOrchestrator() {
             </button>
       </div> */}
             </div>
+          )}
 
-          {/* MineBoy Device: 390px x 924px */}
-          <div style={{ width: 390, height: 924, position: 'relative' }}>
-            <MineBoyCarousel
-              ref={carouselRef}
-              devices={devices}
-              layout={layout}
-              onEject={handleEjectDevice}
-        playButtonSound={playButtonSound}
-              onOpenWalletModal={openWalletConnectionModal}
-              onOpenWalletManagementModal={() => setShowWalletModal(true)}
-              onOpenNavigationModal={openNavigationPage}
-              onCartridgeSelected={handleAlchemyCartridgeSelect}
-      />
-          </div>
+          {/* MineBoy Device(s) - size depends on layout */}
+          <MineBoyCarousel
+            ref={carouselRef}
+            devices={devices}
+            layout={layout}
+            onEject={handleEjectDevice}
+            playButtonSound={playButtonSound}
+            onOpenWalletModal={openWalletConnectionModal}
+            onOpenWalletManagementModal={() => setShowWalletModal(true)}
+            onOpenNavigationModal={openNavigationPage}
+            onCartridgeSelected={handleAlchemyCartridgeSelect}
+          />
       
-          {/* Right Panel: 97.5px x 924px */}
+          {/* Right Panel: Only in carousel mode */}
+          {layout === 'carousel' && (
         <div style={{
             width: 97.5,
             height: 924,
@@ -453,29 +472,29 @@ function MineBoyOrchestrator() {
             {/* Top: Right Arrow */}
               <button
               onClick={() => carouselRef.current?.goToNext()}
-              disabled={devices.length <= 1}
+              disabled={devices.length <= 1 || layout !== 'carousel'}
                 style={{
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
-                background: devices.length > 1 
+                background: devices.length > 1 && layout === 'carousel'
                   ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
                   : 'linear-gradient(145deg, #3a3a3a, #1a1a1a)',
                 border: '3px solid',
-                borderTopColor: devices.length > 1 ? '#5a8d6f' : '#4a4a4a',
-                borderLeftColor: devices.length > 1 ? '#5a8d6f' : '#4a4a4a',
-                borderRightColor: devices.length > 1 ? '#2a4d34' : '#2a2a2a',
-                borderBottomColor: devices.length > 1 ? '#2a4d34' : '#2a2a2a',
-                color: devices.length > 1 ? '#c8ffc8' : '#666',
+                borderTopColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
+                borderLeftColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
+                borderRightColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
+                borderBottomColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
+                color: devices.length > 1 && layout === 'carousel' ? '#c8ffc8' : '#666',
                 fontSize: 32,
                   fontWeight: 'bold',
-                cursor: devices.length > 1 ? 'pointer' : 'not-allowed',
+                cursor: devices.length > 1 && layout === 'carousel' ? 'pointer' : 'not-allowed',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
                 transition: 'all 0.15s',
-                opacity: devices.length > 1 ? 1 : 0.4,
+                opacity: devices.length > 1 && layout === 'carousel' ? 1 : 0.4,
               }}
               aria-label="Next MineBoy"
             >
@@ -506,7 +525,10 @@ function MineBoyOrchestrator() {
                   boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
                 }}
                 aria-label="Change layout"
-                title="Change layout"
+                title={
+                  layout === 'carousel' ? 'Layout: Carousel' :
+                  layout === 'row' ? 'Layout: Row' : 'Layout: Column'
+                }
               >
                 {layout === 'carousel' ? 'CAR' : layout === 'row' ? 'ROW' : 'COL'}
               </button>
@@ -577,6 +599,7 @@ function MineBoyOrchestrator() {
                   </button>
                 </div>
                 </div>
+          )}
               </div>
       )}
       
