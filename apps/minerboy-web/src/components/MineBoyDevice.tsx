@@ -160,8 +160,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     
     const { address, isConnected, provider } = useActiveAccount();
     const { disconnectWallet } = useActiveDisconnect();
-    const walletClientResult = useActiveWalletClient();
-    const walletClient = walletClientResult?.data ?? null;
+    const walletClient = useActiveWalletClient();
     const { writeContract, writeContractAsync, data: hash } = useWriteContract();
     
     const { npcBalance } = useNPCBalance((localVaultAddress || address) as `0x${string}` | undefined);
