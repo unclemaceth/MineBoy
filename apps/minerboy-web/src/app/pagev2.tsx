@@ -459,7 +459,7 @@ function MineBoyOrchestrator() {
           gap: '8px',
         }}>
           <button
-            onClick={() => { playButtonSound(); openNavigationModal('mint'); }}
+            onClick={() => { playButtonSound(); openNavigationPage('mint'); }}
             style={{
               width: 40,
               height: 40,
@@ -480,7 +480,7 @@ function MineBoyOrchestrator() {
             M
           </button>
           <button
-            onClick={() => { playButtonSound(); openNavigationModal('instructions'); }}
+            onClick={() => { playButtonSound(); openNavigationPage('instructions'); }}
             style={{
               width: 40,
               height: 40,
@@ -501,7 +501,7 @@ function MineBoyOrchestrator() {
             I
           </button>
           <button
-            onClick={() => { playButtonSound(); openNavigationModal('leaderboard'); }}
+            onClick={() => { playButtonSound(); openNavigationPage('leaderboard'); }}
             style={{
               width: 40,
               height: 40,
