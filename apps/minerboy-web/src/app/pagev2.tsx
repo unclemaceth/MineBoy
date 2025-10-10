@@ -221,7 +221,7 @@ function MineBoyOrchestrator() {
     console.log('[Orchestrator] Added empty device:', newDevice);
   };
   
-  const handleAlchemyCartridgeSelect = async (selectedCartridge: OwnedCartridge) => {
+  const handleAlchemyCartridgeSelect = async (selectedCartridge: OwnedCartridge, deviceIndex: number) => {
     setShowAlchemyCartridges(false);
     
     // Check if cartridge is already in use
@@ -231,29 +231,16 @@ function MineBoyOrchestrator() {
       return;
     }
     
-    // Find first device without a cartridge and update it
-    const emptyDeviceIndex = devices.findIndex(d => !d.cartridge);
-    if (emptyDeviceIndex !== -1) {
-      setDevices(prev => {
-        const updated = [...prev];
-        updated[emptyDeviceIndex] = {
-          ...updated[emptyDeviceIndex],
-          cartridge: selectedCartridge,
-        };
-        console.log('[Orchestrator] Updated device at index', emptyDeviceIndex, ':', updated[emptyDeviceIndex]);
-        return updated;
-      });
-    } else {
-      // All devices have cartridges, add a new one
-      const nextColor = DEVICE_COLORS[devices.length % DEVICE_COLORS.length];
-      const newDevice: DeviceSlot = {
+    // Insert into the specific device that requested it
+    setDevices(prev => {
+      const updated = [...prev];
+      updated[deviceIndex] = {
+        ...updated[deviceIndex],
         cartridge: selectedCartridge,
-        color: nextColor,
       };
-      
-      setDevices(prev => [...prev, newDevice]);
-      console.log('[Orchestrator] Added new device:', newDevice);
-    }
+      console.log('[Orchestrator] Updated device at index', deviceIndex, ':', updated[deviceIndex]);
+      return updated;
+    });
   };
   
   const handleEjectDevice = (index: number) => {
@@ -533,7 +520,7 @@ function MineBoyOrchestrator() {
       <CartridgeSelectionModal
         isOpen={showAlchemyCartridges}
         onClose={() => setShowAlchemyCartridges(false)}
-        onSelectCartridge={handleAlchemyCartridgeSelect}
+        onSelectCartridge={(cart) => handleAlchemyCartridgeSelect(cart, 0)}
         lockedCartridge={lockedCartridge}
         vaultAddress={vaultAddress || undefined}
       />

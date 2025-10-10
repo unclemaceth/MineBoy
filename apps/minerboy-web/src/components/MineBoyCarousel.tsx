@@ -15,7 +15,7 @@ export interface MineBoyCarouselProps {
   onEject: (index: number) => void;
   playButtonSound?: () => void;
   onOpenWalletModal?: () => void;
-  onCartridgeSelected?: (cartridge: OwnedCartridge) => void;
+  onCartridgeSelected?: (cartridge: OwnedCartridge, deviceIndex: number) => void;
 }
 
 export interface MineBoyCarouselRef {
@@ -229,7 +229,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
               onEject={() => onEject(index)}
               playButtonSound={playButtonSound}
               onOpenWalletModal={onOpenWalletModal}
-              onCartridgeSelected={onCartridgeSelected}
+              onCartridgeSelected={(cart) => onCartridgeSelected && onCartridgeSelected(cart, index)}
             />
           </div>
         );
