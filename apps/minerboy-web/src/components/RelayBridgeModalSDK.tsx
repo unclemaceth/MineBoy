@@ -766,12 +766,12 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
 }
 
 /* styles */
-const backdrop: React.CSSProperties = { position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }; // Global modal - above all devices
-const modal: React.CSSProperties = { background:'#0f2c1b', border:'2px solid #4a7d5f', borderRadius:8, width:'100%', maxWidth:420, maxHeight:'90vh', overflow:'hidden' };
+const backdrop: React.CSSProperties = { position:'fixed', inset:0, background:'rgba(0,0,0,0.8)', zIndex:3000, display:'flex', alignItems:'center', justifyContent:'center', padding:'8px', height:'var(--vh)', maxHeight:'var(--vh)' }; // Global modal - above all devices, iOS-safe
+const modal: React.CSSProperties = { background:'#0f2c1b', border:'2px solid #4a7d5f', borderRadius:8, width:'100%', maxWidth:420, maxHeight:'calc(var(--vh) - 16px)', overflow:'hidden' }; // iOS-safe
 const header: React.CSSProperties = { display:'flex', justifyContent:'space-between', alignItems:'center', padding:'16px 20px', borderBottom:'2px solid #4a7d5f', background:'linear-gradient(145deg,#1a4d2a,#2d5a3d)' };
 const title: React.CSSProperties = { margin:0, fontSize:18, color:'#c8ffc8', fontWeight:'bold', textShadow:'2px 2px 4px rgba(0,0,0,0.8)' };
 const closeBtn: React.CSSProperties = { background:'transparent', border:'none', color:'#c8ffc8', fontSize:24, cursor:'pointer', padding:'0 8px' };
-const body: React.CSSProperties = { padding:20, color:'#c8ffc8', maxHeight:'calc(90vh - 140px)', overflowY:'auto' };
+const body: React.CSSProperties = { padding:20, color:'#c8ffc8', maxHeight:'calc(var(--vh) - 156px)', overflowY:'auto' }; // iOS-safe: subtract padding (16px) + header (60px) + footer (80px)
 const card: React.CSSProperties = { background:'#1a4d2a', padding:12, borderRadius:6, marginBottom:16, border:'1px solid #4a7d5f', fontSize:13 };
 const input: React.CSSProperties = { width:'100%', padding:10, background:'#0a1f14', border:'1px solid #4a7d5f', borderRadius:4, color:'#c8ffc8', fontSize:16 };
 const pill: React.CSSProperties = { background:'#1a4d2a', padding:12, borderRadius:6, marginBottom:16, textAlign:'center', fontSize:14 };

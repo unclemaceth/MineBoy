@@ -72,10 +72,12 @@ function MineBoyOrchestrator() {
     ];
   });
   
-  // Detect mobile/tablet
+  // Detect mobile/tablet - use touch capability, not just screen width
   const [isMobile, setIsMobile] = useState(() => {
     if (typeof window === 'undefined') return false;
-    return window.innerWidth < 768; // Mobile/tablet breakpoint
+    // Check for touch capability (actual mobile/tablet) vs narrow desktop window
+    const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    return hasTouch && window.innerWidth < 768;
   });
   
   // Layout state + persistence (force carousel on mobile)
@@ -111,9 +113,11 @@ function MineBoyOrchestrator() {
   // Update mobile state on resize + orientation change
   useEffect(() => {
     const updateMobile = () => {
-      const mobile = window.innerWidth < 768;
+      // Only treat as mobile if touch-capable AND narrow
+      const hasTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const mobile = hasTouch && window.innerWidth < 768;
       setIsMobile(mobile);
-      // Force carousel on mobile
+      // Force carousel on actual mobile devices
       if (mobile && layout !== 'carousel') {
         setLayout('carousel');
       }
@@ -444,6 +448,82 @@ function MineBoyOrchestrator() {
       WebkitUserSelect: 'none',
       WebkitTouchCallout: 'none',
     }}>
+      {/* Mobile M/I/L Buttons - floating at top */}
+      {isMobile && (
+        <div style={{
+          position: 'fixed',
+          top: 'calc(var(--safe-top) + 8px)',
+          right: '8px',
+          zIndex: 100,
+          display: 'flex',
+          gap: '8px',
+        }}>
+          <button
+            onClick={() => { playButtonSound(); openNavigationModal('mint'); }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              background: 'rgba(0,0,0,0.7)',
+              color: '#fff',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)',
+            }}
+            aria-label="Mint"
+          >
+            M
+          </button>
+          <button
+            onClick={() => { playButtonSound(); openNavigationModal('instructions'); }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              background: 'rgba(0,0,0,0.7)',
+              color: '#fff',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)',
+            }}
+            aria-label="Instructions"
+          >
+            I
+          </button>
+          <button
+            onClick={() => { playButtonSound(); openNavigationModal('leaderboard'); }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              background: 'rgba(0,0,0,0.7)',
+              color: '#fff',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)',
+            }}
+            aria-label="Leaderboard"
+          >
+            L
+          </button>
+        </div>
+      )}
+
       {/* Always show carousel view - no landing page */}
       {(() => {
         // Calculate dimensions using state (not direct window.innerWidth)

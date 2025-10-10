@@ -80,7 +80,9 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: '20px'
+      padding: '8px', // Smaller padding on mobile
+      height: 'var(--vh)', // iOS-safe height
+      maxHeight: 'var(--vh)',
     }}>
       <div style={{
         backgroundColor: '#0f2c1b',
@@ -88,7 +90,7 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
         borderRadius: '8px',
         width: '100%',
         maxWidth: '400px',
-        maxHeight: '90vh',
+        maxHeight: 'calc(var(--vh) - 16px)', // Leave 8px padding top/bottom
         overflow: 'hidden',
         position: 'relative'
       }}>

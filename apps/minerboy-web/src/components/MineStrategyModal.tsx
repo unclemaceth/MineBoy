@@ -158,8 +158,8 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         border: '2px solid #4a7d5f',
         borderRadius: '8px',
         width: '100%',
-        maxWidth: '450px',
-        maxHeight: '90vh',
+        maxWidth: '340px', // Fit within device modal
+        maxHeight: '88%', // Relative to DeviceModal wrapper (not viewport)
         overflow: 'hidden',
         position: 'relative'
       }}>

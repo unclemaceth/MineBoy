@@ -560,7 +560,9 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 3000, // Global modal - above all devices
-    padding: 20,
+    padding: '8px', // Smaller padding on mobile
+    height: 'var(--vh)', // iOS-safe height
+    maxHeight: 'var(--vh)',
   },
   modal: {
     background: '#0f2c1b',
@@ -568,7 +570,7 @@ const styles = {
     borderRadius: 8,
     width: '100%',
     maxWidth: 480,
-    maxHeight: '90vh',
+    maxHeight: 'calc(var(--vh) - 16px)', // iOS-safe, leave 8px padding top/bottom
     overflow: 'hidden',
     display: 'flex',
     flexDirection: 'column' as const,
@@ -599,7 +601,7 @@ const styles = {
   body: {
     padding: 20,
     color: '#c8ffc8',
-    maxHeight: 'calc(90vh - 60px)',
+    maxHeight: 'calc(var(--vh) - 76px)', // iOS-safe: subtract padding (16px) + header (60px)
     overflowY: 'auto' as const,
     display: 'flex',
     flexDirection: 'column' as const,
