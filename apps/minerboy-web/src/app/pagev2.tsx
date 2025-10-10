@@ -56,7 +56,6 @@ function MineBoyOrchestrator() {
   const [navigationPage, setNavigationPage] = useState<'leaderboard' | 'mint' | 'instructions' | 'welcome' | null>(null);
   const [showRelayModal, setShowRelayModal] = useState(false);
   const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
-  const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   
   // Device management - Always start with 3 empty devices (blue, orange, green)
   const [devices, setDevices] = useState<DeviceSlot[]>(() => {
@@ -70,7 +69,6 @@ function MineBoyOrchestrator() {
       { color: 'green' }
     ];
   });
-  const [availableCartridges, setAvailableCartridges] = useState<OwnedCartridge[]>([]);
   
   // Layout state + persistence
   const [layout, setLayout] = useState<MineBoyLayout>(() => {
@@ -107,15 +105,26 @@ function MineBoyOrchestrator() {
       : 924; // single device height in carousel/row
     
     function fitDevice() {
-      const scale = Math.min(window.innerWidth / TOTAL_W, window.innerHeight / TOTAL_H);
+      const scaleRaw = Math.min(window.innerWidth / TOTAL_W, window.innerHeight / TOTAL_H);
+      const scale = Math.min(1, scaleRaw); // cap to 1 to prevent upscaling blur
       document.documentElement.style.setProperty('--device-scale', String(scale));
       console.log('[Scale] Layout:', layout, 'Dimensions:', TOTAL_W, 'x', TOTAL_H, 'Scale:', scale.toFixed(3));
     }
     
-    fitDevice(); // Initial calculation
-    window.addEventListener('resize', fitDevice, { passive: true });
+    // RAF throttling for smooth resize
+    let raf = 0;
+    const onResize = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(fitDevice);
+    };
     
-    return () => window.removeEventListener('resize', fitDevice);
+    fitDevice(); // Initial calculation
+    window.addEventListener('resize', onResize, { passive: true });
+    
+    return () => { 
+      cancelAnimationFrame(raf); 
+      window.removeEventListener('resize', onResize); 
+    };
   }, [layout, devices.length]);
   
   // Device persistence disabled - always use 3 fixed devices
@@ -176,24 +185,26 @@ function MineBoyOrchestrator() {
   
   useEffect(() => {
     const bc = new BroadcastChannel('mineboy');
-    let hasLeader = false;
-    
-    bc.onmessage = (e) => { 
-      if (e.data === 'hello' && hasLeader) {
-        bc.postMessage('busy');
-      }
-    };
-    
-    bc.postMessage('hello');
-    bc.onmessage = (e) => { 
-      if (e.data === 'busy') {
+    let isLeader = false;
+
+    const onMsg = (e: MessageEvent) => {
+      if (e.data === 'hello') {
+        // another tab is probing; if we're leader, tell them to bail
+        if (isLeader) bc.postMessage('busy');
+      } else if (e.data === 'busy') {
+        // another tab is already leader
         alert('MineBoy™ already open in another tab. Please close the other tab first.');
-        window.close();
+        try { window.close(); } catch {}
       }
     };
-    hasLeader = true;
-    
+
+    bc.onmessage = onMsg;
+    // Elect self as leader after a short probe window
+    bc.postMessage('hello');
+    const t = setTimeout(() => { isLeader = true; }, 300);
+
     return () => {
+      clearTimeout(t);
       bc.close();
     };
   }, []);
@@ -203,10 +214,11 @@ function MineBoyOrchestrator() {
   // =========================================================================
   
   useEffect(() => {
+    let alive = true;
     const fetchMessages = async () => {
       try {
         const response = await api.getMessages();
-        if (response && response.messages && response.messages.length > 0) {
+        if (alive && response && response.messages && response.messages.length > 0) {
           setScrollingMessages(response.messages);
         }
       } catch (error) {
@@ -216,7 +228,7 @@ function MineBoyOrchestrator() {
     
     fetchMessages();
     const interval = setInterval(fetchMessages, 60000); // Refresh every minute
-    return () => clearInterval(interval);
+    return () => { alive = false; clearInterval(interval); };
   }, []);
   
   // =========================================================================
@@ -229,13 +241,14 @@ function MineBoyOrchestrator() {
       return;
     }
     
+    let alive = true;
     const fetchSeasonPoints = async () => {
     try {
       const response = await apiGetIndividualLeaderboard('active', 100, 0, address);
-      if (response.me?.totalMNESTR) {
+      if (alive && response.me?.totalMNESTR) {
         const points = Math.floor(parseFloat(response.me.totalMNESTR));
         setSeasonPoints(points);
-      } else {
+      } else if (alive) {
         setSeasonPoints(0);
       }
       } catch (error) {
@@ -245,7 +258,7 @@ function MineBoyOrchestrator() {
 
     fetchSeasonPoints();
     const interval = setInterval(fetchSeasonPoints, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
+    return () => { alive = false; clearInterval(interval); };
   }, [address]);
   
   // =========================================================================
@@ -275,8 +288,13 @@ function MineBoyOrchestrator() {
   const handleAlchemyCartridgeSelect = async (selectedCartridge: OwnedCartridge, deviceIndex: number) => {
     setShowAlchemyCartridges(false);
     
-    // Check if cartridge is already in use
-    const alreadyUsed = devices.some(d => d.cartridge?.tokenId === selectedCartridge.tokenId);
+    // Check if cartridge is already in use (check tokenId, chainId, and contract address)
+    const alreadyUsed = devices.some(d => 
+      d.cartridge &&
+      d.cartridge.tokenId === selectedCartridge.tokenId &&
+      d.cartridge.contractAddress.toLowerCase() === selectedCartridge.contractAddress.toLowerCase() &&
+      d.cartridge.chainId === selectedCartridge.chainId
+    );
     if (alreadyUsed) {
       alert('This cartridge is already inserted in another MineBoy');
         return;
@@ -362,6 +380,7 @@ function MineBoyOrchestrator() {
             <button 
               onClick={() => carouselRef.current?.goToPrevious()}
               disabled={devices.length <= 1 || layout !== 'carousel'}
+              aria-disabled={devices.length <= 1 || layout !== 'carousel'}
               style={{
                 width: 60,
                 height: 60,
@@ -474,6 +493,7 @@ function MineBoyOrchestrator() {
               <button
               onClick={() => carouselRef.current?.goToNext()}
               disabled={devices.length <= 1 || layout !== 'carousel'}
+              aria-disabled={devices.length <= 1 || layout !== 'carousel'}
                 style={{
                 width: 60,
                 height: 60,
@@ -614,8 +634,11 @@ function MineBoyOrchestrator() {
       <CartridgeSelectionModal
         isOpen={showAlchemyCartridges}
         onClose={() => setShowAlchemyCartridges(false)}
-        onSelectCartridge={(cart) => handleAlchemyCartridgeSelect(cart, 0)}
-        lockedCartridge={lockedCartridge}
+        onSelectCartridge={(cart) => {
+          const idx = carouselRef.current?.activeIndex ?? 0;
+          handleAlchemyCartridgeSelect(cart, idx);
+        }}
+        lockedCartridge={null}
         vaultAddress={vaultAddress || undefined}
       />
 
