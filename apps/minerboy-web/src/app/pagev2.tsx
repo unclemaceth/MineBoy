@@ -91,7 +91,7 @@ function MineBoyOrchestrator() {
     }
   }, [layout]);
   
-  // Update mobile state on resize
+  // Update mobile state on resize + orientation change
   useEffect(() => {
     const updateMobile = () => {
       const mobile = window.innerWidth < 768;
@@ -102,8 +102,20 @@ function MineBoyOrchestrator() {
       }
     };
     
+    // Guard for iOS device rotation jitter - orientation fires before resize
+    const onOrientationChange = () => {
+      setTimeout(() => {
+        window.dispatchEvent(new Event('resize'));
+      }, 50);
+    };
+    
     window.addEventListener('resize', updateMobile, { passive: true });
-    return () => window.removeEventListener('resize', updateMobile);
+    window.addEventListener('orientationchange', onOrientationChange, { passive: true });
+    
+    return () => {
+      window.removeEventListener('resize', updateMobile);
+      window.removeEventListener('orientationchange', onOrientationChange);
+    };
   }, [layout]);
   
   // =========================================================================

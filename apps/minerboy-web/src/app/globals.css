@@ -63,6 +63,26 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Prevent iOS zoom on inputs (iOS zooms fields < 16px) */
+input, select, textarea, button {
+  font-size: 16px;
+  /* Prevent zoom while keeping rem/px overrides possible */
+}
+
+input:focus, select:focus, textarea:focus {
+  font-size: 16px;
+}
+
+/* Cap all modals/portals with safe viewport units (iOS toolbar-safe) */
+[role="dialog"],
+.modal-root,
+.modal-backdrop,
+.modal-container {
+  max-height: 100svh;
+  /* Fallback for browsers without svh support */
+  max-height: 100dvh;
+}
+
 .stage {
   position: fixed;
   inset: 0;
