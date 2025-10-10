@@ -70,9 +70,16 @@ function MineBoyOrchestrator() {
     ];
   });
   
-  // Layout state + persistence
+  // Detect mobile/tablet
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth < 768; // Mobile/tablet breakpoint
+  });
+  
+  // Layout state + persistence (force carousel on mobile)
   const [layout, setLayout] = useState<MineBoyLayout>(() => {
     if (typeof window === 'undefined') return 'carousel';
+    if (window.innerWidth < 768) return 'carousel'; // Force carousel on mobile
     const saved = localStorage.getItem('mineboy_layout') as MineBoyLayout;
     if (saved && ['carousel', 'row', 'column'].includes(saved)) return saved;
     return window.innerWidth >= 900 ? 'row' : 'carousel';
@@ -84,21 +91,55 @@ function MineBoyOrchestrator() {
     }
   }, [layout]);
   
+  // Update mobile state on resize
+  useEffect(() => {
+    const updateMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Force carousel on mobile
+      if (mobile && layout !== 'carousel') {
+        setLayout('carousel');
+      }
+    };
+    
+    window.addEventListener('resize', updateMobile, { passive: true });
+    return () => window.removeEventListener('resize', updateMobile);
+  }, [layout]);
+  
   // =========================================================================
   // DEVICE SCALING - Handle responsive scaling based on layout mode
   // =========================================================================
   
   useEffect(() => {
-    // ALWAYS scale to a single device + side panels
-    // This lets row/column scroll naturally on mobile
-    const BASE_W = 585; // 97.5 + 390 + 97.5 (side panels + one device)
-    const BASE_H = 924; // single device height
+    // Mobile-aware scaling: use smaller base dimensions on mobile
+    const mobile = window.innerWidth < 768;
+    
+    // Mobile: scale to fit full screen (375-428px typical mobile width)
+    // Desktop: use standard dimensions with side panels
+    const BASE_W = mobile ? 390 : 585; // mobile: device only, desktop: device + panels
+    const BASE_H = mobile ? 820 : 924; // mobile: shorter for better fit
     
     function fitDevice() {
-      const scaleRaw = Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H);
-      const scale = Math.min(1, scaleRaw); // cap to 1 to prevent upscaling blur
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      
+      let scaleRaw: number;
+      if (mobile) {
+        // Mobile: fit to viewport with some padding
+        const padding = 20; // 10px on each side
+        scaleRaw = Math.min(
+          (vw - padding) / BASE_W,
+          (vh - padding) / BASE_H
+        );
+      } else {
+        // Desktop: standard scaling
+        scaleRaw = Math.min(vw / BASE_W, vh / BASE_H);
+      }
+      
+      // Never upscale (blur), but allow natural downscale on small screens
+      const scale = Math.min(1, scaleRaw);
       document.documentElement.style.setProperty('--device-scale', String(scale));
-      console.log('[Scale] Layout:', layout, 'Base:', BASE_W, 'x', BASE_H, 'Scale:', scale.toFixed(3));
+      console.log('[Scale] Mobile:', mobile, 'Layout:', layout, 'Base:', BASE_W, 'x', BASE_H, 'Scale:', scale.toFixed(3));
     }
     
     // RAF throttling for smooth resize
@@ -342,38 +383,45 @@ function MineBoyOrchestrator() {
       height: '100dvh', // iOS-safe viewport
       WebkitOverflowScrolling: 'touch',
       overscrollBehavior: 'contain',
+      // Prevent text selection and zooming on mobile
+      userSelect: 'none',
+      WebkitUserSelect: 'none',
+      WebkitTouchCallout: 'none',
     }}>
       {/* Always show carousel view - no landing page */}
       {(
         // Scaling wrapper - natural content dimensions for scrolling
         <div
               style={{
-            // Calculate real content dimensions
+            // Calculate real content dimensions (mobile: no panels, desktop: with panels)
             width: (() => {
-              const PANELS = 195; // 97.5 + 97.5
+              const mobile = window.innerWidth < 768;
+              const PANELS = mobile ? 0 : 195; // Hide panels on mobile
               const DEVICE_W = 390;
               const gap = 12;
               return layout === 'carousel'
-                ? PANELS + DEVICE_W // 585
+                ? PANELS + DEVICE_W // 390 mobile, 585 desktop
                 : layout === 'row'
                 ? PANELS + (DEVICE_W * devices.length + gap * (devices.length - 1))
-                : PANELS + DEVICE_W; // 585
+                : PANELS + DEVICE_W;
             })(),
             height: (() => {
-              const DEVICE_H = 924;
+              const mobile = window.innerWidth < 768;
+              const DEVICE_H = mobile ? 820 : 924; // Shorter on mobile
               const gap = 12;
               return layout === 'column'
                 ? DEVICE_H * devices.length + gap * (devices.length - 1)
                 : DEVICE_H;
             })(),
-            transformOrigin: 'top left',
+            transformOrigin: 'center center', // Center for mobile
             transform: 'scale(var(--device-scale, 1))',
             position: 'relative',
                 display: 'flex',
             gap: 0,
           }}
         >
-          {/* Left Panel: ALWAYS visible */}
+          {/* Left Panel: Desktop only */}
+      {!isMobile && (
       <div style={{
             width: 97.5,
             height: 924,
@@ -424,6 +472,7 @@ function MineBoyOrchestrator() {
             {/* Bottom: placeholder for future controls */}
             <div style={{ width: 50, height: 50 }} />
                 </div>
+      )}
 
           {/* MineBoy Device(s) - size depends on layout */}
           <MineBoyCarousel
@@ -440,7 +489,8 @@ function MineBoyOrchestrator() {
             onCartridgeSelected={handleAlchemyCartridgeSelect}
       />
       
-          {/* Right Panel: ALWAYS visible */}
+          {/* Right Panel: Desktop only */}
+      {!isMobile && (
         <div style={{
             width: 97.5,
             height: 924,
@@ -586,7 +636,8 @@ function MineBoyOrchestrator() {
                   </button>
                 </div>
                 </div>
-              </div>
+      )}
+        </div>
       )}
       
       {/* Global Modals - z-index 3000+ to render above all devices */}

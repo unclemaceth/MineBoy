@@ -40,8 +40,26 @@ body {
   -ms-overflow-style: none;
 }
 
-html, body, #__next { height: 100%; overflow: hidden; background: #0a0a0a; }
-body { margin: 0; -webkit-tap-highlight-color: transparent; overscroll-behavior: none; }
+html, body, #__next { 
+  height: 100%; 
+  overflow: hidden; 
+  background: #0a0a0a;
+  /* Prevent horizontal overflow on mobile */
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+body { 
+  margin: 0; 
+  -webkit-tap-highlight-color: transparent; 
+  overscroll-behavior: none;
+  /* Prevent text selection and double-tap zoom on mobile */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  /* Smooth scrolling on iOS */
+  -webkit-overflow-scrolling: touch;
+}
 
 .stage {
   position: fixed;
