@@ -79,11 +79,17 @@ function MineBoyOrchestrator() {
   const [lockedCartridge, setLockedCartridge] = useState<{ contract: string; tokenId: string; ttl: number; type: 'conflict' | 'timeout' } | null>(null);
   
   // Device management - Always start with 3 empty devices (blue, orange, green)
-  const [devices, setDevices] = useState<DeviceSlot[]>([
-    { color: 'blue' },
-    { color: 'orange' },
-    { color: 'green' }
-  ]);
+  const [devices, setDevices] = useState<DeviceSlot[]>(() => {
+    // Clear old device localStorage data (active index is kept)
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('mineboy_carousel_devices');
+    }
+    return [
+      { color: 'blue' },
+      { color: 'orange' },
+      { color: 'green' }
+    ];
+  });
   const [availableCartridges, setAvailableCartridges] = useState<OwnedCartridge[]>([]);
   
   // Device persistence disabled - always use 3 fixed devices
