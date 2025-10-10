@@ -1,4 +1,5 @@
 // MineBoy Game - Updated with Wallet Modal & Debug Logging
+// Feature Flag: NEXT_PUBLIC_MINEBOY_CAROUSEL (if true, use carousel version)
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import dynamic from 'next/dynamic';
@@ -3415,5 +3416,11 @@ function Home() {
   );
 }
 
-export default dynamic(() => Promise.resolve(Home), { ssr: false });
+// Carousel is now the default and only mode
+const MineBoyCarousel = dynamic(() => import('./pagev2'), { ssr: false });
+
+export default function Page() {
+  return <MineBoyCarousel />;
+}
+
 // Force redeploy Tue Sep 16 03:02:26 BST 2025 - Fixed router address to use env var
