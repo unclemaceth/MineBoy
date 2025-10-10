@@ -71,6 +71,20 @@ function BridgeInner({ onClose, suggestedAmount }: { onClose: () => void; sugges
   const [sourceBalance, setSourceBalance] = useState<bigint | null>(null);
   const [justSwitched, setJustSwitched] = useState(false); // Track if we just successfully switched
   
+  // ESC to close + body scroll lock (global modal behavior)
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
+  
   // Poll for ACTUAL chain ID directly from provider
   useEffect(() => {
     console.log('[RelayBridge] Polling effect running, walletClient:', !!walletClient);

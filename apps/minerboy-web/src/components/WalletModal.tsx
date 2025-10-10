@@ -49,6 +49,21 @@ export default function WalletModal({ isOpen, onClose }: Props) {
   const [copySuccess, setCopySuccess] = useState(false);
   const [showCheckout, setShowCheckout] = useState<'5' | '10' | '25' | null>(null);
 
+  // ESC to close + body scroll lock (global modal behavior)
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen, onClose]);
+
   // Detect if using Glyph (embedded wallet)
   const isGlyph = useMemo(() => {
     return provider === 'glyph';

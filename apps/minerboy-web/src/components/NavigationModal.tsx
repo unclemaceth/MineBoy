@@ -51,6 +51,21 @@ type NavigationModalProps = {
 };
 
 export default function NavigationModal({ isOpen, page, onClose }: NavigationModalProps) {
+  // ESC to close + body scroll lock (global modal behavior)
+  useEffect(() => {
+    if (!isOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen || !page) return null;
 
   return (

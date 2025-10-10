@@ -89,29 +89,16 @@ function MineBoyOrchestrator() {
   // =========================================================================
   
   useEffect(() => {
-    // Dynamic dimensions based on layout mode
-    // ALWAYS include side panels (97.5 + 97.5 = 195px)
-    // Carousel: side panels + 1 device
-    // Row: side panels + 3 devices side by side with gaps
-    // Column: side panels + 3 devices stacked vertically with gaps
-    const numDevices = devices.length;
-    const SIDE_PANELS = 195; // 97.5 left + 97.5 right
-    
-    const TOTAL_W = layout === 'carousel' 
-      ? 585 // 97.5 + 390 + 97.5
-      : layout === 'row'
-      ? SIDE_PANELS + (390 * numDevices + 12 * (numDevices - 1)) // side panels + devices side by side with gaps
-      : 585; // same as carousel (single device width + side panels)
-    
-    const TOTAL_H = layout === 'column'
-      ? (924 * numDevices + 12 * (numDevices - 1)) // devices stacked with gaps
-      : 924; // single device height in carousel/row
+    // ALWAYS scale to a single device + side panels
+    // This lets row/column scroll naturally on mobile
+    const BASE_W = 585; // 97.5 + 390 + 97.5 (side panels + one device)
+    const BASE_H = 924; // single device height
     
     function fitDevice() {
-      const scaleRaw = Math.min(window.innerWidth / TOTAL_W, window.innerHeight / TOTAL_H);
+      const scaleRaw = Math.min(window.innerWidth / BASE_W, window.innerHeight / BASE_H);
       const scale = Math.min(1, scaleRaw); // cap to 1 to prevent upscaling blur
       document.documentElement.style.setProperty('--device-scale', String(scale));
-      console.log('[Scale] Layout:', layout, 'Dimensions:', TOTAL_W, 'x', TOTAL_H, 'Scale:', scale.toFixed(3));
+      console.log('[Scale] Layout:', layout, 'Base:', BASE_W, 'x', BASE_H, 'Scale:', scale.toFixed(3));
     }
     
     // RAF throttling for smooth resize
@@ -128,7 +115,7 @@ function MineBoyOrchestrator() {
       cancelAnimationFrame(raf); 
       window.removeEventListener('resize', onResize); 
     };
-  }, [layout, devices.length]);
+  }, [layout]);
   
   // Device persistence disabled - always use 3 fixed devices
   // useEffect(() => {
@@ -205,7 +192,7 @@ function MineBoyOrchestrator() {
     // Elect self as leader after a short probe window
     bc.postMessage('hello');
     const t = setTimeout(() => { isLeader = true; }, 300);
-
+    
     return () => {
       clearTimeout(t);
       bc.close();
@@ -233,7 +220,7 @@ function MineBoyOrchestrator() {
     const interval = setInterval(fetchMessages, 60000); // Refresh every minute
     return () => { alive = false; clearInterval(interval); };
   }, []);
-  
+
   // =========================================================================
   // FETCH SEASON POINTS
   // =========================================================================
@@ -254,7 +241,7 @@ function MineBoyOrchestrator() {
       } else if (alive) {
         setSeasonPoints(0);
       }
-      } catch (error) {
+    } catch (error) {
         console.error('Failed to fetch season points:', error);
     }
     };
@@ -300,9 +287,9 @@ function MineBoyOrchestrator() {
     );
     if (alreadyUsed) {
       alert('This cartridge is already inserted in another MineBoy');
-        return;
-      }
-      
+            return;
+          }
+          
     // Insert into the specific device that requested it
     setDevices(prev => {
       const updated = [...prev];
@@ -326,7 +313,7 @@ function MineBoyOrchestrator() {
       console.log('[Orchestrator] Device has no cartridge to eject');
       return;
     }
-          
+    
     // Clear the cartridge from this device (keep device, just remove cartridge)
     setDevices(prev => {
       const updated = [...prev];
@@ -341,30 +328,48 @@ function MineBoyOrchestrator() {
 
   return (
       <div style={{
-      position: 'fixed',
+      position: 'relative',
       inset: 0,
       display: 'grid',
       placeItems: 'center',
       background: '#0b0b0b',
-      overflow: 'hidden',
+      overflow: layout === 'carousel' 
+        ? 'hidden' 
+        : layout === 'row'
+        ? 'auto hidden' // horizontal scroll
+        : 'hidden auto', // vertical scroll
+      width: '100vw',
+      height: '100dvh', // iOS-safe viewport
+      WebkitOverflowScrolling: 'touch',
+      overscrollBehavior: 'contain',
     }}>
       {/* Always show carousel view - no landing page */}
       {(
-        // Scaling wrapper - dimensions change based on layout to fit all devices
+        // Scaling wrapper - natural content dimensions for scrolling
         <div
-          style={{
-            width: layout === 'carousel' 
-              ? 585 
-              : layout === 'row'
-              ? (390 * devices.length + 12 * (devices.length - 1))
-              : 390,
-            height: layout === 'column'
-              ? (924 * devices.length + 12 * (devices.length - 1))
-              : 924,
+              style={{
+            // Calculate real content dimensions
+            width: (() => {
+              const PANELS = 195; // 97.5 + 97.5
+              const DEVICE_W = 390;
+              const gap = 12;
+              return layout === 'carousel'
+                ? PANELS + DEVICE_W // 585
+                : layout === 'row'
+                ? PANELS + (DEVICE_W * devices.length + gap * (devices.length - 1))
+                : PANELS + DEVICE_W; // 585
+            })(),
+            height: (() => {
+              const DEVICE_H = 924;
+              const gap = 12;
+              return layout === 'column'
+                ? DEVICE_H * devices.length + gap * (devices.length - 1)
+                : DEVICE_H;
+            })(),
             transformOrigin: 'top left',
             transform: 'scale(var(--device-scale, 1))',
             position: 'relative',
-            display: 'flex',
+                display: 'flex',
             gap: 0,
           }}
         >
@@ -372,9 +377,9 @@ function MineBoyOrchestrator() {
       <div style={{
             width: 97.5,
             height: 924,
-        display: 'flex',
+                display: 'flex',
             flexDirection: 'column',
-            alignItems: 'center',
+                alignItems: 'center',
             justifyContent: 'space-between',
             padding: '20px 0',
       }}>
@@ -418,21 +423,21 @@ function MineBoyOrchestrator() {
 
             {/* Bottom: placeholder for future controls */}
             <div style={{ width: 50, height: 50 }} />
-            </div>
+                </div>
 
           {/* MineBoy Device(s) - size depends on layout */}
           <MineBoyCarousel
             ref={carouselRef}
             devices={devices}
             layout={layout}
-            vaultAddress={vaultAddress}
+        vaultAddress={vaultAddress}
             onEject={handleEjectDevice}
-            playButtonSound={playButtonSound}
+        playButtonSound={playButtonSound}
             onOpenWalletModal={openWalletConnectionModal}
             onOpenWalletManagementModal={() => setShowWalletModal(true)}
             onOpenNavigationModal={openNavigationPage}
             onCartridgeSelected={handleAlchemyCartridgeSelect}
-          />
+      />
       
           {/* Right Panel: ALWAYS visible */}
         <div style={{
@@ -485,12 +490,12 @@ function MineBoyOrchestrator() {
             {/* Bottom: Layout toggle + M/I/L buttons - ALWAYS visible */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               {/* Layout Toggle */}
-              <button
-                onClick={() => {
-                  playButtonSound();
+                    <button
+                      onClick={() => {
+                        playButtonSound();
                   setLayout(l => (l === 'carousel' ? 'row' : l === 'row' ? 'column' : 'carousel'));
-                }}
-                style={{
+                      }}
+                      style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
@@ -498,8 +503,8 @@ function MineBoyOrchestrator() {
                   border: '3px solid #3a8a4d',
                   color: '#c8ffc8',
                   fontSize: 11,
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
+                      fontWeight: 'bold',
+                      cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -512,12 +517,12 @@ function MineBoyOrchestrator() {
                 }
               >
                 {layout === 'carousel' ? 'CAR' : layout === 'row' ? 'ROW' : 'COL'}
-              </button>
-
+                  </button>
+            
               {/* Mint */}
-                    <button
+            <button
                 onClick={() => openNavigationPage('mint')}
-                      style={{
+              style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
@@ -526,7 +531,7 @@ function MineBoyOrchestrator() {
                   color: '#c8ffc8',
                   fontSize: 18,
                       fontWeight: 'bold',
-                      cursor: 'pointer',
+                cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',

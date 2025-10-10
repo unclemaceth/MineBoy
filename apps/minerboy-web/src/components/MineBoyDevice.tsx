@@ -1232,9 +1232,11 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         ref={ref}
         className={className}
         style={{
-          position: 'relative',
+          position: 'relative', // Required for DeviceModal absolute positioning
           width: W,
           height: H,
+          overflow: 'visible', // Allow modals to render outside device bounds
+          isolation: 'isolate', // Independent z-index stacking per device
           pointerEvents: isActive ? 'auto' : 'none',
           opacity: isActive ? 1 : 0.75,
           transform: isActive ? 'scale(1)' : 'scale(0.97)',

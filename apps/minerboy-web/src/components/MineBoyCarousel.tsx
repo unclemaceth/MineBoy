@@ -323,6 +323,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
           height: totalHeight,
           display: 'flex',
           flexDirection: isRow ? 'row' : 'column',
+          touchAction: 'auto', // Allow natural scrolling in row/column
           gap: 12,
         }}
       >
