@@ -15,8 +15,7 @@ const testStats = {
     mnestr: '123456.789'
   },
   topTeam: {
-    name: 'Test Team',
-    emoji: '🔥',
+    name: 'Geez',
     score: '987654.321'
   },
   date: new Date().toISOString().split('T')[0]

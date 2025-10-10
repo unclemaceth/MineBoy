@@ -67,7 +67,7 @@ export function postGameStats(stats: {
   activeMiners: number;
   totalMiners: number;
   topMiner?: { wallet: string; arcadeName?: string; mnestr: string };
-  topTeam?: { name: string; emoji: string; score: string };
+  topTeam?: { name: string; score: string };
   date: string;
 }) {
   // Use arcade name if available, otherwise show wallet
@@ -92,7 +92,7 @@ export function postGameStats(stats: {
     const teamMnestr = parseFloat(stats.topTeam.score).toFixed(2);
     fields.push({
       name: 'Top Team',
-      value: `${stats.topTeam.emoji} ${stats.topTeam.name}\n${teamMnestr} MNESTR mined`,
+      value: `${stats.topTeam.name}\n${teamMnestr} MNESTR mined`,
       inline: false
     });
   }

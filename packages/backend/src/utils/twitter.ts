@@ -68,7 +68,7 @@ export function formatGameStatsForX(stats: {
   activeMiners: number;
   totalMiners: number;
   topMiner?: { wallet: string; arcadeName?: string; mnestr: string };
-  topTeam?: { name: string; emoji: string; score: string };
+  topTeam?: { name: string; score: string };
   date: string;
 }): string {
   // Use arcade name if available, otherwise shorten wallet
@@ -93,7 +93,7 @@ export function formatGameStatsForX(stats: {
   // Add team if available
   if (stats.topTeam) {
     const teamMnestr = parseFloat(stats.topTeam.score).toFixed(0);
-    lines.push(`${stats.topTeam.emoji} Team ${stats.topTeam.name}: ${teamMnestr} MNESTR`);
+    lines.push(`🏅 Team ${stats.topTeam.name}: ${teamMnestr} MNESTR`);
   }
 
   return lines.join('\n');

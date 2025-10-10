@@ -74,22 +74,18 @@ async function sendDailySummary() {
       };
     }
     
-    // Get top team today (last 24h)
+    // Get top team today (last 24h) from claim_team_attributions
     let topTeam;
     try {
       const topTeamResult = await db.pool.query(`
         SELECT 
           t.name,
-          t.emoji,
-          COALESCE(SUM(c.amount_wei::numeric), 0)::text as total_score
-        FROM teams t
-        LEFT JOIN user_teams ut ON ut.team_id = t.id
-        LEFT JOIN claims c ON LOWER(c.wallet) = LOWER(ut.wallet) 
-          AND c.status='confirmed' 
-          AND c.confirmed_at >= $1
-        WHERE t.is_active = true
-        GROUP BY t.id, t.name, t.emoji
-        ORDER BY COALESCE(SUM(c.amount_wei::numeric), 0) DESC
+          COALESCE(SUM(cta.amount_wei::numeric), 0)::text as total_score
+        FROM claim_team_attributions cta
+        JOIN teams t ON t.slug = cta.team_slug
+        WHERE cta.confirmed_at >= to_timestamp($1 / 1000)
+        GROUP BY t.slug, t.name
+        ORDER BY COALESCE(SUM(cta.amount_wei::numeric), 0) DESC
         LIMIT 1
       `, [oneDayAgo]);
       
@@ -97,12 +93,11 @@ async function sendDailySummary() {
         const row = topTeamResult.rows[0];
         topTeam = {
           name: row.name,
-          emoji: row.emoji,
           score: formatEther(row.total_score)
         };
       }
     } catch (error) {
-      console.log('[MineBoy:DailySummary] No team data available');
+      console.log('[MineBoy:DailySummary] No team data available:', error);
     }
     
     // Prepare stats object
