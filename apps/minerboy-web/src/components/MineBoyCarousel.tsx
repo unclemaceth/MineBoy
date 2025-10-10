@@ -52,37 +52,56 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   const touchStartY = useRef<number | null>(null);
   
   // ==========================================================================
+  // ACTIVE INDEX BOUNDS CHECKING
+  // ==========================================================================
+  
+  // Clamp activeIndex when devices array changes (e.g., after ejecting last device)
+  useEffect(() => {
+    if (activeIndex > devices.length - 1) {
+      setActiveIndex(Math.max(0, devices.length - 1));
+    }
+  }, [devices, activeIndex]);
+  
+  // ==========================================================================
   // NAVIGATION HANDLERS
   // ==========================================================================
   
   const goToPrevious = useCallback(() => {
     if (devices.length <= 1) return;
     playButtonSound();
-    setActiveIndex((prev) => (prev > 0 ? prev - 1 : devices.length - 1));
     
-    // Analytics
+    // Compute previous index first for analytics
+    const prev = activeIndex > 0 ? activeIndex - 1 : devices.length - 1;
+    
+    // Analytics with correct indices
     if (typeof window !== 'undefined' && (window as any).gtag) {
       (window as any).gtag('event', 'carousel_switch', {
         from_index: activeIndex,
-        to_index: activeIndex > 0 ? activeIndex - 1 : devices.length - 1,
+        to_index: prev,
         direction: 'prev',
       });
     }
+    
+    setActiveIndex(prev);
   }, [devices.length, activeIndex, playButtonSound]);
   
   const goToNext = useCallback(() => {
     if (devices.length <= 1) return;
     playButtonSound();
-    setActiveIndex((prev) => (prev < devices.length - 1 ? prev + 1 : 0));
     
-    // Analytics
+    // Compute next index first for analytics
+    const next = activeIndex < devices.length - 1 ? activeIndex + 1 : 0;
+    
+    // Analytics with correct indices
     if (typeof window !== 'undefined' && (window as any).gtag) {
       (window as any).gtag('event', 'carousel_switch', {
         from_index: activeIndex,
-        to_index: activeIndex < devices.length - 1 ? activeIndex + 1 : 0,
+        to_index: next,
         direction: 'next',
       });
     }
+    
+    setActiveIndex(next);
   }, [devices.length, activeIndex, playButtonSound]);
   
   const goToIndex = useCallback((index: number) => {
@@ -114,7 +133,18 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only handle arrow keys for carousel navigation
+      // Only handle arrow keys for carousel navigation if:
+      // 1. Focus is NOT inside the active device (let device handle its D-pad)
+      // 2. Multiple devices exist
+      if (devices.length <= 1) return;
+      
+      const activeDevice = deviceRefs.current[activeIndex];
+      const focusInsideActive = activeDevice && activeDevice.contains(document.activeElement);
+      
+      // If focus is inside the active device, let it handle arrows (D-pad)
+      if (focusInsideActive) return;
+      
+      // Otherwise, carousel can handle navigation
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         goToPrevious();
@@ -126,7 +156,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToPrevious, goToNext]);
+  }, [goToPrevious, goToNext, devices.length, activeIndex]);
   
   // ==========================================================================
   // FOCUS MANAGEMENT
@@ -211,15 +241,18 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
       {/* Stacked MineBoy devices - all stay mounted */}
       {devices.map((device, index) => {
         const isActive = index === activeIndex;
+        // Use stable key based on color + optional tokenId to prevent remounts on eject
+        const stableKey = `${device.color}-${device.cartridge?.tokenId ?? 'empty'}`;
         return (
           <div
-            key={`device-${index}`}
+            key={stableKey}
             style={{
               position: 'absolute',
               inset: 0,
               zIndex: isActive ? 3 : (devices.length - index), // Active on top
               pointerEvents: isActive ? 'auto' : 'none', // Only active device receives clicks
             }}
+            aria-hidden={!isActive}
           >
             <MineBoyDevice
               ref={(el) => { deviceRefs.current[index] = el; }}

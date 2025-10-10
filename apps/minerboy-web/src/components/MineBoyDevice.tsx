@@ -509,7 +509,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           if (error.status === 404 || error.status === 409) {
             pushLine('Heartbeat Failed');
             pushLine('Session expired');
-            miner.stopForTtl();
+            (miner as any).stopForTtl ? (miner as any).stopForTtl() : miner.stop();
             storeStopMining();
             setMining(false);
             stopMiningSound();
@@ -550,17 +550,28 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     
     // Wallet is tracked via address from useActiveAccount() hook
     
+    // Stop mining when device becomes inactive (CPU guard for carousel)
+    useEffect(() => {
+      if (!isActive && mining) {
+        console.log(`[MineBoyDevice][${color}] Stopping mining (inactive)`);
+        miner.stop();
+        setMining(false);
+        setStatus('idle');
+        stopMiningSound();
+      }
+    }, [isActive, mining, color]);
+    
     // Hash display animation
     useEffect(() => {
       if (!mining || !job) {
-        setCurrentDisplayHash(hexFrom(job?.nonce, 64));
+        setCurrentDisplayHash(job?.nonce ? hexFrom(job.nonce, 64) : '0x' + '00'.repeat(32));
         setVisualizerNibs([]);
         return;
       }
       
       let counter = 0;
       const updateHash = () => {
-        const nonce = hexFrom(job?.nonce, 64).slice(2);
+        const nonce = hexFrom(job.nonce, 64).slice(2);
         const counterHex = counter.toString(16).padStart(8, '0');
         const combined = nonce + counterHex;
         let hash = '0x';
@@ -1005,7 +1016,9 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           console.error('Error closing session:', err);
         }
       }
-      window.location.reload();
+      // Call parent to handle device removal/reset (carousel mode)
+      onEject();
+      setShowEjectConfirm(false);
     };
     
     const handleGetNewJob = async () => {
