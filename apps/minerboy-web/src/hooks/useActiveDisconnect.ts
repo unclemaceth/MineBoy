@@ -10,6 +10,7 @@ export function useActiveDisconnect() {
 
   const disconnectWallet = async () => {
     console.log('[useActiveDisconnect] Disconnecting, source:', source)
+    console.trace('[useActiveDisconnect] Called from:') // 🔍 Find who's calling disconnect
     
     try {
       if (source === 'wc') {
