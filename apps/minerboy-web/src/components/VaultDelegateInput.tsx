@@ -7,23 +7,24 @@ interface VaultDelegateInputProps {
   vaultAddress: string;
   onVaultChange: (vault: string) => void;
   className?: string;
+  enabled?: boolean; // Allow parent to disable delegation entirely
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
 const DELEGATE_ENABLED = process.env.NEXT_PUBLIC_DELEGATE_PHASE1_ENABLED === 'true';
 
-export default function VaultDelegateInput({ vaultAddress, onVaultChange, className = '' }: VaultDelegateInputProps) {
+export default function VaultDelegateInput({ vaultAddress, onVaultChange, className = '', enabled = true }: VaultDelegateInputProps) {
   const { address } = useActiveAccount();
   const [autoDetectedVault, setAutoDetectedVault] = useState<string | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Auto-detect vault on wallet connect
+  // Auto-detect vault on wallet connect (only if enabled)
   useEffect(() => {
-    if (DELEGATE_ENABLED && address && !vaultAddress) {
+    if (DELEGATE_ENABLED && enabled && address && !vaultAddress) {
       autoDetectVault();
     }
-  }, [address]);
+  }, [address, enabled]);
 
   const autoDetectVault = async () => {
     if (!address) return;
