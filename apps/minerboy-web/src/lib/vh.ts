@@ -34,8 +34,17 @@ export function bindVisualViewportVH() {
   const set = () => {
     // Use visualViewport if available (more accurate on iOS)
     const h = window.visualViewport?.height ?? window.innerHeight;
+    const w = window.visualViewport?.width ?? window.innerWidth;
     document.documentElement.style.setProperty('--vh', `${h}px`);
-    console.log('[vh] Updated --vh:', h);
+    
+    // Debug logging
+    const safeTop = getComputedStyle(document.documentElement).getPropertyValue('--safe-top');
+    const safeBottom = getComputedStyle(document.documentElement).getPropertyValue('--safe-bottom');
+    console.log('[vh] Updated --vh:', h, 'px');
+    console.log('[vh] Viewport:', w, 'x', h);
+    console.log('[vh] window.innerHeight:', window.innerHeight);
+    console.log('[vh] Safe areas:', { top: safeTop, bottom: safeBottom });
+    console.log('[vh] Difference (innerHeight - vv.height):', window.innerHeight - h);
   };
   
   // Initial set
