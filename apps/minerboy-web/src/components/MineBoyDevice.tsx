@@ -1100,6 +1100,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           bottom: 0,
           borderRadius: 28,
           overflow: "hidden",
+          zIndex: 0,
         }}>
           <EnhancedShell width={W} height={CONTENT_HEIGHT} color={color} />
         </div>
@@ -1397,7 +1398,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         </div>
 
         {/* Fan */}
-        <div style={{ position: "absolute", right: 19, bottom: 55 }}>
+        <div style={{ position: "absolute", right: 19, bottom: 55, zIndex: 1 }}>
           <FanSandwich spinning={mining} size={110} color={color} />
         </div>
 
@@ -1499,6 +1500,20 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         {isConnected && !sessionId && (
           <div 
             onClick={() => { playButtonSound(); handleInsertCartridge(); }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateX(-50%) translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 6px 12px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.2)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "translateX(-50%) translateY(0px)";
+              e.currentTarget.style.boxShadow = "0 4px 8px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1)";
+            }}
+            onMouseDown={(e) => {
+              e.currentTarget.style.transform = "translateX(-50%) translateY(1px)";
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "translateX(-50%) translateY(-2px)";
+            }}
             style={{
               position: "absolute",
               bottom: 16,
