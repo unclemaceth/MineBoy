@@ -20,7 +20,7 @@ import StatisticsSection from '@/components/StatisticsSection';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { useActiveDisconnect } from '@/hooks/useActiveDisconnect';
 import { useActiveWalletClient } from '@/hooks/useActiveWalletClient';
-import { useSession, getOrCreateMinerId } from "@/state/useSession";
+import { getOrCreateMinerId } from "@/state/useSession";
 import { useMinerStore } from "@/state/miner";
 import { useMinerWorker } from "@/hooks/useMinerWorker";
 import { useTypewriter } from "@/hooks/useTypewriter";
@@ -182,30 +182,52 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     const mnestrBalance = mnestrBalanceRaw ? Number(mnestrBalanceRaw) / 1e18 : 0;
     
     // =========================================================================
-    // SESSION STATE
+    // SESSION STATE - LOCAL (each device has its own independent state)
     // =========================================================================
     
-    const { 
-      wallet,
-      cartridge: sessionCartridge,
-      sessionId,
-      job,
-      mining, 
-      attempts, 
-      hr, 
-      lastFound,
-      terminal,
-      mode,
-      setWallet,
-      setMining,
-      setTelemetry,
-      setFound,
-      pushLine,
-      setMode,
-      setJob,
-      loadOpenSession,
-      clear
-    } = useSession();
+    // Each MineBoyDevice maintains its own session state (not shared globally)
+    const [sessionId, setSessionId] = useState<string | undefined>(undefined);
+    const [job, setJob] = useState<Job | undefined>(undefined);
+    const [mining, setMining] = useState(false);
+    const [attempts, setAttempts] = useState(0);
+    const [hr, setHr] = useState(0);
+    const [lastFound, setLastFound] = useState<{ hash: string; preimage: string; attempts: number; hr: number } | undefined>(undefined);
+    const [terminal, setTerminal] = useState<string[]>([]);
+    const [mode, setMode] = useState<'terminal' | 'visual'>('visual');
+    
+    // Helper functions for managing local state
+    const pushLine = (line: string) => {
+      setTerminal(prev => [...prev, line].slice(-20)); // Keep last 20 lines
+    };
+    
+    const clear = () => {
+      setTerminal([]);
+      setSessionId(undefined);
+      setJob(undefined);
+      setMining(false);
+      setAttempts(0);
+      setHr(0);
+    };
+    
+    const setTelemetry = (newAttempts: number, newHr: number) => {
+      setAttempts(newAttempts);
+      setHr(newHr);
+    };
+    
+    const setFound = (found: { hash: string; preimage: string; attempts: number; hr: number } | undefined) => {
+      setLastFound(found);
+    };
+    
+    // Load session function
+    const loadOpenSession = (
+      session: { sessionId: string; job?: Job },
+      wallet: string,
+      cart: { info: CartridgeConfig; tokenId: string; metadata?: any }
+    ) => {
+      setSessionId(session.sessionId);
+      if (session.job) setJob(session.job);
+      pushLine(`Session ${session.sessionId.slice(0, 8)}... loaded`);
+    };
     
     const { bootLines, stopMining: storeStopMining, setHashRate } = useMinerStore();
     
@@ -526,14 +548,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
       return () => { cancelled = true; };
     }, [hash, pendingClaimId]);
     
-    // Update wallet when account changes
-    useEffect(() => {
-      if (isConnected && address) {
-        setWallet(address);
-      } else {
-        setWallet(undefined);
-      }
-    }, [isConnected, address, setWallet]);
+    // Wallet is tracked via address from useActiveAccount() hook
     
     // Hash display animation
     useEffect(() => {
@@ -713,7 +728,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           return;
         }
         
-        if (!wallet || !cartridge?.tokenId) {
+        if (!address || !cartridge?.tokenId) {
           pushLine('Session error - re-insert cartridge');
           return;
         }
@@ -724,7 +739,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         setMining(true);
         setMode('visual');
         miner.resetSession();
-        miner.start(jobToUse, wallet, cartridge.tokenId);
+        miner.start(jobToUse, address as string, cartridge.tokenId);
         startMiningSound();
       } else {
         miner.stop();
@@ -1927,7 +1942,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
                   <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
                     <div><strong>Session ID:</strong> {sessionId ? `${sessionId.slice(0, 8)}...${sessionId.slice(-6)}` : 'None'}</div>
                     <div><strong>Miner ID:</strong> {getOrCreateMinerId().slice(0, 8)}...{getOrCreateMinerId().slice(-6)}</div>
-                    <div><strong>Wallet:</strong> {wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Not connected'}</div>
+                    <div><strong>Wallet:</strong> {address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'Not connected'}</div>
                     <div><strong>Status:</strong> {status}</div>
                     <div><strong>Mining:</strong> {mining ? 'Yes' : 'No'}</div>
                     <div><strong>Color:</strong> {color}</div>
