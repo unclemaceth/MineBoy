@@ -213,7 +213,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
         const isActive = index === activeIndex;
         return (
           <div
-            key={device.cartridge.tokenId}
+            key={`${device.color}-${index}-${device.cartridge?.tokenId || 'empty'}`}
             style={{
               position: 'absolute',
               inset: 0,
