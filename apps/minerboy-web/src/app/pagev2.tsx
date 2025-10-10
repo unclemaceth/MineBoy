@@ -11,6 +11,7 @@ import NavigationModal from '@/components/NavigationModal';
 import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
 import RelayBridgeModalSDK from '@/components/RelayBridgeModalSDK';
 import WalletModal from '@/components/WalletModal';
+import Portal from '@/components/Portal';
 import { useWalletModal } from '@/state/walletModal';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { playButtonSound } from '@/lib/sounds';
@@ -123,17 +124,21 @@ function MineBoyOrchestrator() {
   // =========================================================================
   
   useEffect(() => {
-    // Mobile-aware scaling: use smaller base dimensions on mobile
-    const mobile = window.innerWidth < 768;
-    
-    // Mobile: scale to fit full screen (375-428px typical mobile width)
-    // Desktop: use standard dimensions with side panels
-    const BASE_W = mobile ? 390 : 585; // mobile: device only, desktop: device + panels
-    const BASE_H = mobile ? 820 : 924; // mobile: shorter for better fit
+    // Use visualViewport API for accurate iOS dimensions
+    // (iOS innerHeight includes toolbars, visualViewport.height doesn't)
+    const vv = window.visualViewport;
     
     function fitDevice() {
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
+      const mobile = window.innerWidth < 768;
+      
+      // Mobile: scale to fit full screen (375-428px typical mobile width)
+      // Desktop: use standard dimensions with side panels
+      const BASE_W = mobile ? 390 : 585; // mobile: device only, desktop: device + panels
+      const BASE_H = mobile ? 820 : 924; // mobile: shorter for better fit
+      
+      // Use visualViewport dimensions if available (more accurate on iOS)
+      const vw = vv ? vv.width : window.innerWidth;
+      const vh = vv ? vv.height : window.innerHeight;
       
       let scaleRaw: number;
       if (mobile) {
@@ -151,22 +156,28 @@ function MineBoyOrchestrator() {
       // Never upscale (blur), but allow natural downscale on small screens
       const scale = Math.min(1, scaleRaw);
       document.documentElement.style.setProperty('--device-scale', String(scale));
-      console.log('[Scale] Mobile:', mobile, 'Layout:', layout, 'Base:', BASE_W, 'x', BASE_H, 'Scale:', scale.toFixed(3));
+      console.log('[Scale] Mobile:', mobile, 'Layout:', layout, 'VV:', vw, 'x', vh, 'Scale:', scale.toFixed(3));
     }
     
-    // RAF throttling for smooth resize
-    let raf = 0;
-    const onResize = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(fitDevice);
-    };
+    // First paint, then a second pass after toolbar settles
+    requestAnimationFrame(() => {
+      fitDevice();
+      requestAnimationFrame(fitDevice);
+    });
     
-    fitDevice(); // Initial calculation
-    window.addEventListener('resize', onResize, { passive: true });
+    const rerun = () => requestAnimationFrame(fitDevice);
     
-    return () => { 
-      cancelAnimationFrame(raf); 
-      window.removeEventListener('resize', onResize); 
+    // Listen to all resize events (window, orientation, visualViewport)
+    window.addEventListener('resize', rerun, { passive: true });
+    window.addEventListener('orientationchange', () => setTimeout(rerun, 60), { passive: true });
+    vv?.addEventListener('resize', rerun);
+    vv?.addEventListener('scroll', rerun); // iOS toolbar show/hide
+    
+    return () => {
+      window.removeEventListener('resize', rerun);
+      window.removeEventListener('orientationchange', rerun as any);
+      vv?.removeEventListener('resize', rerun);
+      vv?.removeEventListener('scroll', rerun);
     };
   }, [layout]);
   
@@ -656,23 +667,29 @@ function MineBoyOrchestrator() {
         );
       })()}
       
-      {/* Global Modals - z-index 3000+ to render above all devices */}
-      <NavigationModal
-        isOpen={showNavigationModal}
-        page={navigationPage}
-        onClose={closeNavigationModal}
-      />
+      {/* Global Modals - Portaled outside scaled wrapper to fix iOS position:fixed */}
+      <Portal>
+        <NavigationModal
+          isOpen={showNavigationModal}
+          page={navigationPage}
+          onClose={closeNavigationModal}
+        />
+      </Portal>
 
-      <RelayBridgeModalSDK
-        isOpen={showRelayModal}
-        onClose={() => setShowRelayModal(false)}
-        suggestedAmount="0.01"
-      />
+      <Portal>
+        <RelayBridgeModalSDK
+          isOpen={showRelayModal}
+          onClose={() => setShowRelayModal(false)}
+          suggestedAmount="0.01"
+        />
+      </Portal>
 
-      <WalletModal
-        isOpen={showWalletModal}
-        onClose={() => setShowWalletModal(false)}
-      />
+      <Portal>
+        <WalletModal
+          isOpen={showWalletModal}
+          onClose={() => setShowWalletModal(false)}
+        />
+      </Portal>
             </div>
   );
 }

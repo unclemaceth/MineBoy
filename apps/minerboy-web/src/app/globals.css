@@ -49,6 +49,8 @@ html, body, #__next {
   max-width: 100vw;
   overflow-x: hidden;
   /* Don't hard-lock overflow: hidden - it forces Safari zoom */
+  /* Prevent iOS pull-to-refresh bounce */
+  overscroll-behavior-y: none; /* iOS 16+ */
 }
 
 body { 
@@ -74,13 +76,27 @@ input:focus, select:focus, textarea:focus {
 }
 
 /* Cap all modals/portals with safe viewport units (iOS toolbar-safe) */
+/* Must use position: fixed since they're portaled outside scaled wrapper */
 [role="dialog"],
 .modal-root,
 .modal-backdrop,
 .modal-container {
-  max-height: 100svh;
-  /* Fallback for browsers without svh support */
+  position: fixed;
+  inset: 0;
+  height: 100dvh; /* iOS-safe dynamic viewport */
   max-height: 100dvh;
+  display: grid;
+  place-items: center;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; /* Prevent scroll chaining */
+  z-index: 4000; /* Above scaled content */
+}
+
+/* Modal content/sheet with safe scrolling */
+.modal-sheet {
+  max-height: calc(100dvh - 2rem);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .stage {
