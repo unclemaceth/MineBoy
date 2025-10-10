@@ -41,6 +41,7 @@ import { useWriteContract, useReadContract } from 'wagmi';
 import type { MiningJob as Job } from "@/types/mining";
 import RouterV3ABI from '@/abi/RouterV3.json';
 import RouterV3_1ABI from '@/lib/RouterV3_1ABI.json';
+import { getTierInfo } from '@/lib/rewards';
 
 // =============================================================================
 // TYPES & CONSTANTS
@@ -196,7 +197,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     const [mining, setMining] = useState(false);
     const [attempts, setAttempts] = useState(0);
     const [hr, setHr] = useState(0);
-    const [lastFound, setLastFound] = useState<{ hash: string; preimage: string; attempts: number; hr: number } | undefined>(undefined);
+    const [lastFound, setLastFound] = useState<{ hash: string; preimage: string; attempts: number; hr: number; tierName?: string } | undefined>(undefined);
     const [terminal, setTerminal] = useState<string[]>([]);
     const [mode, setMode] = useState<'terminal' | 'visual'>('visual');
     
@@ -219,7 +220,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
       setHr(newHr);
     };
     
-    const setFound = (found: { hash: string; preimage: string; attempts: number; hr: number } | undefined) => {
+    const setFound = (found: { hash: string; preimage: string; attempts: number; hr: number; tierName?: string } | undefined) => {
       setLastFound(found);
     };
     
@@ -256,15 +257,23 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         stopMiningSound();
         const frozenResult = { hash, preimage, attempts, hr };
         setFoundResult(frozenResult);
-        setFound({ hash: hash as `0x${string}`, preimage, attempts, hr });
+        
+        // Calculate tier name for display
+        const { name: tierName } = getTierInfo(hash as `0x${string}`);
+        setFound({ hash: hash as `0x${string}`, preimage, attempts, hr, tierName });
+        
         playConfirmSound();
+        pushLine(`🎉 ${tierName}!`);
         pushLine(`Found hash: ${hash.slice(0, 10)}...`);
         pushLine(`Press B to submit solution`);
         setMode('visual');
-        console.log('[MineBoyDevice][FOUND]', { color, tokenId: cartridge?.tokenId, result: frozenResult });
+        console.log('[MineBoyDevice][FOUND]', { color, tokenId: cartridge?.tokenId, result: frozenResult, tierName });
       },
       onError: (message) => {
-        pushLine(`Error: ${message}`);
+        // Gamified error messages
+        pushLine(`⚠️ MINING ERROR!`);
+        pushLine(`System: ${message}`);
+        pushLine(`Check connection and try again`);
         setMining(false);
         setStatus('error');
         stopMiningSound();
