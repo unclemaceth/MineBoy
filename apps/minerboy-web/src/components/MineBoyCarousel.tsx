@@ -16,6 +16,7 @@ export interface MineBoyCarouselProps {
   devices: MineBoyCarouselDevice[];
   layout?: MineBoyLayout; // Layout mode: carousel (stacked), row (horizontal), column (vertical)
   vaultAddress?: string; // Vault address for delegation support
+  onVaultChange?: (vault: string) => void; // Callback when vault address changes
   onEject: (index: number) => void;
   playButtonSound?: () => void;
   onOpenWalletModal?: () => void;
@@ -47,6 +48,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   devices,
   layout = 'carousel',
   vaultAddress,
+  onVaultChange,
   onEject, 
   playButtonSound = () => {},
   onOpenWalletModal,
@@ -347,6 +349,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
                 color={device.color}
                 isActive={true} // All interactive in row/column mode
                 vaultAddress={vaultAddress}
+                onVaultChange={onVaultChange}
                 onEject={() => onEject(index)}
                 playButtonSound={playButtonSound}
                 onOpenWalletModal={onOpenWalletModal}
@@ -410,6 +413,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
               color={device.color}
               isActive={isActive}
               vaultAddress={vaultAddress}
+              onVaultChange={onVaultChange}
               onEject={() => onEject(index)}
               playButtonSound={playButtonSound}
               onOpenWalletModal={onOpenWalletModal}

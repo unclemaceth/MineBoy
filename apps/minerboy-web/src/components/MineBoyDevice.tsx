@@ -89,6 +89,7 @@ export interface MineBoyDeviceProps {
   
   // Shared from parent
   vaultAddress?: string;
+  onVaultChange?: (vault: string) => void; // Callback when vault address changes
   scrollingMessages?: Array<string | { text: string; color?: string; prefix?: string; type?: string }>;
   seasonPoints?: number;
   
@@ -114,6 +115,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     playButtonSound,
     onCartridgeSelected,
     vaultAddress = '',
+    onVaultChange,
     scrollingMessages = ["MineBoy™ it Mines stuff!"],
     seasonPoints = 0,
     onOpenWalletModal,
@@ -2304,7 +2306,10 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
               setShowAlchemyCartridges(true);
             }}
             vaultAddress={localVaultAddress}
-            onVaultChange={setLocalVaultAddress}
+            onVaultChange={(vault) => {
+              setLocalVaultAddress(vault);
+              onVaultChange?.(vault); // Notify parent
+            }}
             playButtonSound={playButtonSound}
           />
         </DeviceModal>

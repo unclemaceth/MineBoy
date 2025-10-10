@@ -431,6 +431,7 @@ function MineBoyOrchestrator() {
             devices={devices}
             layout={layout}
         vaultAddress={vaultAddress}
+        onVaultChange={setVaultAddress}
             onEject={handleEjectDevice}
         playButtonSound={playButtonSound}
             onOpenWalletModal={openWalletConnectionModal}
