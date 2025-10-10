@@ -450,6 +450,7 @@ function MineBoyOrchestrator() {
             ref={carouselRef}
             devices={devices}
             layout={layout}
+            vaultAddress={vaultAddress}
             onEject={handleEjectDevice}
             playButtonSound={playButtonSound}
             onOpenWalletModal={openWalletConnectionModal}
