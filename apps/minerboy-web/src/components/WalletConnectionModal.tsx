@@ -97,7 +97,9 @@ export default function WalletConnectionModal() {
 
   // Debug logging
   useEffect(() => {
-    const addrDisplay = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : 'undefined...undefined'
+    const addrDisplay = address && address.length >= 10
+      ? `${address.slice(0, 6)}...${address.slice(-4)}`
+      : ''
     console.log('WalletConnectionModal state:', { isOpen, isConnected, address: addrDisplay });
   }, [isOpen, isConnected, address]);
 
@@ -119,15 +121,14 @@ export default function WalletConnectionModal() {
     
     try {
       console.log('WalletConnectionModal: Opening Web3Modal directly');
-      // Clean up stale sessions
-      removeStaleWalletConnect();
+      // ✅ Don't purge WC storage during normal connect (kills session mid-handshake)
       
       // close our modal and open Web3Modal
       close();
       await open();
       
       // Wait a bit for connection to settle before releasing lock
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      await new Promise(resolve => setTimeout(resolve, 800))
     } catch (err) {
       console.error('Web3Modal connection error:', err)
     } finally {

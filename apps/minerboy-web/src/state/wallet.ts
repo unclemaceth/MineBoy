@@ -15,7 +15,9 @@ export const useWalletStore = create<WalletState>((set, get) => ({
   setExternalAddress: (addr, source) => {
     const current = get()
     // Guard: only update if actually changed (prevent thrashing)
-    if (current.externalAddress === addr && current.source === source) {
+    // Use case-insensitive comparison for addresses
+    if (current.externalAddress?.toLowerCase() === addr?.toLowerCase()
+        && current.source === source) {
       console.log('[useWalletStore] Skipping redundant update:', { addr, source })
       return
     }
