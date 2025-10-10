@@ -283,6 +283,121 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     }, [sessionId]); // Only sessionId in deps - cartridge changes don't trigger cleanup
     
     // =========================================================================
+    // SESSION OPENING: When cartridge is inserted, open a session
+    // =========================================================================
+    
+    useEffect(() => {
+      // Only run when we have a cartridge but no session (i.e., cartridge just inserted)
+      if (!cartridge || sessionId || !address) return;
+      
+      const openSession = async () => {
+        try {
+          clear();
+          pushLine(`Opening session with ${cartridge.metadata?.type || 'cartridge'}...`);
+          
+          const sid = getOrCreateSessionId(parseInt(cartridge.tokenId));
+          const chainId = cartridge.chainId;
+          const contract = cartridge.contractAddress as `0x${string}`;
+          const minerId = getMinerIdCached();
+          
+          console.log('[SESSION_OPEN] Starting session:', {
+            sessionId: sid,
+            wallet: address,
+            chainId,
+            contract,
+            tokenId: cartridge.tokenId,
+            minerId
+          });
+          
+          const res = await apiStart({
+            wallet: address as `0x${string}`,
+            chainId,
+            contract,
+            tokenId: parseInt(cartridge.tokenId),
+            sessionId: sid,
+            minerId,
+            vault: vaultAddress || undefined
+          });
+          
+          console.log('[SESSION_OPEN] Success:', res);
+          
+          // Create a compatible session object
+          const compatibleSession = {
+            sessionId: res.sessionId,
+            job: res.job ? normalizeJob(res.job as any) : undefined
+          };
+          
+          loadOpenSession(compatibleSession, address, { 
+            info: { 
+              chainId, 
+              contract, 
+              name: cartridge.metadata?.type || 'Unknown',
+              multiplier: cartridge.metadata?.multiplier || 1 
+            } as CartridgeConfig, 
+            tokenId: cartridge.tokenId, 
+            metadata: cartridge.metadata 
+          });
+          
+          pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
+          
+        } catch (error: any) {
+          console.error('[SESSION_OPEN] Error:', error);
+          
+          // Parse error info
+          let errorInfo = error.info || error;
+          if (errorInfo instanceof Error || errorInfo?.message) {
+            const errorMessage = errorInfo.message || String(errorInfo);
+            const jsonMatch = errorMessage.match(/\{.*\}/);
+            if (jsonMatch) {
+              try {
+                errorInfo = JSON.parse(jsonMatch[0]);
+              } catch (e) {
+                console.warn('[SESSION_OPEN] Failed to parse JSON from error message:', e);
+              }
+            }
+          }
+          
+          console.log('[SESSION_OPEN] Parsed error info:', errorInfo);
+          
+          // Handle error cases
+          if (errorInfo.code === 'cartridge_in_use') {
+            const minutes = errorInfo.remainingMinutes || 'unknown';
+            pushLine(`🔒 Cartridge locked for ~${minutes} minutes.`);
+            pushLine('Try another cartridge or wait.');
+            onEject(); // Eject this cartridge so user can select another
+            return;
+          }
+          
+          if (errorInfo.code === 'session_conflict') {
+            const ttlSec = errorInfo.details?.ttlSec || 60;
+            pushLine(`🔒 SESSION CONFLICT`);
+            pushLine(`This cartridge is mining elsewhere.`);
+            pushLine(`Locked for ${ttlSec}s`);
+            onEject();
+            return;
+          }
+          
+          if (errorInfo.code === 'session_still_active' || errorInfo.code === 'active_session_elsewhere') {
+            pushLine('⚠️ Active session elsewhere');
+            onEject();
+            return;
+          }
+          
+          if (error.status === 429) {
+            pushLine('⚠️ Rate limited. Slow down!');
+            return;
+          }
+          
+          // Generic error
+          pushLine(`Session open failed: ${errorInfo.message || error.message || 'Unknown error'}`);
+          onEject();
+        }
+      };
+      
+      openSession();
+    }, [cartridge, sessionId, address]); // Run when cartridge/address change, but only if no session yet
+    
+    // =========================================================================
     // SESSION LOGGING (Dev mode)
     // =========================================================================
     
