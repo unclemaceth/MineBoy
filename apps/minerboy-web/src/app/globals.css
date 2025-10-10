@@ -1,7 +1,11 @@
 @import "tailwindcss";
 
-/* Safe-area variables that JS reads */
+/* Safe-area variables + real visual viewport height */
 :root {
+  /* Updated by JS (lib/vh.ts) - real visual viewport height */
+  --vh: 100svh; /* fallback */
+  
+  /* iOS safe areas (notch, home indicator) */
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
@@ -53,6 +57,11 @@ html, body, #__next {
   overscroll-behavior-y: none; /* iOS 16+ */
 }
 
+/* iOS PWA standalone mode: fix -webkit-fill-available */
+html.standalone, body.standalone {
+  height: -webkit-fill-available;
+}
+
 body { 
   margin: 0; 
   -webkit-tap-highlight-color: transparent; 
@@ -83,8 +92,8 @@ input:focus, select:focus, textarea:focus {
 .modal-container {
   position: fixed;
   inset: 0;
-  height: 100dvh; /* iOS-safe dynamic viewport */
-  max-height: 100dvh;
+  height: var(--vh); /* Use real visual viewport height */
+  max-height: var(--vh);
   display: grid;
   place-items: center;
   -webkit-overflow-scrolling: touch;
@@ -94,23 +103,24 @@ input:focus, select:focus, textarea:focus {
 
 /* Modal content/sheet with safe scrolling */
 .modal-sheet {
-  max-height: calc(100dvh - 2rem);
+  max-height: calc(var(--vh) - 2rem); /* Use real visual viewport */
   overflow: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .stage {
   position: fixed;
   inset: 0;
+  width: 100vw;
+  height: var(--vh); /* Use real visual viewport height (updated by JS) */
+  max-height: var(--vh);
   overflow: hidden;
-  /* centering is handled by the child's translate(-50%,-50%) */
   background: #0a0a0a;
-
-  /* viewport height fallbacks – order matters: last supported wins */
-  height: 100vh;
-  height: 100svh;
-  height: 100dvh;
-  padding: 0; /* important: no safe-area padding here */
+  
+  /* Keep content clear of notch + home indicator */
+  padding-top: var(--safe-top);
+  padding-bottom: calc(var(--safe-bottom) + 8px); /* +8px so home bar doesn't kiss content */
 }
 
 :root {

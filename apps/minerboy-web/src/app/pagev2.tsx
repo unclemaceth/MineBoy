@@ -17,6 +17,7 @@ import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { playButtonSound } from '@/lib/sounds';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
 import { api, apiGetIndividualLeaderboard } from "@/lib/api";
+import { bindVisualViewportVH, markStandalone } from '@/lib/vh';
 
 // =============================================================================
 // TYPE DEFINITIONS
@@ -91,6 +92,21 @@ function MineBoyOrchestrator() {
       localStorage.setItem('mineboy_layout', layout);
     }
   }, [layout]);
+  
+  // =========================================================================
+  // VISUAL VIEWPORT HEIGHT - iOS Safari bar handling
+  // =========================================================================
+  
+  useEffect(() => {
+    // Mark if running in PWA standalone mode
+    markStandalone();
+    
+    // Bind visualViewport height to --vh CSS var
+    // This keeps layout correct when iOS Safari bars expand/collapse
+    const cleanup = bindVisualViewportVH();
+    
+    return cleanup;
+  }, []);
   
   // Update mobile state on resize + orientation change
   useEffect(() => {
@@ -438,7 +454,7 @@ function MineBoyOrchestrator() {
             width: `${contentWidth}px`,
             height: `${contentHeight}px`,
             maxWidth: '100vw',        // Never overflow viewport
-            maxHeight: '100svh',      // iOS toolbar-safe
+            maxHeight: 'var(--vh)',   // Use real visual viewport (iOS toolbar-safe)
             transformOrigin: 'top center', // Better on phones
             transform: 'scale(var(--device-scale, 1))',
             position: 'relative',
