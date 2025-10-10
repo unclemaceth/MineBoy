@@ -5,6 +5,8 @@ import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHand
 import MineBoyDevice, { type MineBoyColor } from "./MineBoyDevice";
 import { type OwnedCartridge } from '@/lib/alchemy';
 
+export type MineBoyLayout = 'carousel' | 'row' | 'column';
+
 export interface MineBoyCarouselDevice {
   cartridge?: OwnedCartridge; // Optional - device can exist without cartridge
   color: MineBoyColor;
@@ -12,6 +14,7 @@ export interface MineBoyCarouselDevice {
 
 export interface MineBoyCarouselProps {
   devices: MineBoyCarouselDevice[];
+  layout?: MineBoyLayout; // Layout mode: carousel (stacked), row (horizontal), column (vertical)
   onEject: (index: number) => void;
   playButtonSound?: () => void;
   onOpenWalletModal?: () => void;
@@ -40,7 +43,8 @@ export interface MineBoyCarouselRef {
  * - Exposes navigation methods via ref
  */
 const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(function MineBoyCarousel({ 
-  devices, 
+  devices,
+  layout = 'carousel',
   onEject, 
   playButtonSound = () => {},
   onOpenWalletModal,
@@ -49,6 +53,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   onCartridgeSelected,
   onChangeActive
 }, ref) {
+  
+  const mode = layout;
   
   // Restore active index from localStorage on mount
   const [activeIndex, setActiveIndex] = useState(() => {
@@ -164,6 +170,9 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // ==========================================================================
   
   useEffect(() => {
+    // Only enable global arrow keys in carousel mode
+    if (mode !== 'carousel') return;
+    
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle arrow keys for carousel navigation if:
       // 1. Focus is NOT inside the active device (let device handle its D-pad)
@@ -188,7 +197,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [goToPrevious, goToNext, devices.length, activeIndex]);
+  }, [mode, goToPrevious, goToNext, devices.length, activeIndex]);
   
   // ==========================================================================
   // FOCUS MANAGEMENT
@@ -255,6 +264,58 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // RENDER
   // ==========================================================================
   
+  // Row/Column modes: scrollable, all devices interactive
+  if (mode !== 'carousel') {
+    const isRow = mode === 'row';
+    return (
+      <div style={{ position: 'relative', width: 390, height: 924, overflow: 'hidden' }}>
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            flexDirection: isRow ? 'row' : 'column',
+            gap: 12,
+            padding: isRow ? '0 6px' : '6px 0',
+            overflowX: isRow ? 'auto' : 'hidden',
+            overflowY: isRow ? 'hidden' : 'auto',
+            scrollSnapType: isRow ? 'x mandatory' : 'y mandatory',
+            WebkitOverflowScrolling: 'touch',
+          }}
+        >
+          {devices.map((device, index) => {
+            const stableKey = `${device.color}-${device.cartridge?.tokenId ?? 'empty'}`;
+            return (
+              <div
+                key={stableKey}
+                style={{
+                  flex: '0 0 auto',
+                  width: 390,
+                  height: 924,
+                  scrollSnapAlign: 'start',
+                }}
+              >
+                <MineBoyDevice
+                  ref={(el) => { deviceRefs.current[index] = el; }}
+                  cartridge={device.cartridge}
+                  color={device.color}
+                  isActive={true} // All interactive in row/column mode
+                  onEject={() => onEject(index)}
+                  playButtonSound={playButtonSound}
+                  onOpenWalletModal={onOpenWalletModal}
+                  onOpenWalletManagementModal={onOpenWalletManagementModal}
+                  onOpenNavigationModal={onOpenNavigationModal}
+                  onCartridgeSelected={(cart) => onCartridgeSelected && onCartridgeSelected(cart, index)}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  
+  // Carousel mode: stacked, swipeable
   // Always render from devices array (never empty)
   // Hide navigation if only one device
   const showNavigation = devices.length > 1;

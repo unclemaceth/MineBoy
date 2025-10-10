@@ -5,7 +5,7 @@
 import { useState, useEffect, useRef } from "react";
 import dynamic from 'next/dynamic';
 import Stage from "@/components/Stage";
-import MineBoyCarousel, { type MineBoyCarouselRef } from "@/components/MineBoyCarousel";
+import MineBoyCarousel, { type MineBoyCarouselRef, type MineBoyLayout } from "@/components/MineBoyCarousel";
 import MineBoyDevice, { type MineBoyColor } from "@/components/MineBoyDevice";
 import NavigationModal from '@/components/NavigationModal';
 import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
@@ -91,6 +91,20 @@ function MineBoyOrchestrator() {
     ];
   });
   const [availableCartridges, setAvailableCartridges] = useState<OwnedCartridge[]>([]);
+  
+  // Layout state + persistence
+  const [layout, setLayout] = useState<MineBoyLayout>(() => {
+    if (typeof window === 'undefined') return 'carousel';
+    const saved = localStorage.getItem('mineboy_layout') as MineBoyLayout;
+    if (saved && ['carousel', 'row', 'column'].includes(saved)) return saved;
+    return window.innerWidth >= 900 ? 'row' : 'carousel';
+  });
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mineboy_layout', layout);
+    }
+  }, [layout]);
   
   // Device persistence disabled - always use 3 fixed devices
   // useEffect(() => {
@@ -416,6 +430,7 @@ function MineBoyOrchestrator() {
             <MineBoyCarousel
               ref={carouselRef}
               devices={devices}
+              layout={layout}
               onEject={handleEjectDevice}
         playButtonSound={playButtonSound}
               onOpenWalletModal={openWalletConnectionModal}
@@ -467,8 +482,36 @@ function MineBoyOrchestrator() {
               ›
               </button>
 
-            {/* Bottom: M/I/L buttons */}
+            {/* Bottom: Layout toggle + M/I/L buttons */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Layout Toggle */}
+              <button
+                onClick={() => {
+                  playButtonSound();
+                  setLayout(l => (l === 'carousel' ? 'row' : l === 'row' ? 'column' : 'carousel'));
+                }}
+                style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: '50%',
+                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '3px solid #3a8a4d',
+                  color: '#c8ffc8',
+                  fontSize: 11,
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                }}
+                aria-label="Change layout"
+                title="Change layout"
+              >
+                {layout === 'carousel' ? 'CAR' : layout === 'row' ? 'ROW' : 'COL'}
+              </button>
+
+              {/* Mint */}
                     <button
                 onClick={() => openNavigationPage('mint')}
                       style={{
