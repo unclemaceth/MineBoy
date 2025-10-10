@@ -190,19 +190,31 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // ==========================================================================
   
   if (devices.length === 0) {
+    // Show empty device with placeholder so CONNECT button is visible
+    const placeholderCartridge: OwnedCartridge = {
+      tokenId: '0',
+      contractAddress: '0x0000000000000000000000000000000000000000',
+      chainId: 33139,
+      metadata: {
+        type: 'Empty',
+        multiplier: 1,
+        oresMined: 0,
+        goldMined: 0,
+        videoUrl: '',
+        hashRate: 0,
+        fallbackPng: '',
+      },
+    };
+    
     return (
-      <div style={{
-        width: 390,
-        height: 924,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        color: '#64ff8a',
-        fontFamily: 'Menlo, monospace',
-        fontSize: 14,
-      }}>
-        No devices loaded
-      </div>
+      <MineBoyDevice
+        ref={(el: HTMLDivElement | null) => {}}
+        cartridge={placeholderCartridge}
+        color="blue"
+        isActive={true}
+        onEject={() => {}}
+        playButtonSound={playButtonSound}
+      />
     );
   }
   
