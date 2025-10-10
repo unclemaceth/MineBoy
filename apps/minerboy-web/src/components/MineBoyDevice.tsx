@@ -313,6 +313,41 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     }, [sessionId]); // Only sessionId in deps - cartridge changes don't trigger cleanup
     
     // =========================================================================
+    // DELEGATION/OWNERSHIP ERROR HELPER
+    // =========================================================================
+    
+    // Shows actionable delegation/ownership guidance and keeps device mounted
+    const showOwnershipOrDelegationIssue = (err: any) => {
+      const code = err?.code || err?.error;
+      switch (code) {
+        case 'ownership_required':
+          pushLine('🔒 Ownership required: This hot wallet does not own the cartridge.');
+          if (localVaultAddress) {
+            pushLine(`Tip: You picked a vault-owned cart (${localVaultAddress.slice(0,6)}…${localVaultAddress.slice(-4)}).`);
+            pushLine('Enable delegation at delegate.xyz so this wallet can mine it.');
+          }
+          break;
+        case 'not_delegated':
+          pushLine('🔒 Delegation missing: Vault has not delegated "mineboy" rights to this wallet.');
+          pushLine('Open delegate.xyz and grant rights, then try again.');
+          break;
+        case 'vault_not_owner':
+          pushLine('🔒 Vault mismatch: The provided vault does not own this cartridge.');
+          break;
+        case 'cartridge_locked':
+          pushLine('🔒 Cartridge is currently locked by another owner. Try again later.');
+          break;
+        default:
+          pushLine(`⚠️ ${code || 'Delegation/ownership issue'}`);
+      }
+      pushLine('—');
+      pushLine('You can:');
+      pushLine('• Change Vault (MENU → Cartridge → Vault)');
+      pushLine('• Switch to the owning wallet');
+      pushLine('• Set up delegation at delegate.xyz');
+    };
+    
+    // =========================================================================
     // SESSION OPENING: When cartridge is inserted, open a session
     // =========================================================================
     
@@ -370,6 +405,13 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           
           pushLine(`Session opened! Job ID: ${res.job?.id || 'unknown'}`);
           
+          // Show mining mode
+          if (localVaultAddress) {
+            pushLine(`Delegated mode: mining with hot ${address.slice(0,6)}… using vault ${localVaultAddress.slice(0,6)}…`);
+          } else {
+            pushLine('Direct mode: mining with connected wallet');
+          }
+          
         } catch (error: any) {
           console.error('[SESSION_OPEN] Error:', error);
           
@@ -394,7 +436,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             const minutes = errorInfo.remainingMinutes || 'unknown';
             pushLine(`🔒 Cartridge locked for ~${minutes} minutes.`);
             pushLine('Try another cartridge or wait.');
-            onEject(); // Eject this cartridge so user can select another
+            onEject(); // eject only for true "in use" lock
             return;
           }
           
@@ -415,6 +457,18 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           
           if (error.status === 429) {
             pushLine('⚠️ Rate limited. Slow down!');
+            return;
+          }
+          
+          // NEW: delegation/ownership family (do NOT eject)
+          if (
+            errorInfo.code === 'ownership_required' ||
+            errorInfo.code === 'not_delegated' ||
+            errorInfo.code === 'vault_not_owner' ||
+            errorInfo.code === 'cartridge_locked'
+          ) {
+            showOwnershipOrDelegationIssue(errorInfo);
+            // Keep device mounted. Let user adjust vault / delegation and retry.
             return;
           }
           
