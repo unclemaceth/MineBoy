@@ -11,6 +11,7 @@ import NavigationModal from '@/components/NavigationModal';
 import CartridgeSelectionModal from '@/components/CartridgeSelectionModal';
 import RelayBridgeModalSDK from '@/components/RelayBridgeModalSDK';
 import WalletModal from '@/components/WalletModal';
+import { useWalletModal } from '@/state/walletModal';
 import { useActiveAccount } from '@/hooks/useActiveAccount';
 import { playButtonSound } from '@/lib/sounds';
 import { getOwnedCartridges, type OwnedCartridge } from '@/lib/alchemy';
@@ -86,6 +87,7 @@ function MineBoyOrchestrator() {
   // =========================================================================
   
   const { address, isConnected } = useActiveAccount();
+  const { open: openWalletConnectionModal } = useWalletModal();
   
   // =========================================================================
   // NAVIGATION HELPERS
@@ -368,7 +370,7 @@ function MineBoyOrchestrator() {
               devices={devices}
               onEject={handleEjectDevice}
               playButtonSound={playButtonSound}
-              onOpenWalletModal={() => setShowWalletModal(true)}
+              onOpenWalletModal={openWalletConnectionModal}
             />
           </div>
 
