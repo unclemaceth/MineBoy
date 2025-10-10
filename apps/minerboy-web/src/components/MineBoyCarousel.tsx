@@ -80,6 +80,15 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   const touchStartY = useRef<number | null>(null);
   
   // ==========================================================================
+  // DEVICE REFS SYNC
+  // ==========================================================================
+  
+  // Keep deviceRefs array in sync with devices array length
+  useEffect(() => {
+    deviceRefs.current.length = devices.length; // truncate or noop
+  }, [devices.length]);
+  
+  // ==========================================================================
   // ACTIVE INDEX PERSISTENCE & NOTIFICATION
   // ==========================================================================
   
@@ -99,6 +108,20 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   useEffect(() => {
     setActiveIndex(prev => Math.min(prev, Math.max(0, devices.length - 1)));
   }, [devices.length, mode]);
+  
+  // ==========================================================================
+  // DEVICE STATE ANALYTICS
+  // ==========================================================================
+  
+  // Emit analytics when device configuration changes
+  useEffect(() => {
+    if (typeof window === 'undefined' || !(window as any).gtag) return;
+    (window as any).gtag('event', 'carousel_state', {
+      device_count: devices.length,
+      colors: devices.map(d => d.color).join(','),
+      layout: mode,
+    });
+  }, [devices, mode]);
   
   // ==========================================================================
   // NAVIGATION HANDLERS
@@ -175,15 +198,17 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
     
     const handleKeyDown = (e: KeyboardEvent) => {
       // Only handle arrow keys for carousel navigation if:
-      // 1. Focus is NOT inside the active device (let device handle its D-pad)
+      // 1. Focus is NOT inside ANY MineBoy device (let device handle its D-pad)
       // 2. Multiple devices exist
       if (devices.length <= 1) return;
       
-      const activeDevice = deviceRefs.current[activeIndex];
-      const focusInsideActive = activeDevice && activeDevice.contains(document.activeElement);
+      // Check if focus is inside any device
+      const anyContainsFocus = deviceRefs.current.some(
+        el => el && el.contains(document.activeElement)
+      );
       
-      // If focus is inside the active device, let it handle arrows (D-pad)
-      if (focusInsideActive) return;
+      // If focus is inside any device, let it handle arrows (D-pad)
+      if (anyContainsFocus) return;
       
       // Otherwise, carousel can handle navigation
       if (e.key === 'ArrowLeft') {
@@ -197,7 +222,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [mode, goToPrevious, goToNext, devices.length, activeIndex]);
+  }, [mode, goToPrevious, goToNext, devices.length]);
   
   // ==========================================================================
   // FOCUS MANAGEMENT
@@ -205,12 +230,26 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   
   useEffect(() => {
     // Move focus to the active device when index or layout changes
+    // Only focus if the element is focusable (tabIndex >= 0)
     const el = deviceRefs.current[activeIndex] ?? deviceRefs.current[0];
     if (!el) return;
-    if (document.activeElement !== el) {
+    if (el.tabIndex >= 0 && document.activeElement !== el) {
       el.focus();
     }
   }, [activeIndex, mode]);
+  
+  // ==========================================================================
+  // VAULT ADDRESS CHANGE HANDLING
+  // ==========================================================================
+  
+  // Keep focus on active device when vault address changes
+  useEffect(() => {
+    if (!vaultAddress) return;
+    const el = deviceRefs.current[activeIndex];
+    if (el && el.tabIndex >= 0) {
+      el.focus();
+    }
+  }, [vaultAddress, activeIndex]);
   
   // ==========================================================================
   // TOUCH/SWIPE GESTURES
@@ -230,8 +269,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
     const deltaX = touchEndX - touchStartX.current;
     const deltaY = touchEndY - touchStartY.current;
     
-    // Threshold for swipe (40px recommended for mobile)
-    const threshold = 40;
+    // Dynamic swipe threshold (12% of width, clamped between 30-80px)
+    const threshold = Math.max(30, Math.min(80, e.currentTarget.clientWidth * 0.12));
     
     // Only trigger if horizontal swipe is dominant (not vertical scroll)
     if (Math.abs(deltaX) > threshold && Math.abs(deltaX) > Math.abs(deltaY)) {
@@ -326,6 +365,9 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // Hide navigation if only one device
   const showNavigation = devices.length > 1;
   
+  // Stable z-stack for non-active devices (active gets 100, others keep their relative depth)
+  const baseZ = devices.map((_, i) => i + 1); // 1..N
+  
   return (
     <div
       role="region"
@@ -357,7 +399,7 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
             style={{
               position: 'absolute',
               inset: 0,
-              zIndex: isActive ? 3 : (devices.length - index), // Active on top
+              zIndex: isActive ? 100 : baseZ[index], // Active gets 100, others keep relative depth
               pointerEvents: isActive ? 'auto' : 'none', // Only active device receives clicks
             }}
           >
