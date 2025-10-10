@@ -8,15 +8,32 @@ interface Visualizer3x3Props {
   hideHud?: boolean;
   hideHashLine?: boolean;
   nibs?: number[];
+  // Device-local state (overrides global session state)
+  deviceMining?: boolean;
+  deviceLastFound?: { hash: string; tierName?: string };
+  deviceStatus?: 'idle' | 'mining' | 'found' | 'claiming' | 'claimed' | 'error';
+  deviceHasCartridge?: boolean;
 }
 
 export default function Visualizer3x3({ 
   fullscreen = true, 
   hideHud = true, 
   hideHashLine = true,
-  nibs
+  nibs,
+  deviceMining,
+  deviceLastFound,
+  deviceStatus,
+  deviceHasCartridge,
 }: Visualizer3x3Props) {
-  const { mining, lastFound, job, claimState, setClaimState } = useSession();
+  const globalSession = useSession();
+  
+  // Use device-local state if provided, otherwise fall back to global session
+  const mining = deviceMining !== undefined ? deviceMining : globalSession.mining;
+  const lastFound = deviceLastFound || globalSession.lastFound;
+  const job = globalSession.job;
+  const claimState = globalSession.claimState;
+  const setClaimState = globalSession.setClaimState;
+  const hasCartridge = deviceHasCartridge !== undefined ? deviceHasCartridge : true;
   const [currentHash, setCurrentHash] = useState('0x0000000000000000000000000000000000000000000000000000000000000000');
   const [containerSize, setContainerSize] = useState({ width: 300, height: 300 });
   
@@ -175,63 +192,102 @@ export default function Visualizer3x3({
         </div>
       )}
 
-      {/* Claim badge when hash found and ready to claim */}
-      {lastFound && claimState === 'ready' && (
-        <div 
-          onClick={() => setClaimState('overlay')}
-          role="button"
-          aria-label="Open claim overlay"
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(100, 255, 138, 0.92)',
-            color: '#000',
-            padding: `${Math.max(6, tileSize * 0.12)}px ${Math.max(12, tileSize * 0.25)}px`,
-            borderRadius: Math.max(6, tileSize * 0.12),
-            fontSize: Math.max(11, tileSize * 0.18),
-            fontWeight: 'bold',
-            fontFamily: 'Menlo, monospace',
-            animation: 'claimPulse 1s ease-in-out infinite',
-            boxShadow: '0 0 20px rgba(100, 255, 138, 0.5)',
-            zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span>{lastFound.tierName || getTierInfo(lastFound.hash).name}</span>
-        </div>
-      )}
-
-      {/* Banner after claim completion - hide when mining */}
-      {!lastFound && claimState === 'idle' && !mining && (
-        <div 
-          style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'rgba(100, 255, 138, 0.92)',
-            color: '#000',
-            padding: `${Math.max(6, tileSize * 0.12)}px ${Math.max(12, tileSize * 0.25)}px`,
-            borderRadius: Math.max(6, tileSize * 0.12),
-            fontSize: Math.max(11, tileSize * 0.18),
-            fontWeight: 'bold',
-            fontFamily: 'Menlo, monospace',
-            animation: 'claimPulse 1s ease-in-out infinite',
-            boxShadow: '0 0 20px rgba(100, 255, 138, 0.5)',
-            zIndex: 10,
-            display: 'flex',
-            alignItems: 'center',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span>READY TO MINE</span>
-        </div>
-      )}
+      {/* Banner logic based on device state */}
+      {(() => {
+        // No banner while mining
+        if (mining) return null;
+        
+        // Show tier name when hash found (ready to claim)
+        if (lastFound && (deviceStatus === 'found' || claimState === 'ready')) {
+          return (
+            <div 
+              onClick={() => setClaimState('overlay')}
+              role="button"
+              aria-label="Open claim overlay"
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(100, 255, 138, 0.92)',
+                color: '#000',
+                padding: `${Math.max(6, tileSize * 0.12)}px ${Math.max(12, tileSize * 0.25)}px`,
+                borderRadius: Math.max(6, tileSize * 0.12),
+                fontSize: Math.max(11, tileSize * 0.18),
+                fontWeight: 'bold',
+                fontFamily: 'Menlo, monospace',
+                animation: 'claimPulse 1s ease-in-out infinite',
+                boxShadow: '0 0 20px rgba(100, 255, 138, 0.5)',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>{lastFound.tierName || getTierInfo(lastFound.hash as `0x${string}`).name}</span>
+            </div>
+          );
+        }
+        
+        // No cartridge inserted
+        if (!hasCartridge) {
+          return (
+            <div 
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(138, 138, 138, 0.92)',
+                color: '#000',
+                padding: `${Math.max(6, tileSize * 0.12)}px ${Math.max(12, tileSize * 0.25)}px`,
+                borderRadius: Math.max(6, tileSize * 0.12),
+                fontSize: Math.max(11, tileSize * 0.18),
+                fontWeight: 'bold',
+                fontFamily: 'Menlo, monospace',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>INSERT CARTRIDGE</span>
+            </div>
+          );
+        }
+        
+        // Idle state (cartridge inserted, ready to mine)
+        if (deviceStatus === 'idle' || (!lastFound && claimState === 'idle')) {
+          return (
+            <div 
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                backgroundColor: 'rgba(100, 255, 138, 0.92)',
+                color: '#000',
+                padding: `${Math.max(6, tileSize * 0.12)}px ${Math.max(12, tileSize * 0.25)}px`,
+                borderRadius: Math.max(6, tileSize * 0.12),
+                fontSize: Math.max(11, tileSize * 0.18),
+                fontWeight: 'bold',
+                fontFamily: 'Menlo, monospace',
+                animation: 'claimPulse 1s ease-in-out infinite',
+                boxShadow: '0 0 20px rgba(100, 255, 138, 0.5)',
+                zIndex: 10,
+                display: 'flex',
+                alignItems: 'center',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span>READY TO MINE</span>
+            </div>
+          );
+        }
+        
+        return null;
+      })()}
 
       <style jsx>{`
         @keyframes pulse {

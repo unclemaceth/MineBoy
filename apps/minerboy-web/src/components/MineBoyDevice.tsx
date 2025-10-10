@@ -1412,7 +1412,13 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
                 )}
               </div>
             ) : (
-              <Visualizer3x3 nibs={visualizerNibs.map(v => v.nib)} />
+              <Visualizer3x3 
+                nibs={visualizerNibs.map(v => v.nib)} 
+                deviceMining={mining}
+                deviceLastFound={lastFound}
+                deviceStatus={status}
+                deviceHasCartridge={!!cartridge}
+              />
             )}
           </div>
         </div>
