@@ -79,11 +79,12 @@ function TerminalTypewriter({ lines }: { lines: string[] }) {
 // =============================================================================
 
 export interface MineBoyDeviceProps {
-  cartridge: OwnedCartridge;
+  cartridge?: OwnedCartridge; // Optional - device can exist without cartridge inserted
   color: MineBoyColor;
   isActive: boolean;
   onEject: () => void;
   playButtonSound: () => void;
+  onCartridgeSelected?: (cartridge: OwnedCartridge) => void; // Callback when user selects a cartridge
   
   // Shared from parent
   vaultAddress?: string;
@@ -108,6 +109,8 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     color, 
     isActive, 
     onEject,
+    playButtonSound,
+    onCartridgeSelected,
     vaultAddress = '',
     scrollingMessages = ["MineBoy™ it Mines stuff!"],
     seasonPoints = 0,
@@ -142,6 +145,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     const [showCartridgeModalV2, setShowCartridgeModalV2] = useState(false);
     const [showAlchemyCartridges, setShowAlchemyCartridges] = useState(false);
     const [progressText, setProgressText] = useState('No job');
+    const [localVaultAddress, setLocalVaultAddress] = useState(vaultAddress);
     
     // =========================================================================
     // WALLET & ACCOUNT
@@ -224,7 +228,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         pushLine(`Found hash: ${hash.slice(0, 10)}...`);
         pushLine(`Press B to submit solution`);
         setMode('visual');
-        console.log('[MineBoyDevice][FOUND]', { color, tokenId: cartridge.tokenId, result: frozenResult });
+        console.log('[MineBoyDevice][FOUND]', { color, tokenId: cartridge?.tokenId, result: frozenResult });
       },
       onError: (message) => {
         pushLine(`Error: ${message}`);
@@ -233,7 +237,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         stopMiningSound();
       },
       onStopped: async (reason) => {
-        console.log('[MineBoyDevice][STOPPED]', { color, tokenId: cartridge.tokenId, reason });
+        console.log('[MineBoyDevice][STOPPED]', { color, tokenId: cartridge?.tokenId, reason });
         
         if (reason === 'window_exhausted') {
           storeStopMining();
@@ -268,13 +272,13 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     
     useEffect(() => {
       return () => {
-        console.log(`[MineBoyDevice] Unmounting ${color} cart ${cartridge.tokenId}, cleaning up`);
+        console.log(`[MineBoyDevice] Unmounting ${color} cart ${cartridge?.tokenId || 'none'}, cleaning up`);
         miner.stop();
         if (sessionId) {
           api.close(sessionId).catch(console.error);
         }
       };
-    }, [cartridge.tokenId, color, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [cartridge?.tokenId, color, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
     
     // =========================================================================
     // SESSION LOGGING (Dev mode)
@@ -284,14 +288,14 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
       if (process.env.NODE_ENV === 'development' && sessionId && mining) {
         console.log(`[MineBoyDevice][${color}] Mining:`, {
           sessionId: sessionId.slice(0, 8) + '...',
-          tokenId: cartridge.tokenId,
+          tokenId: cartridge?.tokenId,
           minerId: getMinerIdCached().slice(0, 8) + '...',
           isActive,
           hr,
           attempts,
         });
       }
-    }, [sessionId, cartridge.tokenId, color, isActive, mining, hr, attempts]);
+    }, [sessionId, cartridge?.tokenId, color, isActive, mining, hr, attempts]);
     
     // =========================================================================
     // BOOT SEQUENCE
@@ -337,11 +341,11 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     
     // Heartbeat
     useEffect(() => {
-      if (!sessionId) return;
+      if (!sessionId || !cartridge) return;
       
       const heartbeatFn = async () => {
         try {
-          if (!address) return;
+          if (!address || !cartridge) return;
           const chainId = cartridge.chainId;
           const contract = cartridge.contractAddress as `0x${string}`;
           const minerId = getMinerIdCached();
@@ -477,17 +481,33 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     };
     
     const handleInsertCartridge = () => {
+      console.log('[handleInsertCartridge] Called', { isConnected, sessionId });
       if (isConnected && !sessionId) {
+        console.log('[handleInsertCartridge] Opening cartridge modal');
         setShowCartridgeModalV2(true);
       } else if (!isConnected) {
+        console.log('[handleInsertCartridge] Not connected');
         pushLine('Connect wallet first!');
       } else {
+        console.log('[handleInsertCartridge] Already inserted');
         pushLine('Cartridge already inserted');
       }
     };
     
-    const fetchLockInfo = async () => {
+    const handleAlchemyCartridgeSelect = async (ownedCartridge: OwnedCartridge) => {
       if (!address) return;
+      
+      setShowAlchemyCartridges(false);
+      console.log('[MineBoyDevice] Cartridge selected:', ownedCartridge);
+      
+      // If we have a callback, pass the cartridge to the parent (carousel mode)
+      if (onCartridgeSelected) {
+        onCartridgeSelected(ownedCartridge);
+      }
+    };
+    
+    const fetchLockInfo = async () => {
+      if (!address || !cartridge) return;
       // Mock lock info for debug modal
       const sid = getOrCreateSessionId(parseInt(cartridge.tokenId));
       const mockLockInfo = {
@@ -598,8 +618,8 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         setStatus('claiming');
         pushLine('Submitting claim...');
         
-        if (!sessionId || !job) {
-          throw new Error('No active session or job');
+        if (!sessionId || !job || !cartridge) {
+          throw new Error('No active session, job, or cartridge');
         }
         
         const minerId = getMinerIdCached();
@@ -1006,11 +1026,11 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         }}
         tabIndex={isActive ? 0 : -1}
         role="application"
-        aria-label={`MineBoy ${color} - Cartridge ${cartridge.tokenId}`}
+        aria-label={`MineBoy ${color} - Cartridge ${cartridge?.tokenId || 'None'}`}
       >
         {/* Accessibility heading */}
         <h2 style={{ position: 'absolute', left: -10000, top: 'auto', width: 1, height: 1, overflow: 'hidden' }}>
-          MineBoy {color.charAt(0).toUpperCase() + color.slice(1)} - Mining with Cartridge #{cartridge.tokenId}
+          MineBoy {color.charAt(0).toUpperCase() + color.slice(1)} - {cartridge ? `Mining with Cartridge #${cartridge.tokenId}` : 'No Cartridge'}
         </h2>
 
         {/* HUD at the top */}
@@ -1022,8 +1042,8 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           zIndex: 50,
         }}>
           <HUD
-            pickaxeType={cartridge.metadata?.type}
-            pickaxeId={cartridge.tokenId}
+            pickaxeType={cartridge?.metadata?.type}
+            pickaxeId={cartridge?.tokenId || '0'}
             multiplier={npcBalance >= 10 ? 1.5 : npcBalance >= 1 ? 1.2 : 1.0}
             multiplierSource={npcBalance >= 1 ? `NPC` : "BASE"}
             seasonPoints={seasonPoints}
@@ -1542,6 +1562,18 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             }}>
               CARTRIDGE
             </div>
+            
+            {/* Cartridge connector pins */}
+            <div style={{
+              position: "absolute",
+              bottom: 36,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 86,
+              height: 4,
+              background: "repeating-linear-gradient(90deg, #666 0px, #666 2px, #333 2px, #333 4px)",
+              borderRadius: 1,
+            }} />
           </div>
         )}
 
@@ -1796,21 +1828,23 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
                   </div>
                 </div>
 
-                <div style={{
-                  padding: '12px',
-                  background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
-                  border: '2px solid #4a7d5f',
-                  borderRadius: '8px'
-                }}>
-                  <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
-                    CARTRIDGE INFO
+                {cartridge && (
+                  <div style={{
+                    padding: '12px',
+                    background: 'linear-gradient(180deg, #0f2216, #1a3d24)',
+                    border: '2px solid #4a7d5f',
+                    borderRadius: '8px'
+                  }}>
+                    <div style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: '8px', color: '#4a7d5f' }}>
+                      CARTRIDGE INFO
+                    </div>
+                    <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
+                      <div><strong>Token ID:</strong> {cartridge.tokenId}</div>
+                      <div><strong>Contract:</strong> {cartridge.contractAddress.slice(0, 6)}...{cartridge.contractAddress.slice(-4)}</div>
+                      <div><strong>Chain ID:</strong> {cartridge.chainId}</div>
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', lineHeight: '1.4' }}>
-                    <div><strong>Token ID:</strong> {cartridge.tokenId}</div>
-                    <div><strong>Contract:</strong> {cartridge.contractAddress.slice(0, 6)}...{cartridge.contractAddress.slice(-4)}</div>
-                    <div><strong>Chain ID:</strong> {cartridge.chainId}</div>
-                  </div>
-                </div>
+                )}
 
                 <div style={{
                   padding: '12px',
@@ -1871,6 +1905,27 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             onClose={() => setShowMineStrategyModal(false)}
           />
         )}
+
+        {/* Cartridge Selection Modals */}
+        <CartridgeModalV2
+          isOpen={showCartridgeModalV2}
+          onClose={() => setShowCartridgeModalV2(false)}
+          onLoadCartridges={() => {
+            setShowCartridgeModalV2(false);
+            setShowAlchemyCartridges(true);
+          }}
+          vaultAddress={localVaultAddress}
+          onVaultChange={setLocalVaultAddress}
+          playButtonSound={playButtonSound}
+        />
+
+        <CartridgeSelectionModal
+          isOpen={showAlchemyCartridges}
+          onClose={() => setShowAlchemyCartridges(false)}
+          onSelectCartridge={handleAlchemyCartridgeSelect}
+          lockedCartridge={null}
+          vaultAddress={localVaultAddress || undefined}
+        />
       </div>
     );
   }

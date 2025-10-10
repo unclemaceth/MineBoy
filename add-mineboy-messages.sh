@@ -2,7 +2,7 @@
 # Re-add MINEBOY sponsored messages (these will persist now!)
 
 API="https://mineboy-g5xo.onrender.com"
-TOKEN="test-admin-token-12345"
+TOKEN="1e97e071f3e42553dba423ce05b10c10"
 
 echo "🎬 Adding MINEBOY sponsored messages..."
 echo ""
@@ -43,7 +43,7 @@ echo ""
 curl -s -X POST "$API/v2/admin/messages/mineboy" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer $TOKEN" \
-  -d '{"message": "Buy $PNUTS by Gs on Ape - or Rida will make WAPEY WAPEY your collection!"}' | jq
+  -d '{"message": "Buy $PNUTS by Gs on Ape - or Rida will WAPEY WAPEY your collection!"}' | jq
 
 echo ""
 echo "✅ Messages added! Checking banner..."

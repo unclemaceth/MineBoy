@@ -15,6 +15,7 @@ export interface MineBoyCarouselProps {
   onEject: (index: number) => void;
   playButtonSound?: () => void;
   onOpenWalletModal?: () => void;
+  onCartridgeSelected?: (cartridge: OwnedCartridge) => void;
 }
 
 export interface MineBoyCarouselRef {
@@ -39,7 +40,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   devices, 
   onEject, 
   playButtonSound = () => {},
-  onOpenWalletModal
+  onOpenWalletModal,
+  onCartridgeSelected
 }, ref) {
   
   const [activeIndex, setActiveIndex] = useState(0);
@@ -192,31 +194,16 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   // ==========================================================================
   
   if (devices.length === 0) {
-    // Show empty device with placeholder so CONNECT button is visible
-    const placeholderCartridge: OwnedCartridge = {
-      tokenId: '0',
-      contractAddress: '0x0000000000000000000000000000000000000000',
-      chainId: 33139,
-      metadata: {
-        type: 'Empty',
-        multiplier: 1,
-        oresMined: 0,
-        goldMined: 0,
-        videoUrl: '',
-        hashRate: 0,
-        fallbackPng: '',
-      },
-    };
-    
+    // Show real device with no cartridge - user will connect wallet and insert cartridge
     return (
       <MineBoyDevice
         ref={(el: HTMLDivElement | null) => {}}
-        cartridge={placeholderCartridge}
         color="blue"
         isActive={true}
         onEject={() => {}}
         playButtonSound={playButtonSound}
         onOpenWalletModal={onOpenWalletModal}
+        onCartridgeSelected={onCartridgeSelected}
       />
     );
   }
