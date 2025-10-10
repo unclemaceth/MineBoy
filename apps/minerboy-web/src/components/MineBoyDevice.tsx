@@ -92,7 +92,8 @@ export interface MineBoyDeviceProps {
   seasonPoints?: number;
   
   // Modal handlers passed from parent (global modals)
-  onOpenWalletModal?: () => void;
+  onOpenWalletModal?: () => void; // Opens wallet connection modal
+  onOpenWalletManagementModal?: () => void; // Opens wallet management modal (transfer/swap)
   onOpenNavigationModal?: (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => void;
   
   className?: string;
@@ -115,6 +116,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     scrollingMessages = ["MineBoy™ it Mines stuff!"],
     seasonPoints = 0,
     onOpenWalletModal,
+    onOpenWalletManagementModal,
     onOpenNavigationModal,
     className, 
     style 
@@ -1452,7 +1454,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
 
         {/* WALLET Button */}
         <button
-          onClick={() => { playButtonSound(); if (onOpenWalletModal) onOpenWalletModal(); }}
+          onClick={() => { playButtonSound(); if (onOpenWalletManagementModal) onOpenWalletManagementModal(); }}
           style={{
             position: "absolute",
             bottom: 175,
@@ -1874,32 +1876,33 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           </div>
         )}
 
-        {/* Debug Modal */}
+        {/* Debug Modal - positioned absolutely within device */}
         {showDebugModal && (
           <div style={{
-            position: 'fixed',
-            top: 0,
+            position: 'absolute',
+            top: HUD_HEIGHT,
             left: 0,
             right: 0,
             bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            zIndex: 1000
+            zIndex: 1000,
+            overflow: 'auto'
           }}>
             <div style={{
               backgroundColor: '#1a3d24',
               border: '3px solid #4a7d5f',
               borderRadius: '12px',
-              padding: '20px',
-              maxWidth: '500px',
-              width: '90%',
-              maxHeight: '80vh',
+              padding: '16px',
+              width: '340px',
+              maxHeight: '720px',
               overflow: 'auto',
               fontFamily: 'Menlo, monospace',
               color: '#c8ffc8',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)'
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+              fontSize: '11px'
             }}>
               <div style={{
                 display: 'flex',

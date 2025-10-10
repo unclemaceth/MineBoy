@@ -423,6 +423,8 @@ function MineBoyOrchestrator() {
               onEject={handleEjectDevice}
         playButtonSound={playButtonSound}
               onOpenWalletModal={openWalletConnectionModal}
+              onOpenWalletManagementModal={() => setShowWalletModal(true)}
+              onOpenNavigationModal={openNavigationPage}
               onCartridgeSelected={handleAlchemyCartridgeSelect}
       />
           </div>

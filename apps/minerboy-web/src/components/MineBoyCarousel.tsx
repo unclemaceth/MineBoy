@@ -15,7 +15,10 @@ export interface MineBoyCarouselProps {
   onEject: (index: number) => void;
   playButtonSound?: () => void;
   onOpenWalletModal?: () => void;
+  onOpenWalletManagementModal?: () => void;
+  onOpenNavigationModal?: (page: 'leaderboard' | 'mint' | 'instructions' | 'welcome') => void;
   onCartridgeSelected?: (cartridge: OwnedCartridge, deviceIndex: number) => void;
+  onChangeActive?: (index: number) => void; // Notify parent when active device changes
 }
 
 export interface MineBoyCarouselRef {
@@ -41,15 +44,44 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   onEject, 
   playButtonSound = () => {},
   onOpenWalletModal,
-  onCartridgeSelected
+  onOpenWalletManagementModal,
+  onOpenNavigationModal,
+  onCartridgeSelected,
+  onChangeActive
 }, ref) {
   
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Restore active index from localStorage on mount
+  const [activeIndex, setActiveIndex] = useState(() => {
+    if (typeof window === 'undefined') return 0;
+    try {
+      const saved = localStorage.getItem('mineboy_active_index');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        return Math.min(Math.max(0, parsed), devices.length - 1);
+      }
+    } catch (e) {
+      console.warn('[Carousel] Failed to restore active index:', e);
+    }
+    return 0;
+  });
+  
   const deviceRefs = useRef<(HTMLDivElement | null)[]>([]);
   
   // Touch/swipe handling
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
+  
+  // ==========================================================================
+  // ACTIVE INDEX PERSISTENCE & NOTIFICATION
+  // ==========================================================================
+  
+  // Persist active index to localStorage and notify parent
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('mineboy_active_index', String(activeIndex));
+    }
+    onChangeActive?.(activeIndex);
+  }, [activeIndex, onChangeActive]);
   
   // ==========================================================================
   // ACTIVE INDEX BOUNDS CHECKING
@@ -262,6 +294,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
               onEject={() => onEject(index)}
               playButtonSound={playButtonSound}
               onOpenWalletModal={onOpenWalletModal}
+              onOpenWalletManagementModal={onOpenWalletManagementModal}
+              onOpenNavigationModal={onOpenNavigationModal}
               onCartridgeSelected={(cart) => onCartridgeSelected && onCartridgeSelected(cart, index)}
             />
           </div>
