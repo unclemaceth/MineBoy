@@ -156,7 +156,7 @@ function MineBoyOrchestrator() {
       // Mobile: scale to fit full screen (375-428px typical mobile width)
       // Desktop: use standard dimensions with side panels
       const BASE_W = mobile ? 390 : 585; // mobile: device only, desktop: device + panels
-      const BASE_H = mobile ? 820 : 924; // mobile: shorter for better fit
+      const BASE_H = 924; // MUST match MineBoyDevice.tsx const H = 924
       
       // Use visualViewport dimensions if available (more accurate on iOS)
       const vw = vv ? vv.width : window.innerWidth;
@@ -164,7 +164,11 @@ function MineBoyOrchestrator() {
       
       // Subtract safe-area insets to match the padding we apply on outer container
       // This ensures the device scales to fit the ACTUAL available space
-      const availableVH = Math.max(0, rawVH - safeTop() - safeBottom() - 8);
+      // Only subtract safe areas if they exist (some devices report 0px)
+      const topInset = safeTop();
+      const bottomInset = safeBottom();
+      const buffer = (topInset + bottomInset) > 0 ? 8 : 0; // Only add buffer if safe areas exist
+      const availableVH = Math.max(0, rawVH - topInset - bottomInset - buffer);
       
       let scaleRaw: number;
       if (mobile) {
@@ -444,7 +448,7 @@ function MineBoyOrchestrator() {
       {(() => {
         // Calculate dimensions using state (not direct window.innerWidth)
         const DEVICE_W = isMobile ? 390 : 585;
-        const DEVICE_H = isMobile ? 820 : 924;
+        const DEVICE_H = 924; // MUST match MineBoyDevice.tsx const H = 924
         const PANELS = isMobile ? 0 : 195;
         const GAP = 12;
 
