@@ -1,32 +1,37 @@
-'use client'
-import { useDisconnect } from 'wagmi' // Glyph disconnect
-import { useWeb3Modal } from '@web3modal/wagmi/react' // Web3Modal disconnect
-import { useWalletStore } from '@/state/wallet'
+'use client';
+import { useDisconnect } from 'wagmi';
+import { useWalletStore } from '@/state/wallet';
+import { useActiveAccount } from './useActiveAccount';
+import { getAccount } from 'wagmi/actions';
+import { wagmiConfig } from '@/lib/wallet';
 
 export function useActiveDisconnect() {
-  const { disconnect } = useDisconnect() // Glyph disconnect
-  const { close } = useWeb3Modal() // Web3Modal disconnect
-  const { source } = useWalletStore()
+  const { disconnect } = useDisconnect();
+  const { provider } = useActiveAccount();
 
   const disconnectWallet = async () => {
-    console.log('[useActiveDisconnect] Disconnecting, source:', source)
+    console.log('[useActiveDisconnect] Disconnecting, provider:', provider);
     
     try {
-      if (source === 'wc') {
-        // Disconnect from Web3Modal
-        console.log('[useActiveDisconnect] Disconnecting from Web3Modal')
-        await close()
-        // Clear the store
-        useWalletStore.getState().setExternalAddress(null, null)
-      } else {
-        // Disconnect from Glyph
-        console.log('[useActiveDisconnect] Disconnecting from Glyph')
-        disconnect()
+      // This calls the active connector's disconnect under wagmi (covers WalletConnect & Glyph)
+      await disconnect();
+
+      // Extra safety: if something held onto a connector, nuke it explicitly
+      const acc = getAccount(wagmiConfig);
+      if (acc?.connector?.disconnect) {
+        try { 
+          await acc.connector.disconnect?.(); 
+        } catch (e) {
+          console.warn('[useActiveDisconnect] Connector disconnect failed:', e);
+        }
       }
     } catch (error) {
-      console.error('[useActiveDisconnect] Disconnect error:', error)
+      console.error('[useActiveDisconnect] Disconnect error:', error);
+    } finally {
+      // Clear your external address so UI instantly reflects state
+      useWalletStore.getState().setExternalAddress(null, null);
     }
-  }
+  };
 
-  return { disconnectWallet }
+  return { disconnectWallet };
 }

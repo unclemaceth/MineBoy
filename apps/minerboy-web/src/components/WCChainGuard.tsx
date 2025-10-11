@@ -9,7 +9,9 @@ export default function WCChainGuard() {
 
   useEffect(() => {
     if (!isConnected || provider !== 'wc') return;
-    switchChain(wagmiConfig, { chainId: apechain.id }).catch(() => {});
+    switchChain(wagmiConfig, { chainId: apechain.id }).catch(() => {
+      console.warn('[WCChainGuard] Could not switch to ApeChain');
+    });
   }, [isConnected, provider]);
 
   return null;

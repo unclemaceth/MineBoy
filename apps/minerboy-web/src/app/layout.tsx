@@ -9,6 +9,7 @@ import GlyphWalletProvider from "./GlyphWalletProvider";
 import W3MInit from "./W3MInit";
 import WCAccountBridge from '@/components/WCAccountBridge';
 import WCChainGuard from '@/components/WCChainGuard';
+import DebugWalletBadge from '@/components/DebugWalletBadge';
 import ThirdwebProviderWrapper from "./ThirdwebProvider";
 
 const geistSans = Geist({
@@ -86,6 +87,8 @@ export default function RootLayout({
             {children}
             {/* mounted once globally */}
             <GlobalWalletModal />
+            {/* Debug badge - only visible in dev */}
+            <DebugWalletBadge />
                 {/* Sits on top when maintenance is enabled */}
                 <MaintenanceGate />
                 {/* Season 1 Beta Test ended - commented out for testing */}
