@@ -143,7 +143,7 @@ export default function NavigationModal({ isOpen, page, onClose }: NavigationMod
           style={{
             padding: '20px',
             overflowY: 'auto',
-            maxHeight: 'calc(90vh - 80px)',
+            maxHeight: 'calc(var(--vh) - 96px)', // iOS-safe: subtract padding (16px) + header (80px)
             fontFamily: 'monospace',
             color: '#c8ffc8'
           }}
