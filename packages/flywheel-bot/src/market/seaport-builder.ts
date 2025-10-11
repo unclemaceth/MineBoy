@@ -279,13 +279,18 @@ export async function createListing(
     const priceWei = ethers.parseEther(priceAPE).toString();
     
     console.log(`[Seaport] Creating listing for NFT #${tokenId} at ${priceAPE} APE...`);
+    if (treasuryAddress) {
+      console.log(`[Seaport] Sale proceeds will go to treasury: ${treasuryAddress}`);
+    }
     
     // Create and sign Seaport order
     const { order, signature, domain } = await createSeaportListing(
       wallet,
       nftContract,
       tokenId,
-      priceWei
+      priceWei,
+      7 * 24 * 3600, // 7 days
+      treasuryAddress // CRITICAL: Pass treasury address so proceeds go there for burning
     );
     
     // Store in backend
