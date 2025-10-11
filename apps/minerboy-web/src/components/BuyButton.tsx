@@ -110,12 +110,14 @@ export function BuyButton({ tokenId, priceLabel, onSuccess, onError }: BuyButton
         className="px-4 py-2 rounded-md shadow disabled:opacity-50"
         disabled
         style={{
+          width: '100%',
           backgroundColor: '#1a4d2a',
           border: '2px solid #2d5a3d',
           color: '#c8ffc8',
           cursor: 'not-allowed',
           fontWeight: 'bold',
-          fontSize: '13px'
+          fontSize: '13px',
+          boxSizing: 'border-box'
         }}
         title="Purchase complete!"
       >
@@ -129,6 +131,7 @@ export function BuyButton({ tokenId, priceLabel, onSuccess, onError }: BuyButton
       onClick={handleBuy}
       disabled={busy || !address}
       style={{
+        width: '100%',
         backgroundColor: busy || !address ? '#444' : '#ffd700',
         color: busy || !address ? '#888' : '#000',
         border: 'none',
@@ -139,7 +142,7 @@ export function BuyButton({ tokenId, priceLabel, onSuccess, onError }: BuyButton
         cursor: busy || !address ? 'not-allowed' : 'pointer',
         transition: 'opacity 0.2s',
         opacity: busy || !address ? 0.5 : 1,
-        minWidth: '120px'
+        boxSizing: 'border-box'
       }}
       onMouseEnter={(e) => {
         if (!busy && address) {

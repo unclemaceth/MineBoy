@@ -80,11 +80,12 @@ export default function CartridgeSelectionModal({
       border: '3px solid #4a7d5f',
       borderRadius: 12,
       padding: 24,
-      width: '100%',
-      minWidth: '100%',
+      minWidth: 0,
       maxWidth: 400,
+      width: '100%',
       maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
       overflowY: 'auto',
+      overflowX: 'hidden',
       boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
       boxSizing: 'border-box'
     }}>

@@ -203,11 +203,10 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
           className="hide-scrollbar"
           style={{
             flex: 1,
-            width: '100%',
-            minWidth: '100%',
-            alignSelf: 'stretch',
-            flexShrink: 0,
+            minWidth: 0,
+            maxWidth: '100%',
             overflowY: 'auto',
+            overflowX: 'hidden',
             boxSizing: 'border-box',
             fontFamily: 'monospace',
             color: '#c8ffc8'
@@ -280,7 +279,10 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
                     overflowY: 'auto',
                     display: 'grid',
                     gridTemplateColumns: 'repeat(2, 1fr)',
-                    gap: '10px'
+                    gap: '10px',
+                    width: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box'
                   }}>
                     {stats.ownedNPCs.map((npc) => (
                       <NPCCard
@@ -493,7 +495,10 @@ function NPCCard({
       borderRadius: '8px',
       overflow: 'hidden',
       display: 'flex',
-      flexDirection: 'column'
+      flexDirection: 'column',
+      minWidth: 0,
+      width: '100%',
+      boxSizing: 'border-box'
     }}>
       {/* Image */}
       <div style={{
@@ -545,7 +550,14 @@ function NPCCard({
 
         {listedPrice ? (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              gap: '4px',
+              width: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box'
+            }}>
               <BuyButton 
                 tokenId={tokenId}
                 priceLabel="APE"
@@ -556,6 +568,7 @@ function NPCCard({
                 disabled
                 title="Coming soon - Currently limited to EU/US regions"
                 style={{
+                  width: '100%',
                   background: 'linear-gradient(145deg, #3a3a3a, #2a2a2a)',
                   border: '2px solid #4a4a4a',
                   borderRadius: '4px',
@@ -567,6 +580,11 @@ function NPCCard({
                   fontFamily: 'monospace',
                   boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
                   opacity: 0.5,
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}
               >
                 💳 Card (Coming Soon)
