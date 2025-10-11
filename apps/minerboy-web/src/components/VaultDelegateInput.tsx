@@ -8,26 +8,56 @@ interface VaultDelegateInputProps {
   onVaultChange: (vault: string) => void;
   className?: string;
   enabled?: boolean; // Allow parent to disable delegation entirely
+  onDetectingChange?: (isDetecting: boolean) => void; // Notify parent of detection status
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_BACKEND_URL || "https://mineboy-g5xo.onrender.com";
 const DELEGATE_ENABLED = process.env.NEXT_PUBLIC_DELEGATE_PHASE1_ENABLED === 'true';
 
-export default function VaultDelegateInput({ vaultAddress, onVaultChange, className = '', enabled = true }: VaultDelegateInputProps) {
+export default function VaultDelegateInput({ vaultAddress, onVaultChange, className = '', enabled = true, onDetectingChange }: VaultDelegateInputProps) {
   const { address } = useActiveAccount();
   const [autoDetectedVault, setAutoDetectedVault] = useState<string | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  // Auto-detect vault on wallet connect (only if enabled)
+  // Notify parent of detection status changes
   useEffect(() => {
-    if (DELEGATE_ENABLED && enabled && address && !vaultAddress) {
-      autoDetectVault();
+    if (onDetectingChange) {
+      onDetectingChange(isDetecting);
     }
-  }, [address, enabled]);
+  }, [isDetecting, onDetectingChange]);
+
+  // Reset cached vault when hot wallet changes
+  useEffect(() => {
+    setAutoDetectedVault(null);
+  }, [address]);
+
+  // Auto-detect or push cached vault to parent whenever we need one
+  useEffect(() => {
+    if (!DELEGATE_ENABLED || !enabled || !address) return;
+
+    // Parent doesn't have a vault yet
+    if (!vaultAddress) {
+      if (autoDetectedVault) {
+        // ✅ We already know the vault: push it up immediately (no network)
+        onVaultChange(autoDetectedVault);
+        return;
+      }
+      // ✅ No cached vault yet → kick off detection (guarded by isDetecting)
+      if (!isDetecting) autoDetectVault();
+    }
+  }, [DELEGATE_ENABLED, enabled, address, vaultAddress, autoDetectedVault, isDetecting]);
+
+  // Re-apply cached vault when delegation is toggled ON (UX improvement)
+  useEffect(() => {
+    if (!enabled) return;
+    if (autoDetectedVault && !vaultAddress) {
+      onVaultChange(autoDetectedVault);
+    }
+  }, [enabled]); // Runs on toggle ON
 
   const autoDetectVault = async () => {
-    if (!address) return;
+    if (!address || isDetecting) return; // Guard against overlapping calls
     
     setIsDetecting(true);
     try {
@@ -36,10 +66,11 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
       });
       const data = await res.json();
       
-      if (data.vault) {
-        console.log('[DELEGATE] Auto-detected vault:', data.vault);
+      if (data?.vault) {
         setAutoDetectedVault(data.vault);
-        onVaultChange(data.vault);
+        // Always sync up if parent still empty
+        if (!vaultAddress) onVaultChange(data.vault);
+        console.log('[DELEGATE] Auto-detected vault:', data.vault);
       } else {
         console.log('[DELEGATE] No vault delegation found');
       }

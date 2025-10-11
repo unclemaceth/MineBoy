@@ -28,6 +28,9 @@ export default function CartridgeModalV2({
     const saved = localStorage.getItem(DELEGATION_TOGGLE_KEY);
     return saved === null ? true : saved === 'true';
   });
+  
+  // Track vault detection status
+  const [isDetectingVault, setIsDetectingVault] = useState(false);
 
   // Persist toggle state to localStorage
   useEffect(() => {
@@ -137,6 +140,7 @@ export default function CartridgeModalV2({
           <VaultDelegateInput 
             vaultAddress={vaultAddress}
             onVaultChange={onVaultChange}
+            onDetectingChange={setIsDetectingVault}
             className="mb-4"
             enabled={useDelegation}
           />
@@ -146,23 +150,26 @@ export default function CartridgeModalV2({
         <div style={{ marginTop: 16 }}>
           <button
             onClick={() => {
+              if (isDetectingVault) return; // Prevent click while detecting
               playButtonSound();
               onLoadCartridges();
             }}
+            disabled={isDetectingVault}
             style={{
               width: '100%',
-              backgroundColor: '#4a7d5f',
-              border: '2px solid #64ff8a',
+              backgroundColor: isDetectingVault ? '#333' : '#4a7d5f',
+              border: isDetectingVault ? '2px solid #666' : '2px solid #64ff8a',
               borderRadius: 6,
-              color: '#64ff8a',
+              color: isDetectingVault ? '#666' : '#64ff8a',
               padding: '12px 16px',
-              cursor: 'pointer',
+              cursor: isDetectingVault ? 'not-allowed' : 'pointer',
               fontSize: 14,
               fontFamily: 'Menlo, monospace',
               fontWeight: 'bold',
+              opacity: isDetectingVault ? 0.6 : 1,
             }}
           >
-            🎮 Load My Cartridges
+            {isDetectingVault ? '⏳ Detecting vault...' : '🎮 Load My Cartridges'}
           </button>
         </div>
 
