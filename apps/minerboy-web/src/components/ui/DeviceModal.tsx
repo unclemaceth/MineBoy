@@ -9,8 +9,8 @@ type Rect = { left: number; top: number; width: number; height: number };
 export interface DeviceModalProps {
   isOpen: boolean;
   onClose?: () => void;
-  /** Anchor: the MineBoyDevice root element */
-  anchorRef: React.RefObject<HTMLElement>;
+  /** Anchor: the MineBoyDevice root element (can be ForwardedRef or RefObject) */
+  anchorRef: React.RefObject<HTMLElement> | React.ForwardedRef<HTMLElement>;
   ariaLabel?: string;
   closeOnBackdrop?: boolean;
   zIndex?: number; // over everything else
@@ -31,7 +31,8 @@ export default function DeviceModal({
 
   // measure + keep overlay synced to device
   const measure = useCallback(() => {
-    const el = anchorRef.current;
+    // Handle both RefObject and ForwardedRef (which can be function or object)
+    const el = typeof anchorRef === 'function' ? null : anchorRef?.current;
     if (!el) return;
     const r = el.getBoundingClientRect();
     setRect({ left: r.left, top: r.top, width: r.width, height: r.height });
