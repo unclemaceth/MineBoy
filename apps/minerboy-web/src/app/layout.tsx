@@ -8,6 +8,7 @@ import SeasonEndOverlay from "@/components/SeasonEndOverlay";
 import GlyphWalletProvider from "./GlyphWalletProvider";
 import W3MInit from "./W3MInit";
 import WCAccountBridge from '@/components/WCAccountBridge';
+import WCChainGuard from '@/components/WCChainGuard';
 import ThirdwebProviderWrapper from "./ThirdwebProvider";
 
 const geistSans = Geist({
@@ -81,6 +82,7 @@ export default function RootLayout({
           <GlyphWalletProvider>
             <W3MInit />
             <WCAccountBridge />
+            <WCChainGuard />
             {children}
             {/* mounted once globally */}
             <GlobalWalletModal />

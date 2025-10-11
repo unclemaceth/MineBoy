@@ -110,11 +110,9 @@ export default function WalletConnectionModal() {
     
     try {
       console.log('WalletConnectionModal: Opening Web3Modal directly');
-      // Clean up stale sessions
-      removeStaleWalletConnect();
+      // Don't nuke storage on normal connect - only call removeStaleWalletConnect() for debug
       
-      // close our modal and open Web3Modal
-      close();
+      // Open Web3Modal and wait for connection (modal auto-closes via isConnected effect)
       await open();
     } finally {
       openingRef.current = false;

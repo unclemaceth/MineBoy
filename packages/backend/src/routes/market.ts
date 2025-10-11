@@ -2,7 +2,7 @@ import { FastifyInstance } from 'fastify';
 import { getRedis } from '../redis.js';
 import { withLock } from '../lib/redisHelpers.js';
 import { provider, encodeFulfillOrder, checkOwnership, waitForOrderFulfilled, CHAIN_ID_VALUE, SEAPORT_ADDRESS } from '../lib/seaport.js';
-import { getAddress } from 'ethers';
+import { getAddress, formatEther } from 'ethers';
 import axios from 'axios';
 
 // Normalize address to avoid checksum errors
@@ -317,6 +317,10 @@ export default async function routes(app: FastifyInstance) {
         return reply.code(404).send({ error: 'not-listed' });
       }
 
+      // Parse listing to get price
+      const listing = JSON.parse(listed);
+      const priceAPE = listing.priceWei ? formatEther(listing.priceWei) : undefined;
+
       const already = await redis.get(`market:filled:${tokenId}`);
       if (already) {
         return reply.code(409).send({ error: 'already-filled', txHash: already });
@@ -346,7 +350,8 @@ export default async function routes(app: FastifyInstance) {
             buyer: getAddress(buyer),
             chainId: CHAIN_ID,
             event: 'order-fulfilled',
-            source: 'mineboy-market'
+            source: 'mineboy-market',
+            priceAPE
           })
         }).catch((err) => {
           app.log.error('[Market] Webhook failed:', err);

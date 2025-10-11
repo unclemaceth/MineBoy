@@ -1,9 +1,9 @@
 'use client';
 
-import { http } from 'wagmi';
+import { http, createConfig } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { mainnet, base, arbitrum, optimism, polygon } from 'wagmi/chains';
-import { defaultWagmiConfig, createWeb3Modal } from '@web3modal/wagmi/react';
+import { walletConnect, injected } from 'wagmi/connectors';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
@@ -35,16 +35,22 @@ export const apechain = {
 // Include major bridging chains for Relay swap functionality
 export const chains = [apechain, base, mainnet, arbitrum, optimism, polygon, curtis] as const;
 
-// Single wagmi config used everywhere
-export const wagmiConfig = defaultWagmiConfig({
+// Single wagmi config used everywhere (no autoConnect to prevent flicker)
+export const wagmiConfig = createConfig({
   chains,
-  projectId,
-  metadata: {
-    name: 'MineBoy™',
-    description: 'MineBoy™',
-    url: getSiteUrl(),
-    icons: [`${getSiteUrl()}/icon.png`]
-  },
+  connectors: [
+    walletConnect({
+      projectId,
+      showQrModal: false, // Web3Modal handles UI
+      metadata: {
+        name: 'MineBoy™',
+        description: 'MineBoy™',
+        url: getSiteUrl(),
+        icons: [`${getSiteUrl()}/icon.png`]
+      }
+    }),
+    injected({ shimDisconnect: true })
+  ],
   transports: {
     [apechain.id]: http('https://rpc.apechain.com/http'),
     [base.id]: http(),
@@ -53,8 +59,8 @@ export const wagmiConfig = defaultWagmiConfig({
     [optimism.id]: http(),
     [polygon.id]: http(),
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
-  }
+  },
+  ssr: true,
+  // @ts-expect-error wagmi accepts this; prevents race/flicker
+  autoConnect: false
 });
-
-// Web3Modal is now initialized in the Providers component
-// This ensures it's available before any components try to use useWeb3Modal

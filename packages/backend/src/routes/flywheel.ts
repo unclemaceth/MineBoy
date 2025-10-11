@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { JsonRpcProvider, Contract, formatEther, formatUnits } from 'ethers';
 import axios from 'axios';
+import { getRedis } from '../redis.js';
 
 const RPC_URL = process.env.RPC_URL || 'https://rpc.apechain.com/http';
 const MNESTR = '0xAe0DfbB1a2b22080F947D1C0234c415FabEEc276';
@@ -37,16 +38,48 @@ let cache: {
 
 const CACHE_TTL = 30000; // 30 seconds
 
+const DISCORD_WEBHOOK_URL = process.env.DISCORD_WEBHOOK_URL;
+
+// Send Discord notification for NPC sales
+async function notifyNPCSale(tokenId: string, priceAPE: string, txHash: string) {
+  if (!DISCORD_WEBHOOK_URL) {
+    console.log('[Discord] Webhook not configured, skipping notification');
+    return;
+  }
+
+  try {
+    await fetch(DISCORD_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '✅ NPC Purchased',
+          color: 0x00ff00, // Green
+          fields: [
+            { name: 'Token ID', value: tokenId, inline: true },
+            { name: 'Price', value: `${priceAPE} APE`, inline: true },
+            { name: 'Transaction', value: `[View on ApeScan](https://apescan.io/tx/${txHash})`, inline: false }
+          ],
+          timestamp: new Date().toISOString()
+        }]
+      })
+    });
+    console.log('[Discord] ✅ NPC sale notification sent');
+  } catch (error: any) {
+    console.error('[Discord] Failed to send notification:', error.message);
+  }
+}
+
 export default async function routes(app: FastifyInstance) {
   /**
    * POST /v2/flywheel/confirm
    * Webhook endpoint for order fulfillment
    * Triggered when an NPC is sold via the market
    */
-  app.post<{ Body: { tokenId: string; txHash: string; buyer: string; event: string } }>(
+  app.post<{ Body: { tokenId: string; txHash: string; buyer: string; event: string; priceAPE?: string } }>(
     '/v2/flywheel/confirm',
     async (request, reply) => {
-      const { tokenId, txHash, buyer, event } = request.body;
+      const { tokenId, txHash, buyer, event, priceAPE } = request.body;
 
       if (event !== 'order-fulfilled') {
         return reply.code(400).send({ error: 'Invalid event type' });
@@ -55,11 +88,25 @@ export default async function routes(app: FastifyInstance) {
       app.log.info(`[Flywheel] Order fulfilled: NPC #${tokenId} sold to ${buyer} (tx: ${txHash})`);
 
       try {
-        // The flywheel bot polls the treasury wallet balance automatically
-        // When it detects APE from sales, it will:
-        // 1. Swap 99% APE → MNESTR on Camelot DEX
-        // 2. Burn MNESTR to 0xdead
-        // 3. Send 1% APE to trading wallet for gas
+        // Get price from Redis if not provided
+        let price = priceAPE;
+        if (!price) {
+          const redis = getRedis();
+          if (redis) {
+            const listingData = await redis.get(`market:order:${tokenId}`);
+            if (listingData) {
+              const listing = JSON.parse(listingData);
+              if (listing.priceWei) {
+                price = formatEther(listing.priceWei);
+              }
+            }
+          }
+        }
+
+        // Send Discord notification
+        if (price) {
+          await notifyNPCSale(tokenId, price, txHash);
+        }
         
         app.log.info(`[Flywheel] Sale recorded: tokenId=${tokenId}, buyer=${buyer}, tx=${txHash}`);
         app.log.info(`[Flywheel] Treasury poller will automatically burn the proceeds within 30s`);

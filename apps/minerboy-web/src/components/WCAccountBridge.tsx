@@ -1,38 +1,44 @@
-'use client'
-
-import { useEffect } from 'react'
-import { getAccount, watchAccount } from 'wagmi/actions'   // ✅ from actions
-import { wagmiConfig as wcConfig } from '@/lib/wallet'     // your multi-connector config
-import { useWalletStore } from '@/state/wallet'
+'use client';
+import { useEffect, useRef } from 'react';
+import { getAccount, watchAccount, watchChainId } from 'wagmi/actions';
+import { wagmiConfig } from '@/lib/wallet';
+import { useWalletStore } from '@/state/wallet';
 
 export default function WCAccountBridge() {
+  const last = useRef<string | null>(null);
+
   useEffect(() => {
-    console.log('[WCAccountBridge] Initializing bridge...')
-    
-    // seed once
-    const seed = getAccount(wcConfig)
-    console.log('[WCAccountBridge] Seed account:', seed.address)
-    
-    useWalletStore.getState().setExternalAddress(
-      (seed.address as `0x${string}`) ?? null,
-      seed.address ? 'wc' : null
-    )
-    
-    console.log('[WCAccountBridge] Set seed address:', seed.address)
+    const seed = getAccount(wagmiConfig);
+    const seedAddr = seed?.address ? seed.address.toLowerCase() : null;
 
-    // watch changes from WC instance
-    const unwatch = watchAccount(wcConfig, {
-      onChange(account) {
-        console.log('[WCAccountBridge] Account changed:', account.address)
-        const addr = (account.address as `0x${string}` | undefined) ?? null
-        useWalletStore.getState().setExternalAddress(addr, addr ? 'wc' : null)
-        console.log('[WCAccountBridge] Updated store with address:', addr)
+    if (seedAddr) {
+      useWalletStore.getState().setExternalAddress(seed.address as `0x${string}`, 'wc');
+      last.current = seedAddr;
+    } else {
+      useWalletStore.getState().setExternalAddress(null, null);
+      last.current = null;
+    }
+
+    const unwatchAcc = watchAccount(wagmiConfig, {
+      onChange(acc) {
+        const next = acc?.address ? acc.address.toLowerCase() : null;
+        if (next !== last.current) {
+          last.current = next;
+          useWalletStore.getState().setExternalAddress(
+            (next as `0x${string}`) ?? null,
+            next ? 'wc' : null
+          );
+        }
       }
-    })
-    
-    console.log('[WCAccountBridge] Bridge initialized, watching for changes...')
-    return unwatch
-  }, [])
+    });
 
-  return null
+    const unwatchChain = watchChainId(wagmiConfig, { onChange: () => {} });
+
+    return () => {
+      unwatchAcc?.();
+      unwatchChain?.();
+    };
+  }, []);
+
+  return null;
 }

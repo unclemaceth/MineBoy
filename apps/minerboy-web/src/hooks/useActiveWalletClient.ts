@@ -1,45 +1,47 @@
-'use client'
-import { useEffect, useState } from 'react'
-import { useWalletClient } from 'wagmi'           // Glyph signer
-import { useActiveAccount } from './useActiveAccount'
-import { wagmiConfig as wcConfig } from '@/lib/wallet'
-import { createWalletClient, custom } from 'viem'
-import { apechain } from '@/lib/wallet'
+'use client';
+import { useEffect, useState } from 'react';
+import { useWalletClient, useConnectorClient } from 'wagmi';
+import { createWalletClient, custom } from 'viem';
+import { apechain } from '@/lib/wallet';
+import { useActiveAccount } from './useActiveAccount';
 
 export function useActiveWalletClient() {
-  const { data: glyphClient } = useWalletClient()
-  const { provider, address } = useActiveAccount()
-  const [client, setClient] = useState<any>(null)
+  const { data: wagmiWalletClient } = useWalletClient();
+  const { data: connectorClient } = useConnectorClient();
+  const { provider } = useActiveAccount();
+  const [client, setClient] = useState<any>(null);
 
   useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      if (provider === 'glyph' && glyphClient) {
-        setClient(glyphClient)
-      } else if (provider === 'wc' && address) {
-        try {
-          // For Web3Modal, get the connected provider from window.ethereum
-          // This will be the WalletConnect provider after connection
-          if (typeof window !== 'undefined' && (window as any).ethereum) {
-            const wcClient = createWalletClient({
-              account: address as `0x${string}`,
-              chain: apechain,
-              transport: custom((window as any).ethereum)
-            })
-            if (mounted) setClient(wcClient)
-          } else {
-            if (mounted) setClient(null)
-          }
-        } catch (e) {
-          console.warn('Failed to create Web3Modal wallet client:', e)
-          if (mounted) setClient(null)
-        }
-      } else {
-        setClient(null)
-      }
-    })()
-    return () => { mounted = false }
-  }, [glyphClient, provider, address])
+    let mounted = true;
 
-  return client
+    (async () => {
+      if (provider === 'glyph') {
+        setClient(wagmiWalletClient ?? null);
+        return;
+      }
+
+      if (provider === 'wc') {
+        // For WalletConnect, use the connector client or try to get provider from connector
+        if (connectorClient) {
+          setClient(connectorClient);
+          return;
+        }
+        // Fallback: try window.ethereum as a last resort (WalletConnect may inject here)
+        if (typeof window !== 'undefined' && (window as any).ethereum) {
+          const wcClient = createWalletClient({
+            chain: apechain,
+            transport: custom((window as any).ethereum)
+          });
+          if (mounted) setClient(wcClient);
+          return;
+        }
+      }
+
+      if (mounted) setClient(null);
+    })();
+
+    return () => { mounted = false; };
+  }, [provider, connectorClient, wagmiWalletClient]);
+
+  return client;
 }
