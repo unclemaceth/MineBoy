@@ -21,6 +21,11 @@ const YAK_ROUTER_ABI = [
   "function swapNoSplit((uint256 amountIn,uint256 amountOut,address[] path,address[] adapters),uint256 fee,address to) payable returns (uint256)"
 ];
 
+// Camelot Router ABI for querying rates
+const CAMELOT_ROUTER_ABI = [
+  "function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"
+];
+
 // WAPE ABI for wrapping
 const WAPE_ABI = [
   'function deposit() payable',
@@ -45,6 +50,34 @@ function getGasCaps() {
     maxFeePerGas: BigInt(maxFeeGwei) * BigInt(1e9), // Convert gwei to wei
     maxPriorityFeePerGas: BigInt(maxPriorityGwei) * BigInt(1e9)
   };
+}
+
+/**
+ * Query the actual MNESTR output for a given WAPE input from Camelot DEX
+ * This gives us the real-time exchange rate based on current liquidity
+ */
+async function querySwapRate(wapeAmount: bigint): Promise<bigint> {
+  try {
+    const camelotRouter = new Contract(cfg.dexRouter, CAMELOT_ROUTER_ABI, treasury);
+    const path = [cfg.wape, cfg.mnestr];
+    
+    console.log(`[RateQuery] Querying Camelot for ${formatEther(wapeAmount)} WAPE → MNESTR...`);
+    const amounts = await camelotRouter.getAmountsOut(wapeAmount, path);
+    const expectedMNESTR = amounts[1]; // amounts[0] = input, amounts[1] = output
+    
+    console.log(`[RateQuery] ✅ Expected output: ${formatEther(expectedMNESTR)} MNESTR`);
+    const rate = (expectedMNESTR * 10n**18n) / wapeAmount;
+    console.log(`[RateQuery] Current rate: ${formatEther(rate)} MNESTR per WAPE`);
+    
+    return expectedMNESTR;
+  } catch (error: any) {
+    console.error(`[RateQuery] ❌ Failed to query rate:`, error.message);
+    // Fallback to conservative estimate if query fails
+    const conservativeRate = 45000n * 10n**18n; // Very conservative 45k MNESTR per WAPE
+    const fallbackOutput = (wapeAmount * conservativeRate) / 10n**18n;
+    console.log(`[RateQuery] Using fallback conservative estimate: ${formatEther(fallbackOutput)} MNESTR`);
+    return fallbackOutput;
+  }
 }
 
 /**
@@ -103,15 +136,12 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Router: ${YAK_ROUTER}`);
   console.log(`[Treasury] Path: WAPE → MNESTR (via adapter)`);
   
-  // Use conservative slippage based on observed rate
-  // Historical rate: ~56,140 MNESTR per APE (Oct 7)
-  // Use 50,000 as conservative floor to handle rate fluctuations
-  const ratePerAPE = 50000n * 10n**18n; // Conservative ~50k MNESTR per APE
-  const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
-  const minMNESTR = (expectedMNESTR * 70n) / 100n; // 30% slippage for safety
+  // Query the actual expected output from Camelot DEX
+  const expectedMNESTR = await querySwapRate(apeForSwap);
+  const minMNESTR = (expectedMNESTR * 90n) / 100n; // 10% slippage tolerance
   
-  console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
-  console.log(`[Treasury] Min MNESTR (30% slippage): ${formatEther(minMNESTR)}`);
+  console.log(`[Treasury] Expected MNESTR (from DEX): ${formatEther(expectedMNESTR)}`);
+  console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
   
   // Get gas price caps for all transactions
   const gasCaps = getGasCaps();
