@@ -202,8 +202,13 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         <div 
           className="hide-scrollbar"
           style={{
+            flex: 1,
+            width: '100%',
+            minWidth: '100%',
+            alignSelf: 'stretch',
+            flexShrink: 0,
             overflowY: 'auto',
-            flex: 1, // Fill remaining space in the flex container
+            boxSizing: 'border-box',
             fontFamily: 'monospace',
             color: '#c8ffc8'
           }}
