@@ -150,7 +150,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         border: '3px solid #4a7d5f',
         borderRadius: '12px',
         width: '100%',
-        maxWidth: '340px',
+        maxWidth: '400px',
         maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
         overflow: 'hidden',
         display: 'flex',

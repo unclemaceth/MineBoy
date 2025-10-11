@@ -1932,9 +1932,12 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             borderRadius: '12px',
             boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
             padding: 20,
+            maxWidth: 400,
+            width: '100%',
             textAlign: 'center',
             color: '#fff',
             fontFamily: 'Menlo, monospace',
+            boxSizing: 'border-box'
           }}>
             <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#64ff8a' }}>
               ⚠️ EJECT CARTRIDGE?
@@ -1992,8 +1995,8 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
             padding: '16px',
             width: '100%',
-            maxWidth: 340,
-            maxHeight: '85vh',
+            maxWidth: 400,
+            maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
             overflowY: 'auto',
             fontFamily: 'Menlo, monospace',
             color: '#c8ffc8',

@@ -111,17 +111,15 @@ export default function DeviceModal({
         pointerEvents: "auto"
       }}
     >
-      {/* PURE wrapper - NO styling, children provide their own */}
+      {/* PURE wrapper - NO constraints, children provide their own sizing */}
       <div
         ref={contentRef}
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
         style={{
-          // Children are responsible for their own sizing/styling
-          maxWidth: "min(92%, 360px)",
-          maxHeight: "min(88%, calc(var(--vh, 100vh) * 0.88))",
-          width: "auto",
-          height: "auto"
+          // No width/height constraints - children control their own sizing
+          // Only provide a safety maxHeight to prevent overflow
+          maxHeight: "min(92%, calc(var(--vh, 100vh) * 0.92))"
         }}
       >
         {children}
