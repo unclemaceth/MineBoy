@@ -10,7 +10,7 @@ export interface DeviceModalProps {
   isOpen: boolean;
   onClose?: () => void;
   /** Anchor: the MineBoyDevice root element (can be ForwardedRef or RefObject) */
-  anchorRef: React.RefObject<HTMLElement> | React.ForwardedRef<HTMLElement>;
+  anchorRef: React.RefObject<HTMLDivElement> | React.ForwardedRef<HTMLDivElement>;
   ariaLabel?: string;
   closeOnBackdrop?: boolean;
   zIndex?: number; // over everything else
