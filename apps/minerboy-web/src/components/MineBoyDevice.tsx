@@ -11,6 +11,7 @@ import SideButton from "@/components/ui/SideButton";
 import PaidMessageModal from "@/components/PaidMessageModal";
 import MineStrategyModal from "@/components/MineStrategyModal";
 import EnhancedShell from "@/components/art/EnhancedShell";
+import NPCSimple from "@/components/art/NPCSimple";
 import CartridgeModalV2 from "@/components/CartridgeModalV2";
 import ClaimOverlay from "@/components/ClaimOverlay";
 import Visualizer3x3 from "@/components/Visualizer3x3";
@@ -61,6 +62,31 @@ const H = 924;
 const HUD_HEIGHT = 80;
 const CONTENT_HEIGHT = 844;
 const px = (p: number, total: number) => Math.round(total * p / 100);
+
+// Color mapping for branding elements (MineBoy text and NPC logo) to match device shell
+const brandingColorMap = {
+  blue: {
+    textMain: '#2c396f',
+    textShadow1: '#1a2447',
+    textShadow2: '#0f1a3a',
+    textShadow3: '#0a1229',
+    npcFill: '#3f4c80',
+  },
+  orange: {
+    textMain: '#6f392c',
+    textShadow1: '#471a24',
+    textShadow2: '#3a0f1a',
+    textShadow3: '#290a12',
+    npcFill: '#804c3f',
+  },
+  green: {
+    textMain: '#2c6f39',
+    textShadow1: '#1a4724',
+    textShadow2: '#0f3a1a',
+    textShadow3: '#0a2912',
+    npcFill: '#3f804c',
+  },
+};
 
 // Terminal typewriter component
 function TerminalTypewriter({ lines }: { lines: string[] }) {
@@ -1694,6 +1720,85 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         {/* Fan */}
         <div style={{ position: "absolute", right: 19, bottom: 55, zIndex: 2 }}>
           <FanSandwich spinning={mining} size={110} color={color} />
+        </div>
+
+        {/* MineBoy™ Branding - Main Text */}
+        <div style={{
+          position: 'absolute',
+          bottom: '67.5px',
+          left: '42.2%',
+          transform: 'translateX(-50%) translateX(5px) skewX(10deg)',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: brandingColorMap[color].textMain,
+          textShadow: `
+            2px 2px 0px ${brandingColorMap[color].textShadow1},
+            4px 4px 0px ${brandingColorMap[color].textShadow2},
+            6px 6px 0px ${brandingColorMap[color].textShadow3},
+            inset 0px 1px 0px rgba(255,255,255,0.4),
+            inset 0px -1px 0px rgba(0,0,0,0.6)
+          `,
+          letterSpacing: '3px',
+          fontFamily: 'monospace',
+          textTransform: 'uppercase',
+          pointerEvents: 'none',
+          zIndex: 10
+        }}>
+          <span style={{ fontSize: '26px' }}>M</span>INE<span style={{ fontSize: '26px' }}>B</span>OY
+        </div>
+
+        {/* MineBoy™ Branding - White Clone (emboss effect) */}
+        <div style={{
+          position: 'absolute',
+          bottom: '67px',
+          left: '42.45%',
+          transform: 'translateX(-50%) translateX(5px) skewX(10deg)',
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: 'rgba(255,255,255,0.2)',
+          letterSpacing: '3px',
+          fontFamily: 'monospace',
+          textTransform: 'uppercase',
+          pointerEvents: 'none',
+          zIndex: 9
+        }}>
+          <span style={{ fontSize: '26px' }}>M</span>INE<span style={{ fontSize: '26px' }}>B</span>OY
+        </div>
+
+        {/* NPC Simple Art - Main */}
+        <div style={{
+          position: 'absolute',
+          bottom: '47.5px',
+          right: '300px',
+          width: '54px',
+          height: '54px',
+          zIndex: 10,
+          pointerEvents: 'none'
+        }}>
+          <NPCSimple 
+            fill={brandingColorMap[color].npcFill}
+            style={{ 
+              transform: 'scaleX(-1) skewX(-7.5deg)'
+            }}
+          />
+        </div>
+
+        {/* NPC Simple Art - White Clone (emboss effect) */}
+        <div style={{
+          position: 'absolute',
+          bottom: '46.9px',
+          right: '299px',
+          width: '54px',
+          height: '54px',
+          zIndex: 9,
+          pointerEvents: 'none'
+        }}>
+          <NPCSimple 
+            fill="rgba(255, 255, 255, 0.1)"
+            style={{ 
+              transform: 'scaleX(-1) skewX(-7.5deg)'
+            }}
+          />
         </div>
 
         {/* LEDs */}
