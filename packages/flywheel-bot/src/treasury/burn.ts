@@ -58,10 +58,17 @@ function getGasCaps() {
  */
 async function querySwapRate(wapeAmount: bigint): Promise<bigint> {
   try {
-    const camelotRouter = new Contract(cfg.dexRouter, CAMELOT_ROUTER_ABI, treasury);
+    // Use Camelot Router (UniswapV2-compatible) to query rates
+    // NOTE: We use YakRouter for actual swaps, but YakRouter doesn't have getAmountsOut
+    const CAMELOT_ROUTER = '0x18E621B64d7808c3C47bccbbD7485d23F257D26f';
+    
+    console.log(`[RateQuery] Querying Camelot Router: ${CAMELOT_ROUTER}`);
+    console.log(`[RateQuery] Path: ${cfg.wape} → ${cfg.mnestr}`);
+    console.log(`[RateQuery] Amount: ${formatEther(wapeAmount)} WAPE`);
+    
+    const camelotRouter = new Contract(CAMELOT_ROUTER, CAMELOT_ROUTER_ABI, treasury);
     const path = [cfg.wape, cfg.mnestr];
     
-    console.log(`[RateQuery] Querying Camelot for ${formatEther(wapeAmount)} WAPE → MNESTR...`);
     const amounts = await camelotRouter.getAmountsOut(wapeAmount, path);
     const expectedMNESTR = amounts[1]; // amounts[0] = input, amounts[1] = output
     
