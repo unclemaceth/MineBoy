@@ -1906,6 +1906,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showEjectConfirm}
           onClose={() => { playButtonSound(); setShowEjectConfirm(false); }}
+          anchorRef={ref}
           ariaLabel="Confirm eject cartridge"
           zIndex={905}
         >
@@ -1960,6 +1961,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showDebugModal}
           onClose={() => { playButtonSound(); setShowDebugModal(false); }}
+          anchorRef={ref}
           ariaLabel="Debug info"
           zIndex={910}
         >
@@ -2284,6 +2286,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showPaidMessageModal}
           onClose={() => setShowPaidMessageModal(false)}
+          anchorRef={ref}
           ariaLabel="Paid message"
           zIndex={900}
         >
@@ -2297,6 +2300,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showMineStrategyModal}
           onClose={() => setShowMineStrategyModal(false)}
+          anchorRef={ref}
           ariaLabel="Mining strategy"
           zIndex={900}
         >
@@ -2310,6 +2314,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showCartridgeModalV2}
           onClose={() => setShowCartridgeModalV2(false)}
+          anchorRef={ref}
           ariaLabel="Cartridge settings"
           zIndex={905}
         >
@@ -2332,6 +2337,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showAlchemyCartridges}
           onClose={() => setShowAlchemyCartridges(false)}
+          anchorRef={ref}
           ariaLabel="Select cartridge"
           zIndex={910}
         >

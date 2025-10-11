@@ -1,138 +1,125 @@
+// DeviceModal - Portaled + Anchored to Device BoundingRect
 "use client";
 
-import { PropsWithChildren, useEffect, useRef, useCallback } from "react";
+import { PropsWithChildren, useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { createPortal } from "react-dom";
+
+type Rect = { left: number; top: number; width: number; height: number };
 
 export interface DeviceModalProps {
   isOpen: boolean;
   onClose?: () => void;
-  // relative to the MineBoyDevice root (not the page)
-  zIndex?: number; // base 900; nested 910+
+  /** Anchor: the MineBoyDevice root element */
+  anchorRef: React.RefObject<HTMLElement>;
   ariaLabel?: string;
-  // optional: pass the element that opened the modal so we can restore focus
-  returnFocusTo?: HTMLElement | null;
-  // optional: finer control
-  closeOnBackdrop?: boolean; // default true
+  closeOnBackdrop?: boolean;
+  zIndex?: number; // over everything else
 }
 
 export default function DeviceModal({
   isOpen,
   onClose,
-  zIndex = 900,
+  anchorRef,
   ariaLabel = "MineBoy modal",
-  children,
-  returnFocusTo,
   closeOnBackdrop = true,
+  zIndex = 4000,
+  children
 }: PropsWithChildren<DeviceModalProps>) {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const [rect, setRect] = useState<Rect | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
-  // Close on ESC + Focus trap
+  // measure + keep overlay synced to device
+  const measure = useCallback(() => {
+    const el = anchorRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    setRect({ left: r.left, top: r.top, width: r.width, height: r.height });
+  }, [anchorRef]);
+
+  useLayoutEffect(() => { if (isOpen) measure(); }, [isOpen, measure]);
+
   useEffect(() => {
     if (!isOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose?.();
-      // simple focus trap: cycle Tab within content
-      if (e.key === "Tab" && contentRef.current) {
-        const focusables = contentRef.current.querySelectorAll<HTMLElement>(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (!focusables.length) return;
-        const first = focusables[0];
-        const last = focusables[focusables.length - 1];
-        const active = document.activeElement as HTMLElement | null;
-        if (e.shiftKey) {
-          if (active === first || !contentRef.current.contains(active)) {
-            last.focus();
-            e.preventDefault();
-          }
-        } else {
-          if (active === last || !contentRef.current.contains(active)) {
-            first.focus();
-            e.preventDefault();
-          }
-        }
-      }
+    const opts = { passive: true } as const;
+
+    const vv = window.visualViewport;
+    const rerun = () => requestAnimationFrame(measure);
+
+    window.addEventListener("resize", rerun, opts);
+    window.addEventListener("scroll", rerun, opts);
+    window.addEventListener("orientationchange", () => setTimeout(rerun, 60), opts);
+    vv?.addEventListener("resize", rerun);
+    vv?.addEventListener("scroll", rerun);
+
+    // also re-measure on next frame (iOS toolbar settle)
+    const id = requestAnimationFrame(measure);
+
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener("resize", rerun);
+      window.removeEventListener("scroll", rerun);
+      window.removeEventListener("orientationchange", rerun as any);
+      vv?.removeEventListener("resize", rerun);
+      vv?.removeEventListener("scroll", rerun);
     };
+  }, [isOpen, measure]);
+
+  // esc + simple focus trap
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose?.(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [isOpen, onClose]);
 
-  // Autofocus first focusable (or content) on open
-  useEffect(() => {
-    if (!isOpen || !contentRef.current) return;
-    const focusables = contentRef.current.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    (focusables[0] ?? contentRef.current).focus();
-  }, [isOpen]);
+  useEffect(() => setMounted(true), []);
+  if (!mounted || !isOpen || !rect) return null;
 
-  // Restore focus to trigger on close
-  useEffect(() => {
-    if (!isOpen) return;
-    return () => {
-      if (returnFocusTo && typeof returnFocusTo.focus === "function") {
-        returnFocusTo.focus();
-      }
-    };
-  }, [isOpen, returnFocusTo]);
-
-  // Prevent wheel/touch scroll from escaping the modal box
-  const stopScroll = useCallback((e: React.UIEvent) => {
-    e.stopPropagation();
-  }, []);
-  const stopTouch = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-  }, []);
-
-  if (!isOpen) return null;
-
-  return (
+  return createPortal(
     <div
-      ref={containerRef}
       role="dialog"
       aria-modal="true"
       aria-label={ariaLabel}
       onClick={closeOnBackdrop ? onClose : undefined}
-      // NOTE: absolute within the device root so it scales with the MineBoy shell
       style={{
-        position: "absolute",
-        inset: 0,
+        position: "fixed",
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+        width: Math.round(rect.width),
+        height: Math.round(rect.height),
         zIndex,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        background: "rgba(0,0,0,0.75)",
-        pointerEvents: "auto",
-        // avoid scroll chaining to parents
+        // backplate that matches device rect only
+        background: "rgba(0,0,0,0.70)",
+        backdropFilter: "blur(1px)",
+        display: "grid",
+        placeItems: "center",
         overscrollBehavior: "contain",
-        touchAction: "none",
+        WebkitOverflowScrolling: "touch",
+        pointerEvents: "auto"
       }}
     >
       <div
         ref={contentRef}
-        // stop overlay clicks/scroll from closing content
         onClick={(e) => e.stopPropagation()}
-        onWheel={stopScroll}
-        onTouchMove={stopTouch}
         tabIndex={-1}
         style={{
-          maxWidth: 340,
-          maxHeight: "85%", // Slightly smaller to ensure it fits
-          width: "min(90%, 340px)", // Smaller percentage for mobile
+          width: "min(92%, 360px)",
+          maxHeight: "min(88%, 560px)",
           overflow: "auto",
           borderRadius: 12,
           border: "3px solid #4a7d5f",
-          background: "linear-gradient(180deg, #0f2216, #1a3d24)",
-          boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
-          // make scroll nicer inside
-          overscrollBehavior: "contain",
-          // Ensure proper box-sizing
+          background: "linear-gradient(180deg,#0f2216,#1a3d24)",
+          boxShadow: "0 8px 32px rgba(0,0,0,.6)",
           boxSizing: "border-box",
+          padding: 16,
+          // IMPORTANT: we are not inside a scaled tree anymore
+          transform: "none"
         }}
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
-
