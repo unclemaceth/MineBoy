@@ -17,6 +17,8 @@ export interface MineBoyCarouselProps {
   layout?: MineBoyLayout; // Layout mode: carousel (stacked), row (horizontal), column (vertical)
   vaultAddress?: string; // Vault address for delegation support
   onVaultChange?: (vault: string) => void; // Callback when vault address changes
+  scrollingMessages?: Array<string | { text: string; color?: string; prefix?: string; type?: string }>; // Messages for banner
+  seasonPoints?: number; // User's season MNESTR total
   onEject: (index: number) => void;
   playButtonSound?: () => void;
   onOpenWalletModal?: () => void;
@@ -49,6 +51,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
   layout = 'carousel',
   vaultAddress,
   onVaultChange,
+  scrollingMessages = ["MineBoy™ it Mines stuff!"],
+  seasonPoints = 0,
   onEject, 
   playButtonSound = () => {},
   onOpenWalletModal,
@@ -350,6 +354,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
                 isActive={true} // All interactive in row/column mode
                 vaultAddress={vaultAddress}
                 onVaultChange={onVaultChange}
+                scrollingMessages={scrollingMessages}
+                seasonPoints={seasonPoints}
                 onEject={() => onEject(index)}
                 playButtonSound={playButtonSound}
                 onOpenWalletModal={onOpenWalletModal}
@@ -414,6 +420,8 @@ const MineBoyCarousel = forwardRef<MineBoyCarouselRef, MineBoyCarouselProps>(fun
               isActive={isActive}
               vaultAddress={vaultAddress}
               onVaultChange={onVaultChange}
+              scrollingMessages={scrollingMessages}
+              seasonPoints={seasonPoints}
               onEject={() => onEject(index)}
               playButtonSound={playButtonSound}
               onOpenWalletModal={onOpenWalletModal}

@@ -620,15 +620,17 @@ function MineBoyOrchestrator() {
             ref={carouselRef}
             devices={devices}
             layout={layout}
-        vaultAddress={vaultAddress}
-        onVaultChange={setVaultAddress}
+            vaultAddress={vaultAddress}
+            onVaultChange={setVaultAddress}
+            scrollingMessages={scrollingMessages}
+            seasonPoints={seasonPoints}
             onEject={handleEjectDevice}
-        playButtonSound={playButtonSound}
+            playButtonSound={playButtonSound}
             onOpenWalletModal={openWalletConnectionModal}
             onOpenWalletManagementModal={() => setShowWalletModal(true)}
             onOpenNavigationModal={openNavigationPage}
             onCartridgeSelected={handleAlchemyCartridgeSelect}
-      />
+          />
       
           {/* Right Panel: Desktop only */}
       {!isMobile && (
