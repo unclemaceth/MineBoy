@@ -103,13 +103,15 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Router: ${YAK_ROUTER}`);
   console.log(`[Treasury] Path: WAPE → MNESTR (via adapter)`);
   
-  // Use reasonable slippage based on observed rate (~61k MNESTR per APE)
-  const ratePerAPE = 61000n * 10n**18n; // ~61k MNESTR per APE
+  // Use conservative slippage based on observed rate
+  // Historical rate: ~56,140 MNESTR per APE (Oct 7)
+  // Use 50,000 as conservative floor to handle rate fluctuations
+  const ratePerAPE = 50000n * 10n**18n; // Conservative ~50k MNESTR per APE
   const expectedMNESTR = (apeForSwap * ratePerAPE) / 10n**18n;
-  const minMNESTR = (expectedMNESTR * 85n) / 100n; // 15% slippage
+  const minMNESTR = (expectedMNESTR * 70n) / 100n; // 30% slippage for safety
   
   console.log(`[Treasury] Expected MNESTR (estimated): ${formatEther(expectedMNESTR)}`);
-  console.log(`[Treasury] Min MNESTR (15% slippage): ${formatEther(minMNESTR)}`);
+  console.log(`[Treasury] Min MNESTR (30% slippage): ${formatEther(minMNESTR)}`);
   
   // Get gas price caps for all transactions
   const gasCaps = getGasCaps();
