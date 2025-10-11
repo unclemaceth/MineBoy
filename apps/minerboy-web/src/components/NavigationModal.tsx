@@ -16,8 +16,8 @@ import { useWalletCartridgeCount } from '@/hooks/useWalletCartridgeCount';
 import { formatEther } from 'viem';
 import { EXPLORER_BASE, APEBIT_CARTRIDGE_ABI, CARTRIDGE_ADDRESSES } from "../lib/contracts";
 
-// Season end time: October 3, 2025 at 8:00 PM GMT (48 hours after launch)
-const SEASON_END_TIME = new Date('2025-10-03T20:00:00Z').getTime();
+// Season end time: October 13, 2025 at 8:00 PM GMT
+const SEASON_END_TIME = new Date('2025-10-13T20:00:00Z').getTime();
 
 // Countdown timer formatting helper
 function formatTimeRemaining(ms: number): string {
@@ -1140,16 +1140,18 @@ function WelcomeContent({ onClose }: { onClose: () => void }) {
           border: '2px solid #ff8a00'
         }}>
           <div style={{ color: '#ffc864', fontSize: '11px', fontWeight: 'bold', marginBottom: 4 }}>
-            ⏱️ SEASON 1 ENDS IN
+            ⏱️ SEASON ENDS IN
           </div>
           <div style={{ color: '#ff8a00', fontSize: '18px', fontWeight: 'bold', fontFamily: 'monospace' }}>
             {formatTimeRemaining(timeRemaining)}
           </div>
         </div>
         <div style={{ fontSize: '13px', color: '#c8ffc8', lineHeight: '1.6', textAlign: 'left' }}>
-          <p style={{ margin: '6px 0', color: '#f1c40f' }}>🥇 <strong>1st Place:</strong> Alpha Dog</p>
-          <p style={{ margin: '6px 0', color: '#c0c0c0' }}>🥈 <strong>2nd Place:</strong> Eyeversed Blood of Ape</p>
-          <p style={{ margin: '6px 0', color: '#cd7f32' }}>🥉 <strong>3rd Place:</strong> ApeDroidz</p>
+          <p style={{ margin: '6px 0', color: '#f1c40f' }}>🥇 <strong>1st Place:</strong> Foxy Fam</p>
+          <p style={{ margin: '6px 0', color: '#c0c0c0' }}>🥈 <strong>2nd Place:</strong> Alpha Dogs</p>
+          <p style={{ margin: '6px 0', color: '#cd7f32' }}>🥉 <strong>3rd Place:</strong> Zards</p>
+          <p style={{ margin: '6px 0', color: '#a8dadc' }}>🏅 <strong>4th-6th:</strong> Typical Tiger (each)</p>
+          <p style={{ margin: '6px 0', color: '#ff6b6b', fontWeight: 'bold' }}>🎁 <strong>Top 10:</strong> Foxy Fam Sneaks Box</p>
         </div>
         <div style={{ 
           marginTop: '12px', 
