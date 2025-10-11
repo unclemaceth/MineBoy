@@ -42,8 +42,8 @@ function getGasCaps() {
   const maxPriorityGwei = Number(process.env.MAX_PRIORITY_FEE_GWEI || '2');
   
   return {
-    maxFeePerGas: parseEther(String(maxFeeGwei / 1e9)), // Convert gwei to wei
-    maxPriorityFeePerGas: parseEther(String(maxPriorityGwei / 1e9))
+    maxFeePerGas: BigInt(maxFeeGwei) * BigInt(1e9), // Convert gwei to wei
+    maxPriorityFeePerGas: BigInt(maxPriorityGwei) * BigInt(1e9)
   };
 }
 
@@ -113,7 +113,7 @@ export async function executeBurn(): Promise<{
   
   // Get gas price caps for all transactions
   const gasCaps = getGasCaps();
-  console.log(`[Gas] Max fee: ${formatEther(gasCaps.maxFeePerGas)} ETH, Max priority: ${formatEther(gasCaps.maxPriorityFeePerGas)} ETH`);
+  console.log(`[Gas] Max fee: ${Number(gasCaps.maxFeePerGas) / 1e9} Gwei, Max priority: ${Number(gasCaps.maxPriorityFeePerGas) / 1e9} Gwei`);
   
   // Step 1: Wrap native APE → WAPE
   console.log(`[Treasury] Step 1: Wrapping ${formatEther(apeForSwap)} APE → WAPE...`);
