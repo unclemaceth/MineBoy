@@ -14,12 +14,12 @@ export class SoundManager {
   private buttonSound: HTMLAudioElement | null = null;
   private confirmSound: HTMLAudioElement | null = null;
   private failSound: HTMLAudioElement | null = null;
-  private miningSound: HTMLAudioElement | null = null;
   
   // Pre-loaded audio pool for instant playback
   private buttonSoundPool: HTMLAudioElement[] = [];
   private confirmSoundPool: HTMLAudioElement[] = [];
   private failSoundPool: HTMLAudioElement[] = [];
+  private miningSoundPool: Map<string, HTMLAudioElement> = new Map(); // Device ID -> mining sound
   private currentButtonIndex = 0;
   private currentConfirmIndex = 0;
   private currentFailIndex = 0;
@@ -62,10 +62,9 @@ export class SoundManager {
     this.buttonSound = new Audio('/sounds/back_style_2_001.wav');
     this.confirmSound = new Audio('/sounds/confirm_style_1_001.wav');
     this.failSound = new Audio('/sounds/Sequence_07.wav');
-    this.miningSound = new Audio('/sounds/Robot Beep Boop.wav');
     
     // Configure audio
-    [this.buttonSound, this.confirmSound, this.failSound, this.miningSound].forEach(audio => {
+    [this.buttonSound, this.confirmSound, this.failSound].forEach(audio => {
       if (audio) {
         audio.preload = 'auto';
         audio.volume = 0.7;
@@ -74,10 +73,7 @@ export class SoundManager {
       }
     });
     
-    // Mining sound should loop
-    if (this.miningSound) {
-      this.miningSound.loop = true;
-    }
+    // Mining sounds are created per-device on demand
     
     // Preload all sounds immediately
     this.preloadSounds();
@@ -109,7 +105,7 @@ export class SoundManager {
     }
     
     // Force load all sounds
-    [...this.buttonSoundPool, ...this.confirmSoundPool, ...this.failSoundPool, this.miningSound].forEach(audio => {
+    [...this.buttonSoundPool, ...this.confirmSoundPool, ...this.failSoundPool].forEach(audio => {
       if (audio) {
         audio.load();
       }
@@ -243,24 +239,49 @@ export class SoundManager {
     }
   }
   
-  public startMiningSound() {
-    if (!this.enabled || !this.miningSoundsEnabled || !this.miningSound) return;
+  public startMiningSound(deviceId: string) {
+    if (!this.enabled || !this.miningSoundsEnabled) return;
     
     try {
-      this.miningSound.currentTime = 0;
-      this.miningSound.play().catch(() => {
-        // Ignore autoplay errors
-      });
+      // Check if this device already has a mining sound
+      let audio = this.miningSoundPool.get(deviceId);
+      
+      // If not, create a new one for this device
+      if (!audio) {
+        audio = new Audio('/sounds/Robot Beep Boop.wav');
+        audio.preload = 'auto';
+        audio.volume = 0.525; // 75% of 0.7 = quieter mining sound
+        audio.loop = true;
+        audio.load();
+        this.miningSoundPool.set(deviceId, audio);
+      }
+      
+      // Start playing (if not already playing)
+      if (audio.paused) {
+        audio.currentTime = 0;
+        audio.play().catch(() => {
+          // Ignore autoplay errors
+        });
+      }
     } catch (error) {
       console.warn('Mining sound failed:', error);
     }
   }
   
-  public stopMiningSound() {
-    if (this.miningSound) {
-      this.miningSound.pause();
-      this.miningSound.currentTime = 0;
+  public stopMiningSound(deviceId: string) {
+    const audio = this.miningSoundPool.get(deviceId);
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
     }
+  }
+  
+  public stopAllMiningSounds() {
+    // Helper to stop all mining sounds (e.g., when toggling sound settings)
+    this.miningSoundPool.forEach(audio => {
+      audio.pause();
+      audio.currentTime = 0;
+    });
   }
   
 }
@@ -280,10 +301,14 @@ export const playFailSound = () => {
   soundManager.playFailSound();
 };
 
-export const startMiningSound = () => {
-  soundManager.startMiningSound();
+export const startMiningSound = (deviceId: string) => {
+  soundManager.startMiningSound(deviceId);
 };
 
-export const stopMiningSound = () => {
-  soundManager.stopMiningSound();
+export const stopMiningSound = (deviceId: string) => {
+  soundManager.stopMiningSound(deviceId);
+};
+
+export const stopAllMiningSounds = () => {
+  soundManager.stopAllMiningSounds();
 };

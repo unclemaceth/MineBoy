@@ -270,7 +270,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
       onFound: ({ hash, preimage, attempts, hr }) => {
         setMining(false);
         setStatus('found');
-        stopMiningSound();
+        stopMiningSound(color);
         const frozenResult = { hash, preimage, attempts, hr };
         setFoundResult(frozenResult);
         
@@ -292,7 +292,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         pushLine(`Check connection and try again`);
         setMining(false);
         setStatus('error');
-        stopMiningSound();
+        stopMiningSound(color);
       },
       onStopped: async (reason) => {
         console.log('[MineBoyDevice][STOPPED]', { color, tokenId: cartridge?.tokenId, reason });
@@ -301,7 +301,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           storeStopMining();
           setMining(false);
           setStatus('idle');
-          stopMiningSound();
+          stopMiningSound(color);
           playFailSound();
           setFoundResult(null);
           setFound(undefined);
@@ -319,7 +319,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           storeStopMining();
           setMining(false);
           setStatus('idle');
-          stopMiningSound();
+          stopMiningSound(color);
         }
       },
     });
@@ -606,7 +606,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             (miner as any).stopForTtl ? (miner as any).stopForTtl() : miner.stop();
             storeStopMining();
             setMining(false);
-            stopMiningSound();
+            stopMiningSound(color);
             playFailSound();
             setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000');
             setHashRate(0);
@@ -837,12 +837,12 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         setMode('visual');
         miner.resetSession();
         miner.start(jobToUse, address as string, cartridge.tokenId);
-        startMiningSound();
+        startMiningSound(color);
       } else {
         miner.stop();
         setMining(false);
         setStatus('idle');
-        stopMiningSound();
+        stopMiningSound(color);
         pushLine('Mining stopped');
       }
     };

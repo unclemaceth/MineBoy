@@ -64,10 +64,11 @@ export default function SoundSettings() {
     
     // Start/stop mining sound for testing
     if (enabled && soundEnabled) {
-      soundManager.startMiningSound();
-      setTimeout(() => soundManager.stopMiningSound(), 1000);
+      soundManager.startMiningSound('test-preview');
+      setTimeout(() => soundManager.stopMiningSound('test-preview'), 1000);
     } else {
-      soundManager.stopMiningSound();
+      // Stop ALL mining sounds when toggling off
+      soundManager.stopAllMiningSounds();
     }
   };
   
