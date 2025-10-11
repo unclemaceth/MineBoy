@@ -488,8 +488,17 @@ export class JobManager {
     const now = Date.now();
     const expiredJobs: string[] = [];
     
+    // Keep expired-but-unclaimed jobs around for 10 minutes after expiry
+    // This gives users who find a hash late in their window a chance to claim
+    // without hitting "job not found" if cleanup runs before they click
+    const CLAIM_RETENTION_MS = 10 * 60 * 1000; // 10 minutes
+    
     for (const [sessionId, job] of this.jobNonces) {
-      if (now > job.expiresAt) {
+      const shouldDelete = 
+        job.consumed || // Delete consumed jobs immediately
+        now > job.expiresAt + CLAIM_RETENTION_MS; // Keep unclaimed jobs for retention period
+      
+      if (shouldDelete) {
         expiredJobs.push(sessionId);
       }
     }
@@ -499,7 +508,7 @@ export class JobManager {
     }
     
     if (expiredJobs.length > 0) {
-      console.log(`Cleaned up ${expiredJobs.length} expired jobs`);
+      console.log(`Cleaned up ${expiredJobs.length} jobs (consumed or expired beyond retention)`);
     }
   }
 }
