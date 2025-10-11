@@ -117,8 +117,8 @@ export default function DeviceModal({
         tabIndex={-1}
         style={{
           maxWidth: 340,
-          maxHeight: "88%",
-          width: "min(92%, 340px)",
+          maxHeight: "85%", // Slightly smaller to ensure it fits
+          width: "min(90%, 340px)", // Smaller percentage for mobile
           overflow: "auto",
           borderRadius: 12,
           border: "3px solid #4a7d5f",
@@ -126,6 +126,8 @@ export default function DeviceModal({
           boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
           // make scroll nicer inside
           overscrollBehavior: "contain",
+          // Ensure proper box-sizing
+          boxSizing: "border-box",
         }}
       >
         {children}

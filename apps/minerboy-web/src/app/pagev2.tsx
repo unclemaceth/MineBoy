@@ -448,15 +448,17 @@ function MineBoyOrchestrator() {
       WebkitUserSelect: 'none',
       WebkitTouchCallout: 'none',
     }}>
-      {/* Mobile M/I/L Buttons - floating at top */}
+      {/* Mobile M/I/L Buttons - vertical column on right side */}
       {isMobile && (
         <div style={{
           position: 'fixed',
-          top: 'calc(var(--safe-top) + 8px)',
           right: '8px',
+          top: '50%',
+          transform: 'translateY(-50%)',
           zIndex: 100,
           display: 'flex',
-          gap: '8px',
+          flexDirection: 'column',
+          gap: '12px',
         }}>
           <button
             onClick={() => { playButtonSound(); openNavigationPage('mint'); }}
