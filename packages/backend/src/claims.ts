@@ -186,8 +186,14 @@ export class ClaimProcessor {
       throw new Error('Invalid session');
     }
     
-    // Validate job
-    const job = jobManager.validateJob(claimReq.sessionId, claimReq.jobId, claimReq.preimage.split(':')[0]);
+    // Validate job (forClaim: true allows validation even if job window expired,
+    // giving users a fresh claim window from solve time via EIP-712 expiry)
+    const job = jobManager.validateJob(
+      claimReq.sessionId,
+      claimReq.jobId,
+      claimReq.preimage.split(':')[0],
+      { forClaim: true }
+    );
     if (!job) {
       throw new Error('Invalid or expired job');
     }
@@ -387,8 +393,14 @@ export class ClaimProcessor {
       throw new Error('Session not found');
     }
 
-    // Validate job
-    const job = jobManager.validateJob(claimReq.sessionId, claimReq.jobId, claimReq.preimage.split(':')[0]);
+    // Validate job (forClaim: true allows validation even if job window expired,
+    // giving users a fresh claim window from solve time via EIP-712 expiry)
+    const job = jobManager.validateJob(
+      claimReq.sessionId,
+      claimReq.jobId,
+      claimReq.preimage.split(':')[0],
+      { forClaim: true }
+    );
     if (!job) {
       throw new Error('Invalid or expired job');
     }
@@ -588,8 +600,14 @@ export class ClaimProcessor {
       throw new Error('Session not found');
     }
 
-    // Validate job
-    const job = jobManager.validateJob(claimReq.sessionId, claimReq.jobId, claimReq.preimage.split(':')[0]);
+    // Validate job (forClaim: true allows validation even if job window expired,
+    // giving users a fresh claim window from solve time via EIP-712 expiry)
+    const job = jobManager.validateJob(
+      claimReq.sessionId,
+      claimReq.jobId,
+      claimReq.preimage.split(':')[0],
+      { forClaim: true }
+    );
     if (!job) {
       throw new Error('Invalid or expired job');
     }

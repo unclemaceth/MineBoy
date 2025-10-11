@@ -341,18 +341,26 @@ export class JobManager {
   /**
    * Validate job and nonce
    */
-  validateJob(sessionId: string, jobId: string, nonce: string): InternalJob | null {
+  validateJob(
+    sessionId: string,
+    jobId: string,
+    nonce: string,
+    opts?: { forClaim?: boolean }
+  ): InternalJob | null {
     const job = this.jobNonces.get(sessionId);
     if (!job) return null;
     
     if (job.jobId !== jobId) return null;
     if (job.nonce !== nonce) return null;
     
-    // Check if job has expired (expiresAt = window end + 2 min grace period)
-    // This prevents AFK mining while allowing time to submit claims
-    if (Date.now() > job.expiresAt) {
-      console.log(`[validateJob] Job expired (past claim deadline) for job ${jobId}`);
-      return null;
+    // If we're not in claim context, enforce expiry strictly (e.g. for general polling).
+    // In claim context, we allow validation to proceed; physics + counter checks in ClaimProcessor
+    // will still protect us, and the signed EIP-712 claim has its own 5-min on-chain expiry.
+    if (!opts?.forClaim) {
+      if (Date.now() > job.expiresAt) {
+        console.log(`[validateJob] Job expired (past claim deadline) for job ${jobId}`);
+        return null;
+      }
     }
     
     if (job.consumed) return null; // Job already claimed
