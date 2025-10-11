@@ -147,15 +147,16 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
     <>
       <div style={{
         backgroundColor: '#0f2c1b',
-        border: '2px solid #4a7d5f',
-        borderRadius: '8px',
+        border: '3px solid #4a7d5f',
+        borderRadius: '12px',
         width: '100%',
         maxWidth: '340px',
-        height: '100%', // Fill the DeviceModal container
+        maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        boxSizing: 'border-box'
+        boxSizing: 'border-box',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.6)'
       }}>
         {/* Header */}
         <div style={{
