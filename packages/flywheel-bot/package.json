@@ -20,6 +20,7 @@
     "force-relist-all": "tsx scripts/force-relist-all.ts",
     "relist-quick": "tsx scripts/relist-quick.ts",
     "cleanup-redis": "tsx scripts/cleanup-redis.ts",
+    "clear-listings": "tsx scripts/clear-all-listings.ts",
     "check-lp": "tsx scripts/check-lp-wallet.ts",
     "test:x": "tsx scripts/test-x-config.ts"
   },
