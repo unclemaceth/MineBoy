@@ -96,6 +96,25 @@ function MineBoyOrchestrator() {
   }, [layout]);
   
   // =========================================================================
+  // BUTTON INTERACTION STATES
+  // =========================================================================
+  
+  const [hoverLeftArrow, setHoverLeftArrow] = useState(false);
+  const [downLeftArrow, setDownLeftArrow] = useState(false);
+  const [hoverRightArrow, setHoverRightArrow] = useState(false);
+  const [downRightArrow, setDownRightArrow] = useState(false);
+  const [hoverLayout, setHoverLayout] = useState(false);
+  const [downLayout, setDownLayout] = useState(false);
+  const [hoverM, setHoverM] = useState(false);
+  const [downM, setDownM] = useState(false);
+  const [hoverI, setHoverI] = useState(false);
+  const [downI, setDownI] = useState(false);
+  const [hoverL, setHoverL] = useState(false);
+  const [downL, setDownL] = useState(false);
+  const [hoverW, setHoverW] = useState(false);
+  const [downW, setDownW] = useState(false);
+  
+  // =========================================================================
   // VISUAL VIEWPORT HEIGHT - iOS Safari bar handling
   // =========================================================================
   
@@ -523,6 +542,27 @@ function MineBoyOrchestrator() {
           >
             L
           </button>
+          <button
+            onClick={() => { playButtonSound(); openNavigationPage('welcome'); }}
+            style={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              border: '2px solid rgba(255,255,255,0.3)',
+              background: 'rgba(0,0,0,0.7)',
+              color: '#fff',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backdropFilter: 'blur(8px)',
+            }}
+            aria-label="Welcome"
+          >
+            W
+          </button>
         </div>
       )}
 
@@ -578,18 +618,27 @@ function MineBoyOrchestrator() {
               onClick={() => carouselRef.current?.goToPrevious()}
               disabled={devices.length <= 1 || layout !== 'carousel'}
               aria-disabled={devices.length <= 1 || layout !== 'carousel'}
+              onMouseEnter={() => setHoverLeftArrow(true)}
+              onMouseLeave={() => { setHoverLeftArrow(false); setDownLeftArrow(false); }}
+              onPointerDown={() => { 
+                setDownLeftArrow(true); 
+                playButtonSound(); 
+                if (navigator.vibrate) navigator.vibrate(10);
+              }}
+              onPointerUp={() => setDownLeftArrow(false)}
+              onPointerLeave={() => setDownLeftArrow(false)}
               style={{
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
                 background: devices.length > 1 && layout === 'carousel'
-                  ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
+                  ? (hoverLeftArrow && !downLeftArrow ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' : 'linear-gradient(145deg, #4a7d5f, #1a3d24)')
                   : 'linear-gradient(145deg, #3a3a3a, #1a1a1a)',
                 border: '3px solid',
-                borderTopColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
-                borderLeftColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
-                borderRightColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
-                borderBottomColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
+                borderTopColor: devices.length > 1 && layout === 'carousel' ? (downLeftArrow ? '#2a4d34' : '#5a8d6f') : '#4a4a4a',
+                borderLeftColor: devices.length > 1 && layout === 'carousel' ? (downLeftArrow ? '#2a4d34' : '#5a8d6f') : '#4a4a4a',
+                borderRightColor: devices.length > 1 && layout === 'carousel' ? (downLeftArrow ? '#5a8d6f' : '#2a4d34') : '#2a2a2a',
+                borderBottomColor: devices.length > 1 && layout === 'carousel' ? (downLeftArrow ? '#5a8d6f' : '#2a4d34') : '#2a2a2a',
                 color: devices.length > 1 && layout === 'carousel' ? '#c8ffc8' : '#666',
                 fontSize: 32,
                 fontWeight: 'bold',
@@ -597,8 +646,13 @@ function MineBoyOrchestrator() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
-                transition: 'all 0.15s',
+                transform: devices.length > 1 && layout === 'carousel' 
+                  ? (downLeftArrow ? 'translateY(2px) scale(1)' : (hoverLeftArrow ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'))
+                  : 'translateY(0) scale(1)',
+                boxShadow: downLeftArrow 
+                  ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                  : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                transition: 'all 0.1s ease',
                 opacity: devices.length > 1 && layout === 'carousel' ? 1 : 0.4,
               }}
               aria-label="Previous MineBoy"
@@ -649,18 +703,27 @@ function MineBoyOrchestrator() {
               onClick={() => carouselRef.current?.goToNext()}
               disabled={devices.length <= 1 || layout !== 'carousel'}
               aria-disabled={devices.length <= 1 || layout !== 'carousel'}
+              onMouseEnter={() => setHoverRightArrow(true)}
+              onMouseLeave={() => { setHoverRightArrow(false); setDownRightArrow(false); }}
+              onPointerDown={() => { 
+                setDownRightArrow(true); 
+                playButtonSound(); 
+                if (navigator.vibrate) navigator.vibrate(10);
+              }}
+              onPointerUp={() => setDownRightArrow(false)}
+              onPointerLeave={() => setDownRightArrow(false)}
                 style={{
                 width: 60,
                 height: 60,
                 borderRadius: '50%',
                 background: devices.length > 1 && layout === 'carousel'
-                  ? 'linear-gradient(145deg, #4a7d5f, #1a3d24)'
+                  ? (hoverRightArrow && !downRightArrow ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' : 'linear-gradient(145deg, #4a7d5f, #1a3d24)')
                   : 'linear-gradient(145deg, #3a3a3a, #1a1a1a)',
                 border: '3px solid',
-                borderTopColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
-                borderLeftColor: devices.length > 1 && layout === 'carousel' ? '#5a8d6f' : '#4a4a4a',
-                borderRightColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
-                borderBottomColor: devices.length > 1 && layout === 'carousel' ? '#2a4d34' : '#2a2a2a',
+                borderTopColor: devices.length > 1 && layout === 'carousel' ? (downRightArrow ? '#2a4d34' : '#5a8d6f') : '#4a4a4a',
+                borderLeftColor: devices.length > 1 && layout === 'carousel' ? (downRightArrow ? '#2a4d34' : '#5a8d6f') : '#4a4a4a',
+                borderRightColor: devices.length > 1 && layout === 'carousel' ? (downRightArrow ? '#5a8d6f' : '#2a4d34') : '#2a2a2a',
+                borderBottomColor: devices.length > 1 && layout === 'carousel' ? (downRightArrow ? '#5a8d6f' : '#2a4d34') : '#2a2a2a',
                 color: devices.length > 1 && layout === 'carousel' ? '#c8ffc8' : '#666',
                 fontSize: 32,
                   fontWeight: 'bold',
@@ -668,8 +731,13 @@ function MineBoyOrchestrator() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
-                transition: 'all 0.15s',
+                transform: devices.length > 1 && layout === 'carousel' 
+                  ? (downRightArrow ? 'translateY(2px) scale(1)' : (hoverRightArrow ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'))
+                  : 'translateY(0) scale(1)',
+                boxShadow: downRightArrow 
+                  ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                  : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                transition: 'all 0.1s ease',
                 opacity: devices.length > 1 && layout === 'carousel' ? 1 : 0.4,
               }}
               aria-label="Next MineBoy"
@@ -689,12 +757,26 @@ function MineBoyOrchestrator() {
                         playButtonSound();
                   setLayout(l => (l === 'carousel' ? 'row' : l === 'row' ? 'column' : 'carousel'));
                       }}
+                      onMouseEnter={() => setHoverLayout(true)}
+                      onMouseLeave={() => { setHoverLayout(false); setDownLayout(false); }}
+                      onPointerDown={() => { 
+                        setDownLayout(true); 
+                        if (navigator.vibrate) navigator.vibrate(10);
+                      }}
+                      onPointerUp={() => setDownLayout(false)}
+                      onPointerLeave={() => setDownLayout(false)}
                       style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                  border: '3px solid #3a8a4d',
+                  background: hoverLayout && !downLayout 
+                    ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' 
+                    : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '3px solid',
+                  borderTopColor: downLayout ? '#2a4d34' : '#5a8d6f',
+                  borderLeftColor: downLayout ? '#2a4d34' : '#5a8d6f',
+                  borderRightColor: downLayout ? '#5a8d6f' : '#2a4d34',
+                  borderBottomColor: downLayout ? '#5a8d6f' : '#2a4d34',
                   color: '#c8ffc8',
                   fontSize: 11,
                       fontWeight: 'bold',
@@ -702,7 +784,11 @@ function MineBoyOrchestrator() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transform: downLayout ? 'translateY(2px) scale(1)' : (hoverLayout ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'),
+                  boxShadow: downLayout 
+                    ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                    : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transition: 'all 0.1s ease',
                 }}
                 aria-label="Change layout"
                 title={
@@ -716,12 +802,27 @@ function MineBoyOrchestrator() {
               {/* Mint */}
             <button
                 onClick={() => openNavigationPage('mint')}
+                onMouseEnter={() => setHoverM(true)}
+                onMouseLeave={() => { setHoverM(false); setDownM(false); }}
+                onPointerDown={() => { 
+                  setDownM(true); 
+                  playButtonSound(); 
+                  if (navigator.vibrate) navigator.vibrate(10);
+                }}
+                onPointerUp={() => setDownM(false)}
+                onPointerLeave={() => setDownM(false)}
               style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                  border: '3px solid #3a8a4d',
+                  background: hoverM && !downM 
+                    ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' 
+                    : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '3px solid',
+                  borderTopColor: downM ? '#2a4d34' : '#5a8d6f',
+                  borderLeftColor: downM ? '#2a4d34' : '#5a8d6f',
+                  borderRightColor: downM ? '#5a8d6f' : '#2a4d34',
+                  borderBottomColor: downM ? '#5a8d6f' : '#2a4d34',
                   color: '#c8ffc8',
                   fontSize: 18,
                       fontWeight: 'bold',
@@ -729,7 +830,11 @@ function MineBoyOrchestrator() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transform: downM ? 'translateY(2px) scale(1)' : (hoverM ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'),
+                  boxShadow: downM 
+                    ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                    : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transition: 'all 0.1s ease',
                 }}
                 aria-label="Mint"
               >
@@ -737,12 +842,27 @@ function MineBoyOrchestrator() {
               </button>
               <button
                 onClick={() => openNavigationPage('instructions')}
+                onMouseEnter={() => setHoverI(true)}
+                onMouseLeave={() => { setHoverI(false); setDownI(false); }}
+                onPointerDown={() => { 
+                  setDownI(true); 
+                  playButtonSound(); 
+                  if (navigator.vibrate) navigator.vibrate(10);
+                }}
+                onPointerUp={() => setDownI(false)}
+                onPointerLeave={() => setDownI(false)}
                 style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
-                  background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                  border: '3px solid #3a8a4d',
+                  background: hoverI && !downI 
+                    ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' 
+                    : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '3px solid',
+                  borderTopColor: downI ? '#2a4d34' : '#5a8d6f',
+                  borderLeftColor: downI ? '#2a4d34' : '#5a8d6f',
+                  borderRightColor: downI ? '#5a8d6f' : '#2a4d34',
+                  borderBottomColor: downI ? '#5a8d6f' : '#2a4d34',
               color: '#c8ffc8',
                   fontSize: 18,
                   fontWeight: 'bold',
@@ -750,7 +870,11 @@ function MineBoyOrchestrator() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transform: downI ? 'translateY(2px) scale(1)' : (hoverI ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'),
+                  boxShadow: downI 
+                    ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                    : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transition: 'all 0.1s ease',
                 }}
                 aria-label="Instructions"
               >
@@ -758,12 +882,27 @@ function MineBoyOrchestrator() {
               </button>
                 <button
                 onClick={() => openNavigationPage('leaderboard')}
+                onMouseEnter={() => setHoverL(true)}
+                onMouseLeave={() => { setHoverL(false); setDownL(false); }}
+                onPointerDown={() => { 
+                  setDownL(true); 
+                  playButtonSound(); 
+                  if (navigator.vibrate) navigator.vibrate(10);
+                }}
+                onPointerUp={() => setDownL(false)}
+                onPointerLeave={() => setDownL(false)}
                   style={{
                   width: 50,
                   height: 50,
                   borderRadius: '50%',
-                    background: 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
-                  border: '3px solid #3a8a4d',
+                    background: hoverL && !downL 
+                      ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' 
+                      : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '3px solid',
+                  borderTopColor: downL ? '#2a4d34' : '#5a8d6f',
+                  borderLeftColor: downL ? '#2a4d34' : '#5a8d6f',
+                  borderRightColor: downL ? '#5a8d6f' : '#2a4d34',
+                  borderBottomColor: downL ? '#5a8d6f' : '#2a4d34',
                     color: '#c8ffc8',
                   fontSize: 18,
                     fontWeight: 'bold',
@@ -771,11 +910,55 @@ function MineBoyOrchestrator() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  boxShadow: '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transform: downL ? 'translateY(2px) scale(1)' : (hoverL ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'),
+                  boxShadow: downL 
+                    ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                    : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transition: 'all 0.1s ease',
                 }}
                 aria-label="Leaderboard"
               >
                 L
+                  </button>
+              <button
+                onClick={() => openNavigationPage('welcome')}
+                onMouseEnter={() => setHoverW(true)}
+                onMouseLeave={() => { setHoverW(false); setDownW(false); }}
+                onPointerDown={() => { 
+                  setDownW(true); 
+                  playButtonSound(); 
+                  if (navigator.vibrate) navigator.vibrate(10);
+                }}
+                onPointerUp={() => setDownW(false)}
+                onPointerLeave={() => setDownW(false)}
+                  style={{
+                  width: 50,
+                  height: 50,
+                  borderRadius: '50%',
+                    background: hoverW && !downW 
+                      ? 'linear-gradient(145deg, #5a8d6f, #2a4d34)' 
+                      : 'linear-gradient(145deg, #4a7d5f, #1a3d24)',
+                  border: '3px solid',
+                  borderTopColor: downW ? '#2a4d34' : '#5a8d6f',
+                  borderLeftColor: downW ? '#2a4d34' : '#5a8d6f',
+                  borderRightColor: downW ? '#5a8d6f' : '#2a4d34',
+                  borderBottomColor: downW ? '#5a8d6f' : '#2a4d34',
+                    color: '#c8ffc8',
+                  fontSize: 18,
+                    fontWeight: 'bold',
+                      cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transform: downW ? 'translateY(2px) scale(1)' : (hoverW ? 'translateY(0) scale(1.05)' : 'translateY(0) scale(1)'),
+                  boxShadow: downW 
+                    ? 'inset 0 2px 4px rgba(0,0,0,0.6)'
+                    : '0 4px 8px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.2)',
+                  transition: 'all 0.1s ease',
+                }}
+                aria-label="Welcome"
+              >
+                W
                   </button>
                 </div>
                 </div>

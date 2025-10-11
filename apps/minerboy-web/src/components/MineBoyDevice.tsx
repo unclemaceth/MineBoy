@@ -1547,6 +1547,14 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         {/* WALLET Button */}
         <button
           onClick={() => { playButtonSound(); if (onOpenWalletManagementModal) onOpenWalletManagementModal(); }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "linear-gradient(145deg, #b09fe4, #8a6fc8)";
+            e.currentTarget.style.transform = "scale(1.02)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "linear-gradient(145deg, #a08fd4, #7a5fb8)";
+            e.currentTarget.style.transform = "scale(1)";
+          }}
           style={{
             position: "absolute",
             bottom: 175,
@@ -1566,6 +1574,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
             fontSize: 10,
             letterSpacing: 0.5,
             color: "#ffffff",
+            transform: "scale(1)",
             transition: "all 0.1s ease",
             display: "flex",
             alignItems: "center",
@@ -1578,6 +1587,14 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         {/* MENU Button */}
         <button
           onClick={() => { playButtonSound(); setShowDebugModal(true); }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "linear-gradient(145deg, #5a5a5a, #2a2a2a)";
+            e.currentTarget.style.transform = "translateY(0) scale(1.02)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "linear-gradient(145deg, #4a4a4a, #1a1a1a)";
+            e.currentTarget.style.transform = "translateY(0) scale(1)";
+          }}
           style={{
             position: "absolute",
             bottom: 775,
@@ -1611,6 +1628,18 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <div style={{ position: "absolute", left: 17, bottom: 775 }}>
           <button
             onClick={() => { playButtonSound(); handleConnect(); }}
+            onMouseEnter={(e) => {
+              if (!connectPressed) {
+                e.currentTarget.style.background = "linear-gradient(145deg, #5a5a5a, #2a2a2a)";
+                e.currentTarget.style.transform = "translateY(0) scale(1.02)";
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!connectPressed) {
+                e.currentTarget.style.background = "linear-gradient(145deg, #4a4a4a, #1a1a1a)";
+                e.currentTarget.style.transform = "translateY(0) scale(1)";
+              }
+            }}
             onPointerDown={() => setConnectPressed(true)}
             onPointerUp={() => setConnectPressed(false)}
             onPointerLeave={() => setConnectPressed(false)}
@@ -1628,9 +1657,9 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
               boxShadow: connectPressed 
                 ? "inset 0 2px 3px rgba(0,0,0,0.6)" 
                 : "0 2px 2px rgba(0,0,0,0.5)",
-              fontWeight: 900, 
+              fontWeight: 900,
               fontSize: 10,
-              letterSpacing: 0.5, 
+              letterSpacing: 0.5,
               color: "#ffffff",
               transform: connectPressed ? "translateY(2px) scale(1)" : "translateY(0) scale(1)",
               transition: "all 0.1s ease",
@@ -1655,15 +1684,15 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         </div>
 
         {/* A & B buttons */}
-        <div style={{ position: "absolute", right: 37.5, bottom: 200.5 + 20 }}>
+        <div style={{ position: "absolute", right: 37.5, bottom: 200.5 + 20, zIndex: 3 }}>
           <ActionButton label="A" onPress={handleA} size={80} variant="primary" />
         </div>
-        <div style={{ position: "absolute", right: 127.5, bottom: 150.5 + 20 }}>
+        <div style={{ position: "absolute", right: 127.5, bottom: 150.5 + 20, zIndex: 3 }}>
           <ActionButton label="B" onPress={handleB} size={60} variant="secondary" />
         </div>
 
         {/* Fan */}
-        <div style={{ position: "absolute", right: 19, bottom: 55, zIndex: 1 }}>
+        <div style={{ position: "absolute", right: 19, bottom: 55, zIndex: 2 }}>
           <FanSandwich spinning={mining} size={110} color={color} />
         </div>
 
@@ -2043,8 +2072,8 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
               {/* Network Statistics */}
               <StatisticsSection />
 
-              {/* Show Welcome Page Button */}
-              <div style={{
+              {/* Show Welcome Page Button - Commented out: Use W button in side panel instead */}
+              {/* <div style={{
                 padding: '12px',
                 background: 'linear-gradient(180deg, #1a3d24, #0f2216)',
                 border: '2px solid #4a7d5f',
@@ -2074,7 +2103,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
                 >
                   🎮 Show Welcome Page
                 </button>
-              </div>
+              </div> */}
 
               {/* Session Info */}
               <div style={{
