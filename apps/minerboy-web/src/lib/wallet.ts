@@ -1,9 +1,9 @@
 'use client';
 
-import { http, createConfig } from 'wagmi';
+import { http, createStorage } from 'wagmi';
 import type { Chain } from 'wagmi/chains';
 import { mainnet, base, arbitrum, optimism, polygon } from 'wagmi/chains';
-import { walletConnect, injected } from 'wagmi/connectors';
+import { defaultWagmiConfig } from '@web3modal/wagmi/react';
 
 export const projectId = process.env.NEXT_PUBLIC_WC_PROJECT_ID || '';
 export const w3mReady = !!projectId;
@@ -35,22 +35,25 @@ export const apechain = {
 // Include major bridging chains for Relay swap functionality
 export const chains = [apechain, base, mainnet, arbitrum, optimism, polygon, curtis] as const;
 
-// Single wagmi config used everywhere (no autoConnect to prevent flicker)
-export const wagmiConfig = createConfig({
+// Custom storage to prevent autoConnect flicker
+const noopStorage = createStorage({
+  storage: {
+    async getItem() { return null; },
+    async setItem() {},
+    async removeItem() {}
+  }
+});
+
+// Use defaultWagmiConfig for Web3Modal wallet discovery, but disable autoConnect
+export const wagmiConfig = defaultWagmiConfig({
   chains,
-  connectors: [
-    walletConnect({
-      projectId,
-      showQrModal: false, // Web3Modal handles UI
-      metadata: {
-        name: 'MineBoy™',
-        description: 'MineBoy™',
-        url: getSiteUrl(),
-        icons: [`${getSiteUrl()}/icon.png`]
-      }
-    }),
-    injected({ shimDisconnect: true })
-  ],
+  projectId,
+  metadata: {
+    name: 'MineBoy™',
+    description: 'MineBoy™',
+    url: getSiteUrl(),
+    icons: [`${getSiteUrl()}/icon.png`]
+  },
   transports: {
     [apechain.id]: http('https://rpc.apechain.com/http'),
     [base.id]: http(),
@@ -61,6 +64,6 @@ export const wagmiConfig = createConfig({
     [curtis.id]: http('https://curtis.rpc.caldera.xyz/http')
   },
   ssr: true,
-  // @ts-expect-error wagmi accepts this; prevents race/flicker
-  autoConnect: false
+  // Use noop storage to prevent autoConnect while keeping wallet discovery
+  storage: noopStorage
 });
