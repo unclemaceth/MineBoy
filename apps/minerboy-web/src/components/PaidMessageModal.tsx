@@ -178,13 +178,16 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
       border: '3px solid #4a7d5f',
       borderRadius: '12px',
       padding: '24px',
-      minWidth: 0,
-      maxWidth: '400px',
       width: '100%',
-      fontFamily: 'Menlo, monospace',
-      color: '#c8ffc8',
+      maxWidth: '400px',
+      maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column',
+      boxSizing: 'border-box',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
-      boxSizing: 'border-box'
+      fontFamily: 'Menlo, monospace',
+      color: '#c8ffc8'
     }}>
         {/* Header */}
         <div style={{
@@ -223,6 +226,18 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
           </button>
         </div>
         
+        {/* Content - Scrollable */}
+        <div 
+          className="hide-scrollbar"
+          style={{
+            flex: 1,
+            minWidth: 0,
+            maxWidth: '100%',
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            boxSizing: 'border-box'
+          }}
+        >
         {/* Message Type Selector */}
         <div style={{ marginBottom: '16px' }}>
           <label style={{
@@ -449,6 +464,7 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
         >
           {status === 'idle' || status === 'error' ? `PAY ${MESSAGE_TYPES[messageType].cost} APE & POST` : 'PROCESSING...'}
         </button>
+        </div> {/* Close scrollable content */}
     </div>
   );
 }
