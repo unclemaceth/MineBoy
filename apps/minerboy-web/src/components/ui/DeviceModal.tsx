@@ -33,9 +33,14 @@ export default function DeviceModal({
   const measure = useCallback(() => {
     // Handle both RefObject and ForwardedRef (which can be function or object)
     const el = typeof anchorRef === 'function' ? null : anchorRef?.current;
-    if (!el) return;
+    if (!el) {
+      console.warn('[DeviceModal] No anchor element found!', { anchorRef });
+      return;
+    }
     const r = el.getBoundingClientRect();
-    setRect({ left: r.left, top: r.top, width: r.width, height: r.height });
+    const newRect = { left: r.left, top: r.top, width: r.width, height: r.height };
+    console.log('[DeviceModal] Measured rect:', newRect);
+    setRect(newRect);
   }, [anchorRef]);
 
   useLayoutEffect(() => { if (isOpen) measure(); }, [isOpen, measure]);
@@ -75,7 +80,13 @@ export default function DeviceModal({
   }, [isOpen, onClose]);
 
   useEffect(() => setMounted(true), []);
-  if (!mounted || !isOpen || !rect) return null;
+  
+  if (!mounted || !isOpen || !rect) {
+    if (isOpen) {
+      console.log('[DeviceModal] Not rendering:', { mounted, isOpen, rect });
+    }
+    return null;
+  }
 
   return createPortal(
     <div
