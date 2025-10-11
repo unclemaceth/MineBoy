@@ -71,7 +71,7 @@ export default function FanSandwich({ spinning, size = 100, color = 'blue' }: Fa
       const angle = progress * 360;
       
       if (bladesRef.current) {
-        bladesRef.current.style.transform = `rotate(${angle}deg)`;
+        bladesRef.current.style.transform = `translate(-50%, -50%) rotate(${angle}deg)`;
       }
       
       if (progress < 1 && runningRef.current) {
@@ -104,7 +104,7 @@ export default function FanSandwich({ spinning, size = 100, color = 'blue' }: Fa
           runningRef.current = false;
           // settle the needle
           if (bladesRef.current) {
-            bladesRef.current.style.transform = `rotate(0deg)`;
+            bladesRef.current.style.transform = `translate(-50%, -50%) rotate(0deg)`;
           }
           return;
         }
@@ -144,7 +144,7 @@ export default function FanSandwich({ spinning, size = 100, color = 'blue' }: Fa
           cancelAnimationFrame(animationRef.current);
         }
         if (bladesRef.current) {
-          bladesRef.current.style.transform = `rotate(0deg)`;
+          bladesRef.current.style.transform = `translate(-50%, -50%) rotate(0deg)`;
         }
       }
     }
@@ -183,7 +183,12 @@ export default function FanSandwich({ spinning, size = 100, color = 'blue' }: Fa
         inset: 0,
         display: "flex",
         alignItems: "center",
-        justifyContent: "center"
+        justifyContent: "center",
+        width: size * 0.91,
+        height: size * 0.91,
+        left: '50%',
+        top: '50%',
+        transform: 'translate(-50%, -50%)',
       }}>
         <FanBlades 
           width={size * 0.91} 
