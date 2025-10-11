@@ -644,16 +644,8 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     
     // Wallet is tracked via address from useActiveAccount() hook
     
-    // Stop mining when device becomes inactive (CPU guard for carousel)
-    useEffect(() => {
-      if (!isActive && mining) {
-        console.log(`[MineBoyDevice][${color}] Stopping mining (inactive)`);
-        miner.stop();
-        setMining(false);
-        setStatus('idle');
-        stopMiningSound();
-      }
-    }, [isActive, mining, color]);
+    // NOTE: All devices continue mining even when not active (inactive devices just have pointerEvents:'none')
+    // This allows true parallel mining across all 3 carousel devices
     
     // Hash display animation
     useEffect(() => {
