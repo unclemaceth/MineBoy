@@ -73,30 +73,20 @@ export default function CartridgeSelectionModal({
 
   if (!isOpen) return null;
 
+  // Now wrapped in DeviceModal, so no outer fixed wrapper needed
   return (
     <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
+      backgroundColor: '#2a4a3d',
+      border: '3px solid #4a7d5f',
+      borderRadius: 12,
+      padding: 24,
+      maxWidth: 400,
+      width: '100%',
+      maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
+      overflowY: 'auto',
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
+      boxSizing: 'border-box'
     }}>
-      <div style={{
-        backgroundColor: '#2a4a3d',
-        border: '3px solid #4a7d5f',
-        borderRadius: 12,
-        padding: 24,
-        maxWidth: 400,
-        width: '90%',
-        maxHeight: '80vh',
-        overflow: 'auto',
-        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)',
-      }}>
         <div style={{
           color: '#64ff8a',
           fontSize: 18,
@@ -351,7 +341,6 @@ export default function CartridgeSelectionModal({
             Cancel
           </button>
         </div>
-      </div>
     </div>
   );
 }

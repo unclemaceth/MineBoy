@@ -171,28 +171,20 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
   
   if (!isOpen) return null;
   
+  // Now wrapped in DeviceModal, so no outer fixed wrapper needed
   return (
     <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 2000,
-      padding: '20px',
+      backgroundColor: '#1a3d24',
+      border: '3px solid #4a7d5f',
+      borderRadius: '12px',
+      padding: '24px',
+      maxWidth: '400px',
+      width: '100%',
+      fontFamily: 'Menlo, monospace',
+      color: '#c8ffc8',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+      boxSizing: 'border-box'
     }}>
-      <div style={{
-        backgroundColor: '#1a3d24',
-        border: '3px solid #4a7d5f',
-        borderRadius: '12px',
-        padding: '24px',
-        maxWidth: '400px',
-        width: '100%',
-        fontFamily: 'Menlo, monospace',
-        color: '#c8ffc8',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
-      }}>
         {/* Header */}
         <div style={{
           display: 'flex',
@@ -456,7 +448,6 @@ export default function PaidMessageModal({ isOpen, onClose, onMessageSubmitted }
         >
           {status === 'idle' || status === 'error' ? `PAY ${MESSAGE_TYPES[messageType].cost} APE & POST` : 'PROCESSING...'}
         </button>
-      </div>
     </div>
   );
 }

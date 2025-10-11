@@ -45,24 +45,18 @@ export default function CartridgeModalV2({
 
   if (!isOpen) return null;
 
+  // Now wrapped in DeviceModal, so no outer fixed wrapper needed
   return (
     <div style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
+      backgroundColor: '#1a1a1a',
+      border: '3px solid #64ff8a',
+      borderRadius: 12,
+      padding: 20,
+      maxWidth: 400,
+      width: '100%',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
+      boxSizing: 'border-box'
     }}>
-      <div style={{
-        backgroundColor: '#1a1a1a',
-        border: '2px solid #64ff8a',
-        borderRadius: 8,
-        padding: 20,
-        maxWidth: 400,
-        width: '90%',
-      }}>
         <h3 style={{ 
           color: '#64ff8a', 
           marginBottom: 16, 
@@ -198,7 +192,6 @@ export default function CartridgeModalV2({
             Cancel
           </button>
         </div>
-      </div>
     </div>
   );
 }

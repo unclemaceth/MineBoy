@@ -1927,6 +1927,10 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           zIndex={905}
         >
           <div style={{
+            backgroundColor: '#0f2c1b',
+            border: '3px solid #4a7d5f',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
             padding: 20,
             textAlign: 'center',
             color: '#fff',
@@ -1982,12 +1986,19 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
           zIndex={910}
         >
           <div style={{
+            backgroundColor: '#0f2c1b',
+            border: '3px solid #4a7d5f',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
             padding: '16px',
             width: '100%',
             maxWidth: 340,
+            maxHeight: '85vh',
+            overflowY: 'auto',
             fontFamily: 'Menlo, monospace',
             color: '#c8ffc8',
-            fontSize: '11px'
+            fontSize: '11px',
+            boxSizing: 'border-box'
           }}>
             <div style={{
               display: 'flex',

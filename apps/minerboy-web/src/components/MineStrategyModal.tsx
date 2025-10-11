@@ -12,6 +12,9 @@ const NPC_CONTRACT = '0xFA1c20E0d4277b1E0b289DfFadb5Bd92Fb8486aA';
 const ALCHEMY_API_KEY = process.env.NEXT_PUBLIC_ALCHEMY_API_KEY;
 const FLYWHEEL_WALLET = '0x08AD425BA1D1fC4d69d88B56f7C6879B2E85b0C4'; // Flywheel wallet that receives NPC payments
 
+// NOTE: This modal is NOW wrapped in DeviceModal by the parent (MineBoyDevice)
+// So we DON'T use position:fixed or vh units anymore - just fill the space given to us
+
 // Define ApeChain for Thirdweb
 const thirdwebApechain = defineChain({
   id: 33139,
@@ -139,29 +142,20 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
 
   if (!isOpen) return null;
 
+  // Now this component renders INSIDE DeviceModal wrapper, so no fixed positioning needed
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.8)',
-      zIndex: 1000,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
+    <>
       <div style={{
         backgroundColor: '#0f2c1b',
         border: '2px solid #4a7d5f',
         borderRadius: '8px',
         width: '100%',
-        maxWidth: '340px', // Fit within device modal
-        maxHeight: '88%', // Relative to DeviceModal wrapper (not viewport)
+        maxWidth: '340px',
+        height: '100%', // Fill the DeviceModal container
         overflow: 'hidden',
-        position: 'relative'
+        display: 'flex',
+        flexDirection: 'column',
+        boxSizing: 'border-box'
       }}>
         {/* Header */}
         <div style={{
@@ -209,7 +203,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
           style={{
             padding: '20px',
             overflowY: 'auto',
-            maxHeight: 'calc(90vh - 80px)',
+            flex: 1, // Fill remaining space in the flex container
             fontFamily: 'monospace',
             color: '#c8ffc8'
           }}
@@ -353,7 +347,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
             </>
           )}
         </div>
-      </div>
+      </div> {/* Close modal container */}
       
       {/* Custom Notification */}
       {notification && (
@@ -406,7 +400,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
           animation: notificationSlideIn 0.3s ease-out;
         }
       `}} />
-    </div>
+    </>
   );
 }
 

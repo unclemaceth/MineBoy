@@ -100,32 +100,28 @@ export default function DeviceModal({
         width: Math.round(rect.width),
         height: Math.round(rect.height),
         zIndex,
-        // backplate that matches device rect only
-        background: "rgba(0,0,0,0.70)",
+        // Backdrop that matches device rect
+        background: "rgba(0,0,0,0.75)",
         backdropFilter: "blur(1px)",
-        display: "grid",
-        placeItems: "center",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         overscrollBehavior: "contain",
         WebkitOverflowScrolling: "touch",
         pointerEvents: "auto"
       }}
     >
+      {/* PURE wrapper - NO styling, children provide their own */}
       <div
         ref={contentRef}
         onClick={(e) => e.stopPropagation()}
         tabIndex={-1}
         style={{
-          width: "min(92%, 360px)",
-          maxHeight: "min(88%, 560px)",
-          overflow: "auto",
-          borderRadius: 12,
-          border: "3px solid #4a7d5f",
-          background: "linear-gradient(180deg,#0f2216,#1a3d24)",
-          boxShadow: "0 8px 32px rgba(0,0,0,.6)",
-          boxSizing: "border-box",
-          padding: 16,
-          // IMPORTANT: we are not inside a scaled tree anymore
-          transform: "none"
+          // Children are responsible for their own sizing/styling
+          maxWidth: "min(92%, 360px)",
+          maxHeight: "min(88%, calc(var(--vh, 100vh) * 0.88))",
+          width: "auto",
+          height: "auto"
         }}
       >
         {children}
