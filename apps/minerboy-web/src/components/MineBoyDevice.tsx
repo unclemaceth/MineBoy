@@ -124,7 +124,23 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     onOpenNavigationModal,
     className, 
     style 
-  }, ref) => {
+  }, forwardedRef) => {
+    
+    // =========================================================================
+    // INTERNAL REF - Used for DeviceModal anchoring
+    // =========================================================================
+    
+    // Create internal ref that DeviceModal can read from
+    const internalRef = useRef<HTMLDivElement>(null);
+    
+    // Sync internal ref with forwarded ref so parent carousel can still access the element
+    useEffect(() => {
+      if (typeof forwardedRef === 'function') {
+        forwardedRef(internalRef.current);
+      } else if (forwardedRef) {
+        forwardedRef.current = internalRef.current;
+      }
+    });
     
     // =========================================================================
     // STATE - All device-local state
@@ -1240,7 +1256,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
     
     return (
       <div
-        ref={ref}
+        ref={internalRef}
         className={className}
         style={{
           position: 'relative', // Required for DeviceModal absolute positioning
@@ -1906,7 +1922,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showEjectConfirm}
           onClose={() => { playButtonSound(); setShowEjectConfirm(false); }}
-          anchorRef={ref}
+          anchorRef={internalRef}
           ariaLabel="Confirm eject cartridge"
           zIndex={905}
         >
@@ -1961,7 +1977,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showDebugModal}
           onClose={() => { playButtonSound(); setShowDebugModal(false); }}
-          anchorRef={ref}
+          anchorRef={internalRef}
           ariaLabel="Debug info"
           zIndex={910}
         >
@@ -2286,7 +2302,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showPaidMessageModal}
           onClose={() => setShowPaidMessageModal(false)}
-          anchorRef={ref}
+          anchorRef={internalRef}
           ariaLabel="Paid message"
           zIndex={900}
         >
@@ -2300,7 +2316,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showMineStrategyModal}
           onClose={() => setShowMineStrategyModal(false)}
-          anchorRef={ref}
+          anchorRef={internalRef}
           ariaLabel="Mining strategy"
           zIndex={900}
         >
@@ -2314,7 +2330,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showCartridgeModalV2}
           onClose={() => setShowCartridgeModalV2(false)}
-          anchorRef={ref}
+          anchorRef={internalRef}
           ariaLabel="Cartridge settings"
           zIndex={905}
         >
@@ -2337,7 +2353,7 @@ const MineBoyDevice = forwardRef<HTMLDivElement, MineBoyDeviceProps>(
         <DeviceModal
           isOpen={showAlchemyCartridges}
           onClose={() => setShowAlchemyCartridges(false)}
-          anchorRef={ref}
+          anchorRef={internalRef}
           ariaLabel="Select cartridge"
           zIndex={910}
         >
