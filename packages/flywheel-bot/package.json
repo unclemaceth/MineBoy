@@ -21,6 +21,7 @@
     "relist-quick": "tsx scripts/relist-quick.ts",
     "cleanup-redis": "tsx scripts/cleanup-redis.ts",
     "clear-listings": "tsx scripts/clear-all-listings.ts",
+    "unwrap-wape": "tsx scripts/unwrap-wape.ts",
     "check-lp": "tsx scripts/check-lp-wallet.ts",
     "test:x": "tsx scripts/test-x-config.ts"
   },
