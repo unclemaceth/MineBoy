@@ -149,6 +149,7 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         backgroundColor: '#0f2c1b',
         border: '3px solid #4a7d5f',
         borderRadius: '12px',
+        padding: '24px',
         width: '100%',
         maxWidth: '400px',
         maxHeight: 'min(85vh, calc(var(--vh, 100vh) * 0.85))',
@@ -163,7 +164,8 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '16px 20px',
+          paddingBottom: '16px',
+          marginBottom: '16px',
           borderBottom: '2px solid #4a7d5f',
           background: 'linear-gradient(145deg, #1a4d2a, #2d5a3d)'
         }}>
@@ -202,7 +204,6 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
         <div 
           className="hide-scrollbar"
           style={{
-            padding: '20px',
             overflowY: 'auto',
             flex: 1, // Fill remaining space in the flex container
             fontFamily: 'monospace',

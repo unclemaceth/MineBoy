@@ -51,7 +51,7 @@ export default function CartridgeModalV2({
       backgroundColor: '#1a1a1a',
       border: '3px solid #64ff8a',
       borderRadius: 12,
-      padding: 20,
+      padding: '24px',
       maxWidth: 400,
       width: '100%',
       boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
