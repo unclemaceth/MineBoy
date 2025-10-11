@@ -26,6 +26,13 @@ const CAMELOT_ROUTER_ABI = [
   "function getAmountsOut(uint amountIn, address[] calldata path) view returns (uint[] memory amounts)"
 ];
 
+// UniswapV2 Pair ABI for querying reserves directly
+const PAIR_ABI = [
+  "function getReserves() view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)",
+  "function token0() view returns (address)",
+  "function token1() view returns (address)"
+];
+
 // WAPE ABI for wrapping
 const WAPE_ABI = [
   'function deposit() payable',
@@ -58,19 +65,38 @@ function getGasCaps() {
  */
 async function querySwapRate(wapeAmount: bigint): Promise<bigint> {
   try {
-    // Use Camelot Router (UniswapV2-compatible) to query rates
-    // NOTE: We use YakRouter for actual swaps, but YakRouter doesn't have getAmountsOut
-    const CAMELOT_ROUTER = '0x18E621B64d7808c3C47bccbbD7485d23F257D26f';
+    // Query the pool directly for reserves - more reliable than router
+    // This is the actual WAPE/MNESTR pool that YakRouter uses
+    const POOL = '0x7101842054d75e8f2b15c0026254b0d7c525d594';
     
-    console.log(`[RateQuery] Querying Camelot Router: ${CAMELOT_ROUTER}`);
-    console.log(`[RateQuery] Path: ${cfg.wape} → ${cfg.mnestr}`);
-    console.log(`[RateQuery] Amount: ${formatEther(wapeAmount)} WAPE`);
+    console.log(`[RateQuery] Querying pool reserves: ${POOL}`);
+    console.log(`[RateQuery] Amount in: ${formatEther(wapeAmount)} WAPE`);
     
-    const camelotRouter = new Contract(CAMELOT_ROUTER, CAMELOT_ROUTER_ABI, treasury);
-    const path = [cfg.wape, cfg.mnestr];
+    const pair = new Contract(POOL, PAIR_ABI, treasury);
     
-    const amounts = await camelotRouter.getAmountsOut(wapeAmount, path);
-    const expectedMNESTR = amounts[1]; // amounts[0] = input, amounts[1] = output
+    // Get token order
+    const token0 = await pair.token0();
+    const token1 = await pair.token1();
+    
+    // Get reserves
+    const reserves = await pair.getReserves();
+    const reserve0 = reserves[0];
+    const reserve1 = reserves[1];
+    
+    // Figure out which reserve is WAPE and which is MNESTR
+    const wapeIsToken0 = token0.toLowerCase() === cfg.wape.toLowerCase();
+    const reserveWAPE = wapeIsToken0 ? reserve0 : reserve1;
+    const reserveMNESTR = wapeIsToken0 ? reserve1 : reserve0;
+    
+    console.log(`[RateQuery] Pool reserves: ${formatEther(reserveWAPE)} WAPE, ${formatEther(reserveMNESTR)} MNESTR`);
+    
+    // Calculate output using constant product formula: x * y = k
+    // amountOut = (amountIn * reserveOut) / (reserveIn + amountIn)
+    // Apply 0.3% fee: amountIn * 0.997
+    const amountInWithFee = wapeAmount * 997n;
+    const numerator = amountInWithFee * reserveMNESTR;
+    const denominator = (reserveWAPE * 1000n) + amountInWithFee;
+    const expectedMNESTR = numerator / denominator;
     
     console.log(`[RateQuery] ✅ Expected output: ${formatEther(expectedMNESTR)} MNESTR`);
     const rate = (expectedMNESTR * 10n**18n) / wapeAmount;
@@ -78,9 +104,9 @@ async function querySwapRate(wapeAmount: bigint): Promise<bigint> {
     
     return expectedMNESTR;
   } catch (error: any) {
-    console.error(`[RateQuery] ❌ Failed to query rate:`, error.message);
-    // Fallback to conservative estimate if query fails
-    const conservativeRate = 45000n * 10n**18n; // Very conservative 45k MNESTR per WAPE
+    console.error(`[RateQuery] ❌ Failed to query pool:`, error.message);
+    // Fallback to very conservative estimate if query fails
+    const conservativeRate = 40000n * 10n**18n; // Very conservative 40k MNESTR per WAPE
     const fallbackOutput = (wapeAmount * conservativeRate) / 10n**18n;
     console.log(`[RateQuery] Using fallback conservative estimate: ${formatEther(fallbackOutput)} MNESTR`);
     return fallbackOutput;
@@ -143,12 +169,12 @@ export async function executeBurn(): Promise<{
   console.log(`[Treasury] Router: ${YAK_ROUTER}`);
   console.log(`[Treasury] Path: WAPE → MNESTR (via adapter)`);
   
-  // Query the actual expected output from Camelot DEX
+  // Query the actual expected output from pool reserves
   const expectedMNESTR = await querySwapRate(apeForSwap);
-  const minMNESTR = (expectedMNESTR * 90n) / 100n; // 10% slippage tolerance
+  const minMNESTR = (expectedMNESTR * 85n) / 100n; // 15% slippage tolerance for safety
   
-  console.log(`[Treasury] Expected MNESTR (from DEX): ${formatEther(expectedMNESTR)}`);
-  console.log(`[Treasury] Min MNESTR (10% slippage): ${formatEther(minMNESTR)}`);
+  console.log(`[Treasury] Expected MNESTR (from pool): ${formatEther(expectedMNESTR)}`);
+  console.log(`[Treasury] Min MNESTR (15% slippage): ${formatEther(minMNESTR)}`);
   
   // Get gas price caps for all transactions
   const gasCaps = getGasCaps();
