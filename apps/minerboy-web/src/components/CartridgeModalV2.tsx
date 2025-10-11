@@ -22,11 +22,11 @@ export default function CartridgeModalV2({
   onVaultChange,
   playButtonSound = () => {}
 }: CartridgeModalV2Props) {
-  // Load delegation toggle from localStorage (default: true)
+  // Load delegation toggle from localStorage (default: false for new users)
   const [useDelegation, setUseDelegation] = useState<boolean>(() => {
-    if (typeof window === 'undefined') return true;
+    if (typeof window === 'undefined') return false;
     const saved = localStorage.getItem(DELEGATION_TOGGLE_KEY);
-    return saved === null ? true : saved === 'true';
+    return saved === null ? false : saved === 'true';
   });
   
   // Track vault detection status

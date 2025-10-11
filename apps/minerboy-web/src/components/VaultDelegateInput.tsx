@@ -18,6 +18,7 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
   const { address } = useActiveAccount();
   const [autoDetectedVault, setAutoDetectedVault] = useState<string | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [detectionAttempted, setDetectionAttempted] = useState(false); // Track if we already tried
   const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Notify parent of detection status changes
@@ -27,9 +28,10 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
     }
   }, [isDetecting, onDetectingChange]);
 
-  // Reset cached vault when hot wallet changes
+  // Reset cached vault and detection flag when hot wallet changes
   useEffect(() => {
     setAutoDetectedVault(null);
+    setDetectionAttempted(false);
   }, [address]);
 
   // Auto-detect or push cached vault to parent whenever we need one
@@ -43,10 +45,19 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
         onVaultChange(autoDetectedVault);
         return;
       }
-      // ✅ No cached vault yet → kick off detection (guarded by isDetecting)
-      if (!isDetecting) autoDetectVault();
+      // ✅ No cached vault yet → kick off detection (only if not already attempted)
+      if (!isDetecting && !detectionAttempted) {
+        autoDetectVault();
+      }
     }
-  }, [DELEGATE_ENABLED, enabled, address, vaultAddress, autoDetectedVault, isDetecting]);
+  }, [DELEGATE_ENABLED, enabled, address, vaultAddress, autoDetectedVault, isDetecting, detectionAttempted]);
+
+  // Reset detection flag when delegation is toggled OFF
+  useEffect(() => {
+    if (!enabled) {
+      setDetectionAttempted(false); // Allow fresh detection when toggled back ON
+    }
+  }, [enabled]);
 
   // Re-apply cached vault when delegation is toggled ON (UX improvement)
   useEffect(() => {
@@ -78,6 +89,7 @@ export default function VaultDelegateInput({ vaultAddress, onVaultChange, classN
       console.error('[DELEGATE] Auto-detect error:', error);
     } finally {
       setIsDetecting(false);
+      setDetectionAttempted(true); // Mark that we tried, regardless of result
     }
   };
 
