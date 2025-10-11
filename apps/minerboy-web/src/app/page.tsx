@@ -250,7 +250,7 @@ function Home() {
       
       setMining(false);
       setStatus('found');
-      stopMiningSound();
+      stopMiningSound('original');
       // Freeze the exact FOUND payload - never recompute
       const frozenResult = { hash, preimage, attempts, hr };
       setFoundResult(frozenResult);
@@ -266,7 +266,7 @@ function Home() {
       pushLine(`Error: ${message}`);
       setMining(false);
       setStatus('error');
-      stopMiningSound();
+      stopMiningSound('original');
     },
     onStopped: async (reason) => {
       console.log('[STOPPED_HANDLER]', reason);
@@ -277,7 +277,7 @@ function Home() {
         stopMining();
         setMining(false);
         setStatus('idle');
-        stopMiningSound();
+        stopMiningSound('original');
         playFailSound();
         setFoundResult(null);
         setFound(undefined);
@@ -314,7 +314,7 @@ function Home() {
         stopMining();
         setMining(false);
         setStatus('idle');
-        stopMiningSound();
+        stopMiningSound('original');
       }
     },
   });
@@ -534,7 +534,7 @@ function Home() {
           miner.stopForTtl(); // Stop the actual mining worker with TTL-specific handling
           stopMining(); // Stop the store's mining state
           setMining(false);
-          stopMiningSound(); // Stop the mining sound
+          stopMiningSound('original'); // Stop the mining sound
           playFailSound(); // Play fail sound for session expiry
           setCurrentDisplayHash('0x000000000000000000000000000000000000000000000000000000000000000000'); // Clear hash display
           setHashRate(0); // Clear hash rate display
@@ -958,14 +958,14 @@ function Home() {
       
       // SECURITY: Pass wallet and tokenId to bind work to this specific user+NFT
       miner.start(jobToUse, wallet, cartridge.tokenId);
-      startMiningSound();
+      startMiningSound('original');
     } else {
       // Stop mining
       console.log('Stopping mining');
       miner.stop();
       setMining(false);
       setStatus('idle');
-      stopMiningSound();
+      stopMiningSound('original');
       pushLine('Mining stopped');
     }
   };
