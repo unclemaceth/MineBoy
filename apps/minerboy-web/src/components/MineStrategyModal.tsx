@@ -164,19 +164,17 @@ export default function MineStrategyModal({ isOpen, onClose }: MineStrategyModal
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          paddingBottom: '16px',
-          marginBottom: '16px',
+          marginBottom: '20px',
           borderBottom: '2px solid #4a7d5f',
-          background: 'linear-gradient(145deg, #1a4d2a, #2d5a3d)'
+          paddingBottom: '12px'
         }}>
           <h2 style={{
             margin: 0,
             fontSize: '18px',
-            color: '#c8ffc8',
-            fontWeight: 'bold',
-            textShadow: '2px 2px 4px rgba(0,0,0,0.8)'
+            color: '#64ff8a',
+            fontWeight: 'bold'
           }}>
-            MINESTRATEGY FLYWHEEL
+            💎 MINESTRATEGY FLYWHEEL
           </h2>
           <button
             onClick={onClose}
